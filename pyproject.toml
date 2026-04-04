@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gws-security-auditor"
+version = "0.1.0"
+description = "Google Workspace Security Posture Auditor - CIS Benchmark & Best Practice Checks"
+readme = "README.md"
+license = {text = "AGPL-3.0-only"}
+requires-python = ">=3.9"
+authors = [
+    {name = "GWS Security Auditor Contributors"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: System Administrators",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "google-auth>=2.0",
+    "google-api-python-client>=2.0",
+    "google-auth-oauthlib>=1.0",
+    "google-auth-httplib2>=0.1",
+    "PySocks>=1.7",
+    "dnspython>=2.4",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+dashboard = [
+    "dash>=2.14",
+    "dash-bootstrap-components>=1.5",
+    "plotly>=5.18",
+    "pandas>=2.0",
+]
+ai = [
+    "openai>=1.0",
+    "anthropic>=0.30",
+    "boto3>=1.28",
+]
+ai-openai = ["openai>=1.0"]
+ai-anthropic = ["anthropic>=0.30"]
+ai-bedrock = ["boto3>=1.28"]
+agents = [
+    "pydantic-ai>=0.0.30",
+]
+build = [
+    "pyinstaller>=6.0",
+]
+
+[project.scripts]
+gws-auditor = "gws_auditor.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,49 @@
+services:
+  # Full audit run (one-shot)
+  audit:
+    build: .
+    command:
+      - "--config"
+      - "/app/config.yaml"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./credentials:/app/credentials:ro
+      - ./reports:/app/reports
+      - ./cache:/app/cache
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/credentials.json
+
+  # Interactive dashboard (long-running)
+  dashboard:
+    build: .
+    command:
+      - "dashboard"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8050"
+      - "--reports-dir"
+      - "/app/reports"
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./reports:/app/reports:ro
+    restart: unless-stopped
+
+  # Interactive AI analyst (REPL)
+  analyst:
+    build: .
+    command:
+      - "analyst"
+      - "--config"
+      - "/app/config.yaml"
+      - "--reports-dir"
+      - "/app/reports"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./reports:/app/reports:ro
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    stdin_open: true
+    tty: true

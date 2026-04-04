@@ -1,0 +1,73 @@
+name: Build Standalone Executables
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            artifact: gws-auditor-linux-amd64
+          - os: windows-latest
+            artifact: gws-auditor-windows-amd64.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pyinstaller
+
+      - name: Run tests
+        run: pytest tests/ -x -q --ignore=tests/test_agents
+
+      - name: Build executable
+        run: python build.py
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            mv dist/gws-auditor.exe dist/${{ matrix.artifact }}
+          else
+            mv dist/gws-auditor dist/${{ matrix.artifact }}
+            chmod +x dist/${{ matrix.artifact }}
+          fi
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          dist/${{ matrix.artifact }} --help
+          dist/${{ matrix.artifact }} --list-checks > /dev/null 2>&1 && echo "list-checks OK"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.artifact }}

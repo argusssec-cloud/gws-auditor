@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+sdist/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build artifacts (PyInstaller)
+dist/
+build/
+*.spec.bak
+
+# Project-specific outputs
+cache/
+reports/
+agent_reports/
+
+# Credentials & secrets (NEVER commit these)
+credentials.json
+credentials/*.json
+!credentials/.gitkeep
+token.json
+*.pem
+*.key
+*.p12
+config.yaml
+credentials/dwd_scopes.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+CHECK_PROGRESS.md

@@ -1,0 +1,28 @@
+# GWS Security Auditor Wiki
+
+Welcome to the GWS Security Auditor wiki. This tool audits Google Workspace tenants against 199 security checks from 4 industry frameworks.
+
+## Pages
+
+- **[Quick Start](Quick-Start)** -- Get auditing in 5 minutes
+- **[Setup Guide](Setup-Guide)** -- Detailed setup with automated wizard and manual steps
+- **[Configuration](Configuration)** -- config.yaml reference, profiles, and CLI options
+- **[Check Reference](Check-Reference)** -- All 199 checks with severity levels
+- **[Critical Checks](Critical-Checks)** -- 24 critical-severity checks explained
+- **[Dashboard](Dashboard)** -- Interactive web UI with dark mode
+- **[AI Analyst](AI-Analyst)** -- Natural language audit queries with 13 tools and slash commands
+- **[CI/CD Integration](CICD-Integration)** -- Pipeline integration with `--fail-on-critical`
+- **[Standalone Build](Standalone-Build)** -- Build single-file executables
+- **[Troubleshooting](Troubleshooting)** -- Common errors and solutions
+- **[Architecture](Architecture)** -- Project structure and data flow
+- **[Contributing](Contributing)** -- Adding checks, writing tests
+
+## Frameworks
+
+| Framework | Checks | Description |
+|-----------|-------:|-------------|
+| CIS | 84 | CIS Google Workspace Foundations Benchmark v1.3.0 |
+| CISA | 82 | CISA SCuBA Baselines for Google Workspace |
+| GOOGLE | 20 | Google Security Checklist for Medium & Large Businesses |
+| OTHER | 13 | Additional best-practice checks |
+| **Total** | **199** | |

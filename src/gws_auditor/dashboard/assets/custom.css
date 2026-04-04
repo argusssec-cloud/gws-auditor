@@ -1,0 +1,1446 @@
+/* ================================================================
+   GWS Security Auditor Dashboard – Custom Styles
+   ================================================================ */
+
+/* ===== CSS Custom Properties ===== */
+:root {
+    /* Surfaces */
+    --color-bg: #f7fafc;
+    --color-surface: #ffffff;
+    --color-surface-alt: #edf2f7;
+    --color-surface-hover: #f7fafc;
+
+    /* Text */
+    --color-text: #2d3748;
+    --color-text-secondary: #4a5568;
+    --color-text-muted: #718096;
+    --color-text-faint: #a0aec0;
+
+    /* Borders & shadows */
+    --color-border: #e2e8f0;
+    --color-border-light: #edf2f7;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+
+    /* Status colors */
+    --color-pass: #38a169;
+    --color-fail: #e53e3e;
+    --color-warn: #d69e2e;
+    --color-error: #9b2c2c;
+    --color-manual: #3182ce;
+    --color-na: #a0aec0;
+    --color-total: #4a5568;
+    --color-rate: #2b6cb0;
+
+    /* Badge backgrounds */
+    --badge-pass-bg: #c6f6d5; --badge-pass-text: #22543d;
+    --badge-fail-bg: #fed7d7; --badge-fail-text: #742a2a;
+    --badge-warn-bg: #fefcbf; --badge-warn-text: #744210;
+    --badge-error-bg: #fff5f5; --badge-error-text: #9b2c2c; --badge-error-border: #feb2b2;
+    --badge-manual-bg: #bee3f8; --badge-manual-text: #2a4365;
+    --badge-na-bg: #e2e8f0; --badge-na-text: #4a5568;
+
+    /* Source tag colors */
+    --source-cis: #3182ce;
+    --source-cisa: #805ad5;
+    --source-google: #dd6b20;
+    --source-other: #38b2ac;
+
+    /* Sidebar */
+    --sidebar-bg-start: #1a2540;
+    --sidebar-bg-end: #2b3d5b;
+
+    /* Misc */
+    --radius: 8px;
+    --radius-pill: 9999px;
+}
+
+/* ===== Dark Mode ===== */
+[data-theme="dark"] {
+    --color-bg: #111827;
+    --color-surface: #1f2937;
+    --color-surface-alt: #374151;
+    --color-surface-hover: #374151;
+
+    --color-text: #f3f4f6;
+    --color-text-secondary: #d1d5db;
+    --color-text-muted: #9ca3af;
+    --color-text-faint: #6b7280;
+
+    --color-border: #374151;
+    --color-border-light: #1f2937;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.4);
+
+    --badge-pass-bg: rgba(56,161,105,0.2); --badge-pass-text: #68d391;
+    --badge-fail-bg: rgba(229,62,62,0.2); --badge-fail-text: #fc8181;
+    --badge-warn-bg: rgba(214,158,46,0.2); --badge-warn-text: #f6e05e;
+    --badge-error-bg: rgba(155,44,44,0.2); --badge-error-text: #feb2b2; --badge-error-border: rgba(155,44,44,0.4);
+    --badge-manual-bg: rgba(49,130,206,0.2); --badge-manual-text: #90cdf4;
+    --badge-na-bg: rgba(160,174,192,0.15); --badge-na-text: #a0aec0;
+
+    --sidebar-bg-start: #0f172a;
+    --sidebar-bg-end: #1e293b;
+}
+
+/* Dark mode: override Bootstrap / Dash backgrounds */
+[data-theme="dark"] body,
+[data-theme="dark"] .content-area {
+    background: var(--color-bg) !important;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .metric-card,
+[data-theme="dark"] .chart-card,
+[data-theme="dark"] .source-card {
+    background: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .accordion-item {
+    background: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .accordion-button {
+    background: var(--color-surface-alt) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .accordion-button:not(.collapsed) {
+    background: var(--color-surface-alt) !important;
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .accordion-button::after {
+    filter: invert(0.8);
+}
+
+[data-theme="dark"] .table {
+    color: var(--color-text) !important;
+    --bs-table-bg: var(--color-surface);
+    --bs-table-border-color: var(--color-border);
+}
+
+[data-theme="dark"] .table thead th {
+    background: var(--color-surface-alt) !important;
+    color: var(--color-text-secondary) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .table tbody td {
+    border-color: var(--color-border-light) !important;
+}
+
+[data-theme="dark"] .table-hover tbody tr:hover {
+    background: var(--color-surface-hover) !important;
+    color: var(--color-text) !important;
+    --bs-table-hover-bg: var(--color-surface-hover);
+}
+
+[data-theme="dark"] .modal-content {
+    background: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .modal-header {
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-theme="dark"] .page-header {
+    color: var(--color-text) !important;
+}
+
+/* All headings */
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+[data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
+    color: var(--color-text) !important;
+}
+
+/* General text elements */
+[data-theme="dark"] p,
+[data-theme="dark"] span,
+[data-theme="dark"] label,
+[data-theme="dark"] li,
+[data-theme="dark"] dt,
+[data-theme="dark"] dd {
+    color: var(--color-text);
+}
+
+/* Bootstrap text utilities */
+[data-theme="dark"] .text-muted {
+    color: var(--color-text-muted) !important;
+}
+
+[data-theme="dark"] .text-dark {
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .text-body {
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .text-secondary {
+    color: var(--color-text-secondary) !important;
+}
+
+/* Bootstrap cards */
+[data-theme="dark"] .card-body,
+[data-theme="dark"] .card-title,
+[data-theme="dark"] .card-text,
+[data-theme="dark"] .card-header,
+[data-theme="dark"] .card-footer {
+    color: var(--color-text) !important;
+}
+
+/* Bootstrap modals */
+[data-theme="dark"] .modal-body,
+[data-theme="dark"] .modal-footer,
+[data-theme="dark"] .modal-title {
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .modal-footer {
+    border-color: var(--color-border) !important;
+}
+
+/* Bootstrap forms */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background-color: var(--color-surface-alt) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .form-label,
+[data-theme="dark"] .form-check-label {
+    color: var(--color-text) !important;
+}
+
+/* Bootstrap list groups */
+[data-theme="dark"] .list-group-item {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+/* Bootstrap breadcrumbs */
+[data-theme="dark"] .breadcrumb-item,
+[data-theme="dark"] .breadcrumb-item a {
+    color: var(--color-text-secondary) !important;
+}
+
+[data-theme="dark"] .breadcrumb-item.active {
+    color: var(--color-text-muted) !important;
+}
+
+/* Catch-all: any remaining Bootstrap black text */
+[data-theme="dark"] .content-area * {
+    color: inherit;
+}
+
+/* Metric card values: lighten dark inline colors in dark mode.
+   Status colors (green/red/yellow/blue) stay as-is; only the dark
+   "total" (#2d3748) and "pass_rate" (#2b6cb0) need overriding. */
+[data-theme="dark"] #metric-total .metric-value {
+    color: var(--color-text) !important;
+}
+
+/* Override hardcoded inline colors on source-card headings */
+[data-theme="dark"] .source-card h6 {
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .progress {
+    background-color: var(--color-border) !important;
+}
+
+/* Dark mode: Dash DataTable */
+[data-theme="dark"] .dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner th,
+[data-theme="dark"] .dash-spreadsheet-container .dash-spreadsheet-inner th {
+    background-color: var(--color-surface-alt) !important;
+    color: var(--color-text-secondary) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border-light) !important;
+}
+
+/* Override status-based row colors in dark mode.
+   The DataTable style_data_conditional sets light pastel backgrounds
+   via inline styles; we need !important to override them. */
+[data-theme="dark"] .dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr td {
+    background-color: var(--color-surface) !important;
+}
+
+[data-theme="dark"] .dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover td {
+    background-color: var(--color-surface-hover) !important;
+}
+
+[data-theme="dark"] .dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td.focused {
+    background-color: var(--color-surface-hover) !important;
+}
+
+/* DataTable filter inputs */
+[data-theme="dark"] .dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner input {
+    background-color: var(--color-surface-alt) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+/* DataTable pagination controls */
+[data-theme="dark"] .dash-table-container .previous-next-container button {
+    color: var(--color-text) !important;
+    background: var(--color-surface-alt) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .dash-table-container .previous-next-container .page-number {
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .dash-table-container input {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+/* Dark mode: DataTable inline dropdowns (e.g. Override column) */
+[data-theme="dark"] .dash-table-container .dash-dropdown-cell-value-container,
+[data-theme="dark"] .dash-table-container .dropdown {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .dash-table-container .dash-dropdown-cell-value-container .Select-control,
+[data-theme="dark"] .dash-table-container .dropdown .Select-control {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .dash-table-container .Select-menu-outer,
+[data-theme="dark"] .dash-table-container .Select-menu,
+[data-theme="dark"] .dash-table-container .Select-option {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .dash-table-container .Select-option.is-focused {
+    background: var(--color-surface-hover) !important;
+}
+
+[data-theme="dark"] .dash-table-container .Select-value-label {
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .dash-table-container .Select-placeholder {
+    color: var(--color-text-muted) !important;
+}
+
+/* Dark mode: Dash Dropdown (covers both legacy Select-* and modern css-* classes) */
+
+/* --- Control (the main dropdown box) --- */
+[data-theme="dark"] .Select-control,
+[data-theme="dark"] .dash-dropdown .Select-control,
+[data-theme="dark"] .dash-dropdown [class*="__control"],
+[data-theme="dark"] [class*="-container"] [class*="__control"] {
+    background: var(--color-surface) !important;
+    background-color: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text) !important;
+}
+
+/* --- Menu (dropdown list container) --- */
+[data-theme="dark"] .Select-menu-outer,
+[data-theme="dark"] .Select-menu,
+[data-theme="dark"] .dash-dropdown [class*="__menu"],
+[data-theme="dark"] [class*="-container"] [class*="__menu"] {
+    background: var(--color-surface) !important;
+    background-color: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text) !important;
+}
+
+/* --- Menu list (scrollable area inside menu) --- */
+[data-theme="dark"] .dash-dropdown [class*="__menu-list"],
+[data-theme="dark"] [class*="-container"] [class*="__menu-list"] {
+    background: var(--color-surface) !important;
+}
+
+/* --- Individual options --- */
+[data-theme="dark"] .Select-option,
+[data-theme="dark"] .dash-dropdown [class*="__option"],
+[data-theme="dark"] [class*="-container"] [class*="__option"] {
+    background: var(--color-surface) !important;
+    background-color: var(--color-surface) !important;
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .Select-option.is-focused,
+[data-theme="dark"] .Select-option.is-selected,
+[data-theme="dark"] .dash-dropdown [class*="__option--is-focused"],
+[data-theme="dark"] [class*="-container"] [class*="__option--is-focused"] {
+    background: var(--color-surface-hover) !important;
+    background-color: var(--color-surface-hover) !important;
+}
+
+[data-theme="dark"] .dash-dropdown [class*="__option--is-selected"],
+[data-theme="dark"] [class*="-container"] [class*="__option--is-selected"] {
+    background: var(--color-surface-alt) !important;
+    background-color: var(--color-surface-alt) !important;
+    color: var(--color-text) !important;
+}
+
+/* --- Selected value text + placeholder --- */
+[data-theme="dark"] .Select-value-label,
+[data-theme="dark"] .Select-placeholder,
+[data-theme="dark"] .Select-input input,
+[data-theme="dark"] .dash-dropdown [class*="__single-value"],
+[data-theme="dark"] .dash-dropdown [class*="__placeholder"],
+[data-theme="dark"] .dash-dropdown [class*="__input"] input,
+[data-theme="dark"] .dash-dropdown input,
+[data-theme="dark"] [class*="-container"] [class*="__single-value"],
+[data-theme="dark"] [class*="-container"] [class*="__placeholder"],
+[data-theme="dark"] [class*="-container"] [class*="__input"] input {
+    color: var(--color-text) !important;
+}
+
+/* --- Multi-value tags (when multi-select) --- */
+[data-theme="dark"] .Select-multi-value-wrapper .Select-value,
+[data-theme="dark"] .dash-dropdown [class*="__multi-value"],
+[data-theme="dark"] [class*="-container"] [class*="__multi-value"] {
+    background: var(--color-surface-alt) !important;
+    background-color: var(--color-surface-alt) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .dash-dropdown [class*="__multi-value__label"],
+[data-theme="dark"] [class*="-container"] [class*="__multi-value__label"] {
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .dash-dropdown [class*="__multi-value__remove"],
+[data-theme="dark"] [class*="-container"] [class*="__multi-value__remove"] {
+    color: var(--color-text-muted) !important;
+}
+
+[data-theme="dark"] .dash-dropdown [class*="__multi-value__remove"]:hover,
+[data-theme="dark"] [class*="-container"] [class*="__multi-value__remove"]:hover {
+    background: var(--color-surface-hover) !important;
+    color: var(--color-text) !important;
+}
+
+/* --- Indicators (clear X, dropdown arrow) --- */
+[data-theme="dark"] .Select-clear-zone,
+[data-theme="dark"] .Select-arrow-zone,
+[data-theme="dark"] .dash-dropdown [class*="__indicator"],
+[data-theme="dark"] .dash-dropdown [class*="__dropdown-indicator"],
+[data-theme="dark"] .dash-dropdown [class*="__clear-indicator"],
+[data-theme="dark"] [class*="-container"] [class*="__indicator"] {
+    color: var(--color-text-muted) !important;
+}
+
+/* --- Indicator separator --- */
+[data-theme="dark"] .dash-dropdown [class*="__indicator-separator"],
+[data-theme="dark"] [class*="-container"] [class*="__indicator-separator"] {
+    background-color: var(--color-border) !important;
+}
+
+/* --- No options message --- */
+[data-theme="dark"] .dash-dropdown [class*="__menu-notice"],
+[data-theme="dark"] [class*="-container"] [class*="__menu-notice"] {
+    color: var(--color-text-muted) !important;
+}
+
+/* --- Value container (wraps selected values) --- */
+[data-theme="dark"] .dash-dropdown [class*="__value-container"],
+[data-theme="dark"] [class*="-container"] [class*="__value-container"] {
+    color: var(--color-text) !important;
+}
+
+/* --- Dash native dropdown (new Dash 2.x+ radix-based dropdown) --- */
+[data-theme="dark"] .dash-dropdown {
+    background: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .dash-dropdown-value,
+[data-theme="dark"] .dash-dropdown-value-item,
+[data-theme="dark"] .dash-dropdown-value-item span,
+[data-theme="dark"] .dash-dropdown-trigger,
+[data-theme="dark"] .dash-dropdown-grid-container {
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .dash-dropdown-clear,
+[data-theme="dark"] .dash-dropdown-trigger-icon {
+    color: var(--color-text-muted) !important;
+}
+
+/* Dash native dropdown menu (popover) */
+[data-theme="dark"] [data-radix-popper-content-wrapper] [role="listbox"],
+[data-theme="dark"] [data-radix-popper-content-wrapper] {
+    background: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] [data-radix-popper-content-wrapper] [role="option"],
+[data-theme="dark"] [data-radix-popper-content-wrapper] .dash-dropdown-option {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] [data-radix-popper-content-wrapper] [role="option"][data-highlighted],
+[data-theme="dark"] [data-radix-popper-content-wrapper] [role="option"]:hover {
+    background: var(--color-surface-hover) !important;
+}
+
+[data-theme="dark"] [data-radix-popper-content-wrapper] [role="option"][data-state="checked"] {
+    background: var(--color-surface-alt) !important;
+}
+
+/* Dark mode: Alert */
+[data-theme="dark"] .alert-info {
+    background: var(--badge-manual-bg) !important;
+    color: var(--badge-manual-text) !important;
+    border-color: rgba(49,130,206,0.3) !important;
+}
+
+/* Dark mode: DataTable Toggle Columns & Export buttons */
+[data-theme="dark"] .dash-table-container .show-hide,
+[data-theme="dark"] .dash-table-container .export {
+    background: var(--color-surface-alt) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .show-hide-menu {
+    background: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .show-hide-menu-item label {
+    color: var(--color-text) !important;
+}
+
+/* Dark mode: Dash dropdown search input */
+[data-theme="dark"] .dash-dropdown-search-container,
+[data-theme="dark"] .dash-dropdown-grid-container.dash-dropdown-search-container {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .dash-dropdown-search {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .dash-dropdown-search-icon {
+    color: var(--color-text-muted) !important;
+}
+
+/* Dark mode: Dash dropdown action buttons (Select All / Deselect All) */
+[data-theme="dark"] .dash-dropdown-actions {
+    background: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .dash-dropdown-action-button {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .dash-dropdown-action-button:hover {
+    background: var(--color-surface-hover) !important;
+}
+
+/* Dark mode: DataTable tooltips */
+[data-theme="dark"] .dash-table-tooltip,
+[data-theme="dark"] .dash-tooltip {
+    background: var(--color-surface-alt) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+/* Dark mode: Textarea (comment box) */
+[data-theme="dark"] .dash-textarea {
+    background-color: var(--color-surface-alt) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+/* Dark mode: Inventory status banner */
+[data-theme="dark"] .inventory-status-banner {
+    background-color: var(--color-surface-alt) !important;
+}
+
+/* Dark mode: Plotly */
+[data-theme="dark"] .js-plotly-plot .plotly .main-svg {
+    background: transparent !important;
+}
+
+/* Plotly SVG text: CSS fill applies instantly on render, avoiding the
+   timing gap where JS relayout may run before Plotly is fully ready. */
+[data-theme="dark"] .js-plotly-plot .plotly .gtitle {
+    fill: #f3f4f6 !important;
+}
+[data-theme="dark"] .js-plotly-plot .plotly .xtitle,
+[data-theme="dark"] .js-plotly-plot .plotly .ytitle {
+    fill: #f3f4f6 !important;
+}
+[data-theme="dark"] .js-plotly-plot .plotly .xtick text,
+[data-theme="dark"] .js-plotly-plot .plotly .ytick text {
+    fill: #f3f4f6 !important;
+}
+[data-theme="dark"] .js-plotly-plot .plotly .legendtext {
+    fill: #f3f4f6 !important;
+}
+[data-theme="dark"] .js-plotly-plot .plotly .annotation-text {
+    fill: #f3f4f6 !important;
+}
+
+/* Dark mode: sidebar override */
+[data-theme="dark"] .sidebar-panel {
+    background: linear-gradient(180deg, var(--sidebar-bg-start) 0%, var(--sidebar-bg-end) 100%);
+}
+
+/* Dark mode: Tabs */
+[data-theme="dark"] .nav-tabs {
+    border-color: var(--color-border) !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link {
+    color: var(--color-text-muted) !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link.active {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) var(--color-border) var(--color-surface) !important;
+}
+
+/* --- Sidebar panel (independently fixed) --- */
+.sidebar-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 250px;
+    background: linear-gradient(180deg, #1a2540 0%, #2b3d5b 100%);
+    color: #cbd5e0;
+    padding: 1.25rem 1rem;
+    overflow-y: auto;
+    z-index: 1000;
+    transition: transform 0.25s ease, visibility 0.25s ease;
+    transform: translateX(0);
+}
+
+.sidebar-panel-closed {
+    transform: translateX(-100%);
+    visibility: hidden;
+}
+
+/* --- Sidebar toggle button (independently fixed) --- */
+.sidebar-toggle-btn {
+    position: fixed;
+    top: 0.75rem;
+    left: 205px;
+    z-index: 1100;
+    background: rgba(26, 37, 64, 0.85);
+    color: #cbd5e0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.375rem;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: left 0.25s ease, background 0.15s ease;
+    padding: 0;
+    line-height: 1;
+}
+
+.sidebar-toggle-btn:hover {
+    background: rgba(49, 130, 206, 0.8);
+    color: #ffffff;
+}
+
+.sidebar-toggle-btn-collapsed {
+    left: 0.75rem;
+}
+
+.sidebar-brand {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin-bottom: 0;
+}
+
+.sidebar-divider {
+    border-color: rgba(255, 255, 255, 0.15);
+    margin: 0.75rem 0;
+}
+
+.sidebar-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #a0aec0;
+    margin-bottom: 0.35rem;
+    display: block;
+}
+
+.sidebar-section {
+    margin-bottom: 0.5rem;
+}
+
+/* Dropdown inside sidebar (covers legacy Select-*, react-select css-*, and Dash native dash-dropdown) */
+.sidebar-dropdown .Select-control,
+.sidebar-dropdown .dash-dropdown .Select-control,
+.sidebar-dropdown [class*="__control"] {
+    background: rgba(255, 255, 255, 0.08) !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #e2e8f0 !important;
+}
+
+/* Dash native dropdown (sidebar) */
+.sidebar-dropdown.dash-dropdown,
+.sidebar-dropdown .dash-dropdown {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 0.375rem;
+    color: #e2e8f0 !important;
+}
+
+.sidebar-dropdown .dash-dropdown-value,
+.sidebar-dropdown .dash-dropdown-value-item,
+.sidebar-dropdown .dash-dropdown-value-item span,
+.sidebar-dropdown .dash-dropdown-trigger,
+.sidebar-dropdown .dash-dropdown-grid-container {
+    color: #e2e8f0 !important;
+}
+
+.sidebar-dropdown .dash-dropdown-clear,
+.sidebar-dropdown .dash-dropdown-trigger-icon {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.sidebar-dropdown [class*="__single-value"],
+.sidebar-dropdown [class*="__placeholder"],
+.sidebar-dropdown [class*="__input"] input,
+.sidebar-dropdown .Select-value-label,
+.sidebar-dropdown .Select-placeholder {
+    color: #e2e8f0 !important;
+}
+
+.sidebar-dropdown [class*="__menu"],
+.sidebar-dropdown [class*="__menu-list"],
+.sidebar-dropdown .Select-menu-outer {
+    background: #1e293b !important;
+    background-color: #1e293b !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.sidebar-dropdown [class*="__option"],
+.sidebar-dropdown .Select-option {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+
+.sidebar-dropdown [class*="__option--is-focused"],
+.sidebar-dropdown .Select-option.is-focused {
+    background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.sidebar-dropdown [class*="__option--is-selected"] {
+    background: rgba(49, 130, 206, 0.3) !important;
+}
+
+.sidebar-dropdown [class*="__indicator"],
+.sidebar-dropdown [class*="__indicator-separator"],
+.sidebar-dropdown .Select-arrow-zone,
+.sidebar-dropdown .Select-clear-zone {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.sidebar-dropdown [class*="__indicator-separator"] {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Nav links */
+.sidebar-link {
+    color: #cbd5e0 !important;
+    border-radius: 0.375rem;
+    margin-bottom: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.sidebar-link:hover {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-link.active {
+    color: #ffffff !important;
+    background: #3182ce !important;
+}
+
+/* --- Theme toggle in sidebar --- */
+.theme-toggle-sidebar {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #cbd5e0;
+    border-radius: 0.375rem;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.15s;
+}
+
+.theme-toggle-sidebar:hover {
+    background: rgba(255,255,255,0.15);
+    color: #ffffff;
+}
+
+/* --- Content Area --- */
+.content-area {
+    margin-left: 250px;
+    padding: 1.5rem 2rem;
+    background: var(--color-bg);
+    min-height: 100vh;
+    transition: margin-left 0.25s ease, padding-left 0.25s ease, background 0.2s ease;
+}
+
+.content-area-collapsed {
+    margin-left: 0;
+    padding-left: 3.5rem;
+}
+
+/* --- Metric Cards --- */
+.metric-card {
+    border-radius: var(--radius);
+    border: none;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.15s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.metric-card .card-body {
+    padding: 1rem 1.25rem;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.metric-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    font-feature-settings: 'tnum';
+}
+
+/* Proportion bar at bottom of metric card */
+.metric-proportion-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    transition: width 0.4s;
+}
+
+/* --- Status Badges (pill style matching HTML report) --- */
+.status-badge {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.status-badge--PASS { background: var(--badge-pass-bg); color: var(--badge-pass-text); }
+.status-badge--FAIL { background: var(--badge-fail-bg); color: var(--badge-fail-text); }
+.status-badge--WARN { background: var(--badge-warn-bg); color: var(--badge-warn-text); }
+.status-badge--ERROR { background: var(--badge-error-bg); color: var(--badge-error-text); border: 1px solid var(--badge-error-border); }
+.status-badge--MANUAL { background: var(--badge-manual-bg); color: var(--badge-manual-text); }
+.status-badge--NOT_APPLICABLE { background: var(--badge-na-bg); color: var(--badge-na-text); }
+
+/* Legacy badge classes (for accordion tables) */
+.badge-pass { background-color: var(--badge-pass-bg); color: var(--badge-pass-text); }
+.badge-fail { background-color: var(--badge-fail-bg); color: var(--badge-fail-text); }
+.badge-warn { background-color: var(--badge-warn-bg); color: var(--badge-warn-text); }
+.badge-error { background-color: var(--badge-error-bg); color: var(--badge-error-text); }
+.badge-manual { background-color: var(--badge-manual-bg); color: var(--badge-manual-text); }
+.badge-na { background-color: var(--badge-na-bg); color: var(--badge-na-text); }
+
+/* --- Source Tags --- */
+.source-tag {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 0.08rem 0.4rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+    margin-left: 0.35rem;
+}
+
+.source-tag--CIS { background: rgba(49,130,206,0.15); color: var(--source-cis); }
+.source-tag--CISA { background: rgba(128,90,213,0.15); color: var(--source-cisa); }
+.source-tag--GOOGLE { background: rgba(221,107,32,0.15); color: var(--source-google); }
+.source-tag--OTHER { background: rgba(56,178,172,0.15); color: var(--source-other); }
+
+/* --- Check ID (monospace) --- */
+.check-id-code {
+    font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+/* --- Section stat badges (accordion headers) --- */
+.section-stat {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-pill);
+    display: inline-block;
+    margin-left: 0.25rem;
+}
+
+.section-stat--pass { background: var(--badge-pass-bg); color: var(--badge-pass-text); }
+.section-stat--fail { background: var(--badge-fail-bg); color: var(--badge-fail-text); }
+.section-stat--warn { background: var(--badge-warn-bg); color: var(--badge-warn-text); }
+.section-stat--error { background: var(--badge-error-bg); color: var(--badge-error-text); }
+.section-stat--manual { background: var(--badge-manual-bg); color: var(--badge-manual-text); }
+
+/* Section status bar (multi-color) */
+.section-status-bar {
+    height: 4px;
+    display: flex;
+    overflow: hidden;
+    border-radius: 2px;
+    margin-bottom: 0.5rem;
+}
+
+.section-status-bar span {
+    display: block;
+    height: 100%;
+}
+
+/* --- Charts --- */
+.chart-card {
+    border: none;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    background: var(--color-surface);
+}
+
+.chart-card .card-body {
+    padding: 1rem;
+}
+
+/* --- Data Table --- */
+.dash-table-container {
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.dash-spreadsheet-container .dash-spreadsheet-inner th {
+    background-color: #2d3748 !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.dash-spreadsheet-container .dash-spreadsheet-inner td {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* --- Filter Row --- */
+.filter-row {
+    margin-bottom: 1rem;
+}
+
+.filter-row .dash-dropdown {
+    font-size: 0.85rem;
+}
+
+/* --- Source Cards --- */
+.source-card {
+    border: none;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.source-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.source-card .card-body {
+    padding: 1rem 1.25rem;
+}
+
+/* --- Page Header --- */
+.page-header {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 1rem;
+}
+
+/* --- Compliance Accordion --- */
+.accordion-button {
+    font-weight: 600;
+}
+
+/* --- Detail Modal (matching HTML report) --- */
+.modal-check-id {
+    font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.modal-title-text {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-text);
+}
+
+.modal-meta-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    align-items: center;
+}
+
+.modal-meta-row span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.modal-section-block {
+    margin-bottom: 1rem;
+}
+
+.modal-section-label {
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.modal-section-content {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--color-text);
+}
+
+/* --- Search Bar --- */
+.search-bar-container {
+    position: relative;
+    max-width: 400px;
+}
+
+.search-bar-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem 0.5rem 2.2rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: var(--color-text);
+    background-color: var(--color-surface);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.search-bar-input:focus {
+    border-color: var(--source-cis);
+}
+
+.search-bar-input::placeholder {
+    color: var(--color-text-faint);
+}
+
+.search-bar-icon {
+    position: absolute;
+    left: 0.65rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.search-count {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    margin-left: 0.5rem;
+}
+
+/* --- Status Filter Pills --- */
+.filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.filter-pill {
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.filter-pill:hover {
+    background: var(--color-surface-hover);
+}
+
+.filter-pill.active {
+    background: #2b3d5b;
+    color: #ffffff;
+    border-color: #2b3d5b;
+}
+
+.filter-pill-count {
+    font-size: 0.7rem;
+    background: rgba(0,0,0,0.1);
+    padding: 0.05rem 0.4rem;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+}
+
+.filter-pill.active .filter-pill-count {
+    background: rgba(255,255,255,0.2);
+}
+
+/* --- AI Analyst Chat --- */
+.chat-container {
+    max-height: 60vh;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    padding: 1rem;
+}
+
+.chat-message {
+    margin-bottom: 0.75rem;
+    display: flex;
+}
+
+.chat-message-user {
+    justify-content: flex-end;
+}
+
+.chat-message-assistant {
+    justify-content: flex-start;
+}
+
+.chat-bubble {
+    max-width: 75%;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.chat-bubble-user {
+    background: #3182ce;
+    color: #ffffff;
+    border-bottom-right-radius: 0.25rem;
+}
+
+.chat-bubble-assistant {
+    background: var(--color-surface-alt);
+    color: var(--color-text);
+    border-bottom-left-radius: 0.25rem;
+}
+
+.chat-markdown p {
+    margin-bottom: 0.5rem;
+}
+
+.chat-markdown p:last-child {
+    margin-bottom: 0;
+}
+
+.chat-markdown table {
+    font-size: 0.8rem;
+    margin: 0.5rem 0;
+}
+
+.chat-markdown code {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem;
+    font-size: 0.85em;
+}
+
+[data-theme="dark"] .chat-markdown code {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text);
+}
+
+.chat-markdown pre {
+    background: #2d3748;
+    color: #e2e8f0;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    overflow-x: auto;
+}
+
+.chat-input-group {
+    max-width: 100%;
+}
+
+.chat-input {
+    border-radius: 0.5rem 0 0 0.5rem !important;
+}
+
+.chat-send-btn {
+    border-radius: 0 0.5rem 0.5rem 0 !important;
+}
+
+.chat-thinking {
+    display: inline-block;
+    color: var(--color-text-faint);
+    font-style: italic;
+}
+.chat-thinking::after {
+    content: '...';
+    animation: thinking 1.5s infinite;
+}
+@keyframes thinking {
+    0% { content: '.'; }
+    33% { content: '..'; }
+    66% { content: '...'; }
+}
+
+/* --- Inventory Page --- */
+.inventory-status-banner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.inventory-tab-content {
+    min-height: 300px;
+}
+
+.oauth-risk-critical { background-color: #e53e3e; color: white; font-weight: 600; }
+.oauth-risk-high { background-color: #d69e2e; color: white; font-weight: 600; }
+.oauth-risk-medium { background-color: #3182ce; color: white; font-weight: 600; }
+
+.nav-tabs .nav-link .badge {
+    font-size: 0.65rem;
+    vertical-align: super;
+}
+
+/* --- Responsive --- */
+@media (max-width: 992px) {
+    .sidebar-panel {
+        width: 200px;
+    }
+    .sidebar-toggle-btn {
+        left: 155px;
+    }
+    .sidebar-toggle-btn-collapsed {
+        left: 0.75rem;
+    }
+    .content-area {
+        margin-left: 200px;
+        padding: 1rem;
+    }
+    .content-area-collapsed {
+        margin-left: 0;
+        padding-left: 3.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar-panel {
+        width: 250px;
+    }
+    .sidebar-toggle-btn {
+        left: 205px;
+    }
+    .sidebar-toggle-btn-collapsed {
+        left: 0.75rem;
+    }
+    .content-area {
+        margin-left: 0;
+    }
+    .content-area-collapsed {
+        margin-left: 0;
+        padding-left: 3.5rem;
+    }
+}
+
+/* ===== Critical Security Findings Banner ===== */
+.critical-banner {
+    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    border: 1px solid #feb2b2;
+    border-left: 4px solid #e53e3e;
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+}
+
+.critical-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    color: #742a2a;
+}
+
+.critical-icon {
+    font-size: 1.2rem;
+    margin-right: 0.25rem;
+}
+
+.critical-subtitle {
+    font-size: 0.82rem;
+    color: #9b2c2c;
+}
+
+.critical-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.critical-item {
+    background: rgba(255, 255, 255, 0.7);
+    border-left: 3px solid #e53e3e;
+    border-radius: 4px;
+    padding: 0.6rem 0.85rem;
+}
+
+.critical-item-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.critical-item-id {
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+    background: rgba(229, 62, 62, 0.1);
+    color: #c53030;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.critical-reason {
+    margin-top: 0.3rem;
+    font-size: 0.82rem;
+    color: #718096;
+    line-height: 1.45;
+}
+
+/* Dark mode: Critical banner */
+[data-theme="dark"] .critical-banner {
+    background: linear-gradient(135deg, rgba(229,62,62,0.12) 0%, rgba(229,62,62,0.06) 100%);
+    border-color: rgba(229,62,62,0.3);
+    border-left-color: #e53e3e;
+}
+
+[data-theme="dark"] .critical-header {
+    color: #feb2b2;
+}
+
+[data-theme="dark"] .critical-subtitle {
+    color: #fc8181;
+}
+
+[data-theme="dark"] .critical-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-left-color: #e53e3e;
+}
+
+[data-theme="dark"] .critical-item-header {
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .critical-item-id {
+    background: rgba(229, 62, 62, 0.2);
+    color: #fc8181;
+}
+
+[data-theme="dark"] .critical-reason {
+    color: var(--color-text-muted);
+}
+
+/* ===== Page size dropdown ===== */
+.page-size-dropdown {
+    font-size: 0.85rem;
+}

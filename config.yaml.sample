@@ -1,0 +1,33 @@
+auth:
+  method: service_account  # or oauth
+  credentials_file: credentials.json
+  subject: admin@example.com  # delegated admin email
+  customer_id: my_customer
+
+checks:
+  levels: [L1, L2]           # or just [L1]
+  sources: [CIS, OTHER, GOOGLE, CISA]
+  sections: all               # or list specific sections
+  exclude: []                 # exclude specific check IDs
+
+output:
+  directory: ./reports
+  formats: [html, json, csv]
+
+options:
+  cache_data: true            # cache API responses
+  cache_directory: ./cache
+  org_units: all              # or list specific OUs
+  max_retries: 5
+  rate_limit_qps: 10
+
+ai:
+  provider: openai              # openai, anthropic, or bedrock
+  model: ""                     # blank = provider default
+  api_key: ""                   # prefer env var OPENAI_API_KEY / ANTHROPIC_API_KEY
+  temperature: 0.1
+  max_tokens: 4096
+  business_context: ""          # e.g. "500-person healthcare company, HIPAA required"
+  # aws_region: us-east-1       # bedrock only
+  # aws_profile: ""             # bedrock only
+  # base_url: ""                # OpenAI-compatible endpoint override
