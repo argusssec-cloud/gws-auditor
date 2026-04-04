@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             artifact: gws-auditor-linux-amd64
           - os: windows-latest
             artifact: gws-auditor-windows-amd64.exe
