@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://fonts.gstatic.com/s/i/productlogos/admin_2020q4/v6/192px.svg" alt="Google Workspace" width="96" height="96">
+  <img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/shield/default/48px.svg" alt="GWS Security Auditor" width="96" height="96">
 </p>
 
 <h1 align="center">GWS Security Auditor</h1>
