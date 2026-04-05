@@ -105,11 +105,15 @@ Pre-built binaries are available on the [Releases](../../releases) page -- no Py
 ```console
 # Linux
 chmod +x gws-auditor-linux-amd64
-./gws-auditor-linux-amd64 --list-checks
+./gws-auditor-linux-amd64 --credentials credentials.json --subject admin@company.com
 
 # Windows
-gws-auditor-windows-amd64.exe --list-checks
+gws-auditor-windows-amd64.exe --credentials credentials.json --subject admin@company.com
 ```
+
+> [!IMPORTANT]
+> Standalone binaries don't bundle a `config.yaml`. You must pass at minimum
+> `--credentials` and `--subject` on the command line.
 
 To build from source:
 
@@ -206,7 +210,15 @@ ai:
 gws-auditor                            # uses config.yaml
 gws-auditor -v                         # verbose
 gws-auditor -vv                        # debug logging
+
+# Without config.yaml (minimum required arguments)
+gws-auditor --credentials credentials.json --subject admin@company.com
 ```
+
+> [!IMPORTANT]
+> When no `config.yaml` is present, both `--credentials` and `--subject` are required.
+> The `--subject` flag specifies the super-admin email used for domain-wide delegation.
+> Without it, all API calls will fail with permission errors.
 
 ### Credential Profiles
 

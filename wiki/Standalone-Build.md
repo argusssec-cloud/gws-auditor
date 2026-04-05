@@ -29,6 +29,20 @@ Download from the [Releases](../../releases) page:
 | Linux x86_64 | `gws-auditor-linux-amd64` |
 | Windows x86_64 | `gws-auditor-windows-amd64.exe` |
 
+### Running
+
+Standalone binaries don't include a `config.yaml`, so you must pass authentication arguments on the command line:
+
+```bash
+# Minimum required arguments
+./gws-auditor-linux-amd64 --credentials credentials.json --subject admin@yourdomain.com
+
+# With optional flags
+./gws-auditor-linux-amd64 --credentials credentials.json --subject admin@yourdomain.com --customer-id C0abc123 -v
+```
+
+> **Note:** `--subject` (super-admin email for domain-wide delegation) is required when no `config.yaml` is present. Without it, all API calls will fail with permission errors.
+
 ## How It Works
 
 The build uses [PyInstaller](https://pyinstaller.org/) with a custom spec file (`gws-auditor.spec`) that:

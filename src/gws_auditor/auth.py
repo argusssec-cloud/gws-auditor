@@ -326,24 +326,145 @@ class AuthManager:
             "Groups Settings API",
             "groupssettings", "v1",
             "https://www.googleapis.com/auth/apps.groups.settings",
-            None,  # Cannot probe without a group email; skip execution
+            None,  # Probed separately in _probe_groups_settings
             "Groups Settings API",
         ),
         (
             "Cloud Identity - Policy API",
             "cloudidentity", "v1",
             "https://www.googleapis.com/auth/cloud-identity.policies.readonly",
-            None,  # Complex setup; validated indirectly
+            lambda svc, cid: svc.policies().list(
+                filter=f"setting.type.matches('^settings/security\\\\..*$')"
+                       f' && customer == "customers/{cid}"',
+                pageSize=1,
+            ).execute,
             "Cloud Identity API",
         ),
         (
             "Chrome Policy API",
             "chromepolicy", "v1",
             "https://www.googleapis.com/auth/chrome.management.policy.readonly",
-            None,  # Requires resolved customer; skip
+            None,  # Probed separately in _probe_chrome_policy
             "Chrome Policy API",
         ),
     ]
+
+    def _probe_groups_settings(self, scope: str, gcp_api_name: str) -> dict:
+        """Probe Groups Settings API using a real group from the directory."""
+        from googleapiclient.errors import HttpError
+
+        api_name = "Groups Settings API"
+        try:
+            # Fetch one group to get a valid email for the probe
+            dir_svc = self.build_service("admin", "directory_v1")
+            result = dir_svc.groups().list(
+                customer=self.customer_id, maxResults=1
+            ).execute()
+            groups = result.get("groups", [])
+            if not groups:
+                return {
+                    "api": api_name,
+                    "status": "ok",
+                    "message": "No groups in domain (nothing to probe)",
+                    "remediation": None,
+                }
+            group_email = groups[0]["email"]
+            gs_svc = self.build_service("groupssettings", "v1")
+            gs_svc.groups().get(groupUniqueId=group_email).execute()
+            return {
+                "api": api_name,
+                "status": "ok",
+                "message": "API accessible",
+                "remediation": None,
+            }
+        except HttpError as exc:
+            status = exc.resp.status if exc.resp else 0
+            return {
+                "api": api_name,
+                "status": "error",
+                "message": f"HTTP {status}: {exc}",
+                "remediation": self._api_error_remediation(
+                    api_name, gcp_api_name, scope, status, exc
+                ),
+            }
+        except Exception as exc:
+            return {
+                "api": api_name,
+                "status": "error",
+                "message": str(exc),
+                "remediation": self._api_error_remediation(
+                    api_name, gcp_api_name, scope, 0, exc
+                ),
+            }
+
+    def _probe_chrome_policy(self, scope: str, gcp_api_name: str) -> dict:
+        """Probe Chrome Policy API using the root OU."""
+        from googleapiclient.errors import HttpError
+
+        api_name = "Chrome Policy API"
+        try:
+            # Resolve root OU ID from a child OU's parentOrgUnitId
+            dir_svc = self.build_service("admin", "directory_v1")
+            result = dir_svc.orgunits().list(
+                customerId=self.customer_id, type="children"
+            ).execute()
+            org_units = result.get("organizationUnits", [])
+            if not org_units:
+                return {
+                    "api": api_name,
+                    "status": "ok",
+                    "message": "No child OUs (cannot resolve root OU for probe)",
+                    "remediation": None,
+                }
+            ou_id = org_units[0].get("parentOrgUnitId", "").removeprefix("id:")
+
+            svc = self.build_service("chromepolicy", "v1")
+            svc.customers().policies().resolve(
+                customer=f"customers/{self.customer_id}",
+                body={
+                    "policySchemaFilter": "chrome.users.BrowserSignin",
+                    "policyTargetKey": {
+                        "targetResource": f"orgunits/{ou_id}",
+                    },
+                },
+            ).execute()
+            return {
+                "api": api_name,
+                "status": "ok",
+                "message": "API accessible",
+                "remediation": None,
+            }
+        except HttpError as exc:
+            status = exc.resp.status if exc.resp else 0
+            if status == 404:
+                return {
+                    "api": api_name,
+                    "status": "ok",
+                    "message": "API accessible (policy schema not available for this tenant)",
+                    "remediation": None,
+                }
+            return {
+                "api": api_name,
+                "status": "error",
+                "message": f"HTTP {status}: {exc}",
+                "remediation": self._api_error_remediation(
+                    api_name, gcp_api_name, scope, status, exc
+                ),
+            }
+        except Exception as exc:
+            return {
+                "api": api_name,
+                "status": "error",
+                "message": str(exc),
+                "remediation": self._api_error_remediation(
+                    api_name, gcp_api_name, scope, 0, exc
+                ),
+            }
+
+    _CUSTOM_PROBES = {
+        "Groups Settings API": _probe_groups_settings,
+        "Chrome Policy API": _probe_chrome_policy,
+    }
 
     def validate_access(self) -> list[dict]:
         """Validate credentials, API enablement, and scope access.
@@ -436,6 +557,9 @@ class AuthManager:
                     "remediation": None,
                 })
 
+        # --- Step 2b: resolve customer ID ---
+        self.resolve_customer_id()
+
         # --- Step 3: probe each API ---
         # Use a recent date for usage reports
         recent_date = (
@@ -446,13 +570,17 @@ class AuthManager:
             api_name, svc_name, svc_ver, scope, factory, gcp_api_name = entry
 
             if factory is None:
-                # Can't probe directly — report as skipped
-                results.append({
-                    "api": api_name,
-                    "status": "ok",
-                    "message": "Skipped (requires additional context to probe)",
-                    "remediation": None,
-                })
+                # Use custom probe methods for APIs that need extra context
+                probe_method = self._CUSTOM_PROBES.get(api_name)
+                if probe_method:
+                    results.append(probe_method(self, scope, gcp_api_name))
+                else:
+                    results.append({
+                        "api": api_name,
+                        "status": "ok",
+                        "message": "Skipped (requires additional context to probe)",
+                        "remediation": None,
+                    })
                 continue
 
             try:
@@ -467,6 +595,17 @@ class AuthManager:
                 })
             except HttpError as exc:
                 status = exc.resp.status if exc.resp else 0
+                # 404 on a probe with a dummy resource means the API is
+                # reachable and auth succeeded — the resource just doesn't
+                # exist, which is expected.
+                if status == 404:
+                    results.append({
+                        "api": api_name,
+                        "status": "ok",
+                        "message": "API accessible",
+                        "remediation": None,
+                    })
+                    continue
                 results.append({
                     "api": api_name,
                     "status": "error",

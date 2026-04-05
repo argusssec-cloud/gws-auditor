@@ -66,3 +66,16 @@ auth:
 gws-auditor --validate    # test connectivity
 gws-auditor               # run audit
 ```
+
+## Running Without config.yaml
+
+If you don't have a `config.yaml` (e.g. using the standalone binary), you must pass both `--credentials` and `--subject` on the command line:
+
+```bash
+gws-auditor --credentials credentials.json --subject admin@yourdomain.com
+
+# Standalone binary
+./gws-auditor-linux-amd64 --credentials credentials.json --subject admin@yourdomain.com
+```
+
+> **Note:** `--subject` is the super-admin email used for domain-wide delegation. Without it, all API calls will fail with permission/not-found errors.

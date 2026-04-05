@@ -26,13 +26,14 @@ def resolve_package_path(anchor_file: str) -> Path:
         template_dir = _DIR / "templates"
     """
     if is_frozen():
-        # In frozen mode, __file__ is relative to sys._MEIPASS
         base = Path(sys._MEIPASS)
-        # Reconstruct the relative path from the package root
-        rel = Path(anchor_file).resolve().relative_to(Path.cwd())
-        frozen_path = base / rel.parent
-        if frozen_path.exists():
-            return frozen_path
-        # Fallback: try the anchor file's parent directly
-        return Path(anchor_file).resolve().parent
+        resolved = Path(anchor_file).resolve()
+        # In frozen mode, __file__ resolves inside sys._MEIPASS
+        try:
+            rel = resolved.relative_to(base)
+            return base / rel.parent
+        except ValueError:
+            pass
+        # Fallback: the file is already inside _MEIPASS, use its parent
+        return resolved.parent
     return Path(anchor_file).resolve().parent

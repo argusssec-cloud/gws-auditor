@@ -98,6 +98,46 @@ def _list_profiles(config: dict):
     console.print("\n[dim]Usage: gws-auditor --profile <name>[/dim]")
 
 
+def _validate_auth_config(config: dict, args) -> None:
+    """Exit with a clear error if credentials or subject are not configured."""
+    import os
+
+    auth = config.get("auth", {})
+    method = auth.get("method", "service_account")
+
+    # OAuth flow handles its own credential discovery
+    if method != "service_account":
+        return
+
+    creds_file = auth.get("credentials_file", "")
+    subject = auth.get("subject", "")
+    config_exists = os.path.exists(getattr(args, "config", "config.yaml"))
+
+    missing = []
+    if not creds_file or not os.path.exists(creds_file):
+        missing.append("--credentials <path-to-credentials.json>")
+    if not subject:
+        missing.append("--subject <admin@yourdomain.com>")
+
+    if missing:
+        hint = (
+            "No config.yaml found. " if not config_exists
+            else "config.yaml is missing required auth fields. "
+        )
+        items = "\n".join(f"  {m}" for m in missing)
+        print(
+            f"ERROR: {hint}"
+            f"Please provide the following:\n\n"
+            f"{items}\n\n"
+            f"Example:\n"
+            f"  gws-auditor --credentials credentials.json --subject admin@yourdomain.com\n\n"
+            f"Or create a config.yaml with 'auth.credentials_file' and 'auth.subject' set.\n"
+            f"See: gws-auditor setup --help",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def main(argv: list[str] | None = None):
     """Main entry point."""
     args = parse_args(argv)
@@ -147,6 +187,12 @@ def main(argv: list[str] | None = None):
         return 0
 
     config = apply_cli_overrides(config, args)
+
+    # Validate that sufficient auth config is present before proceeding.
+    # A valid config.yaml may supply credentials_file and subject, but when
+    # no config file exists the user must provide them via CLI flags.
+    if not args.list_checks:
+        _validate_auth_config(config, args)
 
     orchestrator = Orchestrator(config)
 
