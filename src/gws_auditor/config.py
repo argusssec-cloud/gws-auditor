@@ -76,6 +76,14 @@ def load_config(config_path: str | None = None) -> dict:
     if config_path and os.path.exists(config_path):
         with open(config_path, "r") as f:
             user_config = yaml.safe_load(f) or {}
+
+        # disable_ssl_verification must never be read from a config file,
+        # since a forgotten setting silently exposes credentials to interception
+        # on every future run. It is only honoured as a CLI flag (--disable-ssl-
+        # verification), which forces a conscious, per-run decision.
+        if isinstance(user_config.get("network"), dict):
+            user_config["network"].pop("disable_ssl_verification", None)
+
         _deep_merge(config, user_config)
 
     return config

@@ -140,6 +140,18 @@ class AuthManager:
         ca_cert = self._network.get("ca_cert")
         disable_ssl = self._network.get("disable_ssl_verification", False)
         if disable_ssl:
+            # Print a prominent console warning in addition to the log entry.
+            # All API traffic — including OAuth tokens and admin credential
+            # exchanges — is exposed to interception when SSL verification is
+            # disabled.  This flag should only ever be used in isolated test
+            # environments, never against a production GWS tenant.
+            import sys
+            print(
+                "\n*** WARNING: SSL certificate verification is DISABLED. ***\n"
+                "    All API traffic, including credentials, is exposed to interception.\n"
+                "    Do not use this flag against a production Google Workspace tenant.\n",
+                file=sys.stderr,
+            )
             logger.warning("SSL certificate verification is DISABLED")
             kwargs["disable_ssl_certificate_validation"] = True
         elif ca_cert:
