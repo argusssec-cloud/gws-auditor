@@ -124,7 +124,12 @@ class AuthManager:
                 )
                 self._credentials = flow.run_local_server(port=0)
 
-            with open(token_file, "w") as token:
+            # Write with owner-only permissions (0o600) so the token file
+            # is not readable by other users on the same system.
+            # Note: on Windows the mode parameter is ignored by the OS;
+            # this protection applies on Linux and macOS only.
+            fd = os.open(token_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as token:
                 token.write(self._credentials.to_json())
 
     @property
