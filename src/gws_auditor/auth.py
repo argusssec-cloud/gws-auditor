@@ -12,6 +12,7 @@ Supports two modes:
 import json
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 
 from urllib.parse import urlparse
 
@@ -330,7 +331,7 @@ class AuthManager:
             "https://www.googleapis.com/auth/admin.reports.usage.readonly",
             # Usage reports need a date; use a recent one
             lambda svc, cid: svc.customerUsageReports().get(
-                date="2026-02-23"
+                date=(datetime.now(timezone.utc) - timedelta(days=2)).strftime("%Y-%m-%d")
             ).execute,
             "Admin SDK API",
         ),
@@ -496,7 +497,6 @@ class AuthManager:
 
         Call :meth:`authenticate` before this method.
         """
-        from datetime import datetime, timedelta, timezone
         from googleapiclient.errors import HttpError
 
         results: list[dict] = []
@@ -573,11 +573,6 @@ class AuthManager:
         self.resolve_customer_id()
 
         # --- Step 3: probe each API ---
-        # Use a recent date for usage reports
-        recent_date = (
-            datetime.now(timezone.utc) - timedelta(days=2)
-        ).strftime("%Y-%m-%d")
-
         for entry in self._API_PROBES:
             api_name, svc_name, svc_ver, scope, factory, gcp_api_name = entry
 
