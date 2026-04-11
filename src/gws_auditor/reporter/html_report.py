@@ -26,8 +26,19 @@ INVENTORY_CHECK_IDS = frozenset({
 
 
 def _tojson_safe(value) -> Markup:
-    """Jinja2 filter that serializes a value to JSON for embedding in a <script> tag."""
-    return Markup(json.dumps(value, default=str))
+    """Jinja2 filter that serializes a value to JSON for embedding in a <script> tag.
+
+    json.dumps does not escape </script> or <!-- by default, so a GWS object
+    whose name contains </script> would close the enclosing script block and
+    allow arbitrary HTML injection into the report.  We escape those sequences
+    after serialization before marking the result safe for Jinja2.
+    """
+    raw = json.dumps(value, default=str)
+    # Escape sequences that would be interpreted by the HTML parser inside a
+    # <script> block.  <\/ is valid JSON string content and is ignored by
+    # JSON.parse, so this is safe for the consuming JavaScript.
+    safe = raw.replace("</", "<\\/").replace("<!--", "<\\!--")
+    return Markup(safe)
 
 
 def _humanize_key(key: str) -> str:

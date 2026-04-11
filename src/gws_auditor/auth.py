@@ -12,6 +12,7 @@ Supports two modes:
 import json
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 
 from urllib.parse import urlparse
 
@@ -123,7 +124,12 @@ class AuthManager:
                 )
                 self._credentials = flow.run_local_server(port=0)
 
-            with open(token_file, "w") as token:
+            # Write with owner-only permissions (0o600) so the token file
+            # is not readable by other users on the same system.
+            # Note: on Windows the mode parameter is ignored by the OS;
+            # this protection applies on Linux and macOS only.
+            fd = os.open(token_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as token:
                 token.write(self._credentials.to_json())
 
     @property
@@ -140,6 +146,18 @@ class AuthManager:
         ca_cert = self._network.get("ca_cert")
         disable_ssl = self._network.get("disable_ssl_verification", False)
         if disable_ssl:
+            # Print a prominent console warning in addition to the log entry.
+            # All API traffic — including OAuth tokens and admin credential
+            # exchanges — is exposed to interception when SSL verification is
+            # disabled.  This flag should only ever be used in isolated test
+            # environments, never against a production GWS tenant.
+            import sys
+            print(
+                "\n*** WARNING: SSL certificate verification is DISABLED. ***\n"
+                "    All API traffic, including credentials, is exposed to interception.\n"
+                "    Do not use this flag against a production Google Workspace tenant.\n",
+                file=sys.stderr,
+            )
             logger.warning("SSL certificate verification is DISABLED")
             kwargs["disable_ssl_certificate_validation"] = True
         elif ca_cert:
@@ -318,7 +336,7 @@ class AuthManager:
             "https://www.googleapis.com/auth/admin.reports.usage.readonly",
             # Usage reports need a date; use a recent one
             lambda svc, cid: svc.customerUsageReports().get(
-                date="2026-02-23"
+                date=(datetime.now(timezone.utc) - timedelta(days=2)).strftime("%Y-%m-%d")
             ).execute,
             "Admin SDK API",
         ),
@@ -484,7 +502,6 @@ class AuthManager:
 
         Call :meth:`authenticate` before this method.
         """
-        from datetime import datetime, timedelta, timezone
         from googleapiclient.errors import HttpError
 
         results: list[dict] = []
@@ -561,11 +578,6 @@ class AuthManager:
         self.resolve_customer_id()
 
         # --- Step 3: probe each API ---
-        # Use a recent date for usage reports
-        recent_date = (
-            datetime.now(timezone.utc) - timedelta(days=2)
-        ).strftime("%Y-%m-%d")
-
         for entry in self._API_PROBES:
             api_name, svc_name, svc_ver, scope, factory, gcp_api_name = entry
 

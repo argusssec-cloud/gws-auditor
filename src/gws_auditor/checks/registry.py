@@ -134,7 +134,7 @@ class CheckRegistry:
                 result = meta.func(data)
                 results.append(result)
             except Exception as e:
-                logger.error("Check %s failed with exception: %s", meta.check_id, e)
+                logger.exception("Check %s failed with exception: %s", meta.check_id, e)
                 from ..models import Status
                 results.append(CheckResult(
                     check_id=meta.check_id,
