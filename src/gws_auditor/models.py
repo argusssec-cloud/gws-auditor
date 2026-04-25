@@ -24,6 +24,7 @@ class Severity(str, Enum):
     CRITICAL = "CRITICAL"
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
+    LOW = "LOW"
 
 
 @dataclass
@@ -41,8 +42,9 @@ class CheckResult:
     remediation: str = ""
     org_unit: str = "Global"
     cis_controls: list = field(default_factory=list)
-    severity: str = "MEDIUM"
+    severity: "Severity" = Severity.MEDIUM
     critical_reason: str = ""
+    scored: bool = True
 
 
 @dataclass
@@ -56,8 +58,9 @@ class CheckMetadata:
     func: Any = None
     remediation: str = ""
     requires_license: str = ""
-    severity: str = "MEDIUM"
+    severity: "Severity" = Severity.MEDIUM
     critical_reason: str = ""
+    scored: bool = True
 
 
 @dataclass
@@ -71,10 +74,15 @@ class AuditSummary:
     manual: int = 0
     not_applicable: int = 0
     critical_failed: int = 0
+    posture_score: int = 0
+    posture_grade: str = ""
 
     @property
     def pass_rate(self) -> float:
-        evaluated = self.passed + self.failed
+        # Denominator includes PASS, FAIL, and WARN (soft failures).
+        # ERROR, MANUAL, and NOT_APPLICABLE are excluded because they
+        # represent checks that could not be evaluated.
+        evaluated = self.passed + self.failed + self.warnings
         if evaluated == 0:
             return 0.0
         return (self.passed / evaluated) * 100
@@ -87,7 +95,7 @@ class AuditSummary:
                 summary.passed += 1
             elif r.status == Status.FAIL:
                 summary.failed += 1
-                if r.severity == Severity.CRITICAL or r.severity == "CRITICAL":
+                if r.severity == Severity.CRITICAL:
                     summary.critical_failed += 1
             elif r.status == Status.WARN:
                 summary.warnings += 1

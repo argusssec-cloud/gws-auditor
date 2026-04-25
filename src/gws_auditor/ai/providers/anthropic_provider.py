@@ -26,7 +26,6 @@ class AnthropicProvider(LLMProvider):
         max_tokens: int = 4096,
     ) -> None:
         from anthropic import Anthropic
-
         self.client = Anthropic(api_key=api_key)
         self.model = model or _DEFAULT_MODEL
         self.temperature = temperature
@@ -109,7 +108,14 @@ class AnthropicProvider(LLMProvider):
                     ToolCall(id=block.id, name=block.name, arguments=block.input or {})
                 )
 
-        return Message(role="assistant", content=content_text, tool_calls=tool_calls)
+        usage = getattr(response, "usage", None)
+        return Message(
+            role="assistant",
+            content=content_text,
+            tool_calls=tool_calls,
+            input_tokens=getattr(usage, "input_tokens", 0) if usage else 0,
+            output_tokens=getattr(usage, "output_tokens", 0) if usage else 0,
+        )
 
     # ------------------------------------------------------------------
     # LLMProvider interface

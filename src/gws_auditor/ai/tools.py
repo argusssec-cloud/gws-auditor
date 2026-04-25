@@ -371,6 +371,10 @@ def _get_audit_summary(report_data: dict) -> dict:
         s = r.get("status", "UNKNOWN")
         status_counts[s] = status_counts.get(s, 0) + 1
 
+    # Compute posture score from results for current report
+    from ..scoring import compute_posture_score_from_report
+    posture = compute_posture_score_from_report(report_data)
+
     return {
         "timestamp": report_data.get("timestamp", ""),
         "customer_id": report_data.get("customer_id", ""),
@@ -383,6 +387,9 @@ def _get_audit_summary(report_data: dict) -> dict:
         "manual": summary.get("manual", status_counts.get("MANUAL", 0)),
         "not_applicable": summary.get("not_applicable", status_counts.get("NOT_APPLICABLE", 0)),
         "pass_rate": summary.get("pass_rate", 0.0),
+        "posture_score": posture["score"],
+        "posture_grade": posture["grade"],
+        "posture_tier_breakdown": posture["tier_breakdown"],
         "status_breakdown": status_counts,
     }
 
@@ -752,6 +759,27 @@ def _export_findings_csv(
 # Dispatcher
 # ---------------------------------------------------------------------------
 
+_VALID_TOOL_NAMES = frozenset(
+    t["function"]["name"] for t in TOOL_DEFINITIONS
+)
+
+
+def _safe_int(value: Any, default: int, lo: int = 1, hi: int = 500) -> int:
+    """Coerce *value* to an int clamped between *lo* and *hi*."""
+    try:
+        return max(lo, min(hi, int(value)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _validate_filename(filename: Any) -> str:
+    """Reject filenames that could escape the reports directory."""
+    s = str(filename) if filename else ""
+    if ".." in s or "/" in s or "\\" in s:
+        raise ValueError(f"Invalid report filename: {s!r}")
+    return s
+
+
 def execute_tool(
     name: str,
     arguments: dict,
@@ -769,10 +797,18 @@ def execute_tool(
     Returns:
         JSON-encoded result string.
     """
+    if name not in _VALID_TOOL_NAMES:
+        return json.dumps({"error": f"Unknown tool: {name}"})
+
+    if not isinstance(arguments, dict):
+        arguments = {}
+
     if name == "get_audit_summary":
         result = _get_audit_summary(report_data)
 
     elif name == "search_findings":
+        if "limit" in arguments:
+            arguments["limit"] = _safe_int(arguments["limit"], 50)
         result = _search_findings(report_data, **arguments)
 
     elif name == "get_check_details":
@@ -791,16 +827,16 @@ def execute_tool(
             report_data,
             section=arguments.get("section"),
             level=arguments.get("level"),
-            limit=arguments.get("limit", 20),
+            limit=_safe_int(arguments.get("limit"), 20),
         )
 
     elif name == "compare_reports":
         if report_store is None:
             result = {"error": "Report store not available. Cannot compare reports."}
         else:
-            old_file = arguments.get("old_report", "")
-            new_file = arguments.get("new_report", "")
             try:
+                old_file = _validate_filename(arguments.get("old_report", ""))
+                new_file = _validate_filename(arguments.get("new_report", ""))
                 old_data = report_store.load_report(old_file)
                 new_data = report_store.load_report(new_file)
                 result = _compare_reports(old_data, new_data)
@@ -814,7 +850,7 @@ def execute_tool(
         result = _query_inventory_data(
             report_data,
             check_id=arguments.get("check_id", ""),
-            limit=arguments.get("limit", 25),
+            limit=_safe_int(arguments.get("limit"), 25),
         )
 
     elif name == "get_knowledge_base_url":
@@ -825,17 +861,20 @@ def execute_tool(
         )
 
     elif name == "get_smart_remediation":
+        group_by = arguments.get("group_by", "theme")
+        if group_by not in ("theme", "section", "effort"):
+            group_by = "theme"
         result = _get_smart_remediation(
             report_data,
             section=arguments.get("section"),
-            group_by=arguments.get("group_by", "theme"),
-            limit=arguments.get("limit", 10),
+            group_by=group_by,
+            limit=_safe_int(arguments.get("limit"), 10),
         )
 
     elif name == "get_trend_analysis":
         result = _get_trend_analysis(
             report_store,
-            limit=arguments.get("limit", 5),
+            limit=_safe_int(arguments.get("limit"), 5, lo=1, hi=20),
         )
 
     elif name == "export_findings_csv":
@@ -848,6 +887,7 @@ def execute_tool(
         result = {"csv": csv_content, "row_count": csv_content.count("\n") - 1}
 
     else:
+        # Unreachable — _VALID_TOOL_NAMES check above guards this.
         result = {"error": f"Unknown tool: {name}"}
 
     return json.dumps(result, default=str)

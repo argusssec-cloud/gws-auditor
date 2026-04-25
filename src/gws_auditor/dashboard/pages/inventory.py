@@ -433,12 +433,13 @@ _SCOPE_CATEGORY_DESCRIPTIONS = {
     "other": "Apps with other dangerous scope grants.",
 }
 
-_RISK_SORT_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2}
+_RISK_SORT_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
 
 _RISK_BADGE_COLORS = {
     "CRITICAL": "danger",
     "HIGH": "warning",
     "MEDIUM": "info",
+    "LOW": "success",
 }
 
 

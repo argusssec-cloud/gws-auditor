@@ -146,7 +146,14 @@ class BedrockProvider(LLMProvider):
                     )
                 )
 
-        return Message(role="assistant", content=content_text, tool_calls=tool_calls)
+        usage = response.get("usage", {})
+        return Message(
+            role="assistant",
+            content=content_text,
+            tool_calls=tool_calls,
+            input_tokens=usage.get("inputTokens", 0),
+            output_tokens=usage.get("outputTokens", 0),
+        )
 
     def stream_chat(
         self, messages: list[Message], tools: list[dict] | None = None

@@ -160,6 +160,12 @@ class Orchestrator:
         # Inject config options so checks can read configurable thresholds
         data["_options"] = self.config.get("options", {})
 
+        # Extract customer_id from cached data so the report gets the
+        # real value even when authentication is skipped.
+        cached_cid = data.get("customer_id", "")
+        if cached_cid and cached_cid not in ("my_customer", "auto"):
+            self._resolved_customer_id = cached_cid
+
         self.report.api_errors = data.get("api_errors", [])
         self.report.domains = [
             d.get("domainName", d.get("domain", ""))
@@ -261,6 +267,11 @@ class Orchestrator:
         self.report.summary = AuditSummary.from_results(results)
         self.report.timestamp = datetime.now(timezone.utc).isoformat()
 
+        from .scoring import compute_posture_score
+        score_result = compute_posture_score(results)
+        self.report.summary.posture_score = score_result["score"]
+        self.report.summary.posture_grade = score_result["grade"]
+
         for r in results:
             status_color = {
                 Status.PASS: "green",
@@ -280,8 +291,9 @@ class Orchestrator:
         with console.status("[bold green]Authenticating..."):
             self.auth_manager.authenticate()
             # Auto-discover customer ID if set to "auto" or "my_customer"
-            resolved_cid = self.auth_manager.resolve_customer_id()
-            self.config["auth"]["customer_id"] = resolved_cid
+            self._resolved_customer_id = self.auth_manager.resolve_customer_id()
+            # Write back so Provider and other components pick it up.
+            self.config.setdefault("auth", {})["customer_id"] = self._resolved_customer_id
         console.print("[green]Authentication successful[/green]")
 
     def _collect_data(self) -> dict:
@@ -355,10 +367,20 @@ class Orchestrator:
         self.report.results = results
         self.report.summary = AuditSummary.from_results(results)
         self.report.timestamp = datetime.now(timezone.utc).isoformat()
-        # Use the resolved customer ID; fall back to auth_manager's value
-        cid = self.config.get("auth", {}).get("customer_id", "")
+
+        # Compute posture score
+        from .scoring import compute_posture_score
+        score_result = compute_posture_score(results)
+        self.report.summary.posture_score = score_result["score"]
+        self.report.summary.posture_grade = score_result["grade"]
+
+        # Use the resolved customer ID from authentication, falling back
+        # to auth_manager's value or config.
+        cid = getattr(self, "_resolved_customer_id", "")
         if not cid or cid in ("my_customer", "auto"):
-            cid = getattr(self.auth_manager, "customer_id", cid)
+            cid = getattr(self.auth_manager, "customer_id", "")
+        if not cid or cid in ("my_customer", "auto"):
+            cid = self.config.get("auth", {}).get("customer_id", "")
         self.report.customer_id = cid
 
         return results
@@ -390,16 +412,17 @@ class Orchestrator:
                     HTMLReporter(self.report).generate(path)
                     console.print(f"  HTML report: {path}")
             except Exception as e:
-                logger.error("Failed to generate %s report: %s", fmt, e)
+                logger.exception("Failed to generate %s report: %s", fmt, e)
                 console.print(f"  [red]Failed to generate {fmt} report: {e}[/red]")
 
     def _print_critical_findings(self):
         """Print a red banner listing critical check failures."""
         from rich.panel import Panel
 
+        from .models import Severity
         critical = [
             r for r in self.report.results
-            if r.status == Status.FAIL and r.severity == "CRITICAL"
+            if r.status == Status.FAIL and r.severity == Severity.CRITICAL
         ]
         if not critical:
             return
@@ -447,5 +470,10 @@ class Orchestrator:
         table.add_row("[dim]Not Applicable[/dim]", str(s.not_applicable))
         table.add_row("", "")
         table.add_row("[bold]Pass Rate[/bold]", f"{s.pass_rate:.1f}%")
+        if s.posture_grade:
+            table.add_row(
+                "[bold]Posture Score[/bold]",
+                f"{s.posture_score}/100 ({s.posture_grade})",
+            )
 
         console.print(table)

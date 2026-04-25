@@ -1,5 +1,6 @@
 """Tests for authentication and proxy transport."""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import httplib2
@@ -7,6 +8,7 @@ from httplib2 import socks
 import pytest
 
 from gws_auditor.auth import AuthManager
+from gws_auditor.constants import SCOPES, SERVICE_ACCOUNT_SCOPES
 
 
 class TestBuildHttp:
@@ -184,6 +186,71 @@ class TestBuildAuthorizedHttp:
         assert result.http.proxy_info.proxy_port == 3128
 
 
+class TestAuthMethods:
+    """Tests for different authentication methods."""
+
+    def test_authenticate_unknown_method_raises(self):
+        auth = AuthManager({"auth": {"method": "bogus"}})
+        with pytest.raises(ValueError, match="Unknown auth method"):
+            auth.authenticate()
+
+    def test_gce_method_accepted(self):
+        """GCE auth method is dispatched without ValueError."""
+        auth = AuthManager({"auth": {"method": "gce", "subject": "admin@co.com"}})
+        with patch("gws_auditor.auth.AuthManager._authenticate_gce") as mock:
+            auth.authenticate()
+        mock.assert_called_once()
+
+    def test_workload_identity_method_accepted(self):
+        """WIF auth method is dispatched without ValueError."""
+        auth = AuthManager({"auth": {"method": "workload_identity", "subject": "admin@co.com"}})
+        with patch("gws_auditor.auth.AuthManager._authenticate_workload_identity") as mock:
+            auth.authenticate()
+        mock.assert_called_once()
+
+    def test_gce_without_subject(self):
+        """GCE auth without subject uses base compute credentials."""
+        auth = AuthManager({"auth": {"method": "gce"}})
+        mock_creds = MagicMock()
+        mock_creds.service_account_email = "sa@project.iam.gserviceaccount.com"
+        with patch("google.auth.compute_engine.Credentials", return_value=mock_creds):
+            auth._authenticate_gce()
+        assert auth._credentials is mock_creds
+
+    def test_workload_identity_without_subject(self):
+        """WIF auth without subject uses google.auth.default() directly."""
+        auth = AuthManager({"auth": {"method": "workload_identity"}})
+        mock_creds = MagicMock()
+        with patch("google.auth.default", return_value=(mock_creds, "project-123")):
+            auth._authenticate_workload_identity()
+        assert auth._credentials is mock_creds
+
+    def test_workload_identity_with_subject_and_with_subject(self):
+        """WIF creds that support with_subject use it directly."""
+        auth = AuthManager({"auth": {"method": "workload_identity", "subject": "admin@co.com"}})
+        mock_creds = MagicMock()
+        mock_creds_delegated = MagicMock()
+        mock_creds.with_subject.return_value = mock_creds_delegated
+        with patch("google.auth.default", return_value=(mock_creds, "project-123")):
+            auth._authenticate_workload_identity()
+        mock_creds.with_subject.assert_called_once_with("admin@co.com")
+        assert auth._credentials is mock_creds_delegated
+
+    def test_resolve_customer_id_non_sa_uses_existing_creds(self):
+        """For GCE/WIF, resolve_customer_id uses existing credentials (no key file)."""
+        auth = AuthManager({"auth": {"method": "gce", "customer_id": "auto"}})
+        mock_creds = MagicMock()
+        auth._credentials = mock_creds
+
+        mock_service = MagicMock()
+        mock_service.users().list().execute.return_value = {
+            "users": [{"customerId": "C12345"}]
+        }
+        with patch("gws_auditor.auth.build", return_value=mock_service):
+            result = auth.resolve_customer_id()
+        assert result == "C12345"
+
+
 class TestBuildHttpSSL:
     """Tests for CA certificate and SSL verification options."""
 
@@ -237,3 +304,242 @@ class TestBuildHttpSSL:
         assert http.ca_certs == str(ca_file)
         assert http.proxy_info is not None
         assert http.proxy_info.proxy_host == "192.168.44.24"
+
+
+class TestDWDScopeProbe:
+    """Tests for the per-scope domain-wide delegation probe."""
+
+    @staticmethod
+    def _write_fake_creds(tmp_path, client_id="111314288134129980759"):
+        creds_file = tmp_path / "creds.json"
+        creds_file.write_text(json.dumps({
+            "type": "service_account",
+            "client_id": client_id,
+            "client_email": "sa@p.iam.gserviceaccount.com",
+        }))
+        return creds_file
+
+    @staticmethod
+    def _make_refresh_error(message: str):
+        from google.auth.exceptions import RefreshError
+        return RefreshError(message)
+
+    def test_extract_client_id(self, tmp_path):
+        creds_file = self._write_fake_creds(tmp_path, client_id="999")
+        auth = AuthManager({"auth": {"credentials_file": str(creds_file)}})
+        assert auth._extract_client_id() == "999"
+
+    def test_extract_client_id_missing_file(self, tmp_path):
+        auth = AuthManager({"auth": {"credentials_file": str(tmp_path / "nope.json")}})
+        assert auth._extract_client_id() == ""
+
+    def test_probe_all_scopes_authorized(self, tmp_path):
+        creds_file = self._write_fake_creds(tmp_path)
+        auth = AuthManager({"auth": {
+            "credentials_file": str(creds_file),
+            "subject": "admin@example.com",
+        }})
+
+        mock_creds = MagicMock()
+        mock_creds.with_subject.return_value = mock_creds
+        mock_creds.refresh.return_value = None
+        with patch(
+            "gws_auditor.auth.service_account.Credentials.from_service_account_file",
+            return_value=mock_creds,
+        ):
+            result = auth._probe_dwd_scope_authorization()
+
+        total = len(SCOPES) + len(SERVICE_ACCOUNT_SCOPES)
+        assert len(result["authorized"]) == total
+        assert result["unauthorized"] == []
+        assert result["errors"] == []
+        assert result["client_id"] == "111314288134129980759"
+
+    def test_probe_partial_unauthorized(self, tmp_path):
+        creds_file = self._write_fake_creds(tmp_path)
+        auth = AuthManager({"auth": {
+            "credentials_file": str(creds_file),
+            "subject": "admin@example.com",
+        }})
+
+        missing = {
+            "https://www.googleapis.com/auth/admin.directory.rolemanagement.readonly",
+            "https://www.googleapis.com/auth/admin.directory.user.security",
+        }
+
+        def fake_from_file(path, scopes):
+            scope = scopes[0]
+            mock = MagicMock()
+            mock.with_subject.return_value = mock
+            if scope in missing:
+                mock.refresh.side_effect = self._make_refresh_error(
+                    "('unauthorized_client: Client is unauthorized to retrieve "
+                    "access tokens using this method', '...')"
+                )
+            else:
+                mock.refresh.return_value = None
+            return mock
+
+        with patch(
+            "gws_auditor.auth.service_account.Credentials.from_service_account_file",
+            side_effect=fake_from_file,
+        ):
+            result = auth._probe_dwd_scope_authorization()
+
+        unauthorized_scopes = {scope for scope, _ in result["unauthorized"]}
+        assert unauthorized_scopes == missing
+        assert len(result["authorized"]) == (
+            len(SCOPES) + len(SERVICE_ACCOUNT_SCOPES) - len(missing)
+        )
+
+    def test_probe_all_unauthorized(self, tmp_path):
+        creds_file = self._write_fake_creds(tmp_path)
+        auth = AuthManager({"auth": {
+            "credentials_file": str(creds_file),
+            "subject": "admin@example.com",
+        }})
+
+        mock_creds = MagicMock()
+        mock_creds.with_subject.return_value = mock_creds
+        mock_creds.refresh.side_effect = self._make_refresh_error(
+            "('unauthorized_client: ...', '...')"
+        )
+        with patch(
+            "gws_auditor.auth.service_account.Credentials.from_service_account_file",
+            return_value=mock_creds,
+        ):
+            result = auth._probe_dwd_scope_authorization()
+
+        assert result["authorized"] == []
+        assert len(result["unauthorized"]) == len(SCOPES) + len(SERVICE_ACCOUNT_SCOPES)
+        assert result["errors"] == []
+
+    def test_probe_non_unauthorized_error_routed_to_errors(self, tmp_path):
+        creds_file = self._write_fake_creds(tmp_path)
+        auth = AuthManager({"auth": {
+            "credentials_file": str(creds_file),
+            "subject": "admin@example.com",
+        }})
+
+        mock_creds = MagicMock()
+        mock_creds.with_subject.return_value = mock_creds
+        mock_creds.refresh.side_effect = ConnectionError("network down")
+        with patch(
+            "gws_auditor.auth.service_account.Credentials.from_service_account_file",
+            return_value=mock_creds,
+        ):
+            result = auth._probe_dwd_scope_authorization()
+
+        assert result["authorized"] == []
+        assert result["unauthorized"] == []
+        assert len(result["errors"]) == len(SCOPES) + len(SERVICE_ACCOUNT_SCOPES)
+
+
+class TestValidateAccessScopeReporting:
+    """Integration tests for validate_access scope diagnostics."""
+
+    @staticmethod
+    def _write_fake_creds(tmp_path, client_id="111314288134129980759"):
+        creds_file = tmp_path / "creds.json"
+        creds_file.write_text(json.dumps({
+            "type": "service_account",
+            "client_id": client_id,
+            "client_email": "sa@p.iam.gserviceaccount.com",
+        }))
+        return creds_file
+
+    def test_partial_missing_scopes_reported_per_scope(self, tmp_path):
+        """Each missing scope appears as a distinct row with the client ID."""
+        creds_file = self._write_fake_creds(tmp_path, client_id="CID-123")
+        auth = AuthManager({"auth": {
+            "method": "service_account",
+            "credentials_file": str(creds_file),
+            "subject": "admin@example.com",
+            "customer_id": "C12345",
+        }})
+
+        missing = {
+            "https://www.googleapis.com/auth/admin.directory.rolemanagement.readonly",
+            "https://www.googleapis.com/auth/apps.licensing",
+        }
+        probe_result = {
+            "client_id": "CID-123",
+            "authorized": [
+                s for s in SCOPES + SERVICE_ACCOUNT_SCOPES if s not in missing
+            ],
+            "unauthorized": [
+                (s, Exception("unauthorized_client")) for s in missing
+            ],
+            "errors": [],
+        }
+
+        with patch.object(AuthManager, "authenticate"), \
+             patch.object(AuthManager, "_probe_dwd_scope_authorization",
+                          return_value=probe_result), \
+             patch.object(AuthManager, "resolve_customer_id",
+                          return_value="C12345"), \
+             patch.object(AuthManager, "build_service") as mock_build:
+            mock_build.side_effect = Exception("skip api probes")
+            results = auth.validate_access()
+
+        # One row per missing scope, each naming the scope and client.
+        scope_rows = [
+            r for r in results if r["api"].startswith("DWD Scope:")
+        ]
+        assert len(scope_rows) == len(missing)
+        for row in scope_rows:
+            assert row["status"] == "error"
+            assert "CID-123" in row["remediation"]
+            short = row["api"].removeprefix("DWD Scope: ")
+            assert any(s.endswith(short) for s in missing)
+
+        # Aggregate row reports scope counts.
+        agg = next(r for r in results if r["api"] == "DWD Scope Authorization")
+        assert agg["status"] == "ok"
+        assert "CID-123" in agg["message"]
+
+    def test_all_scopes_unauthorized_reports_dwd_or_subject(self, tmp_path):
+        """When every scope fails, surface a single DWD/subject diagnostic."""
+        creds_file = self._write_fake_creds(tmp_path, client_id="CID-999")
+        auth = AuthManager({"auth": {
+            "method": "service_account",
+            "credentials_file": str(creds_file),
+            "subject": "admin@example.com",
+            "customer_id": "C12345",
+        }})
+
+        probe_result = {
+            "client_id": "CID-999",
+            "authorized": [],
+            "unauthorized": [
+                (s, Exception("unauthorized_client"))
+                for s in SCOPES + SERVICE_ACCOUNT_SCOPES
+            ],
+            "errors": [],
+        }
+
+        with patch.object(AuthManager, "authenticate"), \
+             patch.object(AuthManager, "_probe_dwd_scope_authorization",
+                          return_value=probe_result), \
+             patch.object(AuthManager, "resolve_customer_id",
+                          return_value="C12345"), \
+             patch.object(AuthManager, "build_service") as mock_build:
+            mock_build.side_effect = Exception(
+                "('unauthorized_client: ...', '...')"
+            )
+            results = auth.validate_access()
+
+        agg = next(r for r in results if r["api"] == "DWD Scope Authorization")
+        assert agg["status"] == "error"
+        assert "CID-999" in agg["message"]
+        assert "admin@example.com" in agg["remediation"]
+
+        # Per-API redundant unauthorized_client errors are suppressed
+        # when scopes were already pinpointed in step 2.
+        per_api_unauth = [
+            r for r in results
+            if r["status"] == "error"
+            and "unauthorized_client" in r["message"].lower()
+            and r["api"] != "DWD Scope Authorization"
+        ]
+        assert per_api_unauth == []

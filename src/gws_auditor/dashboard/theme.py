@@ -59,6 +59,7 @@ METRIC_COLORS = {
     "manual": "#3182ce",
     "na": "#a0aec0",
     "pass_rate": "#2b6cb0",
+    "posture_score": "#2c5282",
 }
 
 # Plotly layout template (light mode default; JS updates colors on theme toggle)

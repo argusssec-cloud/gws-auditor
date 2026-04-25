@@ -1341,6 +1341,7 @@ def check_meet_compliance_recording(data: dict) -> CheckResult:
         "Admin console > Directory > Groups. Review empty or all-inactive "
         "groups and either remove them or add active members. https://knowledge.workspace.google.com/admin/groups/get-started-managing-groups-for-an-organization"
     ),
+    scored=False,
 )
 def check_groups_no_active_users(data: dict) -> CheckResult:
     """Report groups with zero members or where all members are inactive."""
@@ -1456,6 +1457,7 @@ def _parse_timestamp(ts: str) -> datetime | None:
         "Review inactive Chat spaces and archive or delete those "
         "no longer in use to reduce the attack surface. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
     ),
+    scored=False,
 )
 def check_chat_spaces_inactive(data: dict) -> CheckResult:
     """Report Chat spaces with no activity in the configured window."""
@@ -1539,6 +1541,7 @@ def check_chat_spaces_inactive(data: dict) -> CheckResult:
         "Admin console > Devices > Mobile devices. Review stale devices "
         "and wipe or remove those that have not synced recently. https://knowledge.workspace.google.com/admin/devices"
     ),
+    scored=False,
 )
 def check_mobile_devices_stale(data: dict) -> CheckResult:
     """Report mobile devices not synced within the configured window."""
@@ -1619,6 +1622,7 @@ def check_mobile_devices_stale(data: dict) -> CheckResult:
         "Admin console > Devices > Chrome devices. Review stale ChromeOS "
         "devices and deprovision or disable those no longer in use. https://knowledge.workspace.google.com/admin/devices"
     ),
+    scored=False,
 )
 def check_chromeos_devices_stale(data: dict) -> CheckResult:
     """Report ChromeOS devices not synced within the configured window."""
@@ -1701,6 +1705,7 @@ def check_chromeos_devices_stale(data: dict) -> CheckResult:
         "endpoint devices (Windows/Mac/Linux) and remove those that have "
         "not synced recently. https://knowledge.workspace.google.com/admin/devices"
     ),
+    scored=False,
 )
 def check_endpoint_devices_stale(data: dict) -> CheckResult:
     """Report endpoint verification devices not synced within the configured window."""
@@ -1796,6 +1801,7 @@ def check_endpoint_devices_stale(data: dict) -> CheckResult:
         "represent unmanaged access to corporate data. "
         "https://knowledge.workspace.google.com/admin/devices"
     ),
+    scored=False,
 )
 def check_devices_pending(data: dict) -> CheckResult:
     """Report devices stuck in PENDING approval state for too long."""
@@ -1883,6 +1889,7 @@ def check_devices_pending(data: dict) -> CheckResult:
         "Enforce 2SV for all organizational units. "
         "Follow up with unenrolled users to complete enrollment. https://knowledge.workspace.google.com/admin/security/deploy-2-step-verification"
     ),
+    scored=False,
 )
 def check_2sv_inventory(data: dict) -> CheckResult:
     """Rich per-OU breakdown of 2SV enrollment status."""
@@ -2001,6 +2008,7 @@ _RISK_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2}
         "Review apps with dangerous scopes and revoke or block those "
         "that are not approved. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     ),
+    scored=False,
 )
 def check_oauth_dangerous_apps(data: dict) -> CheckResult:
     """Analyze OAuth token grants and flag apps with high-risk scopes."""
@@ -2130,6 +2138,7 @@ def check_oauth_dangerous_apps(data: dict) -> CheckResult:
         "Review and revoke unnecessary App-Specific Passwords. "
         "ASPs bypass 2-Step Verification and pose a security risk. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
     ),
+    scored=False,
 )
 def check_app_passwords(data: dict) -> CheckResult:
     """Report users with active App-Specific Passwords (ASPs).
@@ -2213,6 +2222,7 @@ def check_app_passwords(data: dict) -> CheckResult:
         "Sharing settings > Shared drive creation. Review Shared "
         "Drives with insecure restrictions. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     ),
+    scored=False,
 )
 def check_shared_drive_restrictions(data: dict) -> CheckResult:
     """Report Shared Drives with insecure restriction settings."""

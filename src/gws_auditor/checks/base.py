@@ -8,8 +8,8 @@ import functools
 import logging
 from typing import Callable
 
-from ..constants import LICENSE_TIERS, LICENSE_TIER_NAMES, CRITICAL_CHECKS
-from ..models import CheckMetadata, CheckResult, Status
+from ..constants import LICENSE_TIERS, LICENSE_TIER_NAMES, CRITICAL_CHECKS, HIGH_CHECKS, LOW_CHECKS
+from ..models import CheckMetadata, CheckResult, Severity, Status
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +57,15 @@ def _check_license_sufficient(requires_license: str, data: dict) -> bool:
     return tenant_level >= required_level
 
 
-def _resolve_severity(check_id: str) -> str:
-    """Look up severity from CRITICAL_CHECKS constant mapping."""
+def _resolve_severity(check_id: str) -> Severity:
+    """Look up severity from check severity mappings."""
     if check_id in CRITICAL_CHECKS:
-        return "CRITICAL"
-    return "MEDIUM"
+        return Severity.CRITICAL
+    if check_id in HIGH_CHECKS:
+        return Severity.HIGH
+    if check_id in LOW_CHECKS:
+        return Severity.LOW
+    return Severity.MEDIUM
 
 
 def _resolve_critical_reason(check_id: str) -> str:
@@ -71,7 +75,8 @@ def _resolve_critical_reason(check_id: str) -> str:
 
 def check(check_id: str, title: str, level: str, source: str, section: str,
           remediation: str = "", requires_license: str = "",
-          severity: str = "", critical_reason: str = ""):
+          severity: str = "", critical_reason: str = "",
+          scored: bool = True):
     """Decorator to register a security check function.
 
     The decorated function should accept a single `data` dict argument
@@ -97,7 +102,9 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
             ...
     """
 
-    resolved_severity = severity or _resolve_severity(check_id)
+    resolved_severity = (
+        Severity(severity) if severity else _resolve_severity(check_id)
+    )
     resolved_reason = critical_reason or _resolve_critical_reason(check_id)
 
     def decorator(func: Callable) -> Callable:
@@ -131,12 +138,13 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
                 result.section = result.section or section
                 if not result.remediation and remediation:
                     result.remediation = remediation
-                # Apply severity and critical reason
+                # Apply severity, critical reason, and scored flag
                 result.severity = resolved_severity
                 result.critical_reason = resolved_reason
+                result.scored = scored
                 return result
             except Exception as e:
-                logger.error("Check %s raised an exception: %s", check_id, e)
+                logger.exception("Check %s raised an exception: %s", check_id, e)
                 return CheckResult(
                     check_id=check_id,
                     title=title,
@@ -160,6 +168,7 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
             requires_license=requires_license,
             severity=resolved_severity,
             critical_reason=resolved_reason,
+            scored=scored,
         )
         _registered_checks.append(metadata)
 

@@ -58,6 +58,12 @@ $ gws-auditor
   └─────────────────────┴───────┘
 ```
 
+### HTML Report
+
+<p align="center">
+  <img src="docs/images/report-screenshot.png" alt="GWS Security Audit Report" width="900">
+</p>
+
 ---
 
 ## At a Glance
@@ -280,6 +286,9 @@ Options:
   --list-checks           List all checks
   --fail-on-critical      Exit code 2 on critical failures (CI/CD)
   --resume                Resume interrupted collection
+  --no-cloud-info         Suppress Argus Cloud info message
+  --skip-update-check     Skip version update check
+  --update                Update to latest version and exit
   -v, --verbose           Increase verbosity
   -q, --quiet             Suppress output
 ```
@@ -328,6 +337,22 @@ Each critical check includes a `critical_reason` explaining the business impact.
 
 ---
 
+## Posture Score
+
+Every audit produces a **posture score** (0-100) that weights findings by severity. Critical failures are squared, so they dominate the score:
+
+| Grade | Score | Meaning |
+|:-----:|------:|---------|
+| A | 90-100 | Excellent — minimal risk |
+| B | 80-89 | Good — minor gaps |
+| C | 70-79 | Fair — moderate risk |
+| D | 50-69 | Poor — significant gaps |
+| F | 0-49 | Critical — immediate action needed |
+
+See the [Posture Score wiki page](../../wiki/Posture-Score) for the full formula, examples, and improvement guidance.
+
+---
+
 ## Development
 
 ```console
@@ -348,6 +373,33 @@ python build.py --clean                # clean rebuild
 ```
 
 Push a tag `v*` to trigger the GitHub Actions workflow that builds Linux + Windows executables and attaches them to the release.
+
+---
+
+## Argus Cloud
+
+> **Open source for individuals. Cloud-hosted for teams.**
+
+GWS Security Auditor is and will always be free and open source. For teams that need automation, collaboration, and compliance history, [Argus Cloud](https://app.argussec.io/) extends the auditor with managed infrastructure:
+
+| | Open Source (Free) | Argus Cloud (from €12.50/mo) |
+|---|:---:|:---:|
+| 199 security checks, 4 frameworks | ✓ | ✓ |
+| HTML, JSON, CSV reports | ✓ | ✓ |
+| Interactive dashboard | ✓ | ✓ |
+| AI Analyst | BYO API key | Included |
+| Automated daily/weekly scans | — | ✓ |
+| Hosted dashboard with trends | — | ✓ |
+| 12-month compliance history | — | ✓ |
+| Regression alerts (Slack, email) | — | ✓ |
+| Multi-tenant & team access | — | ✓ |
+| JIRA, webhooks, RBAC | — | ✓ |
+| Priority support | Community | Email |
+
+[Sign up for free trial](https://app.argussec.io/) | [Pricing](https://argussec.io/pricing.html)
+
+> [!TIP]
+> To suppress the CLI cloud info banner, pass `--no-cloud-info` or set `GWS_AUDITOR_NO_CLOUD_INFO=1`.
 
 ---
 

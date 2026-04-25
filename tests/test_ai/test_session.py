@@ -96,8 +96,8 @@ class TestSimpleTextResponse:
             Message(role="assistant", content="The audit shows 3 checks total.")
         ])
         session = AnalystSession(provider, sample_report)
-        result = session.ask("Summarise the audit")
-        assert "3 checks" in result
+        text, _in_tok, _out_tok = session.ask("Summarise the audit")
+        assert "3 checks" in text
 
     def test_history_includes_user_and_assistant(self, sample_report):
         provider = MockProvider([
@@ -136,8 +136,8 @@ class TestToolCallingLoop:
             ),
         ])
         session = AnalystSession(provider, sample_report)
-        result = session.ask("What's the audit summary?")
-        assert "66.7%" in result
+        text, _in_tok, _out_tok = session.ask("What's the audit summary?")
+        assert "66.7%" in text
 
         # Verify the tool result was injected into history
         tool_msgs = [m for m in session.history if m.role == "tool"]

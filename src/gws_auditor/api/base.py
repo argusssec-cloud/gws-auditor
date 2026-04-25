@@ -88,7 +88,11 @@ class BaseAPIClient:
     max_retries:
         Maximum number of retry attempts for transient errors.
     rate_limit_qps:
-        Queries-per-second cap enforced via the token bucket.
+        Queries-per-second cap enforced via a **per-client** token bucket.
+        When multiple API clients run concurrently during ``collect_all()``,
+        the effective QPS is multiplied by the number of active clients.
+        For quota-sensitive APIs (e.g. Cloud Identity Policy API at ~0.4 QPS),
+        pass a lower ``rate_limit_qps`` to stay within project-level quotas.
     """
 
     def __init__(
@@ -143,7 +147,7 @@ class BaseAPIClient:
                     raise
 
                 if attempt == self.max_retries:
-                    logger.error(
+                    logger.exception(
                         "Max retries (%d) exhausted for request (HTTP %s)",
                         self.max_retries,
                         status,
@@ -163,7 +167,7 @@ class BaseAPIClient:
             except RETRYABLE_TRANSPORT_ERRORS as exc:
                 last_error = exc
                 if attempt == self.max_retries:
-                    logger.error(
+                    logger.exception(
                         "Max retries (%d) exhausted for request "
                         "(transport error: %s)",
                         self.max_retries,

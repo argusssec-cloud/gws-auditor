@@ -66,6 +66,10 @@ DEFAULT_CONFIG = {
         "ca_cert": None,
         "disable_ssl_verification": False,
     },
+    "agent": {
+        "console_url": "https://console.argussec.io",
+        "api_key": "",
+    },
 }
 
 

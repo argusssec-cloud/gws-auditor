@@ -320,7 +320,7 @@ class AgentCoordinator:
                 if analysis is not None:
                     analyses.append(analysis)
             except Exception as e:
-                logger.error("Section %s failed: %s", section, e)
+                logger.exception("Section %s failed: %s", section, e)
                 analyses.append(
                     CheckAnalysis(
                         module_name=section,

@@ -29,6 +29,8 @@ class Message:
     tool_calls: list[ToolCall] = field(default_factory=list)
     tool_call_id: str = ""
     name: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
 
 
 @dataclass

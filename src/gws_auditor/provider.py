@@ -10,12 +10,15 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
+from collections import Counter
+
 from .auth import AuthManager
 from .constants import (
     DEFAULT_ADMIN_LOG_LOOKBACK_DAYS,
     DEFAULT_LOGIN_LOG_LOOKBACK_DAYS,
     DEFAULT_MAX_LOG_EVENTS,
     DEFAULT_TOKEN_LOG_LOOKBACK_DAYS,
+    LICENSE_TIERS,
 )
 
 logger = logging.getLogger(__name__)
@@ -424,60 +427,193 @@ class Provider:
             self._record_error("get_usage_reports", e)
             return {}
 
-    # Google Workspace product ID and known SKU → edition mappings
-    _GWS_PRODUCT_ID = "Google-Apps"
-    _SKU_EDITION_MAP = {
-        "Google-Apps-Lite": "Business Starter (Legacy)",
-        "Google-Apps-For-Business": "Business (Legacy)",
-        "Google-Apps-Unlimited": "Business Plus (Legacy)",
-        "1010020020": "Google Workspace Enterprise Standard",
-        "1010020025": "Google Workspace Enterprise Plus",
-        "1010020027": "Google Workspace Enterprise Starter",
-        "1010020028": "Google Workspace Enterprise Essentials",
-        "1010020030": "Google Workspace Business Starter",
-        "1010020031": "Google Workspace Business Standard",
-        "1010020033": "Google Workspace Business Plus",
-        "1010020029": "Google Workspace Frontline Starter",
-        "1010020026": "Google Workspace Frontline Standard",
-        "1010340002": "Google Workspace for Education Plus",
-        "1010340001": "Google Workspace for Education Standard",
-        "1010310002": "Google Workspace for Education (Legacy)",
-        "1010310003": "Google Workspace for Education Teaching & Learning",
-        "1010060003": "Google Workspace Essentials Starter",
-        "1010060001": "Google Workspace Essentials",
+    # Google Workspace SKU → (edition_label, license_tier_key) mapping.
+    # license_tier_key matches keys in constants.LICENSE_TIERS so the
+    # primary edition can be resolved by capability tier.
+    #
+    # Sources:
+    #   https://developers.google.com/admin-sdk/licensing/v1/how-tos/products
+    #   https://support.google.com/a/answer/6043385  (SKU IDs)
+    _GWS_PRODUCT_IDS = ("Google-Apps", "Google-Apps-For-Education")
+    _SKU_EDITION_MAP: dict[str, tuple[str, str]] = {
+        # --- Legacy G Suite (Google-Apps product) ---
+        "Google-Apps-Lite":         ("Business Starter (Legacy)", "business_starter"),
+        "Google-Apps-For-Business": ("Business (Legacy)",          "business_standard"),
+        "Google-Apps-Unlimited":    ("Business Plus (Legacy)",     "business_plus"),
+        # --- Google Workspace (Google-Apps product, 1010020xxx range) ---
+        "1010020020": ("Google Workspace Business Plus",            "business_plus"),
+        "1010020025": ("Google Workspace Enterprise Plus",          "enterprise_plus"),
+        "1010020026": ("Google Workspace Enterprise Essentials",    "enterprise_essentials"),
+        "1010020027": ("Google Workspace Enterprise Standard",      "enterprise_standard"),
+        "1010020028": ("Google Workspace Enterprise Essentials Plus", "enterprise_essentials_plus"),
+        "1010020029": ("Google Workspace Frontline Starter",        "frontline_starter"),
+        "1010020030": ("Google Workspace Business Starter",         "business_starter"),
+        "1010020031": ("Google Workspace Business Standard",        "business_standard"),
+        "1010020033": ("Google Workspace Enterprise Starter",       "enterprise_starter"),
+        # --- Frontline (Google-Apps product, 1010310xxx range) ---
+        "1010310002": ("Google Workspace Frontline Starter",        "frontline_starter"),
+        "1010310005": ("Google Workspace Frontline Standard",       "frontline_standard"),
+        "1010310006": ("Google Workspace Frontline Plus",           "frontline_plus"),
+        # --- Essentials (Google-Apps product, 1010060xxx range) ---
+        "1010060001": ("Google Workspace Essentials",               "enterprise_essentials"),
+        "1010060003": ("Google Workspace Essentials Starter",       "essentials_starter"),
+        # --- Education (Google-Apps-For-Education product) ---
+        "1010310003": ("Google Workspace for Education Plus",                  "education_plus"),
+        "1010310008": ("Google Workspace for Education Teaching & Learning",   "education_teaching_&_learning"),
+        "1010310009": ("Google Workspace for Education Fundamentals",          "education_fundamentals"),
+        "1010310010": ("Google Workspace for Education Standard",              "education_standard"),
+        # --- Cloud Identity (informational; not a Workspace edition) ---
+        "1010050000": ("Cloud Identity Free",                       ""),
+        "1010050001": ("Cloud Identity Premium",                    ""),
     }
+
+    @classmethod
+    def _resolve_edition(cls, sku_id: str) -> tuple[str, str]:
+        """Map a SKU ID to (edition_label, tier_key).  Unknown SKUs
+        return ``("Unknown (SKU: <id>)", "")``."""
+        return cls._SKU_EDITION_MAP.get(sku_id, (f"Unknown (SKU: {sku_id})", ""))
+
+    @classmethod
+    def _pick_primary_edition(
+        cls, sku_counts: "Counter[str]"
+    ) -> tuple[str, str]:
+        """Pick the highest-tier edition from a Counter of SKU IDs.
+
+        Cloud Identity SKUs (tier_key == "") are ignored — they are not
+        a Workspace edition. Ties are broken by assignment count
+        (most users wins), then by SKU id (stable).
+        Returns ``("", "")`` when ``sku_counts`` is empty.
+        """
+        best_label = ""
+        best_tier_key = ""
+        best_tier = -1
+        best_count = -1
+        for sku_id, count in sku_counts.items():
+            if count <= 0:
+                continue
+            label, tier_key = cls._resolve_edition(sku_id)
+            tier = LICENSE_TIERS.get(tier_key, 0) if tier_key else 0
+            if tier_key == "":
+                continue  # Cloud Identity / unknown — not a Workspace tier
+            better = (
+                tier > best_tier
+                or (tier == best_tier and count > best_count)
+                or (tier == best_tier and count == best_count and sku_id < (best_label or ""))
+            )
+            if better:
+                best_tier = tier
+                best_count = count
+                best_label = label
+                best_tier_key = tier_key
+        return best_label, best_tier_key
+
+    def _list_license_assignments(self, product_id: str) -> list[dict]:
+        """Page through licenseAssignments.listForProduct for a product.
+
+        Returns a list of ``{"skuId": str, "userId": str}`` dicts.
+        Returns ``[]`` if the API is unavailable for this product (e.g.
+        Education product on a non-Education tenant returns 4xx).
+        """
+        items: list[dict] = []
+        try:
+            service = self.auth.build_service("licensing", "v1")
+            page_token = None
+            while True:
+                request = service.licenseAssignments().listForProduct(
+                    productId=product_id,
+                    customerId=self.customer_id,
+                    maxResults=500,
+                    pageToken=page_token,
+                )
+                response = (
+                    self.auth._execute_request(request)
+                    if hasattr(self.auth, "_execute_request")
+                    else request.execute()
+                )
+                items.extend(response.get("items", []))
+                page_token = response.get("nextPageToken")
+                if not page_token:
+                    break
+        except Exception as e:
+            logger.debug(
+                "Licensing API unavailable for product %s (optional): %s",
+                product_id, e,
+            )
+        return items
 
     def _get_subscription_info(self) -> dict:
         """Detect the Google Workspace edition via the Licensing API.
 
-        Uses ``licensing.licenseAssignments.listForProduct()`` to find
-        which SKUs are assigned, then maps the SKU ID to a human-readable
-        edition name.
+        Pages through ``licenseAssignments.listForProduct`` for every
+        Workspace product (Google-Apps and Google-Apps-For-Education),
+        aggregates per-SKU assignment counts, and selects the
+        highest-tier SKU as the tenant's primary edition (a tenant
+        with mixed Enterprise + Frontline licenses is reported as
+        Enterprise — the higher-tier features are available
+        customer-wide).
 
-        Returns a dict with ``edition`` (str) and ``skus`` (list of dicts).
-        Falls back gracefully if the Licensing API is unavailable.
+        Returns a dict with::
+
+            {
+                "edition": "Google Workspace Enterprise Standard",
+                "tier_key": "enterprise_standard",
+                "skus": [
+                    {"sku_id": "1010020027", "edition": "...",
+                     "tier_key": "enterprise_standard", "count": 482},
+                    ...
+                ],
+            }
+
+        Falls back gracefully (empty edition) if the Licensing API is
+        unavailable.
         """
-        result: dict = {"edition": "", "skus": []}
-        try:
-            service = self.auth.build_service("licensing", "v1")
-            request = service.licenseAssignments().listForProduct(
-                productId=self._GWS_PRODUCT_ID,
-                customerId=self.customer_id,
-                maxResults=1,
-            )
-            response = self.auth._execute_request(request) if hasattr(self.auth, '_execute_request') else request.execute()
-            items = response.get("items", [])
+        result: dict = {"edition": "", "tier_key": "", "skus": []}
+        sku_counts: Counter[str] = Counter()
 
-            if items:
-                sku_id = items[0].get("skuId", "")
-                edition = self._SKU_EDITION_MAP.get(sku_id, f"Unknown (SKU: {sku_id})")
-                result["edition"] = edition
-                result["skus"] = [{"sku_id": sku_id, "product_id": self._GWS_PRODUCT_ID}]
-                logger.info("Detected subscription: %s", edition)
-            else:
-                logger.debug("No license assignments found for product %s", self._GWS_PRODUCT_ID)
-        except Exception as e:
-            logger.debug("Licensing API unavailable (optional): %s", e)
+        for product_id in self._GWS_PRODUCT_IDS:
+            for item in self._list_license_assignments(product_id):
+                sku_id = item.get("skuId", "")
+                if sku_id:
+                    sku_counts[sku_id] += 1
+
+        if not sku_counts:
+            logger.debug("No license assignments found for any Workspace product")
+            return result
+
+        logger.debug(
+            "Detected SKU assignment counts: %s",
+            dict(sku_counts.most_common()),
+        )
+
+        # Build per-SKU breakdown (sorted by count desc) for the report.
+        breakdown = []
+        for sku_id, count in sku_counts.most_common():
+            label, tier_key = self._resolve_edition(sku_id)
+            breakdown.append({
+                "sku_id": sku_id,
+                "edition": label,
+                "tier_key": tier_key,
+                "count": count,
+            })
+        result["skus"] = breakdown
+
+        edition, tier_key = self._pick_primary_edition(sku_counts)
+        if edition:
+            result["edition"] = edition
+            result["tier_key"] = tier_key
+            logger.info(
+                "Detected subscription: %s (from %d distinct SKU(s))",
+                edition, len(sku_counts),
+            )
+        else:
+            # Only Cloud Identity / unknown SKUs found — surface the most
+            # common as a best-effort label so the user sees something.
+            top_sku, _ = sku_counts.most_common(1)[0]
+            label, _ = self._resolve_edition(top_sku)
+            result["edition"] = label
+            logger.info(
+                "Detected non-Workspace SKU as primary: %s (%s)", label, top_sku,
+            )
         return result
 
     def _get_alert_center_rules(self) -> list[dict]:
@@ -877,7 +1013,7 @@ class Provider:
         """Record an API error for reporting."""
         err = {"operation": operation, "error": str(error), "type": type(error).__name__}
         self._api_errors.append(err)
-        logger.error("API error in %s: %s", operation, error)
+        logger.exception("API error in %s: %s", operation, error)
 
     def _save_cache(self, data: dict, partial: bool = False):
         """Save collected data to cache directory.
@@ -994,7 +1130,7 @@ class Provider:
                 data[data_key] = result
                 data["_collection_metadata"]["completed_endpoints"].append(data_key)
             except Exception as e:
-                logger.error("Failed to collect %s: %s", data_key, e)
+                logger.exception("Failed to collect %s: %s", data_key, e)
                 self._record_error(data_key, e)
                 data["_collection_metadata"]["failed_endpoints"].append(data_key)
 

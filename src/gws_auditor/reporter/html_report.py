@@ -12,7 +12,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
-from gws_auditor.models import AuditReport, AuditSummary, Status
+from gws_auditor.models import AuditReport, AuditSummary, Severity, Status
 from gws_auditor._frozen import resolve_package_path
 
 
@@ -26,8 +26,15 @@ INVENTORY_CHECK_IDS = frozenset({
 
 
 def _tojson_safe(value) -> Markup:
-    """Jinja2 filter that serializes a value to JSON for embedding in a <script> tag."""
-    return Markup(json.dumps(value, default=str))
+    """Jinja2 filter that serializes a value to JSON for embedding in a <script> tag.
+
+    Defense-in-depth: escape sequences that could break out of a
+    ``<script>`` block even though ``json.dumps`` already encodes most
+    problematic characters.
+    """
+    raw = json.dumps(value, default=str)
+    raw = raw.replace("</", "<\\/").replace("<!--", "<\\!--")
+    return Markup(raw)
 
 
 def _humanize_key(key: str) -> str:
@@ -136,8 +143,12 @@ class HTMLReporter:
                 "section": r.section,
             }
             for r in audit_results
-            if r.status == Status.FAIL and getattr(r, "severity", "") == "CRITICAL"
+            if r.status == Status.FAIL and getattr(r, "severity", "") == Severity.CRITICAL
         ]
+
+        # Compute posture score for the HTML report
+        from gws_auditor.scoring import compute_posture_score
+        posture = compute_posture_score(audit_results)
 
         html = template.render(
             timestamp=self.report.timestamp,
@@ -151,6 +162,8 @@ class HTMLReporter:
             api_errors=self.report.api_errors,
             available_ous=available_ous,
             inventory=inventory,
+            posture_score=posture["score"],
+            posture_grade=posture["grade"],
         )
 
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)

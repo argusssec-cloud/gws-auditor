@@ -32,8 +32,11 @@ def _add_audit_arguments(parser: argparse.ArgumentParser) -> None:
     )
     auth_group.add_argument(
         "--auth-method",
-        choices=["service_account", "oauth"],
-        help="Authentication method (overrides config)",
+        choices=["service_account", "oauth", "gce", "workload_identity"],
+        help="Authentication method (overrides config). "
+             "'gce' uses the VM's attached service account (no key file). "
+             "'workload_identity' uses Workload Identity Federation via "
+             "GOOGLE_APPLICATION_CREDENTIALS (no key file).",
     )
     auth_group.add_argument(
         "--profile",
@@ -121,6 +124,24 @@ def _add_audit_arguments(parser: argparse.ArgumentParser) -> None:
         "--fail-on-critical",
         action="store_true",
         help="Exit with code 2 if any critical-severity check fails (for CI/CD)",
+    )
+    mode_group.add_argument(
+        "--skip-update-check",
+        action="store_true",
+        default=False,
+        help="Skip the automatic check for newer versions at startup",
+    )
+    mode_group.add_argument(
+        "--update",
+        action="store_true",
+        default=False,
+        help="Check for and install the latest version, then exit (no audit)",
+    )
+    mode_group.add_argument(
+        "--no-cloud-info",
+        action="store_true",
+        default=False,
+        help="Suppress the Argus Cloud informational message at startup",
     )
 
     # Network options
@@ -254,6 +275,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Skip interactive prompts (requires --project and --subject)",
     )
 
+    # --- agent subcommand ---
+    agent_parser = subparsers.add_parser(
+        "agent",
+        help="Run audit and push results to ArgusSec Console",
+    )
+    agent_parser.add_argument(
+        "--console-url", "--url",
+        default="",
+        help="ArgusSec Console API URL "
+             "(default: https://console.argussec.io; or env ARGUSSEC_CONSOLE_URL; or agent.console_url in config.yaml)",
+    )
+    agent_parser.add_argument(
+        "--api-key",
+        default="",
+        help="Tenant-scoped API key for the console "
+             "(or env ARGUSSEC_API_KEY; or agent.api_key in config.yaml)",
+    )
+    _add_audit_arguments(agent_parser)
+
     # --- default (audit) arguments on the root parser ---
     _add_audit_arguments(parser)
 
@@ -307,5 +347,13 @@ def apply_cli_overrides(config: dict, args: argparse.Namespace) -> dict:
         config.setdefault("network", {})["ca_cert"] = args.ca_cert
     if getattr(args, "disable_ssl_verification", False):
         config.setdefault("network", {})["disable_ssl_verification"] = True
+        import sys
+        print(
+            "\033[91m\033[1mWARNING: SSL certificate verification is DISABLED.\033[0m\n"
+            "  Connections are vulnerable to man-in-the-middle attacks.\n"
+            "  OAuth tokens and admin credentials may be intercepted.\n"
+            "  Do NOT use this option outside of isolated test environments.\n",
+            file=sys.stderr,
+        )
 
     return config

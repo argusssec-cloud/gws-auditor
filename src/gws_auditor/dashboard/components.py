@@ -241,6 +241,19 @@ def create_metric_cards_row(summary: dict, active_metric: str | None = None) -> 
         create_metric_card("N/A", summary.get("na", 0), METRIC_COLORS["na"], "metric-na", active_metric == "metric-na", summary.get("na", 0) / total * 100),
         create_metric_card("Pass Rate", f"{pass_rate:.1f}%", METRIC_COLORS["pass_rate"], "metric-pass-rate", active_metric == "metric-pass-rate"),
     ]
+    # Posture score (may be absent for old reports)
+    ps = summary.get("posture_score")
+    pg = summary.get("posture_grade", "")
+    if ps is not None and pg:
+        cards.append(
+            create_metric_card(
+                "Posture Score",
+                f"{ps}/100 ({pg})",
+                METRIC_COLORS["posture_score"],
+                "metric-posture-score",
+                active_metric == "metric-posture-score",
+            ),
+        )
     return dbc.Row(cards, className="g-3 mb-4")
 
 

@@ -9,10 +9,15 @@ Welcome to the GWS Security Auditor wiki. This tool audits Google Workspace tena
 - **[Configuration](Configuration)** -- config.yaml reference, profiles, and CLI options
 - **[Check Reference](Check-Reference)** -- All 199 checks with severity levels
 - **[Critical Checks](Critical-Checks)** -- 24 critical-severity checks explained
+- **[Posture Score](Posture-Score)** -- How the 0-100 posture score is computed, grades, and how to improve it
 - **[Dashboard](Dashboard)** -- Interactive web UI with dark mode
 - **[AI Analyst](AI-Analyst)** -- Natural language audit queries with 13 tools and slash commands
 - **[CI/CD Integration](CICD-Integration)** -- Pipeline integration with `--fail-on-critical`
 - **[Standalone Build](Standalone-Build)** -- Build single-file executables
+- **[Keyless Authentication](Keyless-Authentication)** -- GCE attached SA and Workload Identity Federation (no key file)
+- **[Minimal GCP Permissions](Minimal-GCP-Permissions)** -- Least-privilege IAM setup for enterprise environments
+- **[Advanced Auth Methods](Advanced-Auth-Methods)** -- DASA and YubiKey (future)
+- **[Argus Cloud](Argus-Cloud)** -- Hosted version with automated scans, team features, and compliance history
 - **[Troubleshooting](Troubleshooting)** -- Common errors and solutions
 - **[Architecture](Architecture)** -- Project structure and data flow
 - **[Contributing](Contributing)** -- Adding checks, writing tests

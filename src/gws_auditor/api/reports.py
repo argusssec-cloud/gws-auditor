@@ -13,11 +13,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .base import BaseAPIClient
+from ..constants import DEFAULT_USAGE_REPORT_LOOKBACK_DAYS
 
 logger = logging.getLogger(__name__)
 
 # Default lookback window when no explicit start_time is provided.
-_DEFAULT_LOOKBACK_DAYS = 180
+_DEFAULT_LOOKBACK_DAYS = DEFAULT_USAGE_REPORT_LOOKBACK_DAYS
 
 
 def _default_start_time() -> str:

@@ -34,7 +34,8 @@ class TestAuditSummary:
         assert summary.warnings == 1
         assert summary.errors == 1
         assert summary.manual == 1
-        assert summary.pass_rate == 50.0
+        # pass_rate = passed / (passed + failed + warnings) = 1/3 ≈ 33.3%
+        assert round(summary.pass_rate, 1) == 33.3
 
     def test_from_results_empty(self):
         summary = AuditSummary.from_results([])

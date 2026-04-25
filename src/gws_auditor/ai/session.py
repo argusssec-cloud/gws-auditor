@@ -40,21 +40,26 @@ class AnalystSession:
             Message(role="system", content=self._system_prompt),
         ]
 
-    def ask(self, user_message: str) -> str:
-        """Send a user message and return the assistant's final text response.
+    def ask(self, user_message: str) -> tuple[str, int, int]:
+        """Send a user message and return (response_text, input_tokens, output_tokens).
 
         Handles the tool-calling loop internally: if the LLM requests tool
         calls, they are executed and the results fed back until the LLM
-        produces a text response.
+        produces a text response. Token counts are aggregated across all
+        provider calls in the loop.
         """
         self.history.append(Message(role="user", content=user_message))
+        total_input = 0
+        total_output = 0
 
         for _ in range(_MAX_TOOL_ITERATIONS):
             response = self.provider.chat(self.history, tools=TOOL_DEFINITIONS)
+            total_input += response.input_tokens
+            total_output += response.output_tokens
             self.history.append(response)
 
             if not response.tool_calls:
-                return response.content
+                return response.content, total_input, total_output
 
             # Execute each tool call and append results
             for tc in response.tool_calls:
@@ -71,7 +76,8 @@ class AnalystSession:
                 )
 
         # Safety: if we hit the max iterations, return whatever we have
-        return self.history[-1].content if self.history else ""
+        text = self.history[-1].content if self.history else ""
+        return text, total_input, total_output
 
     def ask_stream(self, user_message: str) -> Iterator[str]:
         """Streaming variant of ``ask``.

@@ -50,7 +50,7 @@ class CheckRegistry:
                 importlib.import_module(module_name)
                 logger.debug("Loaded check module: %s", module_name)
             except ImportError as e:
-                logger.error("Failed to import check module %s: %s", module_name, e)
+                logger.exception("Failed to import check module %s: %s", module_name, e)
 
         self._checks = get_registered_checks()
         self._loaded = True
@@ -134,7 +134,7 @@ class CheckRegistry:
                 result = meta.func(data)
                 results.append(result)
             except Exception as e:
-                logger.error("Check %s failed with exception: %s", meta.check_id, e)
+                logger.exception("Check %s failed with exception: %s", meta.check_id, e)
                 from ..models import Status
                 results.append(CheckResult(
                     check_id=meta.check_id,

@@ -239,8 +239,21 @@ def update_overview(sources, sections, levels, statuses, active_metric, comments
     comments_data = comments_data or {}
     df = _apply_overrides(df, comments_data)
 
+    # Compute posture score (override-aware, before filters)
+    from gws_auditor.scoring import compute_posture_score_from_report
+    override_map = {
+        cid: entry.get("override_status", "")
+        for cid, entry in comments_data.items()
+        if entry.get("override_status") in ("PASS", "FAIL")
+    }
+    posture = compute_posture_score_from_report(
+        report_data or {}, overrides=override_map,
+    )
+
     df = _apply_filters(df, sources, sections, levels, statuses)
     summary = _compute_summary(df)
+    summary["posture_score"] = posture["score"]
+    summary["posture_grade"] = posture["grade"]
 
     # --- Metric cards (active_metric drives highlight) ---
     cards = create_metric_cards_row(summary, active_metric)

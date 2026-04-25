@@ -105,7 +105,8 @@ def _validate_auth_config(config: dict, args) -> None:
     auth = config.get("auth", {})
     method = auth.get("method", "service_account")
 
-    # OAuth flow handles its own credential discovery
+    # Only service_account requires a credentials file on disk.
+    # OAuth handles its own discovery; GCE and WIF are keyless.
     if method != "service_account":
         return
 
@@ -142,6 +143,11 @@ def main(argv: list[str] | None = None):
     """Main entry point."""
     args = parse_args(argv)
 
+    # Handle --update: perform update and exit (before any config loading)
+    if getattr(args, "update", False):
+        from .version_check import run_update_only
+        return run_update_only()
+
     # Dashboard subcommand – no config / orchestrator needed
     if args.command == "dashboard":
         return _launch_dashboard(args)
@@ -149,6 +155,53 @@ def main(argv: list[str] | None = None):
     # Analyst subcommand
     if args.command == "analyst":
         return _launch_analyst(args)
+
+    # Agent subcommand — run audit and push results to console
+    if args.command == "agent":
+        import os
+
+        # Configure logging early
+        if getattr(args, "quiet", False):
+            log_level = logging.ERROR
+        elif getattr(args, "verbose", 0) >= 2:
+            log_level = logging.DEBUG
+        elif getattr(args, "verbose", 0) >= 1:
+            log_level = logging.INFO
+        else:
+            log_level = logging.WARNING
+        logging.basicConfig(
+            level=log_level,
+            format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+        config = load_config(args.config)
+        config = apply_cli_overrides(config, args)
+        _validate_auth_config(config, args)
+
+        # Resolve console_url and api_key: CLI flag > env var > config.yaml
+        agent_config = config.get("agent", {})
+        console_url = (
+            args.console_url
+            or os.environ.get("ARGUSSEC_CONSOLE_URL", "")
+            or agent_config.get("console_url", "")
+            or "https://console.argussec.io"
+        )
+        api_key = (
+            args.api_key
+            or os.environ.get("ARGUSSEC_API_KEY", "")
+            or agent_config.get("api_key", "")
+        )
+        if not api_key:
+            print(
+                "ERROR: --api-key is required.\n"
+                "Set it via CLI flag, ARGUSSEC_API_KEY env var, or agent.api_key in config.yaml.",
+                file=sys.stderr,
+            )
+            return 1
+
+        from .agent import run_agent
+        return run_agent(config, console_url, api_key)
 
     # Setup wizard subcommand
     if args.command == "setup":
@@ -176,6 +229,21 @@ def main(argv: list[str] | None = None):
         level=log_level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    # Non-blocking version check (before config loading so the user
+    # sees the update prompt before any config validation errors).
+    from .version_check import check_and_prompt_update
+    check_and_prompt_update(
+        skip=getattr(args, "skip_update_check", False),
+        quiet=getattr(args, "quiet", False),
+    )
+
+    # Argus Cloud informational banner
+    from .cloud_info import show_cloud_info
+    show_cloud_info(
+        quiet=getattr(args, "quiet", False),
+        no_cloud_info=getattr(args, "no_cloud_info", False),
     )
 
     # Load config and apply CLI overrides

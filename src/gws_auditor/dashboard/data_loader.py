@@ -71,8 +71,15 @@ class ReportStore:
             })
         return result
 
+    @staticmethod
+    def _validate_filename(filename: str) -> None:
+        """Reject filenames that could escape the reports directory."""
+        if ".." in filename or "/" in filename or "\\" in filename:
+            raise ValueError(f"Invalid report filename: {filename!r}")
+
     def load_report(self, filename: str) -> dict:
         """Load and cache a single report by filename."""
+        self._validate_filename(filename)
         if filename in self._cache:
             return self._cache[filename]
         fp = self.reports_dir / filename

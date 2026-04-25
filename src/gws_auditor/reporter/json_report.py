@@ -33,6 +33,10 @@ class JSONReporter:
         with open(output_path, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2, default=str)
 
+    def to_dict(self) -> dict[str, Any]:
+        """Return the report as a plain dict (public API)."""
+        return self._serialize_report()
+
     def _serialize_report(self) -> dict[str, Any]:
         """Convert the AuditReport dataclass tree into a plain dict."""
         report = self.report
@@ -51,6 +55,8 @@ class JSONReporter:
                 "not_applicable": report.summary.not_applicable,
                 "pass_rate": report.summary.pass_rate,
                 "critical_failed": report.summary.critical_failed,
+                "posture_score": report.summary.posture_score,
+                "posture_grade": report.summary.posture_grade,
             },
             "results": [self._serialize_check(r) for r in report.results],
             "api_errors": report.api_errors,
@@ -75,4 +81,5 @@ class JSONReporter:
             "remediation": check.remediation,
             "org_unit": check.org_unit,
             "cis_controls": check.cis_controls,
+            "scored": getattr(check, "scored", True),
         }

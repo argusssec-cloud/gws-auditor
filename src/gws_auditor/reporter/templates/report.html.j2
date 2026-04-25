@@ -322,6 +322,8 @@
     .card--na .proportion-bar { background: var(--color-na); }
     .card--rate    { border-color: var(--color-rate); }
     .card--rate .value  { color: var(--color-rate); }
+    .card--score   { border-color: #2c5282; }
+    .card--score .value { color: #2c5282; }
 
     /* ===== Critical Findings Banner ===== */
     .critical-banner {
@@ -918,6 +920,7 @@
     .risk-badge--CRITICAL { background: var(--badge-fail-bg); color: var(--badge-fail-text); }
     .risk-badge--HIGH { background: var(--badge-warn-bg); color: var(--badge-warn-text); }
     .risk-badge--MEDIUM { background: var(--badge-na-bg); color: var(--badge-na-text); }
+    .risk-badge--LOW { background: var(--badge-pass-bg); color: var(--badge-pass-text); }
 
     /* Scope list in monospace */
     .scope-list { font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.75rem; word-break: break-all; }
@@ -1226,6 +1229,10 @@
             <div class="card card--rate">
               <div class="value" id="card-rate">{{ "%.1f" | format(summary.pass_rate) }}%</div>
               <div class="label">Pass Rate</div>
+            </div>
+            <div class="card card--score">
+              <div class="value" id="card-score">{{ posture_score }}/100</div>
+              <div class="label">Posture Score ({{ posture_grade }})</div>
             </div>
           </div>
         </section>
@@ -1956,14 +1963,20 @@
         d.appendChild(document.createTextNode(String(s)));
         return d.innerHTML;
       }
+      function escAttr(s) {
+        /* Escape a value for safe use inside HTML attributes (class names, etc.).
+           Strips everything except alphanumerics, hyphens, and underscores. */
+        if (s == null) return '';
+        return String(s).replace(/[^a-zA-Z0-9_-]/g, '');
+      }
 
       function statusBanner(status, details) {
-        return '<div class="inv-status-banner inv-status-banner--' + escHtml(status) + '">' + escHtml(details) + '</div>';
+        return '<div class="inv-status-banner inv-status-banner--' + escAttr(status) + '">' + escHtml(details) + '</div>';
       }
 
       function metricCard(label, value, variant) {
-        var cls = variant ? ' card--' + variant : '';
-        var valCls = variant ? ' style="color:var(--color-' + variant + ')"' : '';
+        var cls = variant ? ' card--' + escAttr(variant) : '';
+        var valCls = variant ? ' style="color:var(--color-' + escAttr(variant) + ')"' : '';
         return '<div class="card' + cls + '"><div class="value"' + valCls + '>' + escHtml(value) + '</div><div class="label">' + escHtml(label) + '</div></div>';
       }
 
@@ -2286,7 +2299,7 @@
 
           for (var j = 0; j < catApps.length; j++) {
             var app = catApps[j];
-            var riskCls = 'risk-badge risk-badge--' + escHtml(app.risk_level || 'HIGH');
+            var riskCls = 'risk-badge risk-badge--' + escAttr(app.risk_level || 'HIGH');
             var scopeTags = (app.dangerous_scopes || []).map(function(s) {
               var short = s.replace('https://www.googleapis.com/auth/', '').replace('https://', '');
               return '<span class="scope-tag">' + escHtml(short) + '</span>';
@@ -2434,7 +2447,7 @@
         srcEl.className = 'source-tag source-tag--' + src;
         document.getElementById('modal-title').textContent = row.getAttribute('data-title') || '';
         var status = row.getAttribute('data-status') || '';
-        document.getElementById('modal-status-wrap').innerHTML = '<strong>Status:</strong> <span class="badge badge--' + escHtml(status) + '">' + escHtml(status.replace('_', ' ')) + '</span>';
+        document.getElementById('modal-status-wrap').innerHTML = '<strong>Status:</strong> <span class="badge badge--' + escAttr(status) + '">' + escHtml(status.replace('_', ' ')) + '</span>';
         document.getElementById('modal-level').textContent = row.getAttribute('data-level') || '';
         document.getElementById('modal-section').textContent = row.getAttribute('data-section') || '';
         document.getElementById('modal-details').textContent = row.getAttribute('data-details') || '';

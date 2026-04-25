@@ -78,9 +78,13 @@ DEFAULT_CACHE_DIR = "./cache"
 DEFAULT_REPORTS_DIR = "./reports"
 
 # Default lookback windows for activity log collection (days).
+# NOTE: Checks that infer current state from admin activity logs
+# (e.g. third-party app access reviews) will miss actions taken
+# before this window and may return incomplete results.
 DEFAULT_ADMIN_LOG_LOOKBACK_DAYS = 90
 DEFAULT_TOKEN_LOG_LOOKBACK_DAYS = 90
 DEFAULT_LOGIN_LOG_LOOKBACK_DAYS = 30
+DEFAULT_USAGE_REPORT_LOOKBACK_DAYS = 180
 
 # ---------------------------------------------------------------------------
 # Check severity: checks whose failure represents a severe security risk.
@@ -190,6 +194,152 @@ CRITICAL_CHECKS: dict[str, str] = {
 
 # Convenience set for quick membership tests
 CRITICAL_CHECK_IDS: frozenset[str] = frozenset(CRITICAL_CHECKS.keys())
+
+# ---------------------------------------------------------------------------
+# HIGH severity: checks whose failure enables data exfiltration, account
+# takeover vectors, or bypasses major security controls.
+# ---------------------------------------------------------------------------
+HIGH_CHECKS: frozenset[str] = frozenset({
+    # Password & session security
+    "CIS-1.1.2",           # Ensure fewer than 4 Super Admin accounts exist
+    "CIS-4.1.2.2",         # Ensure user account recovery is enabled
+    "CIS-4.1.5.1",         # Ensure password policy is enhanced
+    "CIS-4.2.5.1",         # Ensure cloud session control is configured
+    "CIS-4.1.3.1",         # Ensure Advanced Protection Program is available
+    "CIS-4.1.4.1",         # Ensure login challenges are enforced
+    # Third-party app access
+    "CIS-4.2.1.2",         # Ensure third-party apps are reviewed
+    "CIS-4.2.1.3",         # Ensure internal app API access is controlled
+    "CIS-3.1.9.1.1",       # Ensure Marketplace apps are restricted
+    "GWS.COMMONCONTROLS.10.1",  # Ensure app access control policies restrict third-party access
+    "GWS.COMMONCONTROLS.10.2",  # Ensure users cannot consent to low-risk app scopes
+    "GWS.COMMONCONTROLS.10.3",  # Ensure unconfigured internal apps are not trusted
+    # Gmail security controls
+    "CIS-3.1.3.4.1.1",    # Ensure encrypted attachment protection is enabled
+    "CIS-3.1.3.4.1.2",    # Ensure script attachment protection is enabled
+    "CIS-3.1.3.4.1.3",    # Ensure anomalous attachment protection is enabled
+    "CIS-3.1.3.4.2.1",    # Ensure shortened URL identification is enabled
+    "CIS-3.1.3.4.2.2",    # Ensure linked image scanning is enabled
+    "CIS-3.1.3.4.2.3",    # Ensure warning for untrusted links is enabled
+    "CIS-3.1.3.4.3.1",    # Ensure domain spoofing protection is enabled
+    "CIS-3.1.3.4.3.2",    # Ensure employee name spoofing protection is enabled
+    "CIS-3.1.3.4.3.3",    # Ensure inbound domain spoofing protection is enabled
+    "CIS-3.1.3.4.3.4",    # Ensure unauthenticated email protection is enabled
+    "CIS-3.1.3.4.3.5",    # Ensure Groups inbound spoofing protection is enabled
+    "CIS-3.1.3.5.1",      # Ensure POP and IMAP access is disabled
+    "CIS-3.1.3.6.1",      # Ensure enhanced pre-delivery message scanning is enabled
+    "CIS-3.1.3.6.2",      # Ensure spam filters are not bypassed for internal senders
+    "CIS-3.1.3.7.2",      # Ensure secure TLS connection is enforced
+    "GWS.GMAIL.4.1",      # Ensure DMARC policy is published for all domains
+    "GWS.GMAIL.4.3",      # Ensure DMARC alignment mode is strict
+    "GWS.GMAIL.18.1",     # Ensure no domains bypass spam filters
+    "GWS.GMAIL.18.2",     # Ensure no domains bypass spam filters and hide warnings
+    "GWS.GMAIL.18.3",     # Ensure global spam filter bypass is disabled
+    "ADD-02",              # Ensure Security Sandbox is enabled for Gmail
+    "ADD-05",              # Ensure MX records point to Google
+    "ADD-07",              # Ensure TLS is enforced for partner domains
+    # Drive & data protection
+    "CIS-3.1.2.1.1.1",    # Ensure users are warned when sharing outside domain
+    "CIS-3.1.2.1.1.3",    # Ensure sharing is controlled by domain allowlists
+    "CIS-3.1.2.1.1.5",    # Ensure Access Checker limits file access
+    "CIS-3.1.2.1.1.6",    # Ensure only internal users can distribute content externally
+    "CIS-4.2.3.1",         # Ensure DLP policies are configured for Drive
+    "GWS.DRIVEDOCS.1.2",  # Ensure receiving files from non-allowlisted domains is disabled
+    "GWS.DRIVEDOCS.1.8",  # Ensure default access for new items is 'private to owner'
+    "GWS.COMMONCONTROLS.18.3",  # Ensure DLP policy is configured for Gmail
+    "GWS.COMMONCONTROLS.18.4",  # Ensure DLP policies block external sharing
+    "ADD-12",              # Ensure DLP rules are configured for Gmail
+    "ADD-35",              # Ensure Shared Drives have secure default restrictions
+    # External chat & collaboration
+    "CIS-3.1.4.2.1",      # Ensure external chat is restricted to allowed domains
+    # Groups external access
+    "CIS-3.1.6.1",        # Ensure external Groups access is private
+    "GWS.GROUPS.1.1",     # Ensure external group access is disabled by default
+    "GWS.GROUPS.1.2",     # Ensure external group members are disabled by default
+    "GWS.GROUPS.1.3",     # Ensure external posting to groups is disabled
+    # Directory exposure
+    "CIS-1.2.1.1",        # Ensure directory data is restricted from external access
+    # Context-aware access & geo-blocking
+    "CIS-4.2.2.1",        # Ensure geo-blocking is configured
+    "GWS.COMMONCONTROLS.2.1",  # Ensure context-aware access policies are implemented
+    # MFA and SSO
+    "GWS.COMMONCONTROLS.1.4",  # Ensure MFA enrollment period is configured
+    "GWS.COMMONCONTROLS.1.5",  # Ensure 'trust this device' is disabled
+    "GWS.COMMONCONTROLS.3.1",  # Ensure SSO verification is enabled for org SSO profile
+    "GWS.COMMONCONTROLS.3.2",  # Ensure post-SSO verification is enabled for 3P SSO
+    "GWS.COMMONCONTROLS.4.1",  # Ensure users re-authenticate after 12-hour session expiry
+    "GWS.COMMONCONTROLS.6.1",  # Ensure admin accounts are cloud-only
+    "GWS.COMMONCONTROLS.9.1",  # Ensure privileged accounts are in APP
+    "GWS.COMMONCONTROLS.9.2",  # Ensure sensitive users are in APP
+    # Active threat indicators
+    "ADD-34",              # Ensure no users have active App-Specific Passwords
+    # Meet external access
+    "GWS.MEET.1.1",       # Ensure external users must ask to join meetings
+    "GWS.MEET.2.1",       # Ensure non-GWS tenant meeting access is disabled
+    # Audit logging
+    "GWS.COMMONCONTROLS.14.1",  # Ensure audit logging is enabled
+    "GWS.COMMONCONTROLS.14.2",  # Ensure audit log retention meets minimum requirements
+    # Multi-party approval
+    "GWS.COMMONCONTROLS.17.1",  # Ensure multi-party approval is enabled
+    # Alerts for critical events
+    "CIS-6.1",            # Ensure alert for user password change is configured
+    "CIS-6.2",            # Ensure alert for government-backed attacks is configured
+    "CIS-6.4",            # Ensure alert for admin privilege grant is configured
+    "CIS-6.7",            # Ensure alert for leaked password is configured
+    # Sites
+    "CIS-3.1.7.1",        # Ensure Google Sites creation is disabled
+    # Password protection
+    "ADD-08",              # Ensure password protection warning is enabled
+})
+
+# ---------------------------------------------------------------------------
+# LOW severity: informational, best-practice, inventory, or education-
+# specific checks with limited direct security impact.
+# ---------------------------------------------------------------------------
+LOW_CHECKS: frozenset[str] = frozenset({
+    # Classroom (education-specific)
+    "GWS.CLASSROOM.1.1",  # Ensure class membership is restricted to domain
+    "GWS.CLASSROOM.1.2",  # Ensure classes users can join are restricted to domain
+    "GWS.CLASSROOM.2.1",  # Ensure Classroom API access is disabled
+    "GWS.CLASSROOM.3.1",  # Ensure roster import with Clever is disabled
+    "GWS.CLASSROOM.4.1",  # Ensure only teachers can unenroll students
+    "GWS.CLASSROOM.5.1",  # Ensure class creation is restricted to verified teachers
+    # Review/monitoring checks (manual review items)
+    "CIS-5.1.1.1",        # Ensure App Usage Activity Report is reviewed
+    "CIS-5.1.1.2",        # Ensure Security Investigation Tool is used
+    "CIS-1.1.3",          # Ensure Super Admin accounts are only used for admin tasks
+    # Inventory checks
+    "ADD-28",              # Ensure groups have active members
+    "ADD-29",              # Ensure Chat spaces have recent activity
+    "ADD-30",              # Ensure mobile devices are syncing recently
+    "ADD-31",              # Ensure ChromeOS devices are active recently
+    "ADD-32",              # Users without 2-Step Verification by OU inventory
+    "ADD-38",              # Ensure endpoint verification devices are syncing recently
+    "ADD-39",              # Ensure pending devices are approved promptly
+    # Gemini / AI features (emerging, low direct risk)
+    "GWS.GEMINI.1.1",     # Ensure Gemini app access is restricted to licensed users
+    "GWS.GEMINI.2.1",     # Ensure alpha Gemini features are disabled
+    "ADD-13",              # Ensure Gemini features in Workspace apps are controlled
+    "ADD-14",              # Ensure Gemini in Chrome is disabled
+    "ADD-15",              # Ensure Google Workspace Studio access is controlled
+    "ADD-16",              # Ensure Apple Intelligence Writing Tools are disabled
+    # Assured controls (enterprise edition specific)
+    "GWS.ASSUREDCONTROLS.1.1",  # Ensure access approvals are enabled
+    "GWS.ASSUREDCONTROLS.1.2",  # Ensure support access is restricted to US personnel
+    "GWS.ASSUREDCONTROLS.2.1",  # Ensure multi-region data processing is disabled
+    # Meet recording/transcription (low direct security impact)
+    "GWS.MEET.6.1",       # Ensure automatic recording is disabled
+    "GWS.MEET.6.2",       # Ensure automatic transcription is disabled
+    # Calendar scheduling
+    "GWS.CALENDAR.4.1",   # Ensure paid appointment scheduling is disabled
+    # Data regions (compliance, not direct security)
+    "GWS.COMMONCONTROLS.15.1",  # Ensure data regions are configured
+    "GWS.COMMONCONTROLS.15.2",  # Ensure data is processed in the selected storage region
+    # Early access apps
+    "GWS.COMMONCONTROLS.16.2",  # Ensure early access apps are disabled
+    # Conflicting account management
+    "GWS.COMMONCONTROLS.7.1",   # Ensure conflicting account management is configured
+})
 
 # Maximum number of activity log events to collect per log type.
 # Prevents OOM on large tenants.  0 means no limit.
