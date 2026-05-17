@@ -11,7 +11,7 @@ The open-source CLI is fully featured for individual auditors. Argus Cloud adds 
 | Feature | Open Source (Free) | Argus Cloud (€15/mo per workspace) |
 |---------|:---:|:---:|
 | **Audit Engine** | | |
-| 199 security checks | ✓ | ✓ |
+| 200 security checks | ✓ | ✓ |
 | 4 frameworks (CIS, CISA, Google, Other) | ✓ | ✓ |
 | HTML, JSON, CSV reports | ✓ | ✓ |
 | CLI + Docker support | ✓ | ✓ |
