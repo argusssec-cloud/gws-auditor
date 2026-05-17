@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 _PYPI_PACKAGE = "gws-security-auditor"
 _PYPI_URL = f"https://pypi.org/pypi/{_PYPI_PACKAGE}/json"
+_GITHUB_REPO = "argusssec-cloud/gws-auditor"
+_GITHUB_LATEST_URL = f"https://api.github.com/repos/{_GITHUB_REPO}/releases/latest"
+_GITHUB_RELEASES_PAGE = f"https://github.com/{_GITHUB_REPO}/releases"
 
 
 # ------------------------------------------------------------------
@@ -33,13 +36,8 @@ def get_installed_version() -> str:
     return __version__
 
 
-def fetch_latest_version(timeout: float = 3.0) -> str | None:
-    """Query PyPI for the latest release version.
-
-    Returns ``None`` when the network is unreachable, the response is
-    malformed, or any other error occurs — the caller should treat
-    ``None`` as *unknown* and proceed without blocking the audit.
-    """
+def _fetch_pypi_latest(timeout: float) -> str | None:
+    """Query PyPI for the latest release version. Returns ``None`` on failure."""
     try:
         req = urllib.request.Request(
             _PYPI_URL, headers={"Accept": "application/json"},
@@ -50,6 +48,43 @@ def fetch_latest_version(timeout: float = 3.0) -> str | None:
     except Exception:
         logger.debug("Failed to fetch latest version from PyPI", exc_info=True)
         return None
+
+
+def _fetch_github_latest(timeout: float) -> str | None:
+    """Query the GitHub Releases API for the latest tag. Strips a leading ``v``.
+
+    Used as a fallback for frozen (PyInstaller) builds and any time the PyPI
+    lookup fails — GitHub Releases is the canonical source of truth for the
+    binary distribution.
+    """
+    try:
+        req = urllib.request.Request(
+            _GITHUB_LATEST_URL,
+            headers={"Accept": "application/vnd.github+json"},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read())
+            tag = data.get("tag_name", "")
+            if tag.startswith("v"):
+                tag = tag[1:]
+            return tag or None
+    except Exception:
+        logger.debug("Failed to fetch latest release from GitHub", exc_info=True)
+        return None
+
+
+def fetch_latest_version(timeout: float = 3.0) -> str | None:
+    """Return the latest released version, or ``None`` when unknown.
+
+    Tries PyPI first (canonical for ``pip``-installed users). Falls back to
+    GitHub Releases when PyPI returns nothing — this is the only signal
+    available to frozen binaries and to environments where the package was
+    never published to PyPI.
+
+    Returns ``None`` only when both sources fail; callers should treat that
+    as *unknown* and proceed without blocking the audit.
+    """
+    return _fetch_pypi_latest(timeout) or _fetch_github_latest(timeout)
 
 
 def is_newer(latest: str, current: str) -> bool:
@@ -119,11 +154,13 @@ def perform_update(editable: bool = False) -> bool:
 # Interactive prompt
 # ------------------------------------------------------------------
 
-def prompt_for_update(current: str, latest: str) -> bool:
+def prompt_for_update(current: str, latest: str, frozen: bool = False) -> bool:
     """Display an update-available banner and ask the user to confirm.
 
     Returns ``False`` without prompting when stdin is not a TTY
-    (e.g. CI pipelines, piped input).
+    (e.g. CI pipelines, piped input). Returns ``False`` for frozen
+    (PyInstaller) builds because in-place ``pip`` upgrade is not possible
+    \u2014 the banner directs the user to the GitHub releases page instead.
     """
     try:
         from rich.console import Console
@@ -140,6 +177,14 @@ def prompt_for_update(current: str, latest: str) -> bool:
         console.print(f"\n[bold yellow]{msg}[/bold yellow]")
     else:
         print(f"\n{msg}", file=sys.stderr)
+
+    if frozen:
+        hint = f"Download the new binary from {_GITHUB_RELEASES_PAGE}"
+        if console:
+            console.print(f"[dim]{hint}[/dim]\n")
+        else:
+            print(hint, file=sys.stderr)
+        return False
 
     if not sys.stdin.isatty():
         hint = "Run 'gws-auditor --update' to upgrade."
@@ -176,11 +221,11 @@ def check_and_prompt_update(skip: bool = False, quiet: bool = False) -> None:
         prompt interactively.
     """
     try:
-        from ._frozen import is_frozen
-        if is_frozen():
-            return
         if skip:
             return
+
+        from ._frozen import is_frozen
+        frozen = is_frozen()
 
         current = get_installed_version()
         latest = fetch_latest_version()
@@ -188,14 +233,21 @@ def check_and_prompt_update(skip: bool = False, quiet: bool = False) -> None:
             return
 
         if quiet:
-            print(
-                f"gws-auditor {latest} is available (you have {current}). "
-                f"Run 'gws-auditor --update' to upgrade.",
-                file=sys.stderr,
-            )
+            if frozen:
+                print(
+                    f"gws-auditor {latest} is available (you have {current}). "
+                    f"Download from {_GITHUB_RELEASES_PAGE}",
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    f"gws-auditor {latest} is available (you have {current}). "
+                    f"Run 'gws-auditor --update' to upgrade.",
+                    file=sys.stderr,
+                )
             return
 
-        if prompt_for_update(current, latest):
+        if prompt_for_update(current, latest, frozen=frozen):
             editable = is_editable_install()
             success = perform_update(editable)
             if success:
@@ -221,29 +273,38 @@ def run_update_only() -> int:
     """Perform the update without running an audit.
 
     Returns an exit code: 0 on success, 1 on failure.
+
+    For frozen (PyInstaller) builds, ``pip install --upgrade`` cannot
+    replace the running binary, so the function reports the version
+    delta and directs the user to the GitHub releases page rather than
+    attempting an in-place upgrade.
     """
     from ._frozen import is_frozen
-    if is_frozen():
-        print(
-            "This is a standalone executable. Updates must be downloaded "
-            "from the releases page.",
-            file=sys.stderr,
-        )
-        return 1
+    frozen = is_frozen()
 
     current = get_installed_version()
     latest = fetch_latest_version(timeout=10.0)
 
     if latest is None:
         print(
-            "Could not reach PyPI to check for updates. "
-            "Check your network connection.",
+            "Could not determine the latest version. "
+            "Check your network connection or visit "
+            f"{_GITHUB_RELEASES_PAGE} manually.",
             file=sys.stderr,
         )
         return 1
 
     if not is_newer(latest, current):
         print(f"gws-auditor {current} is already the latest version.")
+        return 0
+
+    if frozen:
+        print(
+            f"A new version of gws-auditor is available: {current} \u2192 {latest}\n"
+            f"This is a standalone executable; in-place upgrade is not supported.\n"
+            f"Download the new binary from:\n  {_GITHUB_RELEASES_PAGE}",
+            file=sys.stderr,
+        )
         return 0
 
     print(f"Updating gws-auditor: {current} \u2192 {latest}")

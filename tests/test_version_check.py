@@ -110,6 +110,87 @@ class TestFetchLatestVersion:
             result = fetch_latest_version(timeout=1.0)
         assert result is None
 
+    def test_falls_back_to_github_when_pypi_fails(self):
+        """When PyPI fails, GitHub Releases is consulted as a fallback."""
+        with patch(
+            "gws_auditor.version_check._fetch_pypi_latest",
+            return_value=None,
+        ):
+            with patch(
+                "gws_auditor.version_check._fetch_github_latest",
+                return_value="1.2.0",
+            ) as mock_gh:
+                result = fetch_latest_version(timeout=1.0)
+        assert result == "1.2.0"
+        mock_gh.assert_called_once()
+
+    def test_pypi_wins_when_available(self):
+        """GitHub fallback is not consulted when PyPI returns a version."""
+        with patch(
+            "gws_auditor.version_check._fetch_pypi_latest",
+            return_value="1.2.0",
+        ):
+            with patch(
+                "gws_auditor.version_check._fetch_github_latest",
+            ) as mock_gh:
+                result = fetch_latest_version(timeout=1.0)
+        assert result == "1.2.0"
+        mock_gh.assert_not_called()
+
+    def test_both_fail_returns_none(self):
+        with patch(
+            "gws_auditor.version_check._fetch_pypi_latest",
+            return_value=None,
+        ):
+            with patch(
+                "gws_auditor.version_check._fetch_github_latest",
+                return_value=None,
+            ):
+                result = fetch_latest_version(timeout=1.0)
+        assert result is None
+
+
+class TestGithubFallback:
+    """Tests for the GitHub Releases fallback."""
+
+    def _mock_resp(self, payload):
+        from unittest.mock import MagicMock
+        resp = MagicMock()
+        resp.read.return_value = json.dumps(payload).encode()
+        resp.__enter__ = lambda s: s
+        resp.__exit__ = MagicMock(return_value=False)
+        return resp
+
+    def test_strips_leading_v(self):
+        from gws_auditor.version_check import _fetch_github_latest
+        resp = self._mock_resp({"tag_name": "v1.2.0"})
+        with patch("gws_auditor.version_check.urllib.request.urlopen", return_value=resp):
+            result = _fetch_github_latest(timeout=1.0)
+        assert result == "1.2.0"
+
+    def test_no_v_prefix_preserved(self):
+        from gws_auditor.version_check import _fetch_github_latest
+        resp = self._mock_resp({"tag_name": "1.2.0"})
+        with patch("gws_auditor.version_check.urllib.request.urlopen", return_value=resp):
+            result = _fetch_github_latest(timeout=1.0)
+        assert result == "1.2.0"
+
+    def test_empty_tag_returns_none(self):
+        from gws_auditor.version_check import _fetch_github_latest
+        resp = self._mock_resp({"tag_name": ""})
+        with patch("gws_auditor.version_check.urllib.request.urlopen", return_value=resp):
+            result = _fetch_github_latest(timeout=1.0)
+        assert result is None
+
+    def test_network_error_returns_none(self):
+        from gws_auditor.version_check import _fetch_github_latest
+        with patch(
+            "gws_auditor.version_check.urllib.request.urlopen",
+            side_effect=OSError("network unreachable"),
+        ):
+            result = _fetch_github_latest(timeout=1.0)
+        assert result is None
+
 
 # ------------------------------------------------------------------
 # is_editable_install
@@ -223,13 +304,28 @@ class TestCheckAndPromptUpdate:
             check_and_prompt_update(skip=True)
         mock_fetch.assert_not_called()
 
-    def test_frozen_build_skipped(self):
+    def test_frozen_build_still_queries(self):
+        """Frozen builds DO check for updates (banner-only, no in-place upgrade)."""
         with patch("gws_auditor._frozen.is_frozen", return_value=True):
             with patch(
-                "gws_auditor.version_check.fetch_latest_version"
+                "gws_auditor.version_check.fetch_latest_version",
+                return_value="0.0.1",  # older than current, so no prompt
             ) as mock_fetch:
                 check_and_prompt_update(skip=False)
-        mock_fetch.assert_not_called()
+        mock_fetch.assert_called_once()
+
+    def test_frozen_newer_version_shows_release_url(self, capsys):
+        """Frozen + newer available → quiet banner points at GH releases page."""
+        with patch("gws_auditor._frozen.is_frozen", return_value=True):
+            with patch(
+                "gws_auditor.version_check.fetch_latest_version",
+                return_value="99.0.0",
+            ):
+                check_and_prompt_update(skip=False, quiet=True)
+        captured = capsys.readouterr()
+        assert "99.0.0" in captured.err
+        assert "github.com" in captured.err
+        assert "releases" in captured.err
 
     def test_no_newer_version_no_prompt(self):
         with patch("gws_auditor._frozen.is_frozen", return_value=False):
@@ -298,11 +394,30 @@ class TestCheckAndPromptUpdate:
 # ------------------------------------------------------------------
 
 class TestRunUpdateOnly:
-    def test_frozen_build_returns_1(self):
+    def test_frozen_no_newer_returns_0(self):
+        """Frozen + already latest → 0 (no upgrade needed, no error)."""
+        current = get_installed_version()
         with patch("gws_auditor._frozen.is_frozen", return_value=True):
-            assert run_update_only() == 1
+            with patch(
+                "gws_auditor.version_check.fetch_latest_version",
+                return_value=current,
+            ):
+                assert run_update_only() == 0
 
-    def test_pypi_unreachable_returns_1(self):
+    def test_frozen_newer_directs_to_release_page(self, capsys):
+        """Frozen + newer → 0 with directive to download from GH releases."""
+        with patch("gws_auditor._frozen.is_frozen", return_value=True):
+            with patch(
+                "gws_auditor.version_check.fetch_latest_version",
+                return_value="99.0.0",
+            ):
+                assert run_update_only() == 0
+        captured = capsys.readouterr()
+        assert "99.0.0" in captured.err
+        assert "github.com" in captured.err and "releases" in captured.err
+
+    def test_latest_unreachable_returns_1(self):
+        """Both PyPI and GitHub fail → can't determine latest → exit 1."""
         with patch("gws_auditor._frozen.is_frozen", return_value=False):
             with patch(
                 "gws_auditor.version_check.fetch_latest_version",
