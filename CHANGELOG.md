@@ -5,6 +5,23 @@ All notable changes to GWS Security Auditor will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-05-17
+
+### Added
+
+- **ADD-40 -- Default Context-Aware Access policy for SAML apps** -- Audits the new Google Workspace control (announced 2026-05-15) that lets admins apply a single global CAA policy to all SAML applications. No Workspace policy API exposes the toggle, so the check uses a three-state log-driven decision tree: count SAML logins in `login_logs` (zero → `NOT_APPLICABLE`), then check `caa_events` for `ACCESS_DENY_EVENT` entries (any → `PASS`), else `MANUAL` with the SAML app inventory in the details. `requires_license="enterprise_standard"`. Total check count: 199 → **200**.
+- **`caa_events` data stream** -- New Reports API collector for `applicationName=context_aware_access` (`ACCESS_DENY_EVENT`). `ReportsClient.get_caa_activities()` is rate-limit-aware and reuses the existing pagination helper. Wired into `Provider.collect_all()` and normalized through `_normalize_activity_logs`. Available to all checks as `data["caa_events"]`.
+- **Action metadata on every check result** -- `CheckResult` and `CheckMetadata` gain `docs_url`, `console_link`, and `gam_command` fields. The `@check` decorator auto-resolves `docs_url` by scanning remediation text for Google documentation URLs (`support.google.com`, `cloud.google.com`, `developers.google.com`, `workspace.google.com`) and `console_link` from the new `CONSOLE_SECTION_LINKS` mapping. Reports, dashboard, and AI analyst surfaces can now offer "Open in Admin console" deep links and "Fix with GAM" command snippets without per-check boilerplate.
+- **`CONSOLE_SECTION_LINKS`** -- Default Admin Console deep links per check section (Directory, Gmail, Drive, Chat, Security, ...) in `constants.py`. Used by `@check` when no explicit `console_link` is set on the decorator.
+
+### Changed
+
+- **ADD-20 (CAA for OIDC apps) rebuilt with log-driven logic** -- Previously always returned `MANUAL` because no API exposes the OIDC CAA toggle. Now follows the same three-state pattern as ADD-40: third-party OIDC clients in `token_logs` → `NOT_APPLICABLE` when none, `PASS` when CAA `ACCESS_DENY_EVENT` denials match OIDC traffic, `MANUAL` when apps exist but no denials were seen in the window. Third-party detection excludes Google first-party app names (`"Google "` prefix) to keep the inventory honest.
+
+### Fixed
+
+- **Workspace SKU map had multiple swapped entries** -- Continuing the v1.1.0 correction, the SKU map in `Provider._SKU_EDITION_MAP` still mislabeled six SKUs that no longer matched Google's authoritative [Admin SDK Licensing reference](https://developers.google.com/workspace/admin/licensing/v1/how-tos/products). Notably `1010020026` was labeled "Enterprise Essentials" instead of **Enterprise Standard**, `1010020025` was labeled "Enterprise Plus" instead of **Business Plus**, and `1010020020` was labeled "Business Plus" instead of **Enterprise Plus**. On a real Enterprise Standard tenant this caused 22 license-gated checks to incorrectly emit `NOT_APPLICABLE`. The map is now aligned with Google's reference (cross-checked 2026-05-17), adds Frontline Plus (`1010020034`), Enterprise Essentials Plus (`1010060005`), and Business Continuity SKUs (`1010020035/36`), and corrects Cloud Identity Free to `1010010001`. Subscription tests rewritten to use the correct SKU IDs.
+
 ## [1.1.0] - 2026-04-24
 
 ### Added (continued)
@@ -92,5 +109,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docker support** with Dockerfile and docker-compose.yml
 - **GitHub Actions workflow** for automated release builds
 
+[1.2.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.2.0
 [1.1.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.0.0

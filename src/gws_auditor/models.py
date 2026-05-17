@@ -45,6 +45,9 @@ class CheckResult:
     severity: "Severity" = Severity.MEDIUM
     critical_reason: str = ""
     scored: bool = True
+    docs_url: str = ""
+    console_link: str = ""
+    gam_command: str = ""
 
 
 @dataclass
@@ -61,6 +64,9 @@ class CheckMetadata:
     severity: "Severity" = Severity.MEDIUM
     critical_reason: str = ""
     scored: bool = True
+    docs_url: str = ""
+    console_link: str = ""
+    gam_command: str = ""
 
 
 @dataclass

@@ -192,6 +192,38 @@ class ReportsClient(BaseAPIClient):
             self.record_error("get_token_activities", exc)
             return []
 
+    def get_caa_activities(
+        self,
+        customer_id: str,
+        start_time: str | None = None,
+        max_items: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Retrieve Context-Aware Access denial events.
+
+        Queries ``applicationName=context_aware_access`` which exposes a
+        single documented event ``ACCESS_DENY_EVENT`` — fired whenever a
+        CAA policy blocks an access attempt.  Used as positive evidence
+        that CAA is actively enforcing for the tenant.
+
+        Reference: https://developers.google.com/admin-sdk/reports/v1/appendix/activity/context-aware-access
+        """
+        try:
+            activities = self.paginate(
+                self.service.activities().list,
+                items_key="items",
+                max_items=max_items,
+                userKey="all",
+                applicationName="context_aware_access",
+                customerId=customer_id,
+                startTime=start_time or _default_start_time(),
+                maxResults=1000,
+            )
+            logger.info("Retrieved %d CAA activity events", len(activities))
+            return activities
+        except Exception as exc:
+            self.record_error("get_caa_activities", exc)
+            return []
+
     # ------------------------------------------------------------------
     # Usage reports
     # ------------------------------------------------------------------

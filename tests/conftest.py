@@ -334,6 +334,7 @@ def full_audit_data(
         "admin_logs": sample_admin_logs,
         "login_logs": sample_login_logs,
         "token_logs": sample_token_logs,
+        "caa_events": [],
         "usage_reports": sample_usage_reports,
         "dns_records": sample_dns_records,
         "alert_center_rules": [],

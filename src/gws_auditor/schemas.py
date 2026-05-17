@@ -822,6 +822,7 @@ class AuditData(_Base):
     admin_logs: list[dict[str, Any]] = []
     login_logs: list[dict[str, Any]] = []
     token_logs: list[dict[str, Any]] = []
+    caa_events: list[dict[str, Any]] = []
     usage_reports: list[dict[str, Any]] | dict[str, Any] = []
     dns_records: dict[str, Any] = {}
     alert_center_rules: list[dict[str, Any]] = []

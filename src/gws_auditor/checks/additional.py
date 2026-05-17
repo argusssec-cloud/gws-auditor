@@ -10,7 +10,16 @@ that supplement the CIS Benchmark controls.
 
 from datetime import datetime, timedelta, timezone
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values
+from .base import (
+    check,
+    make_pass,
+    make_fail,
+    make_warn,
+    make_manual,
+    make_review,
+    make_not_applicable,
+    get_ou_values,
+)
 from ..models import CheckResult, Status
 from ..constants import DANGEROUS_OAUTH_SCOPES, OAUTH_SCOPE_RISK_LEVELS
 
@@ -799,6 +808,107 @@ def check_passkeys_enforced(data: dict) -> CheckResult:
     )
 
 
+# ---------------------------------------------------------------------------
+# Context-Aware Access (CAA) for SAML / OIDC apps — ADD-20 and ADD-40
+# ---------------------------------------------------------------------------
+# The Workspace admin-console toggles "apply CAA to OIDC apps" (ADD-20) and
+# "apply default CAA policy to all SAML apps" (ADD-40) are NOT exposed by any
+# Workspace policy API today (verified empirically against Cloud Identity
+# Policy API v1/v1beta1 and Access Context Manager).  The audit log surfaces
+# are the only programmatic signal available:
+#   - Reports API ``applicationName=token`` → reveals which OIDC OAuth
+#     clients have been used in the audit window.
+#   - Reports API ``applicationName=login`` → reveals SAML SSO logins via
+#     ``login_type=saml``.
+#   - Reports API ``applicationName=context_aware_access``,
+#     ``eventName=ACCESS_DENY_EVENT`` → fires when CAA actively blocks an
+#     access attempt; proof that CAA is enforcing.
+# ---------------------------------------------------------------------------
+
+
+def _count_third_party_oidc_apps(token_logs: list) -> tuple[int, list[str]]:
+    """Count distinct third-party OAuth (OIDC) clients seen in token logs.
+
+    Third-party heuristic: ``client_id`` ends in
+    ``.apps.googleusercontent.com`` (issued from a non-Workspace GCP project)
+    AND ``app_name`` does not begin with ``"Google "`` (Google's own apps).
+    """
+    seen: dict[str, str] = {}
+    for entry in token_logs or []:
+        if not isinstance(entry, dict):
+            continue
+        client_id = entry.get("client_id") or entry.get("parameters", {}).get("client_id", "")
+        app_name = entry.get("app_name") or entry.get("parameters", {}).get("app_name", "")
+        if not client_id or ".apps.googleusercontent.com" not in str(client_id):
+            continue
+        if isinstance(app_name, str) and app_name.startswith("Google "):
+            continue
+        seen[str(client_id)] = str(app_name)
+    return len(seen), sorted({n for n in seen.values() if n})
+
+
+def _count_saml_apps(login_logs: list) -> tuple[int, list[str]]:
+    """Count distinct SAML SSO apps seen in login logs.
+
+    Detected via ``parameters.login_type == "saml"``.  The destination app
+    name is read from ``parameters.application_name`` when present, falling
+    back to ``parameters.saml_idp`` and finally a generic ``"<unknown SAML>"``
+    bucket so the count is still meaningful when the param is absent.
+    """
+    seen: set[str] = set()
+    for entry in login_logs or []:
+        if not isinstance(entry, dict):
+            continue
+        params = entry.get("parameters", {}) or {}
+        if params.get("login_type") != "saml":
+            continue
+        app = (
+            params.get("application_name")
+            or params.get("saml_idp")
+            or params.get("idp_initiated_url")
+            or "<unknown SAML>"
+        )
+        seen.add(str(app))
+    return len(seen), sorted(seen)
+
+
+def _caa_denials(caa_events: list, app_class: str) -> tuple[int, list[str]]:
+    """Count CAA denial events relevant to ``app_class`` (``"oidc"`` or ``"saml"``).
+
+    The ``ACCESS_DENY_EVENT`` parameters that disambiguate app class are not
+    rigidly documented, so this function is intentionally conservative:
+    it accepts any of several plausible signals
+    (``application_type`` / ``is_third_party_oauth`` / ``application_name``).
+    When no per-event signal is present, the event is counted toward both
+    classes — better to report "CAA is enforcing somewhere" than to miss it.
+    """
+    matched: list[str] = []
+    for entry in caa_events or []:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("event_name") != "ACCESS_DENY_EVENT":
+            continue
+        params = entry.get("parameters", {}) or {}
+        app_type = str(params.get("application_type", "")).lower()
+        app_name = str(params.get("application_name", "")) or "<unknown>"
+
+        if app_class == "oidc":
+            keep = (
+                "oauth" in app_type
+                or "oidc" in app_type
+                or params.get("is_third_party_oauth") is True
+                or not app_type  # ambiguous → count for both classes
+            )
+        elif app_class == "saml":
+            keep = "saml" in app_type or not app_type
+        else:
+            keep = False
+
+        if keep:
+            matched.append(app_name)
+    return len(matched), sorted(set(matched))
+
+
 @check(
     check_id="ADD-20",
     title="Ensure Context-Aware Access is applied to OIDC apps",
@@ -813,50 +923,152 @@ def check_passkeys_enforced(data: dict) -> CheckResult:
     requires_license="enterprise_standard",
 )
 def check_caa_oidc(data: dict) -> CheckResult:
-    """Context-Aware Access policies should cover OIDC third-party apps."""
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-    access_control = security.get("access_control", {})
-    caa_oidc = access_control.get("caa_oidc_enabled", None)
+    """Context-Aware Access policies should cover OIDC third-party apps.
 
-    if caa_oidc is True:
-        return make_pass(
-            check_id="ADD-20",
-            title="Ensure Context-Aware Access is applied to OIDC apps",
-            level="L2", source="GOOGLE", section="Security",
-            details="Context-Aware Access is applied to OIDC apps.",
-            actual_value=caa_oidc,
-            expected_value=True,
-        )
+    The Workspace policy APIs do not expose the CAA-for-OIDC toggle, so the
+    check infers status from audit logs:
 
-    if caa_oidc is None:
-        return make_review(
-            check_id="ADD-20",
-            title="Ensure Context-Aware Access is applied to OIDC apps",
-            level="L2", source="GOOGLE", section="Security",
+      Step 1 — Inventory: count distinct third-party OIDC clients in
+        ``data["token_logs"]``.  If zero, return NOT_APPLICABLE — the toggle
+        has nothing to apply to.
+      Step 2 — Enforcement evidence: count ACCESS_DENY_EVENT entries in
+        ``data["caa_events"]`` that match the OIDC app class.  Any match
+        means CAA is actively blocking OIDC access attempts → PASS.
+      Step 3 — Inconclusive: OIDC apps exist but no denial events in the
+        audit window → MANUAL (REVIEW).  "No denials" is not proof that
+        CAA is off; it may simply mean nothing was blocked.
+
+    Caveat: "Detected" means seen in the Reports API retention window
+    (~180 days).  An app configured but never used will not appear.
+    """
+    _ID, _TITLE = "ADD-20", "Ensure Context-Aware Access is applied to OIDC apps"
+    _L, _S, _SEC = "L2", "GOOGLE", "Security"
+    _REMEDIATION = (
+        "Admin console > Security > Access and data control > "
+        "Context-Aware Access. Enable context-aware policies for "
+        "OIDC third-party apps to enforce device and location-based access. "
+        "https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps"
+    )
+
+    oidc_count, oidc_apps = _count_third_party_oidc_apps(data.get("token_logs", []))
+
+    if oidc_count == 0:
+        return make_not_applicable(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=(
-                "Context-Aware Access OIDC setting requires manual verification. "
-                "No programmatic API is available for this control."
+                "No third-party OIDC apps detected in the audit-log window; "
+                "the CAA-for-OIDC control has nothing to apply to."
             ),
-            remediation=(
-                "Admin console > Security > Access and data control > "
-                "Context-Aware Access. Apply context-aware policies to "
-                "OIDC third-party apps to extend access controls. https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps"
-            ),
+            actual_value=0,
         )
 
-    return make_fail(
-        check_id="ADD-20",
-        title="Ensure Context-Aware Access is applied to OIDC apps",
-        level="L2", source="GOOGLE", section="Security",
-        details="Context-Aware Access is not applied to OIDC apps.",
-        actual_value=caa_oidc,
-        expected_value=True,
-        remediation=(
-            "Admin console > Security > Access and data control > "
-            "Context-Aware Access. Enable context-aware policies for "
-            "OIDC third-party apps to enforce device and location-based access. https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps"
+    deny_count, denied_apps = _caa_denials(data.get("caa_events", []), "oidc")
+    if deny_count > 0:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(
+                f"CAA is actively enforcing on OIDC traffic: {deny_count} "
+                f"ACCESS_DENY_EVENT(s) in the window across "
+                f"{len(denied_apps)} app(s)."
+            ),
+            actual_value={"oidc_apps": oidc_count, "denials": deny_count},
+            expected_value="CAA denial events present for OIDC apps",
+        )
+
+    return make_review(
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        details=(
+            f"{oidc_count} third-party OIDC app(s) detected "
+            f"({', '.join(oidc_apps[:5])}{'...' if len(oidc_apps) > 5 else ''}) "
+            "but no CAA ACCESS_DENY_EVENT was logged in the window. "
+            "Absence of denials does not prove CAA is disabled — verify the "
+            "policy assignment in Admin console > Security > "
+            "Context-Aware Access."
         ),
+        remediation=_REMEDIATION,
+        actual_value={"oidc_apps": oidc_count, "denials": 0},
+    )
+
+
+@check(
+    check_id="ADD-40",
+    title="Ensure default Context-Aware Access policy is enabled for SAML applications",
+    level="L2",
+    source="GOOGLE",
+    section="Security",
+    remediation=(
+        "Admin console > Security > Context-Aware Access > General settings. "
+        "Enable a default CAA policy for all SAML applications so apps "
+        "without specific assignments inherit a secure baseline. "
+        "https://knowledge.workspace.google.com/admin/security/apply-caa-policy-for-all-saml-apps"
+    ),
+    requires_license="enterprise_standard",
+)
+def check_caa_saml_default(data: dict) -> CheckResult:
+    """Default CAA policy should be enabled for all SAML applications.
+
+    Mirrors ADD-20's three-state log-driven logic for SAML:
+
+      Step 1 — Inventory: count distinct SAML SSO apps in
+        ``data["login_logs"]`` (events where ``parameters.login_type ==
+        "saml"``).  If zero, return NOT_APPLICABLE — the default-SAML-CAA
+        toggle has nothing to apply to.
+      Step 2 — Enforcement evidence: count ACCESS_DENY_EVENT entries in
+        ``data["caa_events"]`` that match the SAML app class.  Any match
+        means CAA is actively blocking SAML access attempts → PASS.
+      Step 3 — Inconclusive: SAML apps exist but no denial events in the
+        audit window → MANUAL (REVIEW).
+    """
+    _ID = "ADD-40"
+    _TITLE = (
+        "Ensure default Context-Aware Access policy is enabled for "
+        "SAML applications"
+    )
+    _L, _S, _SEC = "L2", "GOOGLE", "Security"
+    _REMEDIATION = (
+        "Admin console > Security > Context-Aware Access > General settings. "
+        "Enable a default CAA policy for all SAML applications so apps "
+        "without specific assignments inherit a secure baseline. "
+        "https://knowledge.workspace.google.com/admin/security/apply-caa-policy-for-all-saml-apps"
+    )
+
+    saml_count, saml_apps = _count_saml_apps(data.get("login_logs", []))
+
+    if saml_count == 0:
+        return make_not_applicable(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(
+                "No SAML SSO logins detected in the audit-log window; the "
+                "default-CAA-for-SAML control has nothing to apply to."
+            ),
+            actual_value=0,
+        )
+
+    deny_count, denied_apps = _caa_denials(data.get("caa_events", []), "saml")
+    if deny_count > 0:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(
+                f"CAA is actively enforcing on SAML traffic: {deny_count} "
+                f"ACCESS_DENY_EVENT(s) in the window across "
+                f"{len(denied_apps)} app(s)."
+            ),
+            actual_value={"saml_apps": saml_count, "denials": deny_count},
+            expected_value="CAA denial events present for SAML apps",
+        )
+
+    return make_review(
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        details=(
+            f"{saml_count} SAML app(s) detected "
+            f"({', '.join(saml_apps[:5])}{'...' if len(saml_apps) > 5 else ''}) "
+            "but no CAA ACCESS_DENY_EVENT was logged in the window. "
+            "Absence of denials does not prove CAA is disabled — verify the "
+            "default policy in Admin console > Security > Context-Aware "
+            "Access > General settings."
+        ),
+        remediation=_REMEDIATION,
+        actual_value={"saml_apps": saml_count, "denials": 0},
     )
 
 

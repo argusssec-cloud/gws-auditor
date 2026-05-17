@@ -6,15 +6,39 @@
 
 import functools
 import logging
+import re
 from typing import Callable
 
-from ..constants import LICENSE_TIERS, LICENSE_TIER_NAMES, CRITICAL_CHECKS, HIGH_CHECKS, LOW_CHECKS
+from ..constants import (
+    LICENSE_TIERS, LICENSE_TIER_NAMES, CRITICAL_CHECKS, HIGH_CHECKS, LOW_CHECKS,
+    CONSOLE_SECTION_LINKS,
+)
 from ..models import CheckMetadata, CheckResult, Severity, Status
 
 logger = logging.getLogger(__name__)
 
 # Global list populated by the @check decorator
 _registered_checks: list[CheckMetadata] = []
+
+# Matches Google official documentation URLs we surface as "Learn More".
+# Order matters: support.google.com is preferred over admin.google.com.
+_DOCS_URL_PATTERNS = (
+    re.compile(r"https?://support\.google\.com/[^\s)\"'>]+"),
+    re.compile(r"https?://cloud\.google\.com/[^\s)\"'>]+"),
+    re.compile(r"https?://developers\.google\.com/[^\s)\"'>]+"),
+    re.compile(r"https?://workspace\.google\.com/[^\s)\"'>]+"),
+)
+
+
+def _extract_docs_url(text: str) -> str:
+    """Pick the first Google documentation URL out of a remediation string."""
+    if not text:
+        return ""
+    for pat in _DOCS_URL_PATTERNS:
+        m = pat.search(text)
+        if m:
+            return m.group(0).rstrip(".,)")
+    return ""
 
 
 def _normalize_license(raw: str) -> str:
@@ -76,7 +100,8 @@ def _resolve_critical_reason(check_id: str) -> str:
 def check(check_id: str, title: str, level: str, source: str, section: str,
           remediation: str = "", requires_license: str = "",
           severity: str = "", critical_reason: str = "",
-          scored: bool = True):
+          scored: bool = True,
+          docs_url: str = "", console_link: str = "", gam_command: str = ""):
     """Decorator to register a security check function.
 
     The decorated function should accept a single `data` dict argument
@@ -106,6 +131,8 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
         Severity(severity) if severity else _resolve_severity(check_id)
     )
     resolved_reason = critical_reason or _resolve_critical_reason(check_id)
+    resolved_docs_url = docs_url or _extract_docs_url(remediation)
+    resolved_console_link = console_link or CONSOLE_SECTION_LINKS.get(section, "")
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -128,6 +155,9 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
                         remediation=remediation,
                         severity=resolved_severity,
                         critical_reason=resolved_reason,
+                        docs_url=resolved_docs_url,
+                        console_link=resolved_console_link,
+                        gam_command=gam_command,
                     )
                 result = func(data)
                 # Ensure metadata fields are populated on the result
@@ -142,6 +172,13 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
                 result.severity = resolved_severity
                 result.critical_reason = resolved_reason
                 result.scored = scored
+                # Attach action metadata (allow per-result overrides)
+                if not result.docs_url:
+                    result.docs_url = resolved_docs_url or _extract_docs_url(result.remediation)
+                if not result.console_link:
+                    result.console_link = resolved_console_link
+                if not result.gam_command and gam_command:
+                    result.gam_command = gam_command
                 return result
             except Exception as e:
                 logger.exception("Check %s raised an exception: %s", check_id, e)
@@ -155,6 +192,9 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
                     details=f"Check execution error: {e}",
                     severity=resolved_severity,
                     critical_reason=resolved_reason,
+                    docs_url=resolved_docs_url,
+                    console_link=resolved_console_link,
+                    gam_command=gam_command,
                 )
 
         metadata = CheckMetadata(
@@ -169,6 +209,9 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
             severity=resolved_severity,
             critical_reason=resolved_reason,
             scored=scored,
+            docs_url=resolved_docs_url,
+            console_link=resolved_console_link,
+            gam_command=gam_command,
         )
         _registered_checks.append(metadata)
 

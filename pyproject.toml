@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gws-security-auditor"
-version = "1.1.0"
+version = "1.2.0"
 description = "Google Workspace Security Posture Auditor - CIS Benchmark & Best Practice Checks"
 readme = "README.md"
 license = {text = "AGPL-3.0-only"}

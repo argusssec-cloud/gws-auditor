@@ -293,29 +293,144 @@ class TestPasskeysEnforced:
 
 
 class TestCaaOidc:
-    """Tests for ADD-20 Context-Aware Access for OIDC apps."""
+    """Tests for ADD-20 Context-Aware Access for OIDC apps.
 
-    def test_caa_oidc_enabled_pass(self, full_audit_data):
+    The check is log-driven (no policy API exposes the toggle).
+      - No third-party OIDC apps in token_logs → NOT_APPLICABLE
+      - OIDC apps present + CAA ACCESS_DENY_EVENT in caa_events → PASS
+      - OIDC apps present + no denial events → MANUAL (REVIEW)
+    """
+
+    def test_caa_oidc_no_apps_not_applicable(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_oidc
-        full_audit_data["policies"]["security"]["access_control"] = {
-            "caa_oidc_enabled": True,
-        }
+        full_audit_data["token_logs"] = []
+        full_audit_data["caa_events"] = []
+        result = check_caa_oidc(full_audit_data)
+        assert result.status == Status.NOT_APPLICABLE
+
+    def test_caa_oidc_only_google_first_party_not_applicable(self, full_audit_data):
+        from gws_auditor.checks.additional import check_caa_oidc
+        # Google first-party apps don't count as "third-party OIDC"
+        full_audit_data["token_logs"] = [
+            {
+                "event_name": "activity",
+                "client_id": "77185425430.apps.googleusercontent.com",
+                "app_name": "Google Chrome",
+                "parameters": {
+                    "client_id": "77185425430.apps.googleusercontent.com",
+                    "app_name": "Google Chrome",
+                },
+            },
+        ]
+        full_audit_data["caa_events"] = []
+        result = check_caa_oidc(full_audit_data)
+        assert result.status == Status.NOT_APPLICABLE
+
+    def test_caa_oidc_apps_with_denials_pass(self, full_audit_data):
+        from gws_auditor.checks.additional import check_caa_oidc
+        full_audit_data["token_logs"] = [
+            {
+                "event_name": "activity",
+                "client_id": "990339570472-abc.apps.googleusercontent.com",
+                "app_name": "LinkedIn",
+                "parameters": {
+                    "client_id": "990339570472-abc.apps.googleusercontent.com",
+                    "app_name": "LinkedIn",
+                },
+            },
+        ]
+        full_audit_data["caa_events"] = [
+            {
+                "event_name": "ACCESS_DENY_EVENT",
+                "parameters": {
+                    "application_name": "LinkedIn",
+                    "application_type": "OAUTH",
+                },
+            },
+        ]
         result = check_caa_oidc(full_audit_data)
         assert result.status == Status.PASS
+        assert "1" in result.details  # 1 denial event
 
-    def test_caa_oidc_disabled_fail(self, full_audit_data):
+    def test_caa_oidc_apps_without_denials_review(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_oidc
-        full_audit_data["policies"]["security"]["access_control"] = {
-            "caa_oidc_enabled": False,
-        }
-        result = check_caa_oidc(full_audit_data)
-        assert result.status == Status.FAIL
-
-    def test_caa_oidc_unknown_manual(self, full_audit_data):
-        from gws_auditor.checks.additional import check_caa_oidc
-        full_audit_data["policies"]["security"]["access_control"] = {}
+        full_audit_data["token_logs"] = [
+            {
+                "event_name": "activity",
+                "client_id": "990339570472-abc.apps.googleusercontent.com",
+                "app_name": "Notion",
+                "parameters": {
+                    "client_id": "990339570472-abc.apps.googleusercontent.com",
+                    "app_name": "Notion",
+                },
+            },
+        ]
+        full_audit_data["caa_events"] = []
         result = check_caa_oidc(full_audit_data)
         assert result.status == Status.MANUAL
+        assert "Notion" in result.details
+
+
+class TestCaaSamlDefault:
+    """Tests for ADD-40 default Context-Aware Access policy for SAML apps.
+
+    Parallel structure to ADD-20:
+      - No SAML logins in login_logs → NOT_APPLICABLE
+      - SAML apps present + CAA ACCESS_DENY_EVENT in caa_events → PASS
+      - SAML apps present + no denial events → MANUAL (REVIEW)
+    """
+
+    def test_caa_saml_no_apps_not_applicable(self, full_audit_data):
+        from gws_auditor.checks.additional import check_caa_saml_default
+        # Only google_password / reauth logins, no SAML
+        full_audit_data["login_logs"] = [
+            {
+                "event_name": "login_success",
+                "parameters": {"login_type": "google_password"},
+            },
+        ]
+        full_audit_data["caa_events"] = []
+        result = check_caa_saml_default(full_audit_data)
+        assert result.status == Status.NOT_APPLICABLE
+
+    def test_caa_saml_apps_with_denials_pass(self, full_audit_data):
+        from gws_auditor.checks.additional import check_caa_saml_default
+        full_audit_data["login_logs"] = [
+            {
+                "event_name": "login_success",
+                "parameters": {
+                    "login_type": "saml",
+                    "application_name": "Workday",
+                },
+            },
+        ]
+        full_audit_data["caa_events"] = [
+            {
+                "event_name": "ACCESS_DENY_EVENT",
+                "parameters": {
+                    "application_name": "Workday",
+                    "application_type": "SAML",
+                },
+            },
+        ]
+        result = check_caa_saml_default(full_audit_data)
+        assert result.status == Status.PASS
+
+    def test_caa_saml_apps_without_denials_review(self, full_audit_data):
+        from gws_auditor.checks.additional import check_caa_saml_default
+        full_audit_data["login_logs"] = [
+            {
+                "event_name": "login_success",
+                "parameters": {
+                    "login_type": "saml",
+                    "application_name": "Salesforce",
+                },
+            },
+        ]
+        full_audit_data["caa_events"] = []
+        result = check_caa_saml_default(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "Salesforce" in result.details
 
 
 class TestMpaVaultExports:

@@ -654,3 +654,24 @@ OAUTH_SCOPE_RISK_LEVELS = {
     "script.projects": "HIGH",
     "script.addons": "MEDIUM",
 }
+
+# Default Google Workspace Admin Console deep link by check section.
+# Used when a check has no explicit console_link.
+CONSOLE_SECTION_LINKS = {
+    "Directory": "https://admin.google.com/ac/users",
+    "Gmail": "https://admin.google.com/ac/apps/gmail",
+    "Calendar": "https://admin.google.com/ac/appsettings/12/calendar",
+    "Drive": "https://admin.google.com/ac/appsettings/55/drive-and-docs",
+    "Chat": "https://admin.google.com/ac/appsettings/74/chat",
+    "Meet": "https://admin.google.com/ac/appsettings/97/meet",
+    "Groups": "https://admin.google.com/ac/groups",
+    "Sites": "https://admin.google.com/ac/appsettings/57/sites",
+    "Marketplace": "https://admin.google.com/ac/apps/marketplace",
+    "Security": "https://admin.google.com/ac/security",
+    "Authentication": "https://admin.google.com/ac/security/authentication",
+    "Reporting": "https://admin.google.com/ac/reporting/audit",
+    "Alert Rules": "https://admin.google.com/ac/ac/alertcenter",
+    "Gemini": "https://admin.google.com/ac/appsettings/gemini",
+    "Classroom": "https://admin.google.com/ac/appsettings/319/classroom",
+    "Inventory": "https://admin.google.com/ac/users",
+}

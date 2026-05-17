@@ -78,6 +78,7 @@ class Provider:
         ("admin_logs", "_get_admin_activity_logs"),
         ("login_logs", "_get_login_logs"),
         ("token_logs", "_get_token_logs"),
+        ("caa_events", "_get_caa_events"),
         ("usage_reports", "_get_usage_reports"),
         ("dns_records", "_get_dns_records"),
         ("alert_center_rules", "_get_alert_center_rules"),
@@ -116,6 +117,7 @@ class Provider:
             "admin_logs": self._get_admin_activity_logs(),
             "login_logs": self._get_login_logs(),
             "token_logs": self._get_token_logs(),
+            "caa_events": self._get_caa_events(),
             "usage_reports": self._get_usage_reports(),
             "dns_records": self._get_dns_records(),
             "alert_center_rules": self._get_alert_center_rules(),
@@ -413,6 +415,31 @@ class Provider:
             self._record_error("get_token_activities", e)
             return []
 
+    def _get_caa_events(self) -> list[dict]:
+        """Fetch Context-Aware Access denial activity logs.
+
+        Reads ``applicationName=context_aware_access`` from the Reports
+        API.  The single documented event ``ACCESS_DENY_EVENT`` fires when
+        a CAA policy blocks an access attempt — used as positive evidence
+        that CAA is actively enforcing.
+        """
+        try:
+            from .api.reports import ReportsClient
+            client = ReportsClient(self.auth)
+            dt = datetime.now(timezone.utc) - timedelta(days=DEFAULT_TOKEN_LOG_LOOKBACK_DAYS)
+            start_time = dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            logs = client.get_caa_activities(
+                self.customer_id,
+                start_time=start_time,
+                max_items=self._get_max_log_events(),
+            )
+            self._propagate_client_errors(client)
+            logger.info("Collected %d CAA events", len(logs))
+            return logs
+        except Exception as e:
+            self._record_error("get_caa_activities", e)
+            return []
+
     def _get_usage_reports(self) -> list:
         """Fetch usage reports."""
         try:
@@ -431,39 +458,38 @@ class Provider:
     # license_tier_key matches keys in constants.LICENSE_TIERS so the
     # primary edition can be resolved by capability tier.
     #
-    # Sources:
-    #   https://developers.google.com/admin-sdk/licensing/v1/how-tos/products
-    #   https://support.google.com/a/answer/6043385  (SKU IDs)
+    # Source: https://developers.google.com/workspace/admin/licensing/v1/how-tos/products
+    # (Google's authoritative SKU reference; last cross-checked 2026-05-17)
     _GWS_PRODUCT_IDS = ("Google-Apps", "Google-Apps-For-Education")
     _SKU_EDITION_MAP: dict[str, tuple[str, str]] = {
         # --- Legacy G Suite (Google-Apps product) ---
         "Google-Apps-Lite":         ("Business Starter (Legacy)", "business_starter"),
         "Google-Apps-For-Business": ("Business (Legacy)",          "business_standard"),
         "Google-Apps-Unlimited":    ("Business Plus (Legacy)",     "business_plus"),
-        # --- Google Workspace (Google-Apps product, 1010020xxx range) ---
-        "1010020020": ("Google Workspace Business Plus",            "business_plus"),
-        "1010020025": ("Google Workspace Enterprise Plus",          "enterprise_plus"),
-        "1010020026": ("Google Workspace Enterprise Essentials",    "enterprise_essentials"),
-        "1010020027": ("Google Workspace Enterprise Standard",      "enterprise_standard"),
-        "1010020028": ("Google Workspace Enterprise Essentials Plus", "enterprise_essentials_plus"),
-        "1010020029": ("Google Workspace Frontline Starter",        "frontline_starter"),
-        "1010020030": ("Google Workspace Business Starter",         "business_starter"),
-        "1010020031": ("Google Workspace Business Standard",        "business_standard"),
-        "1010020033": ("Google Workspace Enterprise Starter",       "enterprise_starter"),
-        # --- Frontline (Google-Apps product, 1010310xxx range) ---
-        "1010310002": ("Google Workspace Frontline Starter",        "frontline_starter"),
-        "1010310005": ("Google Workspace Frontline Standard",       "frontline_standard"),
-        "1010310006": ("Google Workspace Frontline Plus",           "frontline_plus"),
-        # --- Essentials (Google-Apps product, 1010060xxx range) ---
-        "1010060001": ("Google Workspace Essentials",               "enterprise_essentials"),
-        "1010060003": ("Google Workspace Essentials Starter",       "essentials_starter"),
+        # --- Google Workspace core editions (Google-Apps product, 1010020xxx) ---
+        "1010020020": ("Google Workspace Enterprise Plus",        "enterprise_plus"),
+        "1010020025": ("Google Workspace Business Plus",          "business_plus"),
+        "1010020026": ("Google Workspace Enterprise Standard",    "enterprise_standard"),
+        "1010020027": ("Google Workspace Business Starter",       "business_starter"),
+        "1010020028": ("Google Workspace Business Standard",      "business_standard"),
+        "1010020029": ("Google Workspace Enterprise Starter",     "enterprise_starter"),
+        "1010020030": ("Google Workspace Frontline Starter",      "frontline_starter"),
+        "1010020031": ("Google Workspace Frontline Standard",     "frontline_standard"),
+        "1010020034": ("Google Workspace Frontline Plus",         "frontline_plus"),
+        # --- Add-on / continuity SKUs (no tier_key — never drive primary edition) ---
+        "1010020035": ("Google Workspace Business Continuity",      ""),
+        "1010020036": ("Google Workspace Business Continuity Plus", ""),
+        # --- Essentials (Google-Apps product, 1010060xxx) ---
+        "1010060001": ("Google Workspace Essentials",                "essentials_starter"),
+        "1010060003": ("Google Workspace Enterprise Essentials",     "enterprise_essentials"),
+        "1010060005": ("Google Workspace Enterprise Essentials Plus","enterprise_essentials_plus"),
         # --- Education (Google-Apps-For-Education product) ---
         "1010310003": ("Google Workspace for Education Plus",                  "education_plus"),
         "1010310008": ("Google Workspace for Education Teaching & Learning",   "education_teaching_&_learning"),
         "1010310009": ("Google Workspace for Education Fundamentals",          "education_fundamentals"),
         "1010310010": ("Google Workspace for Education Standard",              "education_standard"),
         # --- Cloud Identity (informational; not a Workspace edition) ---
-        "1010050000": ("Cloud Identity Free",                       ""),
+        "1010010001": ("Cloud Identity",                            ""),
         "1010050001": ("Cloud Identity Premium",                    ""),
     }
 
@@ -1193,6 +1219,7 @@ def normalize_data(data: dict) -> dict:
     data["admin_logs"] = _normalize_activity_logs(data.get("admin_logs", []))
     data["login_logs"] = _normalize_activity_logs(data.get("login_logs", []))
     data["token_logs"] = _normalize_activity_logs(data.get("token_logs", []))
+    data["caa_events"] = _normalize_activity_logs(data.get("caa_events", []))
     data["dns_records"] = _normalize_dns_records(data.get("dns_records", {}))
     # Ensure new data keys have safe defaults
     data.setdefault("group_members", {})
