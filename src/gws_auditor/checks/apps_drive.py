@@ -38,7 +38,7 @@ def check_drive_external_sharing_warning(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -113,7 +113,7 @@ def check_drive_public_publishing(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -188,7 +188,7 @@ def check_drive_domain_allowlist(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -275,7 +275,7 @@ def check_drive_allowlist_warning(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -353,7 +353,7 @@ def check_drive_access_checker(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -431,7 +431,7 @@ def check_drive_external_distribution(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -510,7 +510,7 @@ def check_shared_drive_creation(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation")
+    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -570,7 +570,7 @@ def check_shared_drive_creation(data: dict) -> CheckResult:
         "Sharing settings > Shared drive creation. "
         "Disable 'Allow managers to override settings below'. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     ),
-    requires_license="business_starter",
+    requires_license="business_standard",
 )
 def check_shared_drive_manager_override(data: dict) -> CheckResult:
     """Shared Drive managers should not be able to override sharing settings."""
@@ -587,7 +587,7 @@ def check_shared_drive_manager_override(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation")
+    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -647,7 +647,7 @@ def check_shared_drive_manager_override(data: dict) -> CheckResult:
         "Sharing settings > Shared drive creation. "
         "Restrict access to shared drive members only. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     ),
-    requires_license="business_starter",
+    requires_license="business_standard",
 )
 def check_shared_drive_member_access(data: dict) -> CheckResult:
     """Shared drive content should only be accessible to members."""
@@ -664,7 +664,7 @@ def check_shared_drive_member_access(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation")
+    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -724,7 +724,7 @@ def check_shared_drive_member_access(data: dict) -> CheckResult:
         "Sharing settings > Shared drive creation. "
         "Disable download, print, and copy for viewers and commenters. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     ),
-    requires_license="business_starter",
+    requires_license="business_standard",
 )
 def check_shared_drive_viewer_restrictions(data: dict) -> CheckResult:
     """Viewers and commenters should be prevented from downloading, printing, or copying."""
@@ -742,7 +742,7 @@ def check_shared_drive_viewer_restrictions(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation")
+    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -896,7 +896,7 @@ def check_drive_desktop_access(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "drive_for_desktop")
+    ou_values = get_ou_values(drive, "drive_for_desktop", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -972,7 +972,7 @@ def check_drive_sdk(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "drive_sdk")
+    ou_values = get_ou_values(drive, "drive_sdk", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:

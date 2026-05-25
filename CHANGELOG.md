@@ -5,6 +5,40 @@ All notable changes to GWS Security Auditor will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-24
+
+### Added
+
+- **`PARTIAL` check status** -- New status for controls that are partly compliant (e.g., 2SV policy enforced at every OU but a small slice of users not yet enrolled). `PARTIAL` contributes half-credit to the pass rate numerator (`PASS=1, PARTIAL=0.5, FAIL/WARN=0`). `AuditSummary` tracks it as a dedicated counter, and the HTML report renders an orange badge in both light and dark themes.
+- **`make_partial()` helper** -- Builder function paralleling `make_pass`, `make_fail`, etc., for checks that need to express partial compliance across OUs or user populations.
+- **`evaluate_ous()` utility** -- Partitions per-OU policy entries into safe / unsafe / exception / default buckets using a caller-supplied predicate. Supports external-sharing exception OUs via `is_external_sharing_ou()` (configurable patterns in `config.options.external_sharing_ous`). Ready for adoption across checks.
+- **`is_admin_configured()` / `is_external_sharing_ou()` helpers** -- `is_admin_configured()` is the inverse of `is_default_policy()`. `is_external_sharing_ou()` identifies intentional exception OUs by name patterns (e.g. `*External*`, `*Contractors*`, `*Vendors*`), with tenant-level overrides.
+- **DKIM multi-selector probing** -- `DNSClient.check_dkim()` now tries 11 common selectors (`google`, `google2025`, `selector1`, `selector2`, `default`, `k1`, `mail`, `s1`, `s2`, etc.) when no explicit selector is given. The first match with `p=` wins. Response includes `selectors_tried` for auditability.
+- **DMARC organisational-domain fallback** -- `DNSClient.check_dmarc()` walks up the domain hierarchy per RFC 7489 §6.6.3 when no record exists at the queried FQDN. Reports `inherited_from` (the parent domain whose record matched) and `subdomain_policy` (the `sp=` tag, defaulting to `p=` per the RFC).
+- **`tier_keys_present` in subscription info** -- `_get_subscription_info()` now returns all distinct license tier keys found across SKU assignments, enabling mixed-edition tenant handling.
+- **Provider mapping improvements**:
+  - Gmail content-compliance rules exposed as `content_compliance_rules` for DLP checks.
+  - Inbound gateway detection handles explicit empty IP allowlists (no gateway) vs populated lists (gateway configured).
+  - Drive external-file warning (`highlightingEnabled`) mapped to `sharing_settings.out_of_domain_warning_enabled`.
+  - Drive SDK state also exposed as `features.add_ons_enabled`.
+  - Data processing region (`limitToStorageRegion`) mapped to `security.data_regions.processing_in_region`.
+  - Groups: `ownersCanAllowIncomingMailFromPublic`, `ownersCanHideGroups`, `newGroupsAreHidden`, and `viewTopicsDefaultAccessLevel` mapped and normalized.
+
+### Changed
+
+- **`admin_only=True` on all OU-aware checks** -- Every `get_ou_values()` call across calendar, chat, drive, gmail, groups, meet, CISA, and additional checks now passes `admin_only=True`, filtering out SYSTEM/DEFAULT policy entries. Eliminates false positives from unset defaults that previously appeared as violations.
+- **DMARC strict alignment downgraded to WARN** -- `GWS.GMAIL.4.3` now returns WARN instead of FAIL. Relaxed alignment is the RFC 7489 default and remains protocol-compliant; strict alignment is a hardening recommendation, not a compliance failure.
+- **`make_manual` → `make_review` for API-unexposed settings** -- 9 checks that returned `MANUAL` with generic "Could not determine…" messages now provide specific explanations (e.g., "Security Sandbox status is not exposed by the Cloud Identity Policy API — verify in Admin console"). Affected checks: ADD-02 (Security Sandbox), ADD-09 (Takeout), ADD-12 (Gmail DLP), CIS-4.2.2.1 (geo-blocking), CIS-4.2.3.1 (Drive DLP), GWS.COMMONCONTROLS.7.1 (conflicting accounts), GWS.COMMONCONTROLS.15.2 (data processing region), GWS.COMMONCONTROLS.18.2 (Chat DLP), GWS.COMMONCONTROLS.18.4 (DLP block external), GWS.DRIVEDOCS.1.9 (OOD warnings), GWS.DRIVEDOCS.5.1 (Drive Add-Ons), GWS.MEET.6.2 (auto-transcription).
+- **Shared Drive checks require `business_standard`** -- Three Shared Drive checks (CIS-3.1.2.3.1 manager override, CIS-3.1.2.3.2 member access, CIS-3.1.2.3.3 viewer restrictions) changed `requires_license` from `business_starter` to `business_standard`, matching actual feature availability.
+- **Mixed-edition license detection** -- `_check_license_sufficient()` now uses `tier_keys_present` to handle tenants with multiple SKU tiers. If ANY assigned SKU meets the check's requirement, the check runs. Unknown SKUs in mixed-tier environments are treated as ambiguous (check runs rather than skipping).
+- **Groups external access reworked** -- `GWS.GROUPS.1.1` now handles the real Policy API shape: `collaborationCapability` as the master toggle with `ownersCanAllowExternalMembers` as a refinement, plus legacy field fallback.
+- **MX record handling updated** -- `ADD-03` now handles both the new `{"mx": {"records": [...], "uses_google": bool}}` shape and the legacy flat list, trusting the `uses_google` flag when present.
+- **2SV check uses PARTIAL** -- `CIS-4.1.1.3` returns `PARTIAL` instead of `FAIL` when 2SV policy is enforced at every OU but <20% of users haven't enrolled yet (grace-period users, new hires).
+
+### Fixed
+
+- **Boolean logic false positives** -- Several OU-aware checks tested `if value is not False` (which treats `None` as unsafe). Changed to `if value is True` in: POP/IMAP access (`CIS-3.1.3.6.1`), spam bypass for internal senders (`GWS.GMAIL.18.3`), groups external posting (`GWS.GROUPS.4.1`), and groups directory hiding (`GWS.GROUPS.4.2`).
+
 ## [1.2.0] - 2026-05-17
 
 ### Added
@@ -109,6 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docker support** with Dockerfile and docker-compose.yml
 - **GitHub Actions workflow** for automated release builds
 
+[1.3.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.3.0
 [1.2.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.2.0
 [1.1.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.0.0

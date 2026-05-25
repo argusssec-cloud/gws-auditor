@@ -24,7 +24,8 @@ class TestCisaGmail:
         result = check_dmarc_strict_alignment(full_audit_data)
         assert result.status == Status.PASS
 
-    def test_dmarc_strict_alignment_fail(self, full_audit_data):
+    def test_dmarc_strict_alignment_warn_on_relaxed(self, full_audit_data):
+        """Relaxed alignment is RFC 7489 default → WARN (not FAIL)."""
         from gws_auditor.checks.cisa_scuba import check_dmarc_strict_alignment
         full_audit_data["dns_records"] = {
             "example.com": {
@@ -37,7 +38,7 @@ class TestCisaGmail:
         }
         full_audit_data["domains"] = [{"domainName": "example.com"}]
         result = check_dmarc_strict_alignment(full_audit_data)
-        assert result.status == Status.FAIL
+        assert result.status == Status.WARN
 
     def test_dmarc_reporting_pass(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_dmarc_reporting

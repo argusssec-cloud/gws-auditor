@@ -374,11 +374,14 @@ def check_geo_blocking(data: dict) -> CheckResult:
         )
 
     if geo_blocking is None:
-        return make_manual(
+        return make_review(
             check_id="CIS-4.2.2.1",
             title="Ensure geo-blocking is configured",
             level="L2", source="CIS", section="Access Control",
-            details="Could not determine geo-blocking configuration.",
+            details=(
+                "Context-Aware Access policies are not exposed by the "
+                "Cloud Identity Policy API — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Security > Context-aware access. "
                 "Configure access levels to restrict sign-ins from "
@@ -461,11 +464,14 @@ def check_drive_dlp(data: dict) -> CheckResult:
         )
 
     if drive_dlp_enabled is None:
-        return make_manual(
+        return make_review(
             check_id="CIS-4.2.3.1",
             title="Ensure DLP policies are configured for Drive",
             level="L1", source="CIS", section="Access Control",
-            details="Could not determine DLP configuration for Drive.",
+            details=(
+                "DLP rules are not exposed by the Cloud Identity Policy API — "
+                "verify Drive DLP coverage in Admin console."
+            ),
             remediation=(
                 "Admin console > Security > Data protection > Manage rules. "
                 "Create DLP rules to detect and protect sensitive data in Drive. https://knowledge.workspace.google.com/admin/security/create-dlp-for-drive-rules-and-custom-content-detectors"

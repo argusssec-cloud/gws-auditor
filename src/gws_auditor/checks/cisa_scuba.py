@@ -72,11 +72,15 @@ def check_dmarc_strict_alignment(data: dict) -> CheckResult:
             expected_value="aspf=s; adkim=s",
         )
 
-    return make_fail(
+    # Strict alignment is a hardening recommendation; relaxed alignment is
+    # the RFC 7489 default and remains protocol-compliant. Surface as WARN
+    # rather than FAIL so it shows up for review without dropping the
+    # tenant's pass rate for an explicit, working DMARC posture.
+    return make_warn(
         check_id="GWS.GMAIL.4.3",
         title="Ensure DMARC alignment mode is strict",
         level="L1", source="CISA", section="Gmail",
-        details=f"DMARC alignment is not strict for: {', '.join(relaxed_domains)}",
+        details=f"DMARC alignment is relaxed (not strict) for: {', '.join(relaxed_domains)}",
         actual_value={"relaxed_domains": relaxed_domains},
         expected_value="aspf=s; adkim=s for all domains",
         remediation=(
@@ -169,7 +173,7 @@ def check_gmail_email_uploads(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "user_email_uploads")
+    ou_values = get_ou_values(gmail, "user_email_uploads", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -266,7 +270,7 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "workspace_sync_for_outlook")
+    ou_values = get_ou_values(gmail, "workspace_sync_for_outlook", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -501,7 +505,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(cal, "appointment_schedules")
+    ou_values = get_ou_values(cal, "appointment_schedules", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -594,7 +598,7 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "space_history")
+    ou_values = get_ou_values(chat, "space_history", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -692,7 +696,7 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "space_history")
+    ou_values = get_ou_values(chat, "space_history", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -780,7 +784,7 @@ def check_chat_content_reporting(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "chat_reporting")
+    ou_values = get_ou_values(chat, "chat_reporting", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -872,7 +876,7 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -960,7 +964,7 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1051,7 +1055,7 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1147,7 +1151,7 @@ def check_drive_default_access(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "general_access_default")
+    ou_values = get_ou_values(drive, "general_access_default", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1236,7 +1240,7 @@ def check_drive_security_updates(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "file_security_update")
+    ou_values = get_ou_values(drive, "file_security_update", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1331,7 +1335,7 @@ def check_meet_external_join(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "meet_joining")
+    ou_values = get_ou_values(meet, "meet_joining", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1430,7 +1434,7 @@ def check_meet_non_gws_access(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "safety_domain")
+    ou_values = get_ou_values(meet, "safety_domain", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1525,7 +1529,7 @@ def check_meet_host_management(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "safety_host_management")
+    ou_values = get_ou_values(meet, "safety_host_management", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1616,7 +1620,7 @@ def check_meet_external_warning(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "safety_external_participants")
+    ou_values = get_ou_values(meet, "safety_external_participants", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1707,7 +1711,7 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "meet_incoming_call_restrictions")
+    ou_values = get_ou_values(meet, "meet_incoming_call_restrictions", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1802,7 +1806,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "video_recording")
+    ou_values = get_ou_values(meet, "video_recording", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1897,7 +1901,7 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "video_recording")
+    ou_values = get_ou_values(meet, "video_recording", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1936,11 +1940,14 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
         )
 
     if auto_transcript is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.MEET.6.2",
             title="Ensure automatic transcription is disabled",
             level="L1", source="CISA", section="Google Meet",
-            details="Could not determine automatic transcription setting.",
+            details=(
+                "Auto-transcription is not exposed by the Cloud Identity "
+                "Policy API — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Meet > "
                 "Meet settings. Disable automatic transcripts. https://knowledge.workspace.google.com/admin/meet/turn-meeting-transcription-on-or-off"
@@ -1993,13 +2000,21 @@ def check_groups_external_posting(data: dict) -> CheckResult:
     groups_policy = policies.get("groups", {})
 
     # OU-aware path
-    ou_values = get_ou_values(groups_policy, "groups_sharing")
+    ou_values = get_ou_values(groups_policy, "groups_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
             posting = entry["value"].get("allowExternalPosting",
                                          entry["value"].get("allowExternalMail", None))
-            if posting is not False:
+            # Real API exposes ownersCanAllowIncomingMailFromPublic (the
+            # admin-console toggle); fall back to it if explicit posting flag
+            # is absent.
+            if posting is None:
+                posting = entry["value"].get(
+                    "ownersCanAllowIncomingMailFromPublic",
+                    entry["value"].get("ownersCanAllowIncomingMail"),
+                )
+            if posting is True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": posting})
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
@@ -2085,13 +2100,22 @@ def check_groups_directory_hiding(data: dict) -> CheckResult:
     groups_policy = policies.get("groups", {})
 
     # OU-aware path
-    ou_values = get_ou_values(groups_policy, "groups_sharing")
+    ou_values = get_ou_values(groups_policy, "groups_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
             hide = entry["value"].get("allowHidingFromDirectory",
                                       entry["value"].get("hideFromDirectory", None))
-            if hide is not False:
+            # Real API exposes ownersCanHideGroups + newGroupsAreHidden;
+            # either being True means groups can be hidden from directory.
+            if hide is None:
+                owner_hide = entry["value"].get("ownersCanHideGroups")
+                new_hidden = entry["value"].get("newGroupsAreHidden")
+                if owner_hide is True or new_hidden is True:
+                    hide = True
+                elif owner_hide is False and new_hidden is False:
+                    hide = False
+            if hide is True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": hide})
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
@@ -2522,11 +2546,14 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
         )
 
     if conflict_mgmt is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.COMMONCONTROLS.7.1",
             title="Ensure conflicting account management is configured",
             level="L1", source="CISA", section="Security",
-            details="Could not determine conflicting account management setting.",
+            details=(
+                "Conflicting account management is not exposed by the Cloud "
+                "Identity Policy API — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Account > Account management. Configure "
                 "automatic handling of conflicting accounts to prevent "

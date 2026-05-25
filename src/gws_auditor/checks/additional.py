@@ -55,11 +55,14 @@ def check_security_sandbox(data: dict) -> CheckResult:
         )
 
     if sandbox_enabled is None:
-        return make_manual(
+        return make_review(
             check_id="ADD-02",
             title="Ensure Security Sandbox is enabled for Gmail",
             level="L1", source="OTHER", section="Gmail",
-            details="Could not determine Security Sandbox setting.",
+            details=(
+                "Security Sandbox status is not exposed by the Cloud Identity "
+                "Policy API — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Gmail > Safety > "
                 "Security Sandbox. Enable Security Sandbox to scan attachments "
@@ -113,12 +116,29 @@ def check_mx_records(data: dict) -> CheckResult:
     for domain in domains:
         domain_name = domain if isinstance(domain, str) else domain.get("domainName", domain.get("domain_name", ""))
         domain_dns = dns_records.get(domain_name, {})
-        mx_records = domain_dns.get("mx", [])
+        # The DNS client returns {"mx": {"records": [...], "uses_google": bool}}
+        # in current versions, but older caches may store the records list
+        # directly under "mx". Handle both shapes.
+        mx_data = domain_dns.get("mx", [])
+        if isinstance(mx_data, dict):
+            uses_google = mx_data.get("uses_google")
+            mx_records = mx_data.get("records", [])
+        else:
+            uses_google = None
+            mx_records = mx_data
 
         if not mx_records:
             non_google_mx.append(f"{domain_name} (no MX records)")
             continue
 
+        # Trust the DNSClient.uses_google flag when present.
+        if uses_google is True:
+            continue
+        if uses_google is False:
+            non_google_mx.append(domain_name)
+            continue
+
+        # Legacy cache: re-derive from host strings.
         has_google_mx = False
         for mx in mx_records:
             mx_host = mx.get("host", "").lower() if isinstance(mx, dict) else str(mx).lower()
@@ -383,11 +403,14 @@ def check_takeout_restriction(data: dict) -> CheckResult:
         )
 
     if takeout_enabled is None:
-        return make_manual(
+        return make_review(
             check_id="ADD-09",
             title="Ensure Google Takeout is restricted",
             level="L1", source="GOOGLE", section="Security",
-            details="Could not determine Google Takeout restriction setting.",
+            details=(
+                "Takeout availability is not exposed by the Cloud Identity "
+                "Policy API — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Account > Data sharing > Google Takeout. "
                 "Disable Google Takeout to prevent users from bulk-exporting "
@@ -515,11 +538,14 @@ def check_gmail_dlp(data: dict) -> CheckResult:
         )
 
     if gmail_dlp_enabled is None and total_rules == 0:
-        return make_manual(
+        return make_review(
             check_id="ADD-12",
             title="Ensure DLP rules are configured for Gmail",
             level="L1", source="GOOGLE", section="Gmail",
-            details="Could not determine Gmail DLP configuration.",
+            details=(
+                "Gmail DLP rules are not exposed by the Cloud Identity Policy "
+                "API — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Security > Data protection > Manage rules. "
                 "Create DLP rules for Gmail to detect and prevent sensitive "

@@ -127,7 +127,7 @@ def check_groups_creation_restriction(data: dict) -> CheckResult:
     groups_policy = policies.get("groups", {})
 
     # OU-aware path
-    ou_values = get_ou_values(groups_policy, "groups_sharing")
+    ou_values = get_ou_values(groups_policy, "groups_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:

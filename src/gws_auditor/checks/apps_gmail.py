@@ -40,7 +40,7 @@ def check_gmail_mail_delegation(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "mail_delegation")
+    ou_values = get_ou_values(gmail, "mail_delegation", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -447,7 +447,7 @@ def check_gmail_encrypted_attachment(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "email_attachment_safety")
+    ou_values = get_ou_values(gmail, "email_attachment_safety", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -521,7 +521,7 @@ def check_gmail_script_attachment(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "email_attachment_safety")
+    ou_values = get_ou_values(gmail, "email_attachment_safety", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -595,7 +595,7 @@ def check_gmail_anomalous_attachment(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "email_attachment_safety")
+    ou_values = get_ou_values(gmail, "email_attachment_safety", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -673,7 +673,7 @@ def check_gmail_shortened_urls(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "links_and_external_images")
+    ou_values = get_ou_values(gmail, "links_and_external_images", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -747,7 +747,7 @@ def check_gmail_linked_image_scanning(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "links_and_external_images")
+    ou_values = get_ou_values(gmail, "links_and_external_images", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -823,7 +823,7 @@ def check_gmail_untrusted_link_warning(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "links_and_external_images")
+    ou_values = get_ou_values(gmail, "links_and_external_images", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -903,7 +903,7 @@ def check_gmail_domain_spoofing(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -979,7 +979,7 @@ def check_gmail_employee_spoofing(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1055,7 +1055,7 @@ def check_gmail_inbound_spoofing(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1129,7 +1129,7 @@ def check_gmail_unauthenticated_email(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1205,7 +1205,7 @@ def check_gmail_groups_spoofing(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1283,15 +1283,15 @@ def check_gmail_pop_imap(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path: check both pop_access and imap_access settings
-    pop_ou_values = get_ou_values(gmail, "pop_access")
-    imap_ou_values = get_ou_values(gmail, "imap_access")
+    pop_ou_values = get_ou_values(gmail, "pop_access", admin_only=True)
+    imap_ou_values = get_ou_values(gmail, "imap_access", admin_only=True)
     if pop_ou_values or imap_ou_values:
         unsafe_ous = []
         # Check POP across OUs
         for entry in pop_ou_values:
             pop_enabled = entry["value"].get("enablePopAccess",
                             entry["value"].get("enablePop3Access", None))
-            if pop_enabled is not False:
+            if pop_enabled is True:
                 unsafe_ous.append({
                     "org_unit": entry["org_unit"],
                     "value": f"POP={pop_enabled}",
@@ -1299,7 +1299,7 @@ def check_gmail_pop_imap(data: dict) -> CheckResult:
         # Check IMAP across OUs
         for entry in imap_ou_values:
             imap_enabled = entry["value"].get("enableImapAccess", None)
-            if imap_enabled is not False:
+            if imap_enabled is True:
                 # Avoid duplicate OU entries; append IMAP info
                 existing = next(
                     (u for u in unsafe_ous if u["org_unit"] == entry["org_unit"]),
@@ -1387,7 +1387,7 @@ def check_gmail_auto_forwarding(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "auto_forwarding")
+    ou_values = get_ou_values(gmail, "auto_forwarding", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1461,7 +1461,7 @@ def check_gmail_outbound_gateway(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "per_user_outbound_gateway")
+    ou_values = get_ou_values(gmail, "per_user_outbound_gateway", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1600,7 +1600,7 @@ def check_gmail_predelivery_scanning(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "enhanced_pre_delivery_message_scanning")
+    ou_values = get_ou_values(gmail, "enhanced_pre_delivery_message_scanning", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1745,7 +1745,7 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "comprehensive_mail_storage")
+    ou_values = get_ou_values(gmail, "comprehensive_mail_storage", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:

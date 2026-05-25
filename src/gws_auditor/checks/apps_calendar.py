@@ -44,7 +44,9 @@ def check_primary_cal_external_sharing(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(cal, "primary_calendar_max_allowed_external_sharing")
+    ou_values = get_ou_values(
+        cal, "primary_calendar_max_allowed_external_sharing", admin_only=True,
+    )
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -118,7 +120,9 @@ def check_primary_cal_internal_sharing(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(cal, "primary_calendar_max_allowed_internal_sharing")
+    ou_values = get_ou_values(
+        cal, "primary_calendar_max_allowed_internal_sharing", admin_only=True,
+    )
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -214,7 +218,7 @@ def check_cal_external_invitation_warning(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(cal, "external_invitations")
+    ou_values = get_ou_values(cal, "external_invitations", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -290,7 +294,9 @@ def check_secondary_cal_external_sharing(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(cal, "secondary_calendar_max_allowed_external_sharing")
+    ou_values = get_ou_values(
+        cal, "secondary_calendar_max_allowed_external_sharing", admin_only=True,
+    )
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -364,7 +370,9 @@ def check_secondary_cal_internal_sharing(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(cal, "secondary_calendar_max_allowed_internal_sharing")
+    ou_values = get_ou_values(
+        cal, "secondary_calendar_max_allowed_internal_sharing", admin_only=True,
+    )
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:

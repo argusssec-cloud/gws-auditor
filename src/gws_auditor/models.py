@@ -14,6 +14,7 @@ class Status(Enum):
     PASS = "PASS"
     FAIL = "FAIL"
     WARN = "WARN"
+    PARTIAL = "PARTIAL"
     ERROR = "ERROR"
     MANUAL = "MANUAL"
     NOT_APPLICABLE = "NOT_APPLICABLE"
@@ -76,6 +77,7 @@ class AuditSummary:
     passed: int = 0
     failed: int = 0
     warnings: int = 0
+    partial: int = 0
     errors: int = 0
     manual: int = 0
     not_applicable: int = 0
@@ -85,13 +87,15 @@ class AuditSummary:
 
     @property
     def pass_rate(self) -> float:
-        # Denominator includes PASS, FAIL, and WARN (soft failures).
+        # Denominator includes PASS, FAIL, WARN, and PARTIAL (soft failures).
         # ERROR, MANUAL, and NOT_APPLICABLE are excluded because they
-        # represent checks that could not be evaluated.
-        evaluated = self.passed + self.failed + self.warnings
+        # represent checks that could not be evaluated. PARTIAL contributes
+        # half-credit to the numerator.
+        evaluated = self.passed + self.failed + self.warnings + self.partial
         if evaluated == 0:
             return 0.0
-        return (self.passed / evaluated) * 100
+        credited = self.passed + (self.partial * 0.5)
+        return (credited / evaluated) * 100
 
     @classmethod
     def from_results(cls, results: list["CheckResult"]) -> "AuditSummary":
@@ -105,6 +109,8 @@ class AuditSummary:
                     summary.critical_failed += 1
             elif r.status == Status.WARN:
                 summary.warnings += 1
+            elif r.status == Status.PARTIAL:
+                summary.partial += 1
             elif r.status == Status.ERROR:
                 summary.errors += 1
             elif r.status == Status.MANUAL:

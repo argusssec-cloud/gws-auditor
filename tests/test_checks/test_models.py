@@ -37,6 +37,17 @@ class TestAuditSummary:
         # pass_rate = passed / (passed + failed + warnings) = 1/3 ≈ 33.3%
         assert round(summary.pass_rate, 1) == 33.3
 
+    def test_partial_status_counted(self):
+        results = [
+            CheckResult(check_id="T-1", title="t", status=Status.PASS),
+            CheckResult(check_id="T-2", title="t", status=Status.PARTIAL),
+            CheckResult(check_id="T-3", title="t", status=Status.FAIL),
+        ]
+        summary = AuditSummary.from_results(results)
+        assert summary.partial == 1
+        # Numerator: 1 PASS + 0.5 PARTIAL = 1.5; Denominator: 3 → 50%
+        assert round(summary.pass_rate, 1) == 50.0
+
     def test_from_results_empty(self):
         summary = AuditSummary.from_results([])
         assert summary.total == 0

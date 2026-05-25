@@ -7,7 +7,10 @@
 CIS Google Workspace Benchmark v1.3.0 - Authentication and security controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, get_ou_values
+from .base import (
+    check, make_pass, make_fail, make_warn, make_manual, make_partial,
+    get_ou_values,
+)
 from ..models import CheckResult, Status
 
 
@@ -277,6 +280,27 @@ def check_2sv_all_users(data: dict) -> CheckResult:
                 details_parts.append(
                     f"{len(users_without_2sv)} user(s) not enrolled: "
                     f"{', '.join(users_without_2sv[:5])}"
+                )
+            # PARTIAL when policy enforces 2SV at every OU but a small slice
+            # of users haven't enrolled yet (new hires in grace period,
+            # service accounts, etc.). Pure user-level lag without policy
+            # gaps is "compliance in some users" — credit the partial state.
+            total_users = max(len(users), 1)
+            user_lag_only = (
+                not unsafe_ous and users_without_2sv
+                and len(users_without_2sv) / total_users < 0.20
+            )
+            if user_lag_only:
+                return make_partial(
+                    check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                    details="; ".join(details_parts),
+                    actual_value={
+                        "unsafe_ous": unsafe_ous,
+                        "not_enrolled_count": len(users_without_2sv),
+                        "total": total_users,
+                    },
+                    expected_value="2SV enforced for all OUs and all users enrolled",
+                    remediation=_REMED,
                 )
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,

@@ -7,7 +7,7 @@
 Only checks NOT already covered by CIS/OTHER/GOOGLE or the main cisa_scuba module.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, get_ou_values, is_default_policy
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, is_default_policy
 from ..models import CheckResult, Status
 
 
@@ -157,7 +157,7 @@ def check_flagged_email_action(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spam_override_lists")
+    ou_values = get_ou_values(gmail, "spam_override_lists", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -248,7 +248,7 @@ def check_spam_approved_senders_domains(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spam_override_lists")
+    ou_values = get_ou_values(gmail, "spam_override_lists", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -341,7 +341,7 @@ def check_spam_domains_bypass_hide_warnings(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spam_override_lists")
+    ou_values = get_ou_values(gmail, "spam_override_lists", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -434,13 +434,13 @@ def check_spam_bypass_internal(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spam_override_lists")
+    ou_values = get_ou_values(gmail, "spam_override_lists", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
             bypass = entry["value"].get("bypassSpamFiltersForInternal",
                                          entry["value"].get("bypass_internal", None))
-            if bypass is not False:
+            if bypass is True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": bypass})
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
@@ -531,7 +531,7 @@ def check_drive_external_sharing_warning(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -625,7 +625,7 @@ def check_drive_access_checker(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -717,7 +717,7 @@ def check_drive_external_upload(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing")
+    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -811,7 +811,7 @@ def check_drive_ood_warning(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path — check external_file_warning setting
-    ou_values = get_ou_values(drive, "external_file_warning")
+    ou_values = get_ou_values(drive, "external_file_warning", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -849,11 +849,14 @@ def check_drive_ood_warning(data: dict) -> CheckResult:
         )
 
     if ood_warning is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.DRIVEDOCS.1.9",
             title="Ensure out-of-domain file-level warnings are enabled",
             level="L1", source="CISA", section="Drive and Docs",
-            details="Could not determine out-of-domain warning setting.",
+            details=(
+                "External-file warning state is not exposed by the Cloud "
+                "Identity Policy API — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Drive and Docs > "
                 "Sharing settings. Enable out-of-domain warnings for files. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
@@ -903,7 +906,7 @@ def check_drive_manager_override(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation")
+    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -996,7 +999,7 @@ def check_drive_non_member_access(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation")
+    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1087,7 +1090,7 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "drive_sdk")
+    ou_values = get_ou_values(drive, "drive_sdk", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1128,11 +1131,14 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
         )
 
     if add_ons_enabled is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.DRIVEDOCS.5.1",
             title="Ensure Google Drive Add-Ons are disabled",
             level="L1", source="CISA", section="Drive and Docs",
-            details="Could not determine Google Drive Add-Ons setting.",
+            details=(
+                "Drive Add-Ons availability is not exposed by the Cloud "
+                "Identity Policy API — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Drive and Docs > "
                 "Features and Applications. Disable Google Drive Add-Ons. https://knowledge.workspace.google.com/admin/drive/allow-third-party-apps-for-drive-files"
@@ -1182,7 +1188,7 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "drive_for_desktop")
+    ou_values = get_ou_values(drive, "drive_for_desktop", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1298,7 +1304,7 @@ def check_chat_space_history(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "space_history")
+    ou_values = get_ou_values(chat, "space_history", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1397,7 +1403,7 @@ def check_chat_reporting_categories(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "chat_reporting")
+    ou_values = get_ou_values(chat, "chat_reporting", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1576,17 +1582,28 @@ def check_groups_external_access_default(data: dict) -> CheckResult:
     groups_policy = policies.get("groups", {})
 
     # OU-aware path
-    ou_values = get_ou_values(groups_policy, "groups_sharing")
+    ou_values = get_ou_values(groups_policy, "groups_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            # Check both ownersCanAllowExternalMembers (API field) and legacy names
-            val = entry["value"].get("ownersCanAllowExternalMembers",
-                                      entry["value"].get("externalAccessDefault",
-                                      entry["value"].get("external_access_default", None)))
-            # ownersCanAllowExternalMembers=false means external access disabled
-            if val not in ("disabled", False, "DISABLED"):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
+            v = entry["value"]
+            # Real API exposes collaborationCapability as the master toggle
+            # (DOMAIN_USERS_ONLY = safe; ANYONE_CAN_ACCESS / external = unsafe).
+            # ownersCanAllowExternalMembers further refines it.
+            collab = v.get("collaborationCapability", "")
+            owners_external = v.get("ownersCanAllowExternalMembers")
+            legacy = v.get("externalAccessDefault",
+                            v.get("external_access_default"))
+            if collab == "DOMAIN_USERS_ONLY" and owners_external is not True:
+                continue  # safe
+            if owners_external is False and not collab:
+                continue  # safe via legacy
+            if legacy in ("disabled", False, "DISABLED") and owners_external is not True:
+                continue  # safe via legacy
+            display = collab or owners_external if collab else (
+                owners_external if owners_external is not None else legacy
+            )
+            unsafe_ous.append({"org_unit": entry["org_unit"], "value": display})
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
             return make_fail(
@@ -1672,7 +1689,7 @@ def check_groups_external_members(data: dict) -> CheckResult:
     groups_policy = policies.get("groups", {})
 
     # OU-aware path
-    ou_values = get_ou_values(groups_policy, "groups_sharing")
+    ou_values = get_ou_values(groups_policy, "groups_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1772,7 +1789,7 @@ def check_groups_conversation_visibility(data: dict) -> CheckResult:
     groups_policy = policies.get("groups", {})
 
     # OU-aware path
-    ou_values = get_ou_values(groups_policy, "groups_sharing")
+    ou_values = get_ou_values(groups_policy, "groups_sharing", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:

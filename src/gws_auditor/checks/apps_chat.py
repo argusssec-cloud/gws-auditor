@@ -36,7 +36,7 @@ def check_chat_external_restriction(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path — check external_chat_restriction (1:1 external chat)
-    ou_values = get_ou_values(chat, "external_chat_restriction")
+    ou_values = get_ou_values(chat, "external_chat_restriction", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -135,7 +135,7 @@ def check_chat_app_installation(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "chat_apps_access")
+    ou_values = get_ou_values(chat, "chat_apps_access", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -225,7 +225,7 @@ def check_chat_webhooks(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "chat_apps_access")
+    ou_values = get_ou_values(chat, "chat_apps_access", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:

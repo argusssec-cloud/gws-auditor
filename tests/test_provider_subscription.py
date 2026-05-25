@@ -219,6 +219,11 @@ class TestGetSubscriptionInfo:
         assert sku_ids == ["1010020031", "1010020026"]
         assert info["skus"][0]["count"] == 950
         assert info["skus"][1]["count"] == 50
+        # tier_keys_present surfaces all distinct tiers for advisory checks.
+        assert info["tier_keys_present"] == [
+            "enterprise_standard", "frontline_standard",
+        ]
+        assert info["source"] == "licensing"
 
     def test_api_unavailable_returns_empty(self):
         """When the Licensing API errors out, returns empty edition gracefully."""
@@ -227,7 +232,11 @@ class TestGetSubscriptionInfo:
 
         info = prov._get_subscription_info()
 
-        assert info == {"edition": "", "tier_key": "", "skus": []}
+        assert info["edition"] == ""
+        assert info["tier_key"] == ""
+        assert info["skus"] == []
+        assert info["tier_keys_present"] == []
+        assert info["source"] == ""
 
     def test_education_product_consulted(self):
         """Education-only tenant is detected via Google-Apps-For-Education."""

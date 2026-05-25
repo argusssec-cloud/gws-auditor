@@ -593,7 +593,13 @@ class Provider:
         Falls back gracefully (empty edition) if the Licensing API is
         unavailable.
         """
-        result: dict = {"edition": "", "tier_key": "", "skus": []}
+        result: dict = {
+            "edition": "",
+            "tier_key": "",
+            "skus": [],
+            "tier_keys_present": [],
+            "source": "",
+        }
         sku_counts: Counter[str] = Counter()
 
         for product_id in self._GWS_PRODUCT_IDS:
@@ -613,6 +619,7 @@ class Provider:
 
         # Build per-SKU breakdown (sorted by count desc) for the report.
         breakdown = []
+        tier_keys_present: set[str] = set()
         for sku_id, count in sku_counts.most_common():
             label, tier_key = self._resolve_edition(sku_id)
             breakdown.append({
@@ -621,15 +628,20 @@ class Provider:
                 "tier_key": tier_key,
                 "count": count,
             })
+            if tier_key:
+                tier_keys_present.add(tier_key)
         result["skus"] = breakdown
+        result["tier_keys_present"] = sorted(tier_keys_present)
+        result["source"] = "licensing"
 
         edition, tier_key = self._pick_primary_edition(sku_counts)
         if edition:
             result["edition"] = edition
             result["tier_key"] = tier_key
             logger.info(
-                "Detected subscription: %s (from %d distinct SKU(s))",
+                "Detected subscription: %s (from %d distinct SKU(s); tiers present: %s)",
                 edition, len(sku_counts),
+                ", ".join(sorted(tier_keys_present)) or "none",
             )
         else:
             # Only Cloud Identity / unknown SKUs found — surface the most
@@ -1619,9 +1631,17 @@ def _map_gmail(policies: dict) -> None:
             gmail.setdefault("end_user_access", {})["workspace_sync_enabled"] = enabled
 
     # --- Content compliance → compliance ---
+    # The Policy API surfaces user-defined content-compliance rules under
+    # ``content_compliance.contentComplianceRules``. These rules implement
+    # Gmail DLP (and other content-routing logic), so expose the raw rule
+    # list to checks that look for DLP coverage.
     cc = gmail.get("content_compliance", {})
     if isinstance(cc, dict) and cc:
-        gmail.setdefault("compliance", {})["content_compliance_configured"] = True
+        comp = gmail.setdefault("compliance", {})
+        comp["content_compliance_configured"] = True
+        rules = cc.get("contentComplianceRules", cc.get("content_compliance_rules"))
+        if isinstance(rules, list):
+            comp["content_compliance_rules"] = rules
 
     # --- Spam override lists → spam_settings ---
     sol = gmail.get("spam_override_lists", {})
@@ -1636,9 +1656,18 @@ def _map_gmail(policies: dict) -> None:
             ss["domains_bypass_and_hide_warnings"] = bypass_domains
 
     # --- Email spam filter IP allowlist ---
+    # The Cloud Identity Policy API exposes inbound-gateway state via the
+    # spam-filter IP allowlist. A non-empty list means a gateway is in use;
+    # an explicit empty list means no gateway is configured (Google handles
+    # SPF directly). The reject-on-SPF-fail setting itself isn't exposed by
+    # this API — checks treat it as MANUAL when a gateway is configured.
     spf_al = gmail.get("email_spam_filter_ip_allowlist", {})
-    if isinstance(spf_al, dict) and spf_al:
-        gmail.setdefault("inbound_gateway", {})["configured"] = True
+    if isinstance(spf_al, dict):
+        ips = spf_al.get("allowedIpAddresses", spf_al.get("allowed_ip_addresses"))
+        if isinstance(ips, list):
+            gmail.setdefault("inbound_gateway", {})["configured"] = bool(ips)
+        elif spf_al:
+            gmail.setdefault("inbound_gateway", {})["configured"] = True
 
 
 def _map_drive(policies: dict) -> None:
@@ -1691,6 +1720,16 @@ def _map_drive(policies: dict) -> None:
         if allow_desktop is not None:
             feats["desktop_access_enabled"] = allow_desktop
             feats["desktop_allowed"] = allow_desktop  # alias for CISA checks
+
+    # --- External file warning → sharing_settings.out_of_domain_warning_enabled ---
+    # The Policy API surfaces this as ``external_file_warning.highlightingEnabled``.
+    efw = drive.get("external_file_warning", {})
+    if isinstance(efw, dict) and efw:
+        ood = efw.get("highlightingEnabled",
+                      efw.get("outOfDomainWarningEnabled",
+                              efw.get("out_of_domain_warning_enabled")))
+        if ood is not None:
+            drive.setdefault("sharing_settings", {})["out_of_domain_warning_enabled"] = ood
 
     # --- External sharing → sharing_settings ---
     es = drive.get("external_sharing", {})
@@ -1754,6 +1793,9 @@ def _map_drive(policies: dict) -> None:
             ss["default_link_sharing_access"] = default_access.lower()
 
     # --- Drive SDK → features ---
+    # The Policy API exposes Drive Add-Ons availability via
+    # ``drive_sdk.enableDriveSdkApiAccess``: when SDK access is on, third-party
+    # Drive Add-Ons (which install through the SDK surface) are available.
     sdk = drive.get("drive_sdk", {})
     if isinstance(sdk, dict) and sdk:
         enabled = sdk.get("enableDriveSdkApiAccess",
@@ -1761,6 +1803,7 @@ def _map_drive(policies: dict) -> None:
         if enabled is not None:
             feats = drive.setdefault("features", {})
             feats["drive_sdk_enabled"] = enabled
+            feats["add_ons_enabled"] = enabled
 
     # Flatten service_status dict to string
     ss_raw = drive.get("service_status")
@@ -2304,6 +2347,15 @@ def _map_data_regions(policies: dict) -> None:
         if val is not None:
             dr_out[key] = val
 
+    # Derive processing_in_region from data_processing_region.limitToStorageRegion
+    # (the Policy API exposes the toggle under the nested data_processing_region
+    # payload, but checks expect a flat boolean on security.data_regions).
+    dpr = dr.get("data_processing_region")
+    if isinstance(dpr, dict):
+        limit = dpr.get("limitToStorageRegion", dpr.get("limit_to_storage_region"))
+        if limit is not None:
+            dr_out["processing_in_region"] = bool(limit)
+
     # If data_regions has _ou_policies, propagate them so that
     # get_ou_values(security, "data_regions") finds per-OU data.
     ou_policies = dr.get("_ou_policies")
@@ -2405,6 +2457,37 @@ def _map_groups(policies: dict) -> None:
         hide = gs.get("allowHidingFromDirectory", gs.get("hideFromDirectory"))
         if hide is not None:
             groups["allow_hiding_from_directory"] = hide
+
+        # Owner-controlled toggles (CIS-3.1.6.3, GWS.GROUPS.4.1)
+        owner_incoming = gs.get(
+            "ownersCanAllowIncomingMailFromPublic",
+            gs.get("ownersCanAllowIncomingMail"),
+        )
+        if owner_incoming is not None:
+            groups["owners_can_allow_incoming_mail_from_public"] = owner_incoming
+        owner_hide = gs.get("ownersCanHideGroups")
+        if owner_hide is not None:
+            groups["owners_can_hide_groups"] = owner_hide
+        new_hidden = gs.get("newGroupsAreHidden")
+        if new_hidden is not None:
+            groups["new_groups_are_hidden"] = new_hidden
+        topic_view = gs.get("viewTopicsDefaultAccessLevel")
+        if topic_view:
+            normalized_view = topic_view.lower()
+            groups["view_topics_default_access_level"] = normalized_view
+            # Also surface as default_message_visibility when not already set
+            # so legacy CIS-3.1.6.3 logic can resolve it.
+            if not groups.get("default_message_visibility"):
+                _VIEW_MAP = {
+                    "group_members": "members_only",
+                    "managers_only": "private",
+                    "owners_only": "private",
+                    "anyone_can_view_topics": "public",
+                    "all_in_domain_can_view": "domain",
+                }
+                groups["default_message_visibility"] = _VIEW_MAP.get(
+                    normalized_view, normalized_view,
+                )
 
     # Flatten service_status dict to string
     ss = groups.get("service_status")

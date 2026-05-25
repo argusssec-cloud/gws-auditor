@@ -1234,11 +1234,14 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
         )
 
     if processing_in_region is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.COMMONCONTROLS.15.2",
             title="Ensure data is processed in the selected storage region",
             level="L2", source="CISA", section="Security",
-            details="Could not determine data processing region configuration.",
+            details=(
+                "Data processing region is not exposed by the Cloud Identity "
+                "Policy API for this tenant — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Account > Account settings > Data regions. "
                 "Ensure data processing is restricted to the selected "
@@ -1527,11 +1530,14 @@ def check_dlp_chat(data: dict) -> CheckResult:
         )
 
     if chat_rules is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.COMMONCONTROLS.18.2",
             title="Ensure DLP policy is configured for Google Chat",
             level="L1", source="CISA", section="Security",
-            details="Could not determine DLP configuration for Google Chat.",
+            details=(
+                "DLP rules are not exposed by the Cloud Identity Policy API — "
+                "verify Chat DLP coverage in Admin console."
+            ),
             remediation=(
                 "Admin console > Security > Data protection > Manage rules. "
                 "Create DLP rules for Google Chat to detect and prevent "
@@ -1717,11 +1723,14 @@ def check_dlp_block_external(data: dict) -> CheckResult:
         )
 
     if default_action is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.COMMONCONTROLS.18.4",
             title="Ensure DLP policies block external sharing",
             level="L1", source="CISA", section="Security",
-            details="Could not determine DLP default action configuration.",
+            details=(
+                "DLP rules are not exposed by the Cloud Identity Policy API — "
+                "verify the DLP default action in Admin console."
+            ),
             remediation=(
                 "Admin console > Security > Data protection > Manage rules. "
                 "Configure DLP rules with a default action of 'block' or "

@@ -1208,21 +1208,22 @@ class TestLicenseGating:
         assert result.status == Status.NOT_APPLICABLE
         assert "Business Standard" in result.details
 
-    def test_error_not_reclassified_on_enterprise_plus(self, full_audit_data):
-        """ERROR results should stay ERROR on Enterprise Plus (genuine API issue)."""
+    def test_manual_on_enterprise_plus(self, full_audit_data):
+        """When the tier supports the feature but the Policy API does not
+        expose it (e.g. Security Sandbox), the check returns MANUAL so an
+        admin can verify in the console rather than ERROR."""
         from gws_auditor.checks.additional import check_security_sandbox
         full_audit_data["subscription_type"] = "Enterprise Plus"
         result = check_security_sandbox(full_audit_data)
-        # On Enterprise Plus the check runs normally; with empty policy data
-        # it should return ERROR (not reclassified)
-        assert result.status == Status.ERROR
+        assert result.status == Status.MANUAL
 
-    def test_error_not_reclassified_when_license_unknown(self, full_audit_data):
-        """ERROR results should stay ERROR when license is unknown."""
+    def test_manual_when_license_unknown(self, full_audit_data):
+        """When the license is unknown, the check still runs and returns
+        MANUAL (verifiable in console) rather than ERROR."""
         from gws_auditor.checks.additional import check_security_sandbox
         full_audit_data["subscription_type"] = ""
         result = check_security_sandbox(full_audit_data)
-        assert result.status == Status.ERROR
+        assert result.status == Status.MANUAL
 
     def test_pass_not_reclassified(self, full_audit_data):
         """PASS results should not be affected by license gating."""
@@ -1232,8 +1233,8 @@ class TestLicenseGating:
             "security_sandbox_enabled": True,
         }
         result = check_security_sandbox(full_audit_data)
-        # Even on Business Starter, a PASS should stay PASS
-        assert result.status in (Status.PASS, Status.ERROR, Status.NOT_APPLICABLE)
+        # Even on Business Starter, a PASS should stay PASS (or NA if gated)
+        assert result.status in (Status.PASS, Status.MANUAL, Status.NOT_APPLICABLE)
 
     def test_subscription_info_fallback(self, full_audit_data):
         """subscription_info.edition should work as fallback."""

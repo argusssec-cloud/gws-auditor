@@ -4,6 +4,7 @@
 
 """Base check decorator and utilities for GWS Security Auditor."""
 
+import fnmatch
 import functools
 import logging
 import re
@@ -62,21 +63,46 @@ def _normalize_license(raw: str) -> str:
 
 
 def _check_license_sufficient(requires_license: str, data: dict) -> bool:
-    """Return True if the tenant license meets the requirement."""
+    """Return True if the tenant license meets the requirement.
+
+    Detection is *advisory*: when the answer is uncertain (unknown
+    edition, multiple distinct editions in the tenant, or any other
+    detection ambiguity) we return True so the check runs and lets the
+    underlying API data classify availability via real signals (a 404
+    or empty policy beats a SKU-lookup mismatch every time).
+    """
     if not requires_license:
         return True
+
+    sub_info = data.get("subscription_info", {}) or {}
+
+    # Mixed-edition tenant: if ANY assigned SKU meets the requirement,
+    # the feature is available somewhere in the org. Don't short-circuit.
+    tier_keys_present = sub_info.get("tier_keys_present", []) or []
+    required_level = LICENSE_TIERS.get(requires_license, 0)
+    if tier_keys_present:
+        max_present = max(
+            (LICENSE_TIERS.get(tk, 0) for tk in tier_keys_present),
+            default=0,
+        )
+        if max_present >= required_level:
+            return True
+        # All present tiers are below required — but if we saw multiple
+        # distinct tiers AND any unknown SKUs, treat as ambiguous.
+        if any(s.get("tier_key", "") == "" for s in sub_info.get("skus", [])):
+            return True
+
     # subscription_type may live directly on data (cached reports) or
     # nested under subscription_info.edition (live provider output).
     raw_license = (
         data.get("subscription_type")
-        or data.get("subscription_info", {}).get("edition", "")
+        or sub_info.get("edition", "")
         or ""
     )
     tenant_license = _normalize_license(raw_license)
     if not tenant_license:
         # Unknown license — cannot determine, let the check run normally
         return True
-    required_level = LICENSE_TIERS.get(requires_license, 0)
     tenant_level = LICENSE_TIERS.get(tenant_license, 0)
     return tenant_level >= required_level
 
@@ -268,6 +294,25 @@ def make_warn(check_id: str, title: str, level: str, source: str, section: str,
     )
 
 
+def make_partial(check_id: str, title: str, level: str, source: str, section: str,
+                 details: str = "", actual_value=None, expected_value=None,
+                 remediation: str = "", org_unit: str = "Global",
+                 cis_controls: list | None = None) -> CheckResult:
+    """Helper to create a PARTIAL result.
+
+    Use when a control is satisfied for some scopes (OUs, users, domains)
+    but not others — typically because of an intentional exception OU or
+    a phased rollout. Contrast with FAIL (no compliance) and PASS (full).
+    """
+    return CheckResult(
+        check_id=check_id, title=title, status=Status.PARTIAL,
+        level=level, source=source, section=section,
+        details=details, actual_value=actual_value,
+        expected_value=expected_value, remediation=remediation,
+        org_unit=org_unit, cis_controls=cis_controls or [],
+    )
+
+
 def make_manual(check_id: str, title: str, level: str, source: str, section: str,
                 details: str = "", remediation: str = "",
                 actual_value=None, expected_value=None,
@@ -309,6 +354,112 @@ def is_default_policy(entry: dict) -> bool:
     if isinstance(name, str) and "/_default/" in name:
         return True
     return False
+
+
+def is_admin_configured(entry: dict) -> bool:
+    """Inverse of :func:`is_default_policy` — True when an admin set the value."""
+    return not is_default_policy(entry)
+
+
+# Default patterns that identify intentional external-sharing OUs. Tenants
+# can override or extend this via config.options.external_sharing_ous.
+_DEFAULT_EXTERNAL_SHARING_PATTERNS = (
+    "*External*",
+    "*Sharing-External*",
+    "*Sharing External*",
+    "*Contractors*",
+    "*Vendors*",
+    "*3rd*Part*",
+    "*Third*Part*",
+)
+
+
+def is_external_sharing_ou(ou_path: str, data: dict) -> bool:
+    """Return True if an OU is intentionally permissive (external-sharing scope).
+
+    Real-world tenants often carve out OUs whose explicit purpose is to
+    share with outside parties (e.g. ``/NewDeciphex/Sharing-External``).
+    Checks that fail when ANY OU has a permissive value would otherwise
+    treat these intentional exceptions as violations.
+
+    The list of exception OUs is sourced from
+    ``data["config"]["options"]["external_sharing_ous"]`` (a list of
+    paths or fnmatch patterns). Falls back to a built-in pattern set
+    when no config is provided.
+    """
+    if not ou_path:
+        return False
+    config = data.get("config", {}) or {}
+    options = config.get("options", {}) or {}
+    patterns = options.get("external_sharing_ous")
+    if not patterns:
+        patterns = _DEFAULT_EXTERNAL_SHARING_PATTERNS
+    for pat in patterns:
+        if not pat:
+            continue
+        # Exact path match or glob.
+        if pat == ou_path or fnmatch.fnmatch(ou_path, pat):
+            return True
+    return False
+
+
+def evaluate_ous(ou_values: list[dict], predicate: Callable,
+                 data: dict | None = None) -> dict:
+    """Partition per-OU entries into safe / unsafe / exception buckets.
+
+    Parameters
+    ----------
+    ou_values:
+        Output of :func:`get_ou_values`.
+    predicate:
+        Callable ``(entry) -> bool``. Returns True when the entry's value
+        is considered SAFE (compliant). Predicates should not raise — they
+        may receive None/missing values.
+    data:
+        Audit data dict, used to resolve exception OUs via
+        :func:`is_external_sharing_ou`. When omitted, no OUs are treated
+        as exceptions.
+
+    Returns
+    -------
+    Dict with keys:
+      ``safe_ous``: list of OU paths where predicate returned True.
+      ``unsafe_ous``: list of OU paths where predicate returned False
+        AND the OU is not an external-sharing exception.
+      ``exception_ous``: list of OU paths where predicate returned False
+        but the OU is an intentional exception.
+      ``default_ous``: list of OU paths where the entry is a SYSTEM/DEFAULT
+        policy (admin never configured it). These are excluded from the
+        unsafe list — checks should typically downgrade to MANUAL when
+        only DEFAULT entries are present.
+      ``total``: total number of OU entries evaluated.
+    """
+    safe: list[str] = []
+    unsafe: list[str] = []
+    exception: list[str] = []
+    default: list[str] = []
+    for entry in ou_values:
+        ou = entry.get("org_unit", "/")
+        if is_default_policy(entry):
+            default.append(ou)
+            continue
+        try:
+            ok = bool(predicate(entry))
+        except Exception:
+            ok = False
+        if ok:
+            safe.append(ou)
+        elif data is not None and is_external_sharing_ou(ou, data):
+            exception.append(ou)
+        else:
+            unsafe.append(ou)
+    return {
+        "safe_ous": safe,
+        "unsafe_ous": unsafe,
+        "exception_ous": exception,
+        "default_ous": default,
+        "total": len(ou_values),
+    }
 
 
 def get_ou_values(category_dict: dict, raw_setting_key: str,
