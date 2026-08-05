@@ -326,12 +326,12 @@ def _export_markdown(session: AnalystSession, console: Console, ctx: CommandCont
 
 
 def _export_csv(console: Console, ctx: CommandContext) -> None:
-    """Export FAIL/WARN findings as a CSV file."""
+    """Export FAIL/PARTIAL/WARN findings as a CSV file."""
     from .tools import _export_findings_csv
 
     csv_content = _export_findings_csv(
         ctx.report_data,
-        status=["FAIL", "WARN"],
+        status=["FAIL", "PARTIAL", "WARN"],
     )
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")

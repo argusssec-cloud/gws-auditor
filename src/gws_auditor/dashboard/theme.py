@@ -9,18 +9,20 @@ STATUS_COLORS = {
     "PASS": "#38a169",
     "FAIL": "#e53e3e",
     "WARN": "#d69e2e",
+    "PARTIAL": "#dd6b20",
     "ERROR": "#9b2c2c",
     "MANUAL": "#3182ce",
     "NOT_APPLICABLE": "#a0aec0",
 }
 
-STATUS_ORDER = ["PASS", "FAIL", "WARN", "ERROR", "MANUAL", "NOT_APPLICABLE"]
+STATUS_ORDER = ["PASS", "FAIL", "WARN", "PARTIAL", "ERROR", "MANUAL", "NOT_APPLICABLE"]
 
 # CSS class suffix for status badges
 STATUS_BADGE_CLASS = {
     "PASS": "status-badge--PASS",
     "FAIL": "status-badge--FAIL",
     "WARN": "status-badge--WARN",
+    "PARTIAL": "status-badge--PARTIAL",
     "ERROR": "status-badge--ERROR",
     "MANUAL": "status-badge--MANUAL",
     "NOT_APPLICABLE": "status-badge--NOT_APPLICABLE",
@@ -55,6 +57,7 @@ METRIC_COLORS = {
     "passed": "#38a169",
     "failed": "#e53e3e",
     "warnings": "#d69e2e",
+    "partial": "#dd6b20",
     "errors": "#9b2c2c",
     "manual": "#3182ce",
     "na": "#a0aec0",

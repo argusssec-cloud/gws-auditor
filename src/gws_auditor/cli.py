@@ -102,8 +102,8 @@ def _add_audit_arguments(parser: argparse.ArgumentParser) -> None:
     )
     mode_group.add_argument(
         "--cached",
-        metavar="DIR",
-        help="Re-run checks against previously cached API data",
+        metavar="FILE",
+        help="Re-run checks against previously cached API data (path to .json cache file)",
     )
     mode_group.add_argument(
         "--list-checks",

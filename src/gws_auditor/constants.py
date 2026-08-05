@@ -657,21 +657,27 @@ OAUTH_SCOPE_RISK_LEVELS = {
 
 # Default Google Workspace Admin Console deep link by check section.
 # Used when a check has no explicit console_link.
+# NOTE: URLs verified live in the Google Admin Console (2026-06).
+# The modern console serves per-app settings pages under customer-specific
+# /ac/managedsettings/<nodeId> IDs that cannot be hardcoded for a multi-tenant
+# tool, so apps without a stable deep link point at the relevant app list
+# (one click from the specific app). Gmail and Marketplace retain stable
+# /ac/apps/... deep links.
 CONSOLE_SECTION_LINKS = {
     "Directory": "https://admin.google.com/ac/users",
-    "Gmail": "https://admin.google.com/ac/apps/gmail",
-    "Calendar": "https://admin.google.com/ac/appsettings/12/calendar",
-    "Drive": "https://admin.google.com/ac/appsettings/55/drive-and-docs",
-    "Chat": "https://admin.google.com/ac/appsettings/74/chat",
-    "Meet": "https://admin.google.com/ac/appsettings/97/meet",
+    "Gmail": "https://admin.google.com/ac/apps/gmail/usersettings",
+    "Calendar": "https://admin.google.com/ac/appslist/core",
+    "Drive": "https://admin.google.com/ac/appslist/core",
+    "Chat": "https://admin.google.com/ac/appslist/core",
+    "Meet": "https://admin.google.com/ac/appslist/core",
     "Groups": "https://admin.google.com/ac/groups",
-    "Sites": "https://admin.google.com/ac/appsettings/57/sites",
-    "Marketplace": "https://admin.google.com/ac/apps/marketplace",
+    "Sites": "https://admin.google.com/ac/appslist/core",
+    "Marketplace": "https://admin.google.com/ac/apps/gmail/marketplace/allowlistaccess",
     "Security": "https://admin.google.com/ac/security",
-    "Authentication": "https://admin.google.com/ac/security/authentication",
-    "Reporting": "https://admin.google.com/ac/reporting/audit",
-    "Alert Rules": "https://admin.google.com/ac/ac/alertcenter",
-    "Gemini": "https://admin.google.com/ac/appsettings/gemini",
-    "Classroom": "https://admin.google.com/ac/appsettings/319/classroom",
+    "Authentication": "https://admin.google.com/ac/security/2sv",
+    "Reporting": "https://admin.google.com/ac/reporting/home",
+    "Alert Rules": "https://admin.google.com/ac/ac",
+    "Gemini": "https://admin.google.com/ac/ai/home",
+    "Classroom": "https://admin.google.com/ac/appslist/additional",
     "Inventory": "https://admin.google.com/ac/users",
 }

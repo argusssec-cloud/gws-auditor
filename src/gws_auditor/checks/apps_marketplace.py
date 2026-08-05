@@ -7,7 +7,7 @@
 CIS Google Workspace Benchmark v1.3.0 - External Groups and Marketplace controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, get_ou_values
+from .base import check, make_pass, make_fail, make_warn, make_manual, get_ou_values, format_ou_values_readable
 from ..models import CheckResult, Status
 
 
@@ -51,13 +51,13 @@ def check_external_groups_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have external Groups access enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have external Groups access disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -68,7 +68,7 @@ def check_external_groups_disabled(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="External Google Groups access is disabled.",
             actual_value=external_groups,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if external_groups is None:
@@ -82,7 +82,7 @@ def check_external_groups_disabled(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="External Google Groups access is enabled.",
         actual_value=external_groups,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=_REMED,
     )
 
@@ -137,7 +137,7 @@ def check_marketplace_restriction(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not restrict Marketplace apps: {ou_list}",
-                actual_value=unsafe_ous, expected_value="approved_only for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="approved_only for all OUs",
                 remediation=_REMED,
             )
         return make_pass(

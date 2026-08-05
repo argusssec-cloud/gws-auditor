@@ -53,7 +53,7 @@ TOOL_DEFINITIONS: list[dict] = [
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "enum": ["PASS", "FAIL", "WARN", "ERROR", "MANUAL", "NOT_APPLICABLE"],
+                            "enum": ["PASS", "FAIL", "WARN", "PARTIAL", "ERROR", "MANUAL", "NOT_APPLICABLE"],
                         },
                         "description": "Filter by one or more statuses.",
                     },
@@ -340,7 +340,7 @@ TOOL_DEFINITIONS: list[dict] = [
                     "status": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filter by statuses (e.g. ['FAIL', 'WARN']).",
+                        "description": "Filter by statuses (e.g. ['FAIL', 'WARN', 'PARTIAL']).",
                     },
                     "section": {
                         "type": "string",
@@ -383,6 +383,7 @@ def _get_audit_summary(report_data: dict) -> dict:
         "passed": summary.get("passed", status_counts.get("PASS", 0)),
         "failed": summary.get("failed", status_counts.get("FAIL", 0)),
         "warnings": summary.get("warnings", status_counts.get("WARN", 0)),
+        "partial": summary.get("partial", status_counts.get("PARTIAL", 0)),
         "errors": summary.get("errors", status_counts.get("ERROR", 0)),
         "manual": summary.get("manual", status_counts.get("MANUAL", 0)),
         "not_applicable": summary.get("not_applicable", status_counts.get("NOT_APPLICABLE", 0)),
@@ -438,7 +439,7 @@ def _get_compliance_by_framework(report_data: dict, source: str | None = None) -
         if source and s != source:
             continue
         if s not in frameworks:
-            frameworks[s] = {"total": 0, "passed": 0, "failed": 0, "warnings": 0}
+            frameworks[s] = {"total": 0, "passed": 0, "failed": 0, "warnings": 0, "partial": 0}
         frameworks[s]["total"] += 1
         status = r.get("status", "")
         if status == "PASS":
@@ -447,6 +448,8 @@ def _get_compliance_by_framework(report_data: dict, source: str | None = None) -
             frameworks[s]["failed"] += 1
         elif status == "WARN":
             frameworks[s]["warnings"] += 1
+        elif status == "PARTIAL":
+            frameworks[s]["partial"] += 1
 
     for stats in frameworks.values():
         evaluated = stats["passed"] + stats["failed"]
@@ -464,7 +467,7 @@ def _get_compliance_by_section(report_data: dict, section: str | None = None) ->
         if section and sec != section:
             continue
         if sec not in sections:
-            sections[sec] = {"total": 0, "passed": 0, "failed": 0, "warnings": 0, "failing_checks": []}
+            sections[sec] = {"total": 0, "passed": 0, "failed": 0, "warnings": 0, "partial": 0, "failing_checks": []}
         sections[sec]["total"] += 1
         status = r.get("status", "")
         if status == "PASS":
@@ -474,6 +477,8 @@ def _get_compliance_by_section(report_data: dict, section: str | None = None) ->
             sections[sec]["failing_checks"].append(r.get("check_id", ""))
         elif status == "WARN":
             sections[sec]["warnings"] += 1
+        elif status == "PARTIAL":
+            sections[sec]["partial"] += 1
 
     for stats in sections.values():
         evaluated = stats["passed"] + stats["failed"]
@@ -492,13 +497,13 @@ def _get_remediation_plan(
 
     actionable = [
         r for r in results
-        if r.get("status") in ("FAIL", "WARN")
+        if r.get("status") in ("FAIL", "PARTIAL", "WARN")
         and (section is None or r.get("section") == section)
         and (level is None or r.get("level") == level)
     ]
 
     # Sort: FAIL before WARN, L1 before L2
-    priority = {"FAIL": 0, "WARN": 1}
+    priority = {"FAIL": 0, "PARTIAL": 1, "WARN": 2}
     level_priority = {"L1": 0, "L2": 1}
     actionable.sort(
         key=lambda r: (
@@ -641,13 +646,13 @@ def _get_smart_remediation(
     results = report_data.get("results", [])
     actionable = [
         r for r in results
-        if r.get("status") in ("FAIL", "WARN")
+        if r.get("status") in ("FAIL", "PARTIAL", "WARN")
         and (section is None or r.get("section") == section)
     ]
 
     # Sort by severity then level
     severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2}
-    status_order = {"FAIL": 0, "WARN": 1}
+    status_order = {"FAIL": 0, "PARTIAL": 1, "WARN": 2}
     level_order = {"L1": 0, "L2": 1}
     actionable.sort(key=lambda r: (
         status_order.get(r.get("status", ""), 2),

@@ -8,7 +8,7 @@ Supplements the main cisa_scuba module with deeper CommonControls coverage.
 Only checks NOT already covered by CIS/OTHER/GOOGLE or the main CISA module.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, is_default_policy
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy
 from ..models import CheckResult, Status
 
 
@@ -57,13 +57,13 @@ def check_context_aware_access(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack context-aware access policies: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have context-aware access policies configured.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -77,7 +77,7 @@ def check_context_aware_access(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Context-aware access device policies are configured.",
             actual_value=configured,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if configured is None:
@@ -99,7 +99,7 @@ def check_context_aware_access(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Security",
         details="Context-aware access device policies are not configured.",
         actual_value=configured,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Context-aware access. "
             "Configure device policies to enforce endpoint trust "
@@ -153,13 +153,13 @@ def check_sso_verification(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack post-SSO verification: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have post-SSO verification enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -173,7 +173,7 @@ def check_sso_verification(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Post-SSO verification is enabled for the organization SSO profile.",
             actual_value=post_sso,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if post_sso is None:
@@ -195,7 +195,7 @@ def check_sso_verification(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Security",
         details="Post-SSO verification is not enabled for the organization SSO profile.",
         actual_value=post_sso,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Authentication > SSO with third-party IdP. "
             "Enable post-SSO verification so that users must re-authenticate with "
@@ -245,13 +245,13 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack third-party SSO verification: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have third-party SSO verification enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -265,7 +265,7 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Post-SSO verification is enabled for third-party SSO profiles.",
             actual_value=third_party,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if third_party is None:
@@ -287,7 +287,7 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Security",
         details="Post-SSO verification is not enabled for third-party SSO profiles.",
         actual_value=third_party,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Authentication > SSO with third-party IdP. "
             "Enable post-SSO verification for third-party SSO profiles to ensure "
@@ -358,7 +358,7 @@ def check_session_duration(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) exceed 12-hour session duration: {ou_list}",
-                actual_value=unsafe_ous, expected_value="<= 12 hours",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="<= 12 hours",
                 remediation=_REMED,
             )
         return make_pass(
@@ -567,13 +567,13 @@ def check_admin_advanced_protection(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack Advanced Protection enforcement: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) enforce Advanced Protection for admins.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -587,7 +587,7 @@ def check_admin_advanced_protection(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Advanced Protection Program enrollment is enforced for admins.",
             actual_value=enforced,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if enforced is None:
@@ -609,7 +609,7 @@ def check_admin_advanced_protection(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Security",
         details="Advanced Protection Program enrollment is not enforced for admins.",
         actual_value=enforced,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Authentication > Advanced Protection Program. "
             "Enforce enrollment for all admin accounts. The Advanced Protection "
@@ -661,13 +661,13 @@ def check_sensitive_user_advanced_protection(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack Advanced Protection for sensitive users: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) enroll sensitive users in Advanced Protection.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -681,7 +681,7 @@ def check_sensitive_user_advanced_protection(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Advanced Protection Program enrollment is enabled for sensitive users.",
             actual_value=enrollment,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if enrollment is None:
@@ -703,7 +703,7 @@ def check_sensitive_user_advanced_protection(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Security",
         details="Advanced Protection Program enrollment is not enabled for sensitive users.",
         actual_value=enrollment,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Authentication > Advanced Protection Program. "
             "Enable enrollment for sensitive users. These users are high-value targets "
@@ -776,13 +776,13 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not restrict third-party API access: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) restrict third-party API access.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -796,7 +796,7 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Third-party API access is restricted by app access control policies.",
             actual_value=restricted,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if restricted is None:
@@ -818,7 +818,7 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Security",
         details="Third-party API access is not restricted.",
         actual_value=restricted,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > API controls > App access control. "
             "Restrict third-party API access to only approved applications. "
@@ -871,13 +871,13 @@ def check_user_consent_low_risk(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow user consent to low-risk scopes: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) prevent user consent to low-risk scopes.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -891,7 +891,7 @@ def check_user_consent_low_risk(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="User consent to low-risk app scopes is disabled.",
             actual_value=consent,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if consent is None:
@@ -913,7 +913,7 @@ def check_user_consent_low_risk(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Security",
         details="Users can consent to low-risk app scopes without admin approval.",
         actual_value=consent,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Security > API controls > App access control. "
             "Disable the option for users to consent to low-risk scopes. "
@@ -968,13 +968,13 @@ def check_unconfigured_internal_apps(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) trust unconfigured internal apps: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) do not trust unconfigured internal apps.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -988,7 +988,7 @@ def check_unconfigured_internal_apps(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Unconfigured internal apps are not automatically trusted.",
             actual_value=trust_internal,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if trust_internal is None:
@@ -1010,7 +1010,7 @@ def check_unconfigured_internal_apps(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Security",
         details="Unconfigured internal apps are automatically trusted.",
         actual_value=trust_internal,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Security > API controls > App access control. "
             "Disable automatic trust for unconfigured internal apps. "
@@ -1065,13 +1065,13 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow unconfigured third-party apps: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) block unconfigured third-party apps.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1085,7 +1085,7 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Unconfigured third-party apps are blocked.",
             actual_value=allow_unconfigured,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if allow_unconfigured is None:
@@ -1107,7 +1107,7 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Security",
         details="Unconfigured third-party apps are allowed to access data.",
         actual_value=allow_unconfigured,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Security > API controls > App access control. "
             "Block unconfigured third-party apps. Allowing unknown apps "
@@ -1210,13 +1210,13 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not restrict data processing to region: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) restrict data processing to selected region.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1230,7 +1230,7 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Data processing is restricted to the selected storage region.",
             actual_value=processing_in_region,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if processing_in_region is None:
@@ -1255,7 +1255,7 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Security",
         details="Data processing is not restricted to the selected storage region.",
         actual_value=processing_in_region,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Account > Account settings > Data regions. "
             "Enable data processing restrictions to ensure data at rest "
@@ -1312,13 +1312,13 @@ def check_unused_services_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have unused services enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have unused services disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1332,7 +1332,7 @@ def check_unused_services_disabled(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Unused Google services are disabled.",
             actual_value=disabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if disabled is None:
@@ -1354,7 +1354,7 @@ def check_unused_services_disabled(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Security",
         details="Unused Google services are not disabled.",
         actual_value=disabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace. Disable all services "
             "that are not required for business operations. Each enabled "
@@ -1407,13 +1407,13 @@ def check_early_access_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have early access enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have early access disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1427,7 +1427,7 @@ def check_early_access_disabled(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Early access apps are disabled.",
             actual_value=early_access,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if early_access is None:
@@ -1449,7 +1449,7 @@ def check_early_access_disabled(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Security",
         details="Early access apps are enabled.",
         actual_value=early_access,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Account > Account settings > Release preferences. "
             "Disable early access to pre-release features. These features "
@@ -1506,7 +1506,7 @@ def check_dlp_chat(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack DLP rules for Chat: {ou_list}",
-                actual_value=unsafe_ous, expected_value="At least one DLP rule for Chat",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="At least one DLP rule for Chat",
                 remediation=_REMED,
             )
         return make_pass(
@@ -1604,7 +1604,7 @@ def check_dlp_gmail(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack DLP rules for Gmail: {ou_list}",
-                actual_value=unsafe_ous, expected_value="At least one DLP rule for Gmail",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="At least one DLP rule for Gmail",
                 remediation=_REMED,
             )
         return make_pass(
@@ -1699,7 +1699,7 @@ def check_dlp_block_external(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have DLP action not set to block: {ou_list}",
-                actual_value=unsafe_ous, expected_value="block or block_external",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="block or block_external",
                 remediation=_REMED,
             )
         return make_pass(

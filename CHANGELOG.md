@@ -5,6 +5,29 @@ All notable changes to GWS Security Auditor will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-03
+
+### Added
+
+- **Drive trust-rule awareness** -- Drive trust rules (Admin console > Drive and Docs > Trust rules) are not exposed by any read API, so a new `options.trust_rules_file` config key points at a JSON export of them. `Provider` loads the file on live runs and on `--cached` re-scoring alike, exposing it as `data["policies"]["drive"]["trust_rules"]`. **CIS-3.1.2.1.1.1** (warn on external sharing) and **CIS-3.1.2.1.1.2** (public publishing) resolve active rules per-OU by `orgUnitId` (with or without the `id:` prefix) for the `DRIVE_SHARE_TRUST` trigger: a `BLOCK_SHARE` action clears the OU outright, while `ALLOW_SHARE` / `ALLOW_SHARE_WITH_WARNING` downgrades the result to MANUAL review naming the rules, instead of a blanket FAIL. Inactive rules and rules for other triggers or other OUs are ignored.
+- **Intentional external-sharing OUs downgrade FAIL to `PARTIAL`** -- Tenants routinely carve out an OU whose purpose is sharing with outside parties. `options.external_sharing_ous` (OU paths or fnmatch patterns) marks them; with no configuration a built-in pattern set applies (`*External*`, `*Contractors*`, `*Vendors*`, `*Third*Part*`, ...). When every remaining violation in a Drive sharing check sits in such an OU the result is `PARTIAL` rather than `FAIL`, and the exempt OUs stay visible in the details either way. An explicit trust rule takes precedence over the naming convention, since a rule is a deliberate control and the OU name is only a heuristic. This wires up `evaluate_ous()` and `is_external_sharing_ou()`, which shipped unused in 1.3.0.
+- **`format_ou_values_readable()`** -- Renders per-OU findings as `"/Sales → Enabled"` lines, with booleans humanized to Enabled/Disabled, `None` to "Not set", and an optional value humanizer for enums and ACL roles.
+
+### Changed
+
+- **Human-readable actual/expected values across the board** -- 127 OU failure lists now render through `format_ou_values_readable()` instead of dumping raw dicts into the report, and roughly 400 `expected_value` literals moved from bare `True`/`False` to phrases such as `"Enabled for all OUs"` / `"Disabled for all OUs"`. Calendar sharing enums and ACL roles additionally pass through a `_humanize_sharing_level()` map (`EXTERNAL_FREE_BUSY_ONLY` becomes "Free/busy information only", `freeBusyReader` becomes "Can see only free/busy").
+- **`PARTIAL` now participates in the posture score** -- 1.3.0 gave PARTIAL half credit in `AuditSummary.pass_rate` but `scoring.py` skipped the status entirely, so the two numbers disagreed on any tenant with a partial result. PARTIAL is now a half-failure exactly like WARN, and appears in the per-tier breakdown.
+- **`PARTIAL` surfaced everywhere else it was missing** -- HTML report summary card, filter button, legend, proportion bars, stacked-bar and donut charts, per-section stats and sort order; dashboard status colors, section badges, inventory badges and the standalone HTML export; the console result colors; and the AI analyst (status enum, per-framework and per-section counters, remediation ordering between FAIL and WARN, and the FAIL/PARTIAL/WARN CSV export).
+- **CIS-1.1.2 (super admin maximum) now FAILs at 4 or more accounts** -- previously WARN, and the pass boundary moved from `<= 4` to `< 4`. Remediation now links the admin-roles console page directly.
+- **Admin console deep links re-verified against the live console (2026-06)** -- the modern console serves per-app settings under customer-specific `/ac/managedsettings/<nodeId>` paths that cannot be hardcoded for a multi-tenant tool, so Calendar, Drive, Chat, Meet and Sites now point at `/ac/appslist/core` (one click from the specific app). Gmail (`/usersettings`), Marketplace, Authentication (`/ac/security/2sv`), Reporting (`/ac/reporting/home`), Alert Center (`/ac/ac`), Gemini (`/ac/ai/home`) and Classroom (`/ac/appslist/additional`) were corrected.
+- **`--cached` takes a file, not a directory** -- metavar and help updated. Auth config validation is skipped in cached mode since no API calls are made, so a cache can be re-scored without credentials on the machine. `Provider.from_cache()` accepts the config so trust rules load on cached runs too.
+- **AI Directory section agent benchmark text corrected** -- `BENCHMARK_REQUIREMENTS` described the wrong controls for CIS-1.1.1 and CIS-1.1.2 (1.1.2 was labelled as 2SV enforcement); both now match what the checks assert.
+- **HTML report modal drops the Org Unit row** -- per-OU detail now lives inline in Actual Value.
+
+### Fixed
+
+- **`is_external_sharing_ou()` never saw tenant configuration** -- it read `data["config"]["options"]["external_sharing_ous"]`, but the orchestrator injects options as `data["_options"]` and nothing ever set `data["config"]`, so user-configured exception OUs were silently ignored and only the built-in patterns applied. It now reads `_options` first and falls back to the old path. `external_sharing_ous` was also missing from `DEFAULT_CONFIG`; both it and `trust_rules_file` are now documented in `config.yaml.sample`.
+
 ## [1.3.0] - 2026-05-24
 
 ### Added

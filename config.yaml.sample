@@ -21,6 +21,20 @@ options:
   max_retries: 5
   rate_limit_qps: 10
 
+  # Drive trust rules (Admin console > Drive and Docs > Trust rules) are not
+  # exposed by any read API. Export them to a JSON array and point at the file
+  # here; CIS-3.1.2.1.1.1 and CIS-3.1.2.1.1.2 then credit an OU whose sharing
+  # is governed by an active BLOCK_SHARE rule instead of failing it.
+  # trust_rules_file: ./trust_rules.json
+
+  # OU paths (or fnmatch patterns) whose permissive external sharing is
+  # deliberate. Matching OUs downgrade an otherwise-FAIL sharing check to
+  # PARTIAL rather than hiding it. Leave empty to use the built-in patterns
+  # (*External*, *Contractors*, *Vendors*, *Third*Part*, ...).
+  # external_sharing_ous:
+  #   - /Acme/Sharing-External
+  #   - "*Partners*"
+
 ai:
   provider: openai              # openai, anthropic, or bedrock
   model: ""                     # blank = provider default

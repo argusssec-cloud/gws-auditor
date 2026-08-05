@@ -14,7 +14,7 @@ Check IDs use the GWS.* format from ScubaGoggles.
 Reference: https://github.com/cisagov/ScubaGoggles
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, is_default_policy
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy
 from ..models import CheckResult, Status
 
 
@@ -193,13 +193,13 @@ def check_gmail_email_uploads(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have email uploads enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have email uploads disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -213,7 +213,7 @@ def check_gmail_email_uploads(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Gmail",
             details="User email uploads are disabled.",
             actual_value=uploads_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if uploads_enabled is None:
@@ -234,7 +234,7 @@ def check_gmail_email_uploads(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Gmail",
         details="User email uploads are enabled.",
         actual_value=uploads_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > Setup > "
             "User email uploads. Disable to prevent importing mail from "
@@ -283,13 +283,13 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Workspace Sync enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Workspace Sync disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -303,7 +303,7 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Gmail",
             details="Google Workspace Sync is disabled.",
             actual_value=sync_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if sync_enabled is None:
@@ -324,7 +324,7 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Gmail",
         details="Google Workspace Sync is enabled.",
         actual_value=sync_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > "
             "End User Access. Disable Google Workspace Sync for "
@@ -373,7 +373,7 @@ def check_gmail_email_allowlist(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have email allowlist entries: {ou_list}",
-                actual_value=unsafe_ous, expected_value="No allowlisted addresses",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="No allowlisted addresses",
                 remediation=_REMED,
             )
         return make_pass(
@@ -461,7 +461,7 @@ def check_calendar_interop_disabled(data: dict) -> CheckResult:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Calendar Interop with Exchange is disabled.",
-            actual_value=interop_enabled, expected_value=False,
+            actual_value=interop_enabled, expected_value="Disabled for all OUs",
         )
 
     if interop_enabled is None:
@@ -474,7 +474,7 @@ def check_calendar_interop_disabled(data: dict) -> CheckResult:
     return make_fail(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Calendar Interop with Exchange is enabled.",
-        actual_value=interop_enabled, expected_value=False,
+        actual_value=interop_enabled, expected_value="Disabled for all OUs",
         remediation=_REMED,
     )
 
@@ -519,13 +519,13 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have paid appointments enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have paid appointments disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -539,7 +539,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Calendar",
             details="Paid appointment scheduling is disabled.",
             actual_value=paid_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if paid_enabled is None:
@@ -560,7 +560,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Calendar",
         details="Paid appointment scheduling is enabled.",
         actual_value=paid_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Calendar > "
             "General settings. Disable paid appointment scheduling "
@@ -620,13 +620,13 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Chat history disabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Chat history enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -642,7 +642,7 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Chat",
             details="Chat history is enabled.",
             actual_value=history_enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if history_enabled is None:
@@ -663,7 +663,7 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Chat",
         details="Chat history is not enabled.",
         actual_value=history_enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
             "Chat history. Enable history to ensure traceability. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
@@ -709,13 +709,13 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow users to change Chat history: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) prevent user Chat history modification.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -729,7 +729,7 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Chat",
             details="Users cannot modify their Chat history setting.",
             actual_value=user_can_change,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if user_can_change is None:
@@ -750,7 +750,7 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Chat",
         details="Users can change their Chat history setting.",
         actual_value=user_can_change,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
             "Chat history. Disable user ability to modify history setting. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
@@ -797,13 +797,13 @@ def check_chat_content_reporting(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Chat content reporting disabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Chat content reporting enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -817,7 +817,7 @@ def check_chat_content_reporting(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Chat",
             details="Chat content reporting is enabled.",
             actual_value=reporting_enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if reporting_enabled is None:
@@ -838,7 +838,7 @@ def check_chat_content_reporting(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Chat",
         details="Chat content reporting is not enabled.",
         actual_value=reporting_enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
             "Content reporting. Enable for direct messages, group "
@@ -889,13 +889,13 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow receiving from non-allowlisted domains: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) block receiving from non-allowlisted domains.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -909,7 +909,7 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Drive and Docs",
             details="Receiving files from non-allowlisted domains is disabled.",
             actual_value=receive_external,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if receive_external is None:
@@ -930,7 +930,7 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Drive and Docs",
         details="Receiving files from non-allowlisted domains is enabled.",
         actual_value=receive_external,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Sharing settings. Disable receiving files from external sources "
@@ -978,13 +978,13 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow sharing with non-Google accounts: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) disable sharing with non-Google accounts.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -998,7 +998,7 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Drive and Docs",
             details="Sharing with non-Google accounts is disabled.",
             actual_value=non_google,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if non_google is None:
@@ -1019,7 +1019,7 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Drive and Docs",
         details="Sharing with non-Google accounts is enabled.",
         actual_value=non_google,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Sharing settings. Disable sharing with non-Google account "
@@ -1068,13 +1068,13 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow 'anyone with the link' sharing: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) disable 'anyone with the link' sharing.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1088,7 +1088,7 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Drive and Docs",
             details="'Anyone with the link' sharing is disabled.",
             actual_value=anyone_link,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if anyone_link is None:
@@ -1111,7 +1111,7 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Drive and Docs",
         details="'Anyone with the link' sharing is enabled, allowing unauthenticated access.",
         actual_value=anyone_link,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Sharing settings. Disable 'anyone with the link' option "
@@ -1165,7 +1165,7 @@ def check_drive_default_access(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have non-private default access: {ou_list}",
-                actual_value=unsafe_ous, expected_value="private_to_owner",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="private_to_owner",
                 remediation=_REMED,
             )
         return make_pass(
@@ -1254,13 +1254,13 @@ def check_drive_security_updates(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not have file security updates applied: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have file security updates applied.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1274,7 +1274,7 @@ def check_drive_security_updates(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Drive and Docs",
             details="Security updates for files are enabled.",
             actual_value=security_updates,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if security_updates is None:
@@ -1295,7 +1295,7 @@ def check_drive_security_updates(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Drive and Docs",
         details="Security updates for files are not applied.",
         actual_value=security_updates,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Features and Applications. Enable security updates to "
@@ -1354,13 +1354,13 @@ def check_meet_external_join(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow external users to join without asking: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) require external users to ask to join.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1377,7 +1377,7 @@ def check_meet_external_join(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Meet",
             details="External users must ask to join meetings.",
             actual_value=external_ask,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if external_ask is None:
@@ -1398,7 +1398,7 @@ def check_meet_external_join(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Meet",
         details="External users can join meetings without asking.",
         actual_value=external_ask,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
             "Meet safety settings. Enable 'Require external participants "
@@ -1451,13 +1451,13 @@ def check_meet_non_gws_access(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow non-GWS meeting access: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) disable non-GWS meeting access.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1471,7 +1471,7 @@ def check_meet_non_gws_access(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Meet",
             details="Access to non-Workspace meetings is disabled.",
             actual_value=non_gws_access,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if non_gws_access is None:
@@ -1493,7 +1493,7 @@ def check_meet_non_gws_access(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Meet",
         details="Users can join meetings created by non-Workspace users.",
         actual_value=non_gws_access,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
             "Meet safety settings. Disable meeting access for meetings "
@@ -1543,13 +1543,13 @@ def check_meet_host_management(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have host management disabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have host management enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1563,7 +1563,7 @@ def check_meet_host_management(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Meet",
             details="Host management features are enabled.",
             actual_value=host_mgmt,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if host_mgmt is None:
@@ -1584,7 +1584,7 @@ def check_meet_host_management(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Meet",
         details="Host management features are not enabled.",
         actual_value=host_mgmt,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
             "Meet safety settings. Enable host management to restrict "
@@ -1634,13 +1634,13 @@ def check_meet_external_warning(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack external participant warning: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have external participant warning enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1654,7 +1654,7 @@ def check_meet_external_warning(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Meet",
             details="External participant warning is enabled.",
             actual_value=ext_warning,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if ext_warning is None:
@@ -1675,7 +1675,7 @@ def check_meet_external_warning(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Meet",
         details="External participant warning is not enabled.",
         actual_value=ext_warning,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
             "Meet safety settings. Enable 'Warn for external participants' "
@@ -1727,13 +1727,13 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not restrict incoming calls: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) restrict incoming calls.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1747,7 +1747,7 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Meet",
             details="Incoming calls are restricted to contacts and organization.",
             actual_value=incoming_restricted,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if incoming_restricted is None:
@@ -1769,7 +1769,7 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Meet",
         details="Incoming calls are not restricted to organization.",
         actual_value=incoming_restricted,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
             "Meet settings. Restrict incoming calls to contacts and "
@@ -1823,13 +1823,13 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have automatic recording enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have automatic recording disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1843,7 +1843,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Meet",
             details="Automatic meeting recording is disabled.",
             actual_value=auto_record,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if auto_record is None:
@@ -1864,7 +1864,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Meet",
         details="Automatic meeting recording is enabled.",
         actual_value=auto_record,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
             "Meet settings. Disable automatic recordings to prevent "
@@ -1916,13 +1916,13 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have automatic transcription enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have automatic transcription disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1936,7 +1936,7 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Google Meet",
             details="Automatic meeting transcription is disabled.",
             actual_value=auto_transcript,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if auto_transcript is None:
@@ -1960,7 +1960,7 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Google Meet",
         details="Automatic meeting transcription is enabled.",
         actual_value=auto_transcript,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
             "Meet settings. Disable automatic transcripts to mitigate "
@@ -2021,13 +2021,13 @@ def check_groups_external_posting(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow external posting to groups: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) disable external posting to groups.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -2040,7 +2040,7 @@ def check_groups_external_posting(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Groups",
             details="External posting to groups is disabled.",
             actual_value=external_posting,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if external_posting is None:
@@ -2062,7 +2062,7 @@ def check_groups_external_posting(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Groups",
         details="External posting to groups is allowed.",
         actual_value=external_posting,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Groups for Business > "
             "Sharing settings. Uncheck 'Group owners can allow incoming "
@@ -2122,13 +2122,13 @@ def check_groups_directory_hiding(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow hiding groups from directory: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) prevent hiding groups from directory.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -2141,7 +2141,7 @@ def check_groups_directory_hiding(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Groups",
             details="Groups cannot be hidden from directory.",
             actual_value=hide_from_directory,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if hide_from_directory is None:
@@ -2163,7 +2163,7 @@ def check_groups_directory_hiding(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Groups",
         details="Group owners can hide groups from the directory.",
         actual_value=hide_from_directory,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Groups for Business > "
             "Sharing settings. Uncheck 'Group owners can hide groups "
@@ -2225,7 +2225,7 @@ def check_sms_voice_mfa_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) may allow SMS/Voice MFA: {ou_list}",
-                actual_value=unsafe_ous, expected_value="No SMS/Voice MFA",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="No SMS/Voice MFA",
                 remediation=_REMED,
             )
         return make_pass(
@@ -2343,7 +2343,7 @@ def check_mfa_enrollment_period(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have improper MFA enrollment period: {ou_list}",
-                actual_value=unsafe_ous, expected_value="1-7 days",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="1-7 days",
                 remediation=_REMED,
             )
         return make_pass(
@@ -2434,13 +2434,13 @@ def check_trust_device_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow 'trust this device': {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have 'trust this device' disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -2454,7 +2454,7 @@ def check_trust_device_disabled(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="'Trust this device' option is disabled.",
             actual_value=trust_device,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if trust_device is None:
@@ -2475,7 +2475,7 @@ def check_trust_device_disabled(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Security",
         details="'Trust this device' is enabled, allowing MFA bypass.",
         actual_value=trust_device,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Security > Authentication > 2-step verification. "
             "Disable 'Allow users to trust the device' to require MFA "
@@ -2522,13 +2522,13 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack conflicting account management: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have conflicting account management configured.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -2542,7 +2542,7 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Conflicting account management is configured.",
             actual_value=conflict_mgmt,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if conflict_mgmt is None:
@@ -2567,7 +2567,7 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Security",
         details="Conflicting account management is not configured.",
         actual_value=conflict_mgmt,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Account > Account management. Enable "
             "automatic management of conflicting accounts. https://knowledge.workspace.google.com/admin/security/block-access-to-consumer-accounts"
@@ -2665,13 +2665,13 @@ def check_data_regions(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack data region configuration: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have data regions configured.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -2685,7 +2685,7 @@ def check_data_regions(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Data region policies are configured.",
             actual_value=configured,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if configured is None:
@@ -2707,7 +2707,7 @@ def check_data_regions(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Security",
         details="Data region policies are not configured.",
         actual_value=configured,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Account > Account settings > Data regions. "
             "Configure data storage locations to comply with data "
@@ -2757,13 +2757,13 @@ def check_multi_party_approval(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack multi-party approval: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have multi-party approval enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -2777,7 +2777,7 @@ def check_multi_party_approval(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Multi-party approval is enabled for sensitive actions.",
             actual_value=enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if enabled is None:
@@ -2799,7 +2799,7 @@ def check_multi_party_approval(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Security",
         details="Multi-party approval is not enabled.",
         actual_value=enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Multi-party approval. "
             "Enable to require multiple admin approvals for "
@@ -2864,7 +2864,7 @@ def check_class_membership_restricted(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow external class membership: {ou_list}",
-                actual_value=unsafe_ous, expected_value="ANYONE_IN_DOMAIN",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="ANYONE_IN_DOMAIN",
                 remediation=_REMED,
             )
         return make_pass(
@@ -2952,7 +2952,7 @@ def check_classes_to_join_restricted(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow joining external classes: {ou_list}",
-                actual_value=unsafe_ous, expected_value="CLASSES_IN_DOMAIN",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="CLASSES_IN_DOMAIN",
                 remediation=_REMED,
             )
         return make_pass(
@@ -3029,13 +3029,13 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Classroom API access enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Classroom API access disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -3049,7 +3049,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Classroom",
             details="Classroom API access is disabled.",
             actual_value=enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if enabled is None:
@@ -3070,7 +3070,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Classroom",
         details="Classroom API access is enabled, allowing programmatic access.",
         actual_value=enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Classroom > "
             "API access. Disable Classroom API access to prevent "
@@ -3119,13 +3119,13 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Clever roster import enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Clever roster import disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -3139,7 +3139,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Classroom",
             details="Roster import with Clever is disabled.",
             actual_value=clever_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if clever_enabled is None:
@@ -3160,7 +3160,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Classroom",
         details="Roster import with Clever is enabled.",
         actual_value=clever_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Classroom > "
             "Roster import. Disable Clever integration to prevent "
@@ -3209,7 +3209,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow non-teacher student unenrollment: {ou_list}",
-                actual_value=unsafe_ous, expected_value="teachers_only",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="teachers_only",
                 remediation=_REMED,
             )
         return make_pass(
@@ -3300,7 +3300,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow non-verified-teacher class creation: {ou_list}",
-                actual_value=unsafe_ous, expected_value="verified_teachers",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="verified_teachers",
                 remediation=_REMED,
             )
         return make_pass(
@@ -3395,13 +3395,13 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow unlicensed Gemini access: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) restrict Gemini to licensed users.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -3415,7 +3415,7 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Gemini",
             details="Gemini access is restricted to licensed users only.",
             actual_value=unlicensed_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if unlicensed_enabled is None:
@@ -3439,7 +3439,7 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Gemini",
         details="Gemini app access is available to unlicensed users.",
         actual_value=unlicensed_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gemini. "
             "Disable unlicensed access to ensure only licensed "
@@ -3488,13 +3488,13 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have alpha Gemini features enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have alpha Gemini features disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -3508,7 +3508,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Gemini",
             details="Alpha Gemini features are disabled.",
             actual_value=alpha_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if alpha_enabled is None:
@@ -3532,7 +3532,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Gemini",
         details="Alpha Gemini features are enabled.",
         actual_value=alpha_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gemini > "
             "Features. Disable alpha features to avoid exposing "
@@ -3586,13 +3586,13 @@ def check_access_approvals_enabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack access approvals: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have access approvals enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -3606,7 +3606,7 @@ def check_access_approvals_enabled(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Assured Controls",
             details="Access approvals are enabled.",
             actual_value=enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if enabled is None:
@@ -3627,7 +3627,7 @@ def check_access_approvals_enabled(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Assured Controls",
         details="Access approvals are not enabled.",
         actual_value=enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Account > Account settings > "
             "Assured Controls. Enable access approvals to require "
@@ -3679,7 +3679,7 @@ def check_support_access_region(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack US-only support access: {ou_list}",
-                actual_value=unsafe_ous, expected_value="us",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="us",
                 remediation=_REMED,
             )
         return make_pass(
@@ -3772,13 +3772,13 @@ def check_multi_region_processing_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have multi-region processing enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have multi-region processing disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -3792,7 +3792,7 @@ def check_multi_region_processing_disabled(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Assured Controls",
             details="Multi-region data processing is disabled.",
             actual_value=multi_region,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if multi_region is None:
@@ -3813,7 +3813,7 @@ def check_multi_region_processing_disabled(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Assured Controls",
         details="Multi-region data processing is enabled.",
         actual_value=multi_region,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Account > Account settings > "
             "Assured Controls. Disable multi-region data processing "
@@ -3867,7 +3867,7 @@ def check_sites_service_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Sites service enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value="disabled",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="disabled",
                 remediation=_REMED,
             )
         return make_pass(

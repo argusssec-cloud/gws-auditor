@@ -7,7 +7,7 @@
 CIS Google Workspace Benchmark v1.3.0 - Sites controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
 from ..models import CheckResult, Status
 
 
@@ -45,13 +45,13 @@ def check_sites_creation_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Sites creation enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Sites creation disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -62,7 +62,7 @@ def check_sites_creation_disabled(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Google Sites creation is disabled.",
             actual_value=creation_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if creation_enabled is None:
@@ -80,6 +80,6 @@ def check_sites_creation_disabled(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Google Sites creation is enabled, allowing users to publish web content.",
         actual_value=creation_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=_REMED,
     )

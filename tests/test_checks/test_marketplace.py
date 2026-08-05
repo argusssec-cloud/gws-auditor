@@ -25,7 +25,7 @@ class TestExternalGroupsDisabled:
         result = check_external_groups_disabled(full_audit_data)
         assert result.status == Status.FAIL
         assert result.actual_value is True
-        assert result.expected_value is False
+        assert result.expected_value == "Disabled for all OUs"
         assert result.remediation
 
     def test_manual_external_groups_none(self, full_audit_data):

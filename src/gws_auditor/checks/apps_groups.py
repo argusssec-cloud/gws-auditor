@@ -7,7 +7,7 @@
 CIS Google Workspace Benchmark v1.3.0 - Groups controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
 from ..models import CheckResult, Status
 
 
@@ -154,7 +154,7 @@ def check_groups_creation_restriction(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow non-admin group creation: {ou_list}",
-                actual_value=unsafe_ous, expected_value="admins_only for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="admins_only for all OUs",
                 remediation=_REMED,
             )
         return make_pass(

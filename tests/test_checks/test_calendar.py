@@ -207,7 +207,10 @@ class TestPrimaryCalInternalSharingACL:
         }
         result = check_primary_cal_internal_sharing(full_audit_data)
         assert result.status == Status.FAIL
-        assert "reader" in result.details
+        # The raw ACL role now lives in actual_value, humanized for the
+        # report; details carries the OU list only.
+        assert "ACL sampling" in result.details
+        assert "Can see all event details" in result.actual_value
 
     def test_fail_when_acl_writer(self, full_audit_data):
         from gws_auditor.checks.apps_calendar import check_primary_cal_internal_sharing

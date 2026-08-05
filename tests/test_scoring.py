@@ -143,6 +143,41 @@ class TestComputePostureScore:
         assert out["score"] == 100  # Only M-1 is scored (PASS)
         assert out["scored_count"] == 1
 
+    def test_partial_counts_as_half(self):
+        results = [
+            _make("M-1", Status.PARTIAL, Severity.MEDIUM),
+            _make("M-2", Status.PASS, Severity.MEDIUM),
+        ]
+        out = compute_posture_score(results)
+        # penalty = 3*0.5 = 1.5, max = 6 -> 1 - 1.5/6 = 0.75 -> 75
+        assert out["score"] == 75
+        assert out["scored_count"] == 2
+        assert out["excluded_count"] == 0
+
+    def test_partial_equals_warn(self):
+        partial = [
+            _make("M-1", Status.PARTIAL, Severity.MEDIUM),
+            _make("M-2", Status.PASS, Severity.MEDIUM),
+        ]
+        warn = [
+            _make("M-1", Status.WARN, Severity.MEDIUM),
+            _make("M-2", Status.PASS, Severity.MEDIUM),
+        ]
+        assert compute_posture_score(partial)["score"] == compute_posture_score(warn)["score"]
+
+    def test_partial_agrees_with_summary_pass_rate(self):
+        """Posture score and AuditSummary.pass_rate must not disagree on PARTIAL."""
+        from gws_auditor.models import AuditSummary
+
+        results = [
+            _make("H-1", Status.PARTIAL, Severity.HIGH),
+            _make("H-2", Status.PASS, Severity.HIGH),
+        ]
+        out = compute_posture_score(results)
+        summary = AuditSummary.from_results(results)
+        assert summary.partial == 1
+        assert out["score"] == round(summary.pass_rate)
+
     def test_override_to_pass_improves_score(self):
         results = [
             _make("M-1", Status.FAIL, Severity.MEDIUM),
@@ -190,6 +225,17 @@ class TestTierBreakdown:
         assert bd["MEDIUM"]["effective_weight"] == 3
         assert bd["CRITICAL"]["failed"] == 1
         assert bd["MEDIUM"]["passed"] == 1
+
+    def test_breakdown_reports_partial(self):
+        results = [
+            _make("M-1", Status.PARTIAL, Severity.MEDIUM),
+            _make("M-2", Status.WARN, Severity.MEDIUM),
+        ]
+        bd = compute_posture_score(results)["tier_breakdown"]
+        assert bd["MEDIUM"]["partial"] == 1
+        assert bd["MEDIUM"]["warned"] == 1
+        # Both are half-failures: penalty = 2 * 3 * 0.5 = 3, max = 6
+        assert bd["MEDIUM"]["penalty"] == 3.0
 
 
 class TestDictInput:

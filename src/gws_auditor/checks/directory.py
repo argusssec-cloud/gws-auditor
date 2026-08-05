@@ -60,43 +60,41 @@ def check_super_admin_count_min(data: dict) -> CheckResult:
     source="CIS",
     section="Directory",
     remediation=(
-        "Reduce super admin accounts to between 2-4. "
-        "Admin console > Account > Admin roles. "
-        "Reassign excess super admins to more restrictive roles. "
-        "https://knowledge.workspace.google.com/admin/users/add-accounts"
+        "Reduce super admin accounts to fewer than 4. "
+        "Details: https://knowledge.workspace.google.com/admin/users/make-a-user-an-admin | "
+        "Remediation: https://admin.google.com/ac/list/roles"
     ),
 )
 def check_super_admin_count_max(data: dict) -> CheckResult:
-    """No more than 4 super admin accounts should exist to limit exposure."""
+    """No more than 3 super admin accounts should exist to limit exposure."""
     users = data.get("users", [])
     super_admins = [u for u in users if u.get("is_super_admin", False)]
     count = len(super_admins)
     sa_emails = [u.get("primary_email", "unknown") for u in super_admins]
 
-    if count <= 4:
+    if count < 4:
         return make_pass(
             check_id="CIS-1.1.2",
             title="Ensure fewer than 4 Super Admin accounts exist",
             level="L1", source="CIS", section="Directory",
             details=f"Found {count} super admin accounts (within acceptable range).",
             actual_value=count,
-            expected_value="<=4",
+            expected_value="<4",
         )
-    return make_warn(
+    return make_fail(
         check_id="CIS-1.1.2",
         title="Ensure fewer than 4 Super Admin accounts exist",
         level="L1", source="CIS", section="Directory",
         details=(
-            f"Found {count} super admin accounts, which exceeds the recommended "
-            f"maximum of 4: {', '.join(sa_emails)}"
+            f"Found {count} super admin accounts, which exceeds the maximum "
+            f"of 3: {', '.join(sa_emails)}"
         ),
         actual_value=count,
-        expected_value="<=4",
+        expected_value="<4",
         remediation=(
-            "Reduce super admin accounts to between 2-4. "
-            "Admin console > Account > Admin roles. "
-            "Reassign excess super admins to more restrictive roles. "
-            "https://knowledge.workspace.google.com/admin/users/add-accounts"
+            "Reduce super admin accounts to fewer than 4. "
+            "Details: https://knowledge.workspace.google.com/admin/users/make-a-user-an-admin | "
+            "Remediation: https://admin.google.com/ac/list/roles"
         ),
     )
 

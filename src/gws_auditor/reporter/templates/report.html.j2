@@ -37,6 +37,7 @@
       --color-pass: #38a169;
       --color-fail: #e53e3e;
       --color-warn: #d69e2e;
+      --color-partial: #dd6b20;
       --color-error: #9b2c2c;
       --color-manual: #3182ce;
       --color-na: #a0aec0;
@@ -314,6 +315,9 @@
     .card--warn    { border-color: var(--color-warn); }
     .card--warn .value  { color: var(--color-warn); }
     .card--warn .proportion-bar { background: var(--color-warn); }
+    .card--partial { border-color: var(--color-partial); }
+    .card--partial .value { color: var(--color-partial); }
+    .card--partial .proportion-bar { background: var(--color-partial); }
     .card--error   { border-color: var(--color-error); }
     .card--error .value { color: var(--color-error); }
     .card--error .proportion-bar { background: var(--color-error); }
@@ -411,6 +415,7 @@
     .legend-pass::before   { background: var(--color-pass); }
     .legend-fail::before   { background: var(--color-fail); }
     .legend-warn::before   { background: var(--color-warn); }
+    .legend-partial::before { background: var(--color-partial); }
     .legend-error::before  { background: var(--color-error); }
     .legend-manual::before { background: var(--color-manual); }
     .legend-na::before     { background: var(--color-na); }
@@ -608,6 +613,7 @@
     .section-stat--pass { background: var(--badge-pass-bg); color: var(--badge-pass-text); }
     .section-stat--fail { background: var(--badge-fail-bg); color: var(--badge-fail-text); }
     .section-stat--warn { background: var(--badge-warn-bg); color: var(--badge-warn-text); }
+    .section-stat--partial { background: var(--badge-partial-bg); color: var(--badge-partial-text); }
     .section-stat--error { background: var(--badge-error-bg); color: var(--badge-error-text); }
     .section-stat--manual { background: var(--badge-manual-bg); color: var(--badge-manual-text); }
 
@@ -1214,6 +1220,11 @@
               <div class="label">Warnings</div>
               {% if summary.total > 0 %}<div class="proportion-bar" id="bar-warn" style="width:{{ (summary.warnings / summary.total * 100) | round(1) }}%"></div>{% endif %}
             </div>
+            <div class="card card--partial">
+              <div class="value" id="card-partial">{{ summary.partial }}</div>
+              <div class="label">Partial</div>
+              {% if summary.total > 0 %}<div class="proportion-bar" id="bar-partial" style="width:{{ (summary.partial / summary.total * 100) | round(1) }}%"></div>{% endif %}
+            </div>
             <div class="card card--error">
               <div class="value" id="card-error">{{ summary.errors }}</div>
               <div class="label">Errors</div>
@@ -1265,16 +1276,17 @@
         {% endif %}
 
         <!-- ==================== Charts ==================== -->
-        {% set bar_total = summary.passed + summary.failed + summary.warnings + summary.errors + summary.manual + summary.not_applicable %}
+        {% set bar_total = summary.passed + summary.failed + summary.warnings + summary.partial + summary.errors + summary.manual + summary.not_applicable %}
         {% if bar_total > 0 %}
           {% set w_pass = (summary.passed / bar_total * 100) | round(1) %}
           {% set w_fail = (summary.failed / bar_total * 100) | round(1) %}
           {% set w_warn = (summary.warnings / bar_total * 100) | round(1) %}
+          {% set w_partial = (summary.partial / bar_total * 100) | round(1) %}
           {% set w_error = (summary.errors / bar_total * 100) | round(1) %}
           {% set w_manual = (summary.manual / bar_total * 100) | round(1) %}
-          {% set w_na = (100 - w_pass - w_fail - w_warn - w_error - w_manual) | round(1) %}
+          {% set w_na = (100 - w_pass - w_fail - w_warn - w_partial - w_error - w_manual) | round(1) %}
         {% else %}
-          {% set w_pass = 0 %}{% set w_fail = 0 %}{% set w_warn = 0 %}
+          {% set w_pass = 0 %}{% set w_fail = 0 %}{% set w_warn = 0 %}{% set w_partial = 0 %}
           {% set w_error = 0 %}{% set w_manual = 0 %}{% set w_na = 0 %}
         {% endif %}
 
@@ -1287,6 +1299,7 @@
                 (w_pass, '#38a169', summary.passed, 'Pass'),
                 (w_fail, '#e53e3e', summary.failed, 'Fail'),
                 (w_warn, '#d69e2e', summary.warnings, 'Warn'),
+                (w_partial, '#dd6b20', summary.partial, 'Partial'),
                 (w_error, '#9b2c2c', summary.errors, 'Error'),
                 (w_manual, '#3182ce', summary.manual, 'Manual'),
                 (w_na, '#a0aec0', summary.not_applicable, 'N/A')
@@ -1306,6 +1319,7 @@
               <span class="legend-pass" id="legend-pass">Pass ({{ summary.passed }})</span>
               <span class="legend-fail" id="legend-fail">Fail ({{ summary.failed }})</span>
               <span class="legend-warn" id="legend-warn">Warn ({{ summary.warnings }})</span>
+              <span class="legend-partial" id="legend-partial">Partial ({{ summary.partial }})</span>
               <span class="legend-error" id="legend-error">Error ({{ summary.errors }})</span>
               <span class="legend-manual" id="legend-manual">Manual ({{ summary.manual }})</span>
               <span class="legend-na" id="legend-na">N/A ({{ summary.not_applicable }})</span>
@@ -1320,6 +1334,7 @@
                 (summary.passed, '#38a169'),
                 (summary.failed, '#e53e3e'),
                 (summary.warnings, '#d69e2e'),
+                (summary.partial, '#dd6b20'),
                 (summary.errors, '#9b2c2c'),
                 (summary.manual, '#3182ce'),
                 (summary.not_applicable, '#a0aec0')
@@ -1377,6 +1392,7 @@
             <button class="filter-btn" data-filter="PASS">Pass <span class="filter-count">{{ summary.passed }}</span></button>
             <button class="filter-btn" data-filter="FAIL">Fail <span class="filter-count">{{ summary.failed }}</span></button>
             <button class="filter-btn" data-filter="WARN">Warn <span class="filter-count">{{ summary.warnings }}</span></button>
+            <button class="filter-btn" data-filter="PARTIAL">Partial <span class="filter-count">{{ summary.partial }}</span></button>
             <button class="filter-btn" data-filter="ERROR">Error <span class="filter-count">{{ summary.errors }}</span></button>
             <button class="filter-btn" data-filter="MANUAL">Manual <span class="filter-count">{{ summary.manual }}</span></button>
             <button class="filter-btn" data-filter="NOT_APPLICABLE">N/A <span class="filter-count">{{ summary.not_applicable }}</span></button>
@@ -1396,6 +1412,7 @@
           {% set sec_pass = checks | selectattr('status', 'equalto', 'PASS') | list | length %}
           {% set sec_fail = checks | selectattr('status', 'equalto', 'FAIL') | list | length %}
           {% set sec_warn = checks | selectattr('status', 'equalto', 'WARN') | list | length %}
+          {% set sec_partial = checks | selectattr('status', 'equalto', 'PARTIAL') | list | length %}
           {% set sec_error = checks | selectattr('status', 'equalto', 'ERROR') | list | length %}
           {% set sec_manual = checks | selectattr('status', 'equalto', 'MANUAL') | list | length %}
           {% set sec_total = checks | length %}
@@ -1407,6 +1424,7 @@
                 {% if sec_pass > 0 %}<span class="section-stat section-stat--pass">{{ sec_pass }} pass</span>{% endif %}
                 {% if sec_fail > 0 %}<span class="section-stat section-stat--fail">{{ sec_fail }} fail</span>{% endif %}
                 {% if sec_warn > 0 %}<span class="section-stat section-stat--warn">{{ sec_warn }} warn</span>{% endif %}
+                {% if sec_partial > 0 %}<span class="section-stat section-stat--partial">{{ sec_partial }} partial</span>{% endif %}
                 {% if sec_error > 0 %}<span class="section-stat section-stat--error">{{ sec_error }} err</span>{% endif %}
                 {% if sec_manual > 0 %}<span class="section-stat section-stat--manual">{{ sec_manual }} manual</span>{% endif %}
               </span>
@@ -1418,9 +1436,10 @@
             {% if sec_pass > 0 %}<span style="width:{{ (sec_pass / sec_total * 100) | round(1) }}%;background:var(--color-pass)"></span>{% endif %}
             {% if sec_fail > 0 %}<span style="width:{{ (sec_fail / sec_total * 100) | round(1) }}%;background:var(--color-fail)"></span>{% endif %}
             {% if sec_warn > 0 %}<span style="width:{{ (sec_warn / sec_total * 100) | round(1) }}%;background:var(--color-warn)"></span>{% endif %}
+            {% if sec_partial > 0 %}<span style="width:{{ (sec_partial / sec_total * 100) | round(1) }}%;background:var(--color-partial)"></span>{% endif %}
             {% if sec_error > 0 %}<span style="width:{{ (sec_error / sec_total * 100) | round(1) }}%;background:var(--color-error)"></span>{% endif %}
             {% if sec_manual > 0 %}<span style="width:{{ (sec_manual / sec_total * 100) | round(1) }}%;background:var(--color-manual)"></span>{% endif %}
-            {% set sec_na = sec_total - sec_pass - sec_fail - sec_warn - sec_error - sec_manual %}
+            {% set sec_na = sec_total - sec_pass - sec_fail - sec_warn - sec_partial - sec_error - sec_manual %}
             {% if sec_na > 0 %}<span style="width:{{ (sec_na / sec_total * 100) | round(1) }}%;background:var(--color-na)"></span>{% endif %}
           </div>
           {% endif %}
@@ -1526,7 +1545,6 @@
       <div class="modal-section"><div class="modal-section-label">Details</div><div class="modal-section-content" id="modal-details"></div></div>
       <div class="modal-section"><div class="modal-section-label">Actual Value</div><div class="modal-section-content" id="modal-actual"></div></div>
       <div class="modal-section"><div class="modal-section-label">Expected Value</div><div class="modal-section-content" id="modal-expected"></div></div>
-      <div class="modal-section"><div class="modal-section-label">Org Unit</div><div class="modal-section-content" id="modal-org-unit"></div></div>
       <div class="modal-section"><div class="modal-section-label">Remediation</div><div class="modal-section-content" id="modal-remediation"></div></div>
     </div>
   </div>
@@ -1654,16 +1672,16 @@
 
       /* Map status string to badge CSS class suffix */
       var badgeClasses = {
-        'PASS': 'badge--PASS', 'FAIL': 'badge--FAIL', 'WARN': 'badge--WARN',
+        'PASS': 'badge--PASS', 'FAIL': 'badge--FAIL', 'WARN': 'badge--WARN', 'PARTIAL': 'badge--PARTIAL',
         'ERROR': 'badge--ERROR', 'MANUAL': 'badge--MANUAL', 'NOT_APPLICABLE': 'badge--NOT_APPLICABLE'
       };
       var badgeLabels = {
-        'PASS': 'PASS', 'FAIL': 'FAIL', 'WARN': 'WARN',
+        'PASS': 'PASS', 'FAIL': 'FAIL', 'WARN': 'WARN', 'PARTIAL': 'PARTIAL',
         'ERROR': 'ERROR', 'MANUAL': 'MANUAL', 'NOT_APPLICABLE': 'NOT APPLICABLE'
       };
 
       function updateSummary(counts) {
-        var total = counts.PASS + counts.FAIL + counts.WARN + counts.ERROR + counts.MANUAL + counts.NOT_APPLICABLE;
+        var total = counts.PASS + counts.FAIL + counts.WARN + counts.PARTIAL + counts.ERROR + counts.MANUAL + counts.NOT_APPLICABLE;
         var evaluated = counts.PASS + counts.FAIL;
         var passRate = evaluated > 0 ? (counts.PASS / evaluated * 100) : 0;
 
@@ -1673,6 +1691,7 @@
         el = document.getElementById('card-pass'); if (el) el.textContent = counts.PASS;
         el = document.getElementById('card-fail'); if (el) el.textContent = counts.FAIL;
         el = document.getElementById('card-warn'); if (el) el.textContent = counts.WARN;
+        el = document.getElementById('card-partial'); if (el) el.textContent = counts.PARTIAL;
         el = document.getElementById('card-error'); if (el) el.textContent = counts.ERROR;
         el = document.getElementById('card-manual'); if (el) el.textContent = counts.MANUAL;
         el = document.getElementById('card-na'); if (el) el.textContent = counts.NOT_APPLICABLE;
@@ -1683,6 +1702,7 @@
           el = document.getElementById('bar-pass'); if (el) el.style.width = (counts.PASS / total * 100).toFixed(1) + '%';
           el = document.getElementById('bar-fail'); if (el) el.style.width = (counts.FAIL / total * 100).toFixed(1) + '%';
           el = document.getElementById('bar-warn'); if (el) el.style.width = (counts.WARN / total * 100).toFixed(1) + '%';
+          el = document.getElementById('bar-partial'); if (el) el.style.width = (counts.PARTIAL / total * 100).toFixed(1) + '%';
           el = document.getElementById('bar-error'); if (el) el.style.width = (counts.ERROR / total * 100).toFixed(1) + '%';
           el = document.getElementById('bar-manual'); if (el) el.style.width = (counts.MANUAL / total * 100).toFixed(1) + '%';
           el = document.getElementById('bar-na'); if (el) el.style.width = (counts.NOT_APPLICABLE / total * 100).toFixed(1) + '%';
@@ -1701,6 +1721,7 @@
         el = document.getElementById('legend-pass'); if (el) el.textContent = 'Pass (' + counts.PASS + ')';
         el = document.getElementById('legend-fail'); if (el) el.textContent = 'Fail (' + counts.FAIL + ')';
         el = document.getElementById('legend-warn'); if (el) el.textContent = 'Warn (' + counts.WARN + ')';
+        el = document.getElementById('legend-partial'); if (el) el.textContent = 'Partial (' + counts.PARTIAL + ')';
         el = document.getElementById('legend-error'); if (el) el.textContent = 'Error (' + counts.ERROR + ')';
         el = document.getElementById('legend-manual'); if (el) el.textContent = 'Manual (' + counts.MANUAL + ')';
         el = document.getElementById('legend-na'); if (el) el.textContent = 'N/A (' + counts.NOT_APPLICABLE + ')';
@@ -1712,6 +1733,7 @@
             { pct: counts.PASS / total * 100, color: '#38a169' },
             { pct: counts.FAIL / total * 100, color: '#e53e3e' },
             { pct: counts.WARN / total * 100, color: '#d69e2e' },
+            { pct: counts.PARTIAL / total * 100, color: '#dd6b20' },
             { pct: counts.ERROR / total * 100, color: '#9b2c2c' },
             { pct: counts.MANUAL / total * 100, color: '#3182ce' },
             { pct: counts.NOT_APPLICABLE / total * 100, color: '#a0aec0' }
@@ -1742,6 +1764,7 @@
             { count: counts.PASS, color: '#38a169' },
             { count: counts.FAIL, color: '#e53e3e' },
             { count: counts.WARN, color: '#d69e2e' },
+            { count: counts.PARTIAL, color: '#dd6b20' },
             { count: counts.ERROR, color: '#9b2c2c' },
             { count: counts.MANUAL, color: '#3182ce' },
             { count: counts.NOT_APPLICABLE, color: '#a0aec0' }
@@ -1823,7 +1846,7 @@
 
       function applyFilters() {
         var visibleCount = 0;
-        var counts = { PASS: 0, FAIL: 0, WARN: 0, ERROR: 0, MANUAL: 0, NOT_APPLICABLE: 0 };
+        var counts = { PASS: 0, FAIL: 0, WARN: 0, PARTIAL: 0, ERROR: 0, MANUAL: 0, NOT_APPLICABLE: 0 };
 
         allRows.forEach(function(row) {
           var effectiveStatus = getEffectiveStatus(row);
@@ -1888,7 +1911,7 @@
       }
 
       /* ---------- Column sorting ---------- */
-      var statusOrder = { 'FAIL': 0, 'ERROR': 1, 'WARN': 2, 'MANUAL': 3, 'PASS': 4, 'NOT_APPLICABLE': 5 };
+      var statusOrder = { 'FAIL': 0, 'ERROR': 1, 'PARTIAL': 2, 'WARN': 3, 'MANUAL': 4, 'PASS': 5, 'NOT_APPLICABLE': 6 };
       document.querySelectorAll('thead th[data-col]').forEach(function(th) {
         if (th.getAttribute('data-col') === 'details' || th.getAttribute('data-col') === 'remediation') return;
         th.addEventListener('click', function() {
@@ -2456,7 +2479,6 @@
         document.getElementById('modal-details').textContent = row.getAttribute('data-details') || '';
         document.getElementById('modal-actual').textContent = row.getAttribute('data-actual') || 'N/A';
         document.getElementById('modal-expected').textContent = row.getAttribute('data-expected') || 'N/A';
-        document.getElementById('modal-org-unit').textContent = row.getAttribute('data-org-unit') || '/';
         document.getElementById('modal-remediation').textContent = row.getAttribute('data-remediation') || 'None';
         modal.classList.add('visible');
       }

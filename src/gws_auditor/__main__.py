@@ -259,7 +259,8 @@ def main(argv: list[str] | None = None):
     # Validate that sufficient auth config is present before proceeding.
     # A valid config.yaml may supply credentials_file and subject, but when
     # no config file exists the user must provide them via CLI flags.
-    if not args.list_checks:
+    # Skip validation when using --cached (no API calls needed).
+    if not args.list_checks and not args.cached:
         _validate_auth_config(config, args)
 
     orchestrator = Orchestrator(config)

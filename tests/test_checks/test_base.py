@@ -3,6 +3,7 @@
 from gws_auditor.checks.base import (
     _check_license_sufficient,
     evaluate_ous,
+    format_ou_values_readable,
     is_admin_configured,
     is_default_policy,
     is_external_sharing_ou,
@@ -60,6 +61,56 @@ class TestIsExternalSharingOU:
 
     def test_empty_path(self):
         assert not is_external_sharing_ou("", {})
+
+    def test_options_injected_by_orchestrator(self):
+        """The orchestrator injects config options as data["_options"]."""
+        data = {"_options": {"external_sharing_ous": ["/CustomOU"]}}
+        assert is_external_sharing_ou("/CustomOU", data)
+        assert not is_external_sharing_ou("/Contractors", data)
+
+    def test_options_take_precedence_over_config_key(self):
+        data = {
+            "_options": {"external_sharing_ous": ["/FromOptions"]},
+            "config": {"options": {"external_sharing_ous": ["/FromConfig"]}},
+        }
+        assert is_external_sharing_ou("/FromOptions", data)
+        assert not is_external_sharing_ou("/FromConfig", data)
+
+    def test_empty_options_falls_back_to_defaults(self):
+        data = {"_options": {}}
+        assert is_external_sharing_ou("/Contractors", data)
+
+
+class TestFormatOUValuesReadable:
+    def test_empty_list(self):
+        assert format_ou_values_readable([]) == ""
+
+    def test_booleans_humanized(self):
+        out = format_ou_values_readable([
+            {"org_unit": "/Sales", "value": True},
+            {"org_unit": "/Eng", "value": False},
+        ])
+        assert out == "/Sales → Enabled\n/Eng → Disabled"
+
+    def test_none_is_not_set(self):
+        assert format_ou_values_readable(
+            [{"org_unit": "/Sales", "value": None}]
+        ) == "/Sales → Not set"
+
+    def test_other_values_stringified(self):
+        assert format_ou_values_readable(
+            [{"org_unit": "/Sales", "value": "ANYONE"}]
+        ) == "/Sales → ANYONE"
+
+    def test_custom_humanizer(self):
+        out = format_ou_values_readable(
+            [{"org_unit": "/Sales", "value": "reader"}],
+            lambda v: {"reader": "Can see all event details"}.get(v, v),
+        )
+        assert out == "/Sales → Can see all event details"
+
+    def test_missing_keys_tolerated(self):
+        assert format_ou_values_readable([{}]) == " → Not set"
 
 
 class TestEvaluateOUs:

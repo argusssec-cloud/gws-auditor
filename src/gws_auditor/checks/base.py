@@ -362,7 +362,7 @@ def is_admin_configured(entry: dict) -> bool:
 
 
 # Default patterns that identify intentional external-sharing OUs. Tenants
-# can override or extend this via config.options.external_sharing_ous.
+# can override or extend this via options.external_sharing_ous in config.yaml.
 _DEFAULT_EXTERNAL_SHARING_PATTERNS = (
     "*External*",
     "*Sharing-External*",
@@ -382,15 +382,17 @@ def is_external_sharing_ou(ou_path: str, data: dict) -> bool:
     Checks that fail when ANY OU has a permissive value would otherwise
     treat these intentional exceptions as violations.
 
-    The list of exception OUs is sourced from
-    ``data["config"]["options"]["external_sharing_ous"]`` (a list of
-    paths or fnmatch patterns). Falls back to a built-in pattern set
-    when no config is provided.
+    The list of exception OUs comes from ``options.external_sharing_ous``
+    in config.yaml (a list of paths or fnmatch patterns), which the
+    orchestrator injects as ``data["_options"]``. Falls back to a
+    built-in pattern set when the tenant configures none.
     """
     if not ou_path:
         return False
-    config = data.get("config", {}) or {}
-    options = config.get("options", {}) or {}
+    options = data.get("_options") or {}
+    if not options:
+        # Some callers (tests, cached re-scoring) pass the raw config dict.
+        options = (data.get("config", {}) or {}).get("options", {}) or {}
     patterns = options.get("external_sharing_ous")
     if not patterns:
         patterns = _DEFAULT_EXTERNAL_SHARING_PATTERNS
@@ -553,6 +555,37 @@ def get_ou_values(category_dict: dict, raw_setting_key: str,
             seen_ous[ou] = entry
 
     return list(seen_ous.values())
+
+
+def format_ou_values_readable(unsafe_ous: list[dict],
+                               value_humanizer: Callable | None = None) -> str:
+    """Format a list of OU dicts into a human-readable multi-line string.
+
+    Parameters
+    ----------
+    unsafe_ous:
+        List of dicts with ``org_unit`` and ``value`` keys.
+    value_humanizer:
+        Optional callable ``(value) -> str``.  When omitted, booleans
+        become ``"Enabled"``/``"Disabled"``, ``None`` becomes
+        ``"Not set"``, and everything else is ``str()``-ed.
+    """
+    if not unsafe_ous:
+        return ""
+    lines = []
+    for ou_dict in unsafe_ous:
+        ou = ou_dict.get("org_unit", "")
+        val = ou_dict.get("value")
+        if value_humanizer and callable(value_humanizer):
+            val = value_humanizer(val)
+        elif isinstance(val, bool):
+            val = "Enabled" if val else "Disabled"
+        elif val is None:
+            val = "Not set"
+        else:
+            val = str(val)
+        lines.append(f"{ou} → {val}")
+    return "\n".join(lines)
 
 
 def make_review(check_id: str, title: str, level: str, source: str, section: str,

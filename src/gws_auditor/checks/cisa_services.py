@@ -7,7 +7,7 @@
 Only checks NOT already covered by CIS/OTHER/GOOGLE or the main cisa_scuba module.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, is_default_policy
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy
 from ..models import CheckResult, Status
 
 
@@ -170,7 +170,7 @@ def check_flagged_email_action(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not quarantine/spam flagged emails: {ou_list}",
-                actual_value=unsafe_ous, expected_value="quarantine or spam",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="quarantine or spam",
                 remediation=_REMED,
             )
         return make_pass(
@@ -261,7 +261,7 @@ def check_spam_approved_senders_domains(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have approved sender domains: {ou_list}",
-                actual_value=unsafe_ous, expected_value="No approved sender domains",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="No approved sender domains",
                 remediation=_REMED,
             )
         return make_pass(
@@ -354,7 +354,7 @@ def check_spam_domains_bypass_hide_warnings(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have domains bypassing and hiding warnings: {ou_list}",
-                actual_value=unsafe_ous, expected_value="No domains bypass and hide warnings",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="No domains bypass and hide warnings",
                 remediation=_REMED,
             )
         return make_pass(
@@ -447,13 +447,13 @@ def check_spam_bypass_internal(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) bypass spam filters for internal senders: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) do not bypass spam filters for internal senders.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -467,7 +467,7 @@ def check_spam_bypass_internal(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Gmail",
             details="Spam filter bypass for internal senders is disabled.",
             actual_value=bypass_internal,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if bypass_internal is None:
@@ -489,7 +489,7 @@ def check_spam_bypass_internal(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Gmail",
         details="Spam filter bypass for internal senders is enabled.",
         actual_value=bypass_internal,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > Spam, "
             "Phishing and Malware. Disable 'Bypass spam filters for "
@@ -545,13 +545,13 @@ def check_drive_external_sharing_warning(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack external sharing warnings: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have external sharing warnings enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -565,7 +565,7 @@ def check_drive_external_sharing_warning(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Drive and Docs",
             details="Sharing warnings for non-allowlisted domains are enabled.",
             actual_value=warn_external,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if warn_external is None:
@@ -587,7 +587,7 @@ def check_drive_external_sharing_warning(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Drive and Docs",
         details="Sharing warnings for non-allowlisted domains are not enabled.",
         actual_value=warn_external,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Sharing settings. Enable 'Warn when files owned by users or "
@@ -639,7 +639,7 @@ def check_drive_access_checker(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have access checker not set to recipients only: {ou_list}",
-                actual_value=unsafe_ous, expected_value="recipients_only",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="recipients_only",
                 remediation=_REMED,
             )
         return make_pass(
@@ -734,13 +734,13 @@ def check_drive_external_upload(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow uploading to external shared drives: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) block uploading to external shared drives.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -754,7 +754,7 @@ def check_drive_external_upload(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Drive and Docs",
             details="Uploading to external shared drives is disabled.",
             actual_value=allow_upload,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if allow_upload is None:
@@ -776,7 +776,7 @@ def check_drive_external_upload(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Drive and Docs",
         details="Users can upload files to external shared drives.",
         actual_value=allow_upload,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Sharing settings. Disable 'Allow users to upload files to "
@@ -825,13 +825,13 @@ def check_drive_ood_warning(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack out-of-domain warnings: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have out-of-domain warnings enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -845,7 +845,7 @@ def check_drive_ood_warning(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Drive and Docs",
             details="Out-of-domain file-level warnings are enabled.",
             actual_value=ood_warning,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if ood_warning is None:
@@ -869,7 +869,7 @@ def check_drive_ood_warning(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Drive and Docs",
         details="Out-of-domain file-level warnings are not enabled.",
         actual_value=ood_warning,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Sharing settings. Enable 'Warn users when they open files "
@@ -920,13 +920,13 @@ def check_drive_manager_override(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow manager override of sharing settings: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) disable manager override.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -940,7 +940,7 @@ def check_drive_manager_override(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Drive and Docs",
             details="Shared drive manager override is disabled.",
             actual_value=allow_override,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if allow_override is None:
@@ -962,7 +962,7 @@ def check_drive_manager_override(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Drive and Docs",
         details="Shared drive managers can override sharing settings.",
         actual_value=allow_override,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Sharing settings > Shared drive creation. Disable 'Allow "
@@ -1012,13 +1012,13 @@ def check_drive_non_member_access(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) don't allow non-member access to shared drive files: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) allow non-member access to shared drive files.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1032,7 +1032,7 @@ def check_drive_non_member_access(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Drive and Docs",
             details="Non-members can be added to individual shared drive files.",
             actual_value=allow_non_member,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if allow_non_member is None:
@@ -1054,7 +1054,7 @@ def check_drive_non_member_access(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Drive and Docs",
         details="Non-members cannot be added to shared drive files.",
         actual_value=allow_non_member,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Sharing settings > Shared drive creation. Enable 'Allow "
@@ -1107,13 +1107,13 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Drive Add-Ons enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Drive Add-Ons disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1127,7 +1127,7 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Drive and Docs",
             details="Google Drive Add-Ons are disabled.",
             actual_value=add_ons_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if add_ons_enabled is None:
@@ -1151,7 +1151,7 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
         level="L1", source="CISA", section="Drive and Docs",
         details="Google Drive Add-Ons are enabled.",
         actual_value=add_ons_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
             "Features and Applications. Disable Google Drive Add-Ons "
@@ -1206,7 +1206,7 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) don't restrict Drive for Desktop: {ou_list}",
-                actual_value=unsafe_ous,
+                actual_value=format_ou_values_readable(unsafe_ous),
                 expected_value="desktop_authorized_only=True or desktop_allowed=False",
                 remediation=_REMED,
             )
@@ -1324,13 +1324,13 @@ def check_chat_space_history(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Chat space history disabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Chat space history enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1344,7 +1344,7 @@ def check_chat_space_history(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Google Chat",
             details="Chat space history is enabled.",
             actual_value=space_history,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if space_history is None:
@@ -1366,7 +1366,7 @@ def check_chat_space_history(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Google Chat",
         details="Chat space history is not enabled.",
         actual_value=space_history,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
             "Chat history. Enable space history to ensure conversations "
@@ -1416,13 +1416,13 @@ def check_chat_reporting_categories(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack all Chat reporting categories: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have all Chat reporting categories selected.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1436,7 +1436,7 @@ def check_chat_reporting_categories(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Google Chat",
             details="All Chat reporting categories are selected.",
             actual_value=all_selected,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if all_selected is None:
@@ -1458,7 +1458,7 @@ def check_chat_reporting_categories(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Google Chat",
         details="Not all Chat reporting categories are selected.",
         actual_value=all_selected,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
             "Content reporting. Enable all reporting categories including "
@@ -1609,7 +1609,7 @@ def check_groups_external_access_default(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have external group access enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value="disabled",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="disabled",
                 remediation=_REMED,
             )
         return make_pass(
@@ -1709,13 +1709,13 @@ def check_groups_external_members(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) allow external group members: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have external group members disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1729,7 +1729,7 @@ def check_groups_external_members(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Groups",
             details="External group members are disabled by default.",
             actual_value=allow_external,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if allow_external is None:
@@ -1750,7 +1750,7 @@ def check_groups_external_members(data: dict) -> CheckResult:
         level="L2", source="CISA", section="Groups",
         details="External users can be added as group members.",
         actual_value=allow_external,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Groups for Business > "
             "Sharing settings. Disable 'Allow external members' to prevent "
@@ -1804,7 +1804,7 @@ def check_groups_conversation_visibility(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have conversation visibility not set to members-only: {ou_list}",
-                actual_value=unsafe_ous, expected_value="members_only",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="members_only",
                 remediation=_REMED,
             )
         return make_pass(

@@ -19,6 +19,7 @@ from .base import (
     make_review,
     make_not_applicable,
     get_ou_values,
+    format_ou_values_readable,
 )
 from ..models import CheckResult, Status
 from ..constants import DANGEROUS_OAUTH_SCOPES, OAUTH_SCOPE_RISK_LEVELS
@@ -51,7 +52,7 @@ def check_security_sandbox(data: dict) -> CheckResult:
             level="L1", source="OTHER", section="Gmail",
             details="Security Sandbox is enabled for Gmail.",
             actual_value=sandbox_enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if sandbox_enabled is None:
@@ -76,7 +77,7 @@ def check_security_sandbox(data: dict) -> CheckResult:
         level="L1", source="OTHER", section="Gmail",
         details="Security Sandbox is not enabled for Gmail.",
         actual_value=sandbox_enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > Safety > "
             "Security Sandbox. Enable Security Sandbox to scan attachments "
@@ -399,7 +400,7 @@ def check_takeout_restriction(data: dict) -> CheckResult:
             level="L1", source="GOOGLE", section="Security",
             details="Google Takeout is disabled for users.",
             actual_value=takeout_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if takeout_enabled is None:
@@ -424,7 +425,7 @@ def check_takeout_restriction(data: dict) -> CheckResult:
         level="L1", source="GOOGLE", section="Security",
         details="Google Takeout is enabled, allowing users to export organizational data.",
         actual_value=takeout_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Account > Data sharing > Google Takeout. "
             "Disable Google Takeout to prevent bulk data export by users. https://knowledge.workspace.google.com/admin/gemini/export-google-workspace-with-gemini-data"
@@ -460,7 +461,7 @@ def check_client_side_encryption(data: dict) -> CheckResult:
             level="L2", source="GOOGLE", section="Security",
             details="Client-side encryption is enabled.",
             actual_value=cse_enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if cse_enabled is None:
@@ -485,7 +486,7 @@ def check_client_side_encryption(data: dict) -> CheckResult:
         level="L2", source="GOOGLE", section="Security",
         details="Client-side encryption is not enabled.",
         actual_value=cse_enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Access and data control > "
             "Client-side encryption. Enable CSE for Drive, Gmail, Calendar, "
@@ -603,7 +604,7 @@ def check_gemini_workspace_features(data: dict) -> CheckResult:
             level="L1", source="GOOGLE", section="Gemini",
             details="Gemini features in Workspace apps are disabled.",
             actual_value=enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if enabled is None:
@@ -628,7 +629,7 @@ def check_gemini_workspace_features(data: dict) -> CheckResult:
         level="L1", source="GOOGLE", section="Gemini",
         details="Gemini features in Workspace apps are enabled without restriction.",
         actual_value=enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gemini. "
             "Disable or restrict Gemini features in Workspace apps "
@@ -663,7 +664,7 @@ def check_gemini_chrome(data: dict) -> CheckResult:
             level="L2", source="GOOGLE", section="Gemini",
             details="Gemini in Chrome is disabled.",
             actual_value=enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if enabled is None:
@@ -673,7 +674,7 @@ def check_gemini_chrome(data: dict) -> CheckResult:
             level="L2", source="GOOGLE", section="Gemini",
             details="Gemini in Chrome is not explicitly disabled via Chrome policy.",
             actual_value=None,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
             remediation=(
                 "Admin console > Devices > Chrome > Settings > Users & browsers. "
                 "Disable Gemini in Chrome to prevent browser-level AI data processing. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
@@ -686,7 +687,7 @@ def check_gemini_chrome(data: dict) -> CheckResult:
         level="L2", source="GOOGLE", section="Gemini",
         details="Gemini in Chrome is enabled.",
         actual_value=enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Devices > Chrome > Settings > Users & browsers. "
             "Disable Gemini in Chrome to prevent browser-based AI from "
@@ -721,7 +722,7 @@ def check_workspace_studio(data: dict) -> CheckResult:
             level="L2", source="GOOGLE", section="Gemini",
             details="Google Workspace Studio access is disabled.",
             actual_value=enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if enabled is None:
@@ -746,7 +747,7 @@ def check_workspace_studio(data: dict) -> CheckResult:
         level="L2", source="GOOGLE", section="Gemini",
         details="Google Workspace Studio access is enabled without restriction.",
         actual_value=enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gemini > "
             "Workspace Studio. Disable or restrict access to prevent "
@@ -1125,7 +1126,7 @@ def check_mpa_vault_exports(data: dict) -> CheckResult:
             level="L2", source="GOOGLE", section="Security",
             details="Multi-Party Approval covers Vault exports.",
             actual_value=vault_covered,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if vault_covered is None:
@@ -1135,7 +1136,7 @@ def check_mpa_vault_exports(data: dict) -> CheckResult:
             level="L2", source="GOOGLE", section="Security",
             details="Multi-Party Approval is not configured for Vault exports.",
             actual_value=None,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
             remediation=(
                 "Admin console > Security > Multi-Party Approval. "
                 "Enable MPA for Vault export operations to require "
@@ -1149,7 +1150,7 @@ def check_mpa_vault_exports(data: dict) -> CheckResult:
         level="L2", source="GOOGLE", section="Security",
         details="Multi-Party Approval does not cover Vault exports.",
         actual_value=vault_covered,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Multi-Party Approval. "
             "Add Vault exports to the MPA-covered actions to prevent "
@@ -1185,7 +1186,7 @@ def check_gmail_classification_labels(data: dict) -> CheckResult:
             level="L1", source="GOOGLE", section="Gmail",
             details="Data classification labels are enabled for Gmail.",
             actual_value=labels_enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if labels_enabled is None:
@@ -1210,7 +1211,7 @@ def check_gmail_classification_labels(data: dict) -> CheckResult:
         level="L1", source="GOOGLE", section="Gmail",
         details="Data classification labels are not enabled for Gmail.",
         actual_value=labels_enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Data protection > Data classification. "
             "Enable classification labels for Gmail to categorize emails by "
@@ -1316,7 +1317,7 @@ def check_drive_ai_classification(data: dict) -> CheckResult:
             level="L2", source="GOOGLE", section="Drive and Docs",
             details="AI-powered data classification is enabled for Drive.",
             actual_value=ai_enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if ai_enabled is None:
@@ -1341,7 +1342,7 @@ def check_drive_ai_classification(data: dict) -> CheckResult:
         level="L2", source="GOOGLE", section="Drive and Docs",
         details="AI-powered data classification is not enabled for Drive.",
         actual_value=ai_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Security > Data protection > Data classification. "
             "Enable AI-powered classification for Drive to automatically "
@@ -1436,7 +1437,7 @@ def check_gmail_cse(data: dict) -> CheckResult:
             level="L2", source="GOOGLE", section="Gmail",
             details="Client-side encryption is enabled for Gmail.",
             actual_value=cse_enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if cse_enabled is None:
@@ -1461,7 +1462,7 @@ def check_gmail_cse(data: dict) -> CheckResult:
         level="L2", source="GOOGLE", section="Gmail",
         details="Client-side encryption is not enabled for Gmail.",
         actual_value=cse_enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Access and data control > "
             "Client-side encryption > Gmail. Enable CSE for Gmail to "
@@ -1511,13 +1512,13 @@ def check_meet_compliance_recording(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not have compliance recording enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Meet compliance recording configured.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: mapped root-level value
@@ -1531,7 +1532,7 @@ def check_meet_compliance_recording(data: dict) -> CheckResult:
             level="L2", source="GOOGLE", section="Google Meet",
             details="Meet compliance recording is configured.",
             actual_value=recording_enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if recording_enabled is None:
@@ -1556,7 +1557,7 @@ def check_meet_compliance_recording(data: dict) -> CheckResult:
         level="L2", source="GOOGLE", section="Google Meet",
         details="Meet compliance recording is not configured.",
         actual_value=recording_enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
             "Meet compliance settings. Enable compliance recording to "

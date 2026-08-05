@@ -9,7 +9,7 @@ CIS Google Workspace Benchmark v1.3.0 - Authentication and security controls.
 
 from .base import (
     check, make_pass, make_fail, make_warn, make_manual, make_partial,
-    get_ou_values,
+    get_ou_values, format_ou_values_readable,
 )
 from ..models import CheckResult, Status
 
@@ -181,7 +181,7 @@ def check_security_keys_admin(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not require security keys: {ou_list}",
-                actual_value=unsafe_ous, expected_value="ONLY_SECURITY_KEY for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="ONLY_SECURITY_KEY for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
@@ -407,13 +407,13 @@ def check_super_admin_recovery(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have super admin recovery enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value="Recovery disabled for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Recovery disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have super admin account recovery disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -425,7 +425,7 @@ def check_super_admin_recovery(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Super admin account recovery is disabled.",
             actual_value=super_admin_recovery,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if super_admin_recovery is None:
@@ -439,7 +439,7 @@ def check_super_admin_recovery(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Super admin account recovery is enabled, which could be exploited.",
         actual_value=super_admin_recovery,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=_REMED,
     )
 
@@ -483,13 +483,13 @@ def check_user_account_recovery(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have user account recovery disabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value="Recovery enabled for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Recovery enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have user account recovery enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -501,7 +501,7 @@ def check_user_account_recovery(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="User account recovery is enabled.",
             actual_value=user_recovery,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if user_recovery is None:
@@ -515,7 +515,7 @@ def check_user_account_recovery(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="User account recovery is disabled, which may cause lockout issues.",
         actual_value=user_recovery,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -559,13 +559,13 @@ def check_advanced_protection(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not have Advanced Protection available: {ou_list}",
-                actual_value=unsafe_ous, expected_value="Available for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Available for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Advanced Protection Program available.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -577,7 +577,7 @@ def check_advanced_protection(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Advanced Protection Program enrollment is available.",
             actual_value=available,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if available is None:
@@ -591,7 +591,7 @@ def check_advanced_protection(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Advanced Protection Program enrollment is not available.",
         actual_value=available,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -637,13 +637,13 @@ def check_login_challenges(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not have login challenges enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value="Login challenges enabled for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Login challenges enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have login challenges enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -655,7 +655,7 @@ def check_login_challenges(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Login challenges are enabled for suspicious sign-in attempts.",
             actual_value=enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if enabled is None:
@@ -669,7 +669,7 @@ def check_login_challenges(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Login challenges are not enabled.",
         actual_value=enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -724,7 +724,7 @@ def check_password_policy(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have weak password policy: {ou_list}",
-                actual_value=unsafe_ous, expected_value="minimumLength >= 12, enforceRequirementsAtLogin for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="minimumLength >= 12, enforceRequirementsAtLogin for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
@@ -839,7 +839,7 @@ def check_less_secure_apps(data: dict) -> CheckResult:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) disable less secure app access.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -879,7 +879,7 @@ def check_less_secure_apps(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Less secure app access is allowed at the organization level.",
             actual_value=allowed,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
             remediation=_REMED,
         )
 

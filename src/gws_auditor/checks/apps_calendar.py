@@ -7,8 +7,29 @@
 CIS Google Workspace Benchmark v1.3.0 - Calendar controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, is_default_policy
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy
 from ..models import CheckResult, Status
+
+
+def _humanize_sharing_level(value: str) -> str:
+    """Convert API sharing enum or ACL role to human-readable text."""
+    mapping = {
+        "EXTERNAL_ALL_INFO_READ_WRITE_MANAGE": "All information (read, write, manage)",
+        "EXTERNAL_ALL_INFO_READ_WRITE": "All information (read, write)",
+        "EXTERNAL_ALL_INFO_READ": "All information (read only)",
+        "EXTERNAL_FREE_BUSY_ONLY": "Free/busy information only",
+        "EXTERNAL_NO_FREE_BUSY": "No external sharing",
+        "FREE_BUSY_ONLY": "Free/busy information only",
+        "ONLY_FREE_BUSY": "Free/busy information only",
+        "ALL_INFO_READ_WRITE_MANAGE": "All information (read, write, manage)",
+        "ALL_INFO_READ_WRITE": "All information (read, write)",
+        "ALL_INFO_READ": "All information (read only)",
+        "reader": "Can see all event details",
+        "writer": "Can edit events",
+        "freeBusyReader": "Can see only free/busy",
+        "owner": "Full control",
+    }
+    return mapping.get(value, value)
 
 
 @check(
@@ -58,7 +79,7 @@ def check_primary_cal_external_sharing(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have unsafe external sharing: {ou_list}",
-                actual_value=unsafe_ous, expected_value="FREE_BUSY_ONLY for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Free/busy information only for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
@@ -134,7 +155,7 @@ def check_primary_cal_internal_sharing(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have unsafe internal sharing: {ou_list}",
-                actual_value=unsafe_ous, expected_value="FREE_BUSY_ONLY for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Free/busy information only for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
@@ -166,17 +187,19 @@ def check_primary_cal_internal_sharing(data: dict) -> CheckResult:
                 if role not in _ROLE_SAFE:
                     unsafe_ous.append({"org_unit": ou, "value": role})
             if unsafe_ous:
-                ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
+                ou_names = ", ".join(u["org_unit"] for u in unsafe_ous)
                 return make_fail(
                     check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                    details=f"{len(unsafe_ous)} OU(s) have unsafe internal sharing (via ACL sampling): {ou_list}",
-                    actual_value=unsafe_ous, expected_value="freeBusyReader for all OUs",
+                    details=f"{len(unsafe_ous)} OU(s) have unsafe internal sharing (via ACL sampling): {ou_names}",
+                    actual_value=format_ou_values_readable(unsafe_ous, _humanize_sharing_level),
+                    expected_value="Can see only free/busy for all OUs",
                     remediation=_REMED,
                 )
             return make_pass(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"All {len(calendar_acls)} OU(s) limit primary calendar internal sharing to free/busy (via ACL sampling).",
-                actual_value=f"{len(calendar_acls)} OU(s) safe", expected_value="freeBusyReader",
+                actual_value=f"All {len(calendar_acls)} OU(s): Can see only free/busy",
+                expected_value="Can see only free/busy",
             )
 
         return make_manual(
@@ -231,13 +254,13 @@ def check_cal_external_invitation_warning(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack external invitation warning: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have external invitation warnings enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback
@@ -247,7 +270,7 @@ def check_cal_external_invitation_warning(data: dict) -> CheckResult:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="External invitation warnings are enabled.",
-            actual_value=ext_warning, expected_value=True,
+            actual_value=ext_warning, expected_value="Enabled for all OUs",
         )
 
     if ext_warning is None:
@@ -260,7 +283,7 @@ def check_cal_external_invitation_warning(data: dict) -> CheckResult:
     return make_fail(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="External invitation warnings are not enabled.",
-        actual_value=ext_warning, expected_value=True,
+        actual_value=ext_warning, expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -308,7 +331,7 @@ def check_secondary_cal_external_sharing(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have unsafe secondary calendar external sharing: {ou_list}",
-                actual_value=unsafe_ous, expected_value="FREE_BUSY_ONLY for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Free/busy information only for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
@@ -384,7 +407,7 @@ def check_secondary_cal_internal_sharing(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have unsafe secondary calendar internal sharing: {ou_list}",
-                actual_value=unsafe_ous, expected_value="FREE_BUSY_ONLY for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Free/busy information only for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
@@ -468,13 +491,13 @@ def check_cal_offline_access(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Calendar offline access enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(admin_values)} OU(s) have Calendar offline access disabled.",
-            actual_value=f"{len(admin_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(admin_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # If we had OU entries but they were all DEFAULT (Google system
@@ -499,7 +522,7 @@ def check_cal_offline_access(data: dict) -> CheckResult:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Calendar web offline access is disabled.",
-            actual_value=offline_enabled, expected_value=False,
+            actual_value=offline_enabled, expected_value="Disabled for all OUs",
         )
 
     if offline_enabled is None:
@@ -512,6 +535,6 @@ def check_cal_offline_access(data: dict) -> CheckResult:
     return make_fail(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Calendar web offline access is enabled.",
-        actual_value=offline_enabled, expected_value=False,
+        actual_value=offline_enabled, expected_value="Disabled for all OUs",
         remediation=_REMED,
     )

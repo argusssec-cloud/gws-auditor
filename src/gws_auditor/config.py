@@ -48,6 +48,11 @@ DEFAULT_CONFIG = {
         "max_log_events": DEFAULT_MAX_LOG_EVENTS,
         "chat_inactive_days": 90,
         "device_inactive_days": 90,
+        "trust_rules_file": None,
+        # OU paths or fnmatch patterns whose permissive sharing is
+        # intentional. Empty list = use the built-in pattern set in
+        # checks/base.py (_DEFAULT_EXTERNAL_SHARING_PATTERNS).
+        "external_sharing_ous": [],
     },
     "ai": {
         "provider": "openai",

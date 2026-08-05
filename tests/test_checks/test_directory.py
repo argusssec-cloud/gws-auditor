@@ -36,7 +36,7 @@ class TestSuperAdminCount:
         assert result.status == Status.FAIL
         assert result.actual_value == 0
 
-    def test_warn_too_many_super_admins(self, full_audit_data):
+    def test_fail_too_many_super_admins(self, full_audit_data):
         from gws_auditor.checks.directory import check_super_admin_count_max
         # Add extra super admins
         for i in range(3, 8):
@@ -50,9 +50,26 @@ class TestSuperAdminCount:
                 "name": {"fullName": f"Admin {i}"},
             })
         result = check_super_admin_count_max(full_audit_data)
-        assert result.status in (Status.FAIL, Status.WARN)
+        assert result.status == Status.FAIL
 
-    def test_pass_four_super_admins(self, full_audit_data):
+    def test_pass_three_super_admins(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_count_max
+        # Add 1 more super admin (total 3) — still under the maximum.
+        full_audit_data["users"].append({
+            "primaryEmail": "admin3@example.com",
+            "isAdmin": True,
+            "is_super_admin": True,
+            "suspended": False,
+            "isEnrolledIn2Sv": True,
+            "isEnforcedIn2Sv": True,
+            "name": {"fullName": "Admin 3"},
+        })
+        result = check_super_admin_count_max(full_audit_data)
+        assert result.status == Status.PASS
+        assert result.actual_value == 3
+
+    def test_fail_four_super_admins(self, full_audit_data):
+        """4 is the boundary: CIS-1.1.2 requires *fewer than* 4."""
         from gws_auditor.checks.directory import check_super_admin_count_max
         # Add 2 more super admins (total 4)
         for i in range(3, 5):
@@ -66,7 +83,8 @@ class TestSuperAdminCount:
                 "name": {"fullName": f"Admin {i}"},
             })
         result = check_super_admin_count_max(full_audit_data)
-        assert result.status == Status.PASS
+        assert result.status == Status.FAIL
+        assert result.actual_value == 4
 
 
 class TestSuperAdminUsage:

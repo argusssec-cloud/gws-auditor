@@ -156,7 +156,7 @@ class Orchestrator:
         console.print("\n[bold blue]GWS Security Auditor - Cached Mode[/bold blue]")
         console.print(f"Loading data from: {cache_path}")
 
-        data = Provider.from_cache(cache_path)
+        data = Provider.from_cache(cache_path, self.config)
         # Inject config options so checks can read configurable thresholds
         data["_options"] = self.config.get("options", {})
 
@@ -277,6 +277,7 @@ class Orchestrator:
                 Status.PASS: "green",
                 Status.FAIL: "red",
                 Status.WARN: "yellow",
+                Status.PARTIAL: "dark_orange",
                 Status.ERROR: "red",
                 Status.MANUAL: "blue",
                 Status.NOT_APPLICABLE: "dim",

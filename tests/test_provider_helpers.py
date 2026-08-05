@@ -128,3 +128,83 @@ class TestParseDurationSeconds:
 
     def test_small_value(self):
         assert _parse_duration_seconds("1s") == 1
+
+
+class TestTrustRulesLoading:
+    """Drive trust rules have no read API, so they are loaded from a
+    JSON file named by options.trust_rules_file — on live runs and on
+    --cached re-scoring alike."""
+
+    RULES = [
+        {
+            "displayName": "Block partner sharing",
+            "status": "ACTIVE",
+            "trigger": ["DRIVE_SHARE_TRUST"],
+            "targets": {"includedEntity": [{"ouId": "03ph8a2z1"}]},
+            "action": [{"actionName": "BLOCK_SHARE"}],
+        }
+    ]
+
+    def _cache_file(self, tmp_path):
+        import json
+        cache = tmp_path / "audit.json"
+        cache.write_text(json.dumps({"users": [], "policies": {}}))
+        return str(cache)
+
+    def _rules_file(self, tmp_path, content=None):
+        import json
+        f = tmp_path / "trust_rules.json"
+        f.write_text(json.dumps(self.RULES if content is None else content))
+        return str(f)
+
+    def test_from_cache_loads_trust_rules(self, tmp_path):
+        from gws_auditor.provider import Provider
+
+        config = {"options": {"trust_rules_file": self._rules_file(tmp_path)}}
+        data = Provider.from_cache(self._cache_file(tmp_path), config)
+        assert data["policies"]["drive"]["trust_rules"] == self.RULES
+
+    def test_from_cache_without_config_has_no_rules(self, tmp_path):
+        from gws_auditor.provider import Provider
+
+        data = Provider.from_cache(self._cache_file(tmp_path))
+        assert "trust_rules" not in data.get("policies", {}).get("drive", {})
+
+    def test_unset_option_loads_nothing(self, tmp_path):
+        from gws_auditor.provider import Provider
+
+        data = Provider.from_cache(self._cache_file(tmp_path), {"options": {}})
+        assert "trust_rules" not in data.get("policies", {}).get("drive", {})
+
+    def test_missing_file_is_tolerated(self, tmp_path):
+        from gws_auditor.provider import Provider
+
+        config = {"options": {"trust_rules_file": str(tmp_path / "nope.json")}}
+        data = Provider.from_cache(self._cache_file(tmp_path), config)
+        assert "trust_rules" not in data.get("policies", {}).get("drive", {})
+
+    def test_non_list_json_rejected(self, tmp_path):
+        from gws_auditor.provider import Provider
+
+        config = {
+            "options": {
+                "trust_rules_file": self._rules_file(tmp_path, {"not": "a list"}),
+            }
+        }
+        data = Provider.from_cache(self._cache_file(tmp_path), config)
+        assert "trust_rules" not in data.get("policies", {}).get("drive", {})
+
+    def test_malformed_json_is_tolerated(self, tmp_path):
+        from gws_auditor.provider import Provider
+
+        f = tmp_path / "broken.json"
+        f.write_text("{not json")
+        config = {"options": {"trust_rules_file": str(f)}}
+        data = Provider.from_cache(self._cache_file(tmp_path), config)
+        assert "trust_rules" not in data.get("policies", {}).get("drive", {})
+
+    def test_loader_returns_rules_directly(self, tmp_path):
+        from gws_auditor.provider import Provider
+
+        config = {"options": {"trust_rules_file": self._rules_file(tmp_path)}}
+        assert Provider._load_trust_rules_from_file(config) == self.RULES

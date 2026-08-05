@@ -7,7 +7,7 @@
 CIS Google Workspace Benchmark v1.3.0 - Google Chat controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
 from ..models import CheckResult, Status
 
 
@@ -50,7 +50,7 @@ def check_chat_external_restriction(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not restrict external chat to allowlisted domains: {ou_list}",
-                actual_value=unsafe_ous, expected_value="ALLOWLISTED_DOMAINS for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="ALLOWLISTED_DOMAINS for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
@@ -147,13 +147,13 @@ def check_chat_app_installation(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have Chat app installation enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value="disabled for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Chat app installation disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -167,7 +167,7 @@ def check_chat_app_installation(data: dict) -> CheckResult:
             level="L2", source="CIS", section="Google Chat",
             details="Chat app installation is disabled.",
             actual_value=installation_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if installation_enabled is None:
@@ -192,7 +192,7 @@ def check_chat_app_installation(data: dict) -> CheckResult:
         level="L2", source="CIS", section="Google Chat",
         details="Chat app installation is enabled, allowing users to add third-party bots.",
         actual_value=installation_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
             "Chat apps. Disable 'Allow users to install Chat apps'. https://knowledge.workspace.google.com/admin/chat/set-up-app-authorization-for-chat"
@@ -237,13 +237,13 @@ def check_chat_webhooks(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have incoming webhooks enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value="disabled for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have incoming webhooks disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -257,7 +257,7 @@ def check_chat_webhooks(data: dict) -> CheckResult:
             level="L2", source="CIS", section="Google Chat",
             details="Incoming webhooks are disabled.",
             actual_value=webhooks_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if webhooks_enabled is None:
@@ -282,7 +282,7 @@ def check_chat_webhooks(data: dict) -> CheckResult:
         level="L2", source="CIS", section="Google Chat",
         details="Incoming webhooks are enabled, allowing external data injection into Chat spaces.",
         actual_value=webhooks_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
             "Chat apps. Disable 'Allow users to add incoming webhooks'. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"

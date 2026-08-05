@@ -7,7 +7,7 @@
 CIS Google Workspace Benchmark v1.3.0 - Access and data control checks.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
 from ..models import CheckResult, Status
 
 
@@ -53,7 +53,7 @@ def check_third_party_app_access(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) do not restrict third-party app access: {ou_list}",
-                actual_value=unsafe_ous, expected_value="RESTRICTED for all OUs",
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="RESTRICTED for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
@@ -238,7 +238,7 @@ def check_internal_api_access(data: dict) -> CheckResult:
             level="L2", source="CIS", section="Access Control",
             details="Internal app API access is controlled.",
             actual_value=internal_apps_controlled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if internal_apps_controlled is None:
@@ -259,7 +259,7 @@ def check_internal_api_access(data: dict) -> CheckResult:
         level="L2", source="CIS", section="Access Control",
         details="Internal app API access is not properly controlled.",
         actual_value=internal_apps_controlled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > API controls. "
             "Configure API access controls for internal applications. "
@@ -523,14 +523,14 @@ def check_session_control(data: dict) -> CheckResult:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Device Bound Session Credentials (DBSC) are enabled.",
-            actual_value=True, expected_value=True,
+            actual_value=True, expected_value="Enabled for all OUs",
         )
 
     if dbsc_enabled is False:
         return make_fail(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Device Bound Session Credentials (DBSC) are not enabled.",
-            actual_value=False, expected_value=True,
+            actual_value=False, expected_value="Enabled for all OUs",
             remediation=_REMED,
         )
 
@@ -633,7 +633,7 @@ def check_cloud_session_control(data: dict) -> CheckResult:
         level="L2", source="CIS", section="Access Control",
         details="Cloud session control is not enabled.",
         actual_value=cloud_control_enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Security > Google Cloud session control. "
             "Enable reauthentication policy and set an appropriate "

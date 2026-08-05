@@ -7,7 +7,7 @@
 CIS Google Workspace Benchmark v1.3.0 - Gmail controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
 from ..models import CheckResult, Status
 
 
@@ -52,13 +52,13 @@ def check_gmail_mail_delegation(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have mail delegation enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have mail delegation disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -70,7 +70,7 @@ def check_gmail_mail_delegation(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Mail delegation is disabled.",
             actual_value=delegation_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if delegation_enabled is None:
@@ -84,7 +84,7 @@ def check_gmail_mail_delegation(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Mail delegation is enabled, allowing users to grant mailbox access to others.",
         actual_value=delegation_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=_REMED,
     )
 
@@ -115,7 +115,7 @@ def check_gmail_offline(data: dict) -> CheckResult:
             level="L2", source="CIS", section="Gmail",
             details="Offline Gmail is disabled.",
             actual_value=offline_enabled,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if offline_enabled is None:
@@ -140,7 +140,7 @@ def check_gmail_offline(data: dict) -> CheckResult:
         level="L2", source="CIS", section="Gmail",
         details="Offline Gmail is enabled, risking cached email data exposure.",
         actual_value=offline_enabled,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > "
             "End User Access. Disable offline Gmail. https://knowledge.workspace.google.com/admin/gmail/use-gmail-offline-with-google-workspace"
@@ -384,7 +384,7 @@ def check_gmail_quarantine_notifications(data: dict) -> CheckResult:
             level="L2", source="CIS", section="Gmail",
             details="Quarantine admin notifications are enabled.",
             actual_value=notify_enabled,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if notify_enabled is None:
@@ -410,7 +410,7 @@ def check_gmail_quarantine_notifications(data: dict) -> CheckResult:
         level="L2", source="CIS", section="Gmail",
         details="Quarantine admin notifications are not enabled.",
         actual_value=notify_enabled,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > "
             "Manage quarantines. Enable admin notification for quarantine events. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
@@ -459,13 +459,13 @@ def check_gmail_encrypted_attachment(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack encrypted attachment protection: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have encrypted attachment protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -477,7 +477,7 @@ def check_gmail_encrypted_attachment(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Encrypted attachment protection is enabled.",
             actual_value=encrypted_protection,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if encrypted_protection is None:
@@ -491,7 +491,7 @@ def check_gmail_encrypted_attachment(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Encrypted attachment protection is not enabled.",
         actual_value=encrypted_protection,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -533,13 +533,13 @@ def check_gmail_script_attachment(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack script attachment protection: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have script attachment protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -551,7 +551,7 @@ def check_gmail_script_attachment(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Script attachment protection is enabled.",
             actual_value=script_protection,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if script_protection is None:
@@ -565,7 +565,7 @@ def check_gmail_script_attachment(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Script attachment protection is not enabled.",
         actual_value=script_protection,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -607,13 +607,13 @@ def check_gmail_anomalous_attachment(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack anomalous attachment protection: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have anomalous attachment protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -625,7 +625,7 @@ def check_gmail_anomalous_attachment(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Anomalous attachment protection is enabled.",
             actual_value=anomalous_protection,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if anomalous_protection is None:
@@ -639,7 +639,7 @@ def check_gmail_anomalous_attachment(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Anomalous attachment protection is not enabled.",
         actual_value=anomalous_protection,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -685,13 +685,13 @@ def check_gmail_shortened_urls(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack shortened URL identification: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have shortened URL identification enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -703,7 +703,7 @@ def check_gmail_shortened_urls(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Shortened URL identification is enabled.",
             actual_value=shortened_url_scan,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if shortened_url_scan is None:
@@ -717,7 +717,7 @@ def check_gmail_shortened_urls(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Shortened URL identification is not enabled.",
         actual_value=shortened_url_scan,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -759,13 +759,13 @@ def check_gmail_linked_image_scanning(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack linked image scanning: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have linked image scanning enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -777,7 +777,7 @@ def check_gmail_linked_image_scanning(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Linked image scanning is enabled.",
             actual_value=image_scan,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if image_scan is None:
@@ -791,7 +791,7 @@ def check_gmail_linked_image_scanning(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Linked image scanning is not enabled.",
         actual_value=image_scan,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -835,13 +835,13 @@ def check_gmail_untrusted_link_warning(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack untrusted link warnings: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have untrusted link warnings enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -853,7 +853,7 @@ def check_gmail_untrusted_link_warning(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Warnings for untrusted links are enabled.",
             actual_value=untrusted_warning,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if untrusted_warning is None:
@@ -867,7 +867,7 @@ def check_gmail_untrusted_link_warning(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Warnings for untrusted links are not enabled.",
         actual_value=untrusted_warning,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -915,13 +915,13 @@ def check_gmail_domain_spoofing(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack domain spoofing protection: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have domain spoofing protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -933,7 +933,7 @@ def check_gmail_domain_spoofing(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Domain spoofing protection is enabled.",
             actual_value=domain_spoof,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if domain_spoof is None:
@@ -947,7 +947,7 @@ def check_gmail_domain_spoofing(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Domain spoofing protection is not enabled.",
         actual_value=domain_spoof,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -991,13 +991,13 @@ def check_gmail_employee_spoofing(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack employee name spoofing protection: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have employee name spoofing protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -1009,7 +1009,7 @@ def check_gmail_employee_spoofing(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Employee name spoofing protection is enabled.",
             actual_value=employee_spoof,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if employee_spoof is None:
@@ -1023,7 +1023,7 @@ def check_gmail_employee_spoofing(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Employee name spoofing protection is not enabled.",
         actual_value=employee_spoof,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -1067,13 +1067,13 @@ def check_gmail_inbound_spoofing(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack inbound domain spoofing protection: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have inbound domain spoofing protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -1085,7 +1085,7 @@ def check_gmail_inbound_spoofing(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Inbound domain spoofing protection is enabled.",
             actual_value=inbound_spoof,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if inbound_spoof is None:
@@ -1099,7 +1099,7 @@ def check_gmail_inbound_spoofing(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Inbound domain spoofing protection is not enabled.",
         actual_value=inbound_spoof,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -1141,13 +1141,13 @@ def check_gmail_unauthenticated_email(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack unauthenticated email protection: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have unauthenticated email protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -1159,7 +1159,7 @@ def check_gmail_unauthenticated_email(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Unauthenticated email protection is enabled.",
             actual_value=unauth_protection,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if unauth_protection is None:
@@ -1173,7 +1173,7 @@ def check_gmail_unauthenticated_email(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Unauthenticated email protection is not enabled.",
         actual_value=unauth_protection,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -1217,13 +1217,13 @@ def check_gmail_groups_spoofing(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack Groups spoofing protection: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have Groups spoofing protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -1235,7 +1235,7 @@ def check_gmail_groups_spoofing(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Groups inbound spoofing protection is enabled.",
             actual_value=groups_spoof,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if groups_spoof is None:
@@ -1249,7 +1249,7 @@ def check_gmail_groups_spoofing(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Groups inbound spoofing protection is not enabled.",
         actual_value=groups_spoof,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -1319,7 +1319,7 @@ def check_gmail_pop_imap(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have POP/IMAP enabled: {ou_list}",
-                actual_value=unsafe_ous,
+                actual_value=format_ou_values_readable(unsafe_ous),
                 expected_value={"pop": False, "imap": False},
                 remediation=_REMED,
             )
@@ -1399,13 +1399,13 @@ def check_gmail_auto_forwarding(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have auto-forwarding enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have auto-forwarding disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -1417,7 +1417,7 @@ def check_gmail_auto_forwarding(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Automatic email forwarding is disabled.",
             actual_value=auto_forwarding,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if auto_forwarding is None:
@@ -1431,7 +1431,7 @@ def check_gmail_auto_forwarding(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Automatic email forwarding is enabled, risking data exfiltration.",
         actual_value=auto_forwarding,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=_REMED,
     )
 
@@ -1474,13 +1474,13 @@ def check_gmail_outbound_gateway(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) have per-user outbound gateways enabled: {ou_list}",
-                actual_value=unsafe_ous, expected_value=False,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have per-user outbound gateways disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=False,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -1492,7 +1492,7 @@ def check_gmail_outbound_gateway(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Per-user outbound gateways are disabled.",
             actual_value=outbound_gateway,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if outbound_gateway is None:
@@ -1506,7 +1506,7 @@ def check_gmail_outbound_gateway(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Per-user outbound gateways are enabled.",
         actual_value=outbound_gateway,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=_REMED,
     )
 
@@ -1538,7 +1538,7 @@ def check_gmail_external_recipient_warning(data: dict) -> CheckResult:
             level="L1", source="CIS", section="Gmail",
             details="External recipient warnings are enabled.",
             actual_value=ext_warning,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if ext_warning is None:
@@ -1560,7 +1560,7 @@ def check_gmail_external_recipient_warning(data: dict) -> CheckResult:
         level="L1", source="CIS", section="Gmail",
         details="External recipient warnings are not enabled.",
         actual_value=ext_warning,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > "
             "User settings. Enable 'Warn users when sending emails to "
@@ -1612,13 +1612,13 @@ def check_gmail_predelivery_scanning(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack enhanced pre-delivery scanning: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have enhanced pre-delivery scanning enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -1630,7 +1630,7 @@ def check_gmail_predelivery_scanning(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Enhanced pre-delivery message scanning is enabled.",
             actual_value=predelivery,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if predelivery is None:
@@ -1648,7 +1648,7 @@ def check_gmail_predelivery_scanning(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Enhanced pre-delivery message scanning is not enabled.",
         actual_value=predelivery,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -1680,7 +1680,7 @@ def check_gmail_internal_spam_filter(data: dict) -> CheckResult:
             level="L1", source="CIS", section="Gmail",
             details="Spam filters are not bypassed for internal senders.",
             actual_value=bypass_internal,
-            expected_value=False,
+            expected_value="Disabled for all OUs",
         )
 
     if bypass_internal is None:
@@ -1707,7 +1707,7 @@ def check_gmail_internal_spam_filter(data: dict) -> CheckResult:
         level="L1", source="CIS", section="Gmail",
         details="Spam filters are bypassed for internal senders, which could allow compromised accounts to distribute spam.",
         actual_value=bypass_internal,
-        expected_value=False,
+        expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > Spam, "
             "Phishing and Malware. Uncheck 'Bypass spam filters for messages "
@@ -1757,13 +1757,13 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=f"{len(unsafe_ous)} OU(s) lack comprehensive mail storage: {ou_list}",
-                actual_value=unsafe_ous, expected_value=True,
+                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
                 remediation=_REMED,
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have comprehensive mail storage enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value=True,
+            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
     # Fallback: existing mapped value logic
@@ -1775,7 +1775,7 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Comprehensive mail storage is enabled.",
             actual_value=comprehensive_storage,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if comprehensive_storage is None:
@@ -1793,7 +1793,7 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details="Comprehensive mail storage is not enabled. Some sent mail may not be stored.",
         actual_value=comprehensive_storage,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=_REMED,
     )
 
@@ -1824,7 +1824,7 @@ def check_gmail_tls_enforcement(data: dict) -> CheckResult:
             level="L1", source="CIS", section="Gmail",
             details="TLS connection is enforced for email transmission.",
             actual_value=tls_enforced,
-            expected_value=True,
+            expected_value="Enabled for all OUs",
         )
 
     if tls_enforced is None:
@@ -1850,7 +1850,7 @@ def check_gmail_tls_enforcement(data: dict) -> CheckResult:
         level="L1", source="CIS", section="Gmail",
         details="TLS is not enforced, allowing unencrypted email transmission.",
         actual_value=tls_enforced,
-        expected_value=True,
+        expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > Compliance. "
             "Add a compliance rule requiring TLS encryption for all mail. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"

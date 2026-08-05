@@ -14,14 +14,16 @@ For each severity tier *T* with at least one scored check:
 
     weight(T)  = {CRITICAL: 8, HIGH: 6, MEDIUM: 3, LOW: 2}
     penalty_w  = weight² for CRITICAL (= 64), weight otherwise
-    tier_penalty = fails × penalty_w  +  warns × penalty_w × 0.5
+    tier_penalty = fails × penalty_w
+                 + (warns + partials) × penalty_w × 0.5
     tier_max     = scored_count(T) × penalty_w
 
     score = max(0, round((1 − Σ tier_penalty / Σ tier_max) × 100))
 
 Tiers with zero scored checks are excluded from both numerator and
-denominator.  WARN counts as a half-failure.  ERROR, MANUAL, and
-NOT_APPLICABLE results are excluded.
+denominator.  WARN and PARTIAL each count as a half-failure, matching
+the half credit ``AuditSummary.pass_rate`` gives them.  ERROR, MANUAL,
+and NOT_APPLICABLE results are excluded.
 """
 
 from __future__ import annotations
@@ -121,8 +123,8 @@ def compute_posture_score(
             excluded_count += 1
             continue
 
-        # Only PASS, FAIL, WARN participate in scoring
-        if status not in ("PASS", "FAIL", "WARN"):
+        # Only PASS, FAIL, WARN, PARTIAL participate in scoring
+        if status not in ("PASS", "FAIL", "WARN", "PARTIAL"):
             excluded_count += 1
             continue
 
@@ -139,7 +141,9 @@ def compute_posture_score(
         scored_count += 1
 
         if severity not in tiers:
-            tiers[severity] = {"total": 0, "passed": 0, "failed": 0, "warned": 0}
+            tiers[severity] = {
+                "total": 0, "passed": 0, "failed": 0, "warned": 0, "partial": 0,
+            }
 
         tiers[severity]["total"] += 1
         if status == "PASS":
@@ -148,6 +152,8 @@ def compute_posture_score(
             tiers[severity]["failed"] += 1
         elif status == "WARN":
             tiers[severity]["warned"] += 1
+        elif status == "PARTIAL":
+            tiers[severity]["partial"] += 1
 
     # Compute score
     total_penalty = 0.0
@@ -159,7 +165,9 @@ def compute_posture_score(
         # Critical weight is squared
         penalty_w = weight * weight if sev == Severity.CRITICAL else weight
 
-        tier_penalty = (stats["failed"] * penalty_w) + (stats["warned"] * penalty_w * 0.5)
+        # WARN and PARTIAL are both half-failures.
+        half_failures = stats["warned"] + stats["partial"]
+        tier_penalty = (stats["failed"] * penalty_w) + (half_failures * penalty_w * 0.5)
         tier_max = stats["total"] * penalty_w
 
         total_penalty += tier_penalty
@@ -172,6 +180,7 @@ def compute_posture_score(
             "passed": stats["passed"],
             "failed": stats["failed"],
             "warned": stats["warned"],
+            "partial": stats["partial"],
             "penalty": tier_penalty,
             "max_penalty": tier_max,
         }

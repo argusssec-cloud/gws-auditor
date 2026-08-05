@@ -14,12 +14,10 @@ from ..models import CheckAnalysis
 
 BENCHMARK_REQUIREMENTS: dict[str, str] = {
     "CIS-1.1.1": (
-        "Ensure more than one but no more than four super admin "
-        "accounts exist."
+        "Ensure more than one super admin account exists (at least 2)."
     ),
     "CIS-1.1.2": (
-        "Ensure all super admin accounts have 2-Step Verification "
-        "enforced."
+        "Ensure fewer than 4 super admin accounts exist (3 or fewer)."
     ),
     "CIS-1.1.3": (
         "Ensure that super admin accounts are not used for "

@@ -193,6 +193,216 @@ class TestDrivePublicPublishingOU:
         assert result.status == Status.PASS
 
 
+def _trust_rule(ou_id, action="BLOCK_SHARE", status="ACTIVE",
+                trigger="DRIVE_SHARE_TRUST", name="Rule"):
+    """Build a Drive trust rule as returned by the Admin console export."""
+    return {
+        "displayName": name,
+        "status": status,
+        "trigger": [trigger],
+        "targets": {"includedEntity": [{"ouId": ou_id}]},
+        "action": [{"actionName": action}],
+    }
+
+
+def _drive_with_unsafe_sales(full_audit_data, trust_rules=None, ou_id="03ph8a2z1"):
+    """Root warns on external sharing, /Sales does not."""
+    full_audit_data["org_units"] = [
+        {"name": "Root", "orgUnitPath": "/", "orgUnitId": "id:root01"},
+        {"name": "Sales", "orgUnitPath": "/Sales", "orgUnitId": f"id:{ou_id}"},
+    ]
+    full_audit_data["policies"]["drive"] = {
+        "_ou_policies": [
+            make_ou_policy("drive", "external_sharing",
+                            {"warnOnExternalSharing": True}, "/"),
+            make_ou_policy("drive", "external_sharing",
+                            {"warnOnExternalSharing": False}, "/Sales"),
+        ],
+    }
+    if trust_rules is not None:
+        full_audit_data["policies"]["drive"]["trust_rules"] = trust_rules
+    return full_audit_data
+
+
+class TestDriveTrustRules:
+    """Trust-rule awareness for CIS-3.1.2.1.1.1 / CIS-3.1.2.1.1.2."""
+
+    def test_no_trust_rules_still_fails(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        result = check_drive_external_sharing_warning(
+            _drive_with_unsafe_sales(full_audit_data))
+        assert result.status == Status.FAIL
+        assert "/Sales" in result.details
+
+    def test_blocking_rule_clears_ou(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        data = _drive_with_unsafe_sales(
+            full_audit_data, [_trust_rule("03ph8a2z1", "BLOCK_SHARE")])
+        result = check_drive_external_sharing_warning(data)
+        assert result.status == Status.PASS
+
+    def test_ou_id_with_prefix_matches(self, full_audit_data):
+        """Rules may carry the ouId with or without the "id:" prefix."""
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        data = _drive_with_unsafe_sales(
+            full_audit_data, [_trust_rule("id:03ph8a2z1", "BLOCK_SHARE")])
+        result = check_drive_external_sharing_warning(data)
+        assert result.status == Status.PASS
+
+    def test_allow_rule_downgrades_to_review(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        data = _drive_with_unsafe_sales(
+            full_audit_data,
+            [_trust_rule("03ph8a2z1", "ALLOW_SHARE", name="Partner sharing")])
+        result = check_drive_external_sharing_warning(data)
+        assert result.status == Status.MANUAL
+        assert "Partner sharing" in result.actual_value
+
+    def test_warning_rule_downgrades_to_review(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        data = _drive_with_unsafe_sales(
+            full_audit_data,
+            [_trust_rule("03ph8a2z1", "ALLOW_SHARE_WITH_WARNING")])
+        result = check_drive_external_sharing_warning(data)
+        assert result.status == Status.MANUAL
+
+    def test_inactive_rule_ignored(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        data = _drive_with_unsafe_sales(
+            full_audit_data,
+            [_trust_rule("03ph8a2z1", "BLOCK_SHARE", status="INACTIVE")])
+        result = check_drive_external_sharing_warning(data)
+        assert result.status == Status.FAIL
+
+    def test_other_trigger_ignored(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        data = _drive_with_unsafe_sales(
+            full_audit_data,
+            [_trust_rule("03ph8a2z1", "BLOCK_SHARE", trigger="CHAT_SHARE_TRUST")])
+        result = check_drive_external_sharing_warning(data)
+        assert result.status == Status.FAIL
+
+    def test_rule_for_other_ou_ignored(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        data = _drive_with_unsafe_sales(
+            full_audit_data, [_trust_rule("someotherou", "BLOCK_SHARE")])
+        result = check_drive_external_sharing_warning(data)
+        assert result.status == Status.FAIL
+
+    def test_public_publishing_blocking_rule(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_public_publishing
+
+        full_audit_data["org_units"] = [
+            {"name": "Root", "orgUnitPath": "/", "orgUnitId": "id:root01"},
+            {"name": "Sales", "orgUnitPath": "/Sales", "orgUnitId": "id:03ph8a2z1"},
+        ]
+        full_audit_data["policies"]["drive"] = {
+            "_ou_policies": [
+                make_ou_policy("drive", "external_sharing",
+                                {"allowPublicPublishing": False}, "/"),
+                make_ou_policy("drive", "external_sharing",
+                                {"allowPublicPublishing": True}, "/Sales"),
+            ],
+            "trust_rules": [_trust_rule("03ph8a2z1", "BLOCK_SHARE")],
+        }
+        result = check_drive_public_publishing(full_audit_data)
+        assert result.status == Status.PASS
+
+
+class TestDriveExternalSharingExceptionOUs:
+    """Intentional external-sharing OUs downgrade FAIL to PARTIAL."""
+
+    def _with_ou(self, full_audit_data, ou_path):
+        full_audit_data["policies"]["drive"] = {
+            "_ou_policies": [
+                make_ou_policy("drive", "external_sharing",
+                                {"warnOnExternalSharing": True}, "/"),
+                make_ou_policy("drive", "external_sharing",
+                                {"warnOnExternalSharing": False}, ou_path),
+            ],
+        }
+        return full_audit_data
+
+    def test_exception_ou_is_partial(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        result = check_drive_external_sharing_warning(
+            self._with_ou(full_audit_data, "/Sharing-External"))
+        assert result.status == Status.PARTIAL
+        assert "/Sharing-External" in result.details
+        assert "/Sharing-External → Disabled" in result.actual_value
+
+    def test_normal_ou_still_fails(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        result = check_drive_external_sharing_warning(
+            self._with_ou(full_audit_data, "/Sales"))
+        assert result.status == Status.FAIL
+
+    def test_exception_plus_real_violation_fails(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        full_audit_data["policies"]["drive"] = {
+            "_ou_policies": [
+                make_ou_policy("drive", "external_sharing",
+                                {"warnOnExternalSharing": False}, "/Contractors"),
+                make_ou_policy("drive", "external_sharing",
+                                {"warnOnExternalSharing": False}, "/Sales"),
+            ],
+        }
+        result = check_drive_external_sharing_warning(full_audit_data)
+        assert result.status == Status.FAIL
+        # The exempt OU is still surfaced, just not counted as the violation.
+        assert "1 OU(s) do not warn" in result.details
+        assert "external-sharing OU(s) exempt" in result.details
+
+    def test_configured_exception_ou(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        data = self._with_ou(full_audit_data, "/Partners")
+        data["_options"] = {"external_sharing_ous": ["/Partners"]}
+        result = check_drive_external_sharing_warning(data)
+        assert result.status == Status.PARTIAL
+
+    def test_trust_rule_beats_exception_convention(self, full_audit_data):
+        """An explicit BLOCK_SHARE rule clears an OU the convention would exempt."""
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+
+        full_audit_data["org_units"] = [
+            {"name": "Ext", "orgUnitPath": "/Sharing-External",
+             "orgUnitId": "id:ext01"},
+        ]
+        data = self._with_ou(full_audit_data, "/Sharing-External")
+        data["policies"]["drive"]["trust_rules"] = [
+            _trust_rule("ext01", "BLOCK_SHARE"),
+        ]
+        result = check_drive_external_sharing_warning(data)
+        assert result.status == Status.PASS
+
+    def test_public_publishing_exception_ou_is_partial(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_public_publishing
+
+        full_audit_data["policies"]["drive"] = {
+            "_ou_policies": [
+                make_ou_policy("drive", "external_sharing",
+                                {"allowPublicPublishing": False}, "/"),
+                make_ou_policy("drive", "external_sharing",
+                                {"allowPublicPublishing": True}, "/Vendors"),
+            ],
+        }
+        result = check_drive_public_publishing(full_audit_data)
+        assert result.status == Status.PARTIAL
+        assert "/Vendors" in result.details
+
+
 class TestDriveAccessCheckerOU:
     """OU-aware tests for CIS-3.1.2.1.1.5: Access Checker."""
 

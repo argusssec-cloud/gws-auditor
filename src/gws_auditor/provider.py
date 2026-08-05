@@ -148,8 +148,34 @@ class Provider:
         # Normalize raw API data into the format checks expect
         data = normalize_data(data)
 
+        # Load trust rules if configured
+        trust_rules = self._load_trust_rules_from_file(self.config)
+        if trust_rules:
+            data.setdefault("policies", {}).setdefault("drive", {})["trust_rules"] = trust_rules
+
         logger.info("Data collection complete. API errors: %d", len(self._api_errors))
         return data
+
+    @staticmethod
+    def _load_trust_rules_from_file(config: dict) -> list[dict] | None:
+        """Load trust rules from configured JSON file if specified."""
+        trust_rules_file = config.get("options", {}).get("trust_rules_file")
+        if not trust_rules_file:
+            return None
+        if not os.path.exists(trust_rules_file):
+            logger.warning("Trust rules file not found: %s", trust_rules_file)
+            return None
+        try:
+            with open(trust_rules_file, 'r') as f:
+                rules = json.load(f)
+            if not isinstance(rules, list):
+                logger.error("Trust rules file must contain a JSON array")
+                return None
+            logger.info("Loaded %d trust rules from %s", len(rules), trust_rules_file)
+            return rules
+        except Exception as exc:
+            logger.error("Failed to load trust rules: %s", exc)
+            return None
 
     def _propagate_client_errors(self, client) -> None:
         """Copy errors from an API client instance to Provider's error list.
@@ -1088,7 +1114,7 @@ class Provider:
                 logger.info("Removed partial cache %s", partial_file)
 
     @classmethod
-    def from_cache(cls, cache_path: str) -> dict:
+    def from_cache(cls, cache_path: str, config: dict | None = None) -> dict:
         """Load previously cached data from a file or directory."""
         if os.path.isdir(cache_path):
             # Find most recent cache file
@@ -1105,7 +1131,15 @@ class Provider:
 
         logger.info("Loaded cached data from %s", cache_path)
         # Normalize raw API data into the format checks expect
-        return normalize_data(data)
+        data = normalize_data(data)
+
+        # Load trust rules if configured
+        if config:
+            trust_rules = cls._load_trust_rules_from_file(config)
+            if trust_rules:
+                data.setdefault("policies", {}).setdefault("drive", {})["trust_rules"] = trust_rules
+
+        return data
 
     @classmethod
     def from_partial_cache(cls, cache_dir: str) -> dict | None:

@@ -296,6 +296,7 @@ _STATUS_ROW_COLORS = {
     "PASS": "#f0fff4",
     "FAIL": "#fff5f5",
     "WARN": "#fffff0",
+    "PARTIAL": "#fffaf0",
     "ERROR": "#fff5f5",
     "MANUAL": "#ebf8ff",
     "NOT_APPLICABLE": "#f7fafc",
@@ -583,12 +584,13 @@ def build_accordion_header(section_name: str, sec_df: pd.DataFrame) -> str:
 
 
 def build_section_stat_badges(sec_df: pd.DataFrame) -> list:
-    """Return list of section stat badge Spans for pass/fail/warn/error/manual."""
+    """Return section stat badge Spans for pass/fail/warn/partial/error/manual."""
     badges = []
     for status_key, css_class in [
         ("PASS", "section-stat--pass"),
         ("FAIL", "section-stat--fail"),
         ("WARN", "section-stat--warn"),
+        ("PARTIAL", "section-stat--partial"),
         ("ERROR", "section-stat--error"),
         ("MANUAL", "section-stat--manual"),
     ]:
@@ -609,6 +611,7 @@ def build_section_status_bar(sec_df: pd.DataFrame) -> html.Div:
         ("PASS", "#38a169"),
         ("FAIL", "#e53e3e"),
         ("WARN", "#d69e2e"),
+        ("PARTIAL", "#dd6b20"),
         ("ERROR", "#9b2c2c"),
         ("MANUAL", "#3182ce"),
         ("NOT_APPLICABLE", "#a0aec0"),
@@ -630,6 +633,7 @@ _INVENTORY_STATUS_COLORS = {
     "PASS": "#38a169",
     "FAIL": "#e53e3e",
     "WARN": "#d69e2e",
+    "PARTIAL": "#dd6b20",
     "MANUAL": "#3182ce",
     "ERROR": "#9b2c2c",
 }
@@ -638,6 +642,7 @@ _INVENTORY_BADGE_COLORS = {
     "PASS": "success",
     "FAIL": "danger",
     "WARN": "warning",
+    "PARTIAL": "warning",
     "MANUAL": "info",
     "ERROR": "danger",
 }

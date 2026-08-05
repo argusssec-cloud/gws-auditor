@@ -38,7 +38,7 @@ def generate_html_export(report_data: dict, comments: dict) -> str:
         check_id = r.get("check_id", "")
         status = r.get("status", "")
         status_cls = {
-            "PASS": "pass", "FAIL": "fail", "WARN": "warn",
+            "PASS": "pass", "FAIL": "fail", "WARN": "warn", "PARTIAL": "partial",
             "ERROR": "error", "MANUAL": "manual", "NOT_APPLICABLE": "na",
         }.get(status, "")
 
@@ -113,18 +113,21 @@ def generate_html_export(report_data: dict, comments: dict) -> str:
   .badge-pass {{ background: #38a169; }}
   .badge-fail {{ background: #e53e3e; }}
   .badge-warn {{ background: #d69e2e; color: #1a202c; }}
+  .badge-partial {{ background: #dd6b20; }}
   .badge-error {{ background: #9b2c2c; }}
   .badge-manual {{ background: #3182ce; }}
   .badge-na {{ background: #a0aec0; }}
   tr.status-pass {{ background: #f0fff4; }}
   tr.status-fail {{ background: #fff5f5; }}
   tr.status-warn {{ background: #fffff0; }}
+  tr.status-partial {{ background: #fffaf0; }}
   tr.status-manual {{ background: #ebf8ff; }}
   @media (prefers-color-scheme: dark) {{
     th {{ background: #1e293b; }}
     tr.status-pass {{ background: rgba(56, 161, 105, 0.1); }}
     tr.status-fail {{ background: rgba(229, 62, 62, 0.1); }}
     tr.status-warn {{ background: rgba(214, 158, 46, 0.1); }}
+    tr.status-partial {{ background: rgba(221, 107, 32, 0.1); }}
     tr.status-manual {{ background: rgba(49, 130, 206, 0.1); }}
   }}
   .comment-cell {{ min-width: 200px; font-style: italic; }}

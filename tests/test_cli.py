@@ -191,3 +191,64 @@ class TestProxyArguments:
     def test_disable_ssl_verification_default_false(self):
         args = parse_args([])
         assert args.disable_ssl_verification is False
+
+
+class TestCachedModeSkipsAuthValidation:
+    """--cached re-scores an existing cache file and makes no API calls,
+    so it must not demand credentials."""
+
+    def _run(self, monkeypatch, argv):
+        import gws_auditor.__main__ as m
+
+        validated = []
+        monkeypatch.setattr(
+            m, "_validate_auth_config",
+            lambda config, args: validated.append(args),
+        )
+
+        class _FakeOrchestrator:
+            def __init__(self, config):
+                self.config = config
+                self.cached_path = None
+
+            def run_cached(self, path):
+                self.cached_path = path
+
+        monkeypatch.setattr(m, "Orchestrator", _FakeOrchestrator)
+        monkeypatch.setattr(m, "show_banner", lambda *a, **k: None, raising=False)
+        rc = m.main(argv)
+        return rc, validated
+
+    def test_cached_skips_validation(self, monkeypatch, tmp_path):
+        cache = tmp_path / "audit.json"
+        cache.write_text("{}")
+        rc, validated = self._run(monkeypatch, ["--cached", str(cache)])
+        assert rc == 0
+        assert validated == []
+
+    def test_normal_run_still_validates(self, monkeypatch):
+        import gws_auditor.__main__ as m
+
+        validated = []
+        monkeypatch.setattr(
+            m, "_validate_auth_config",
+            lambda config, args: validated.append(args),
+        )
+
+        class _FakeOrchestrator:
+            def __init__(self, config):
+                pass
+
+            def dry_run(self):
+                return True
+
+        monkeypatch.setattr(m, "Orchestrator", _FakeOrchestrator)
+        rc = m.main(["--dry-run"])
+        assert rc == 0
+        assert len(validated) == 1
+
+
+class TestCachedMetavar:
+    def test_cached_accepts_file_path(self):
+        args = parse_args(["--cached", "./cache/audit_20260803.json"])
+        assert args.cached == "./cache/audit_20260803.json"
