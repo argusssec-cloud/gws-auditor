@@ -51,6 +51,11 @@ class Orchestrator:
         # Step 5: Print summary
         self._print_summary()
 
+        # Step 6: Delete the credentials file now that the run is complete.
+        # The key file grants broad domain-wide access and should not remain
+        # on disk after use. A fresh key should be generated for each run.
+        self._delete_credentials_file()
+
         return self.report
 
     def dry_run(self) -> bool:
@@ -445,6 +450,34 @@ class Orchestrator:
         )
         console.print()
         console.print(panel)
+
+    def _delete_credentials_file(self):
+        """Delete the service account key file after a completed run.
+
+        The key file grants broad domain-wide access to the Google Workspace
+        tenant. Deleting it immediately after use minimises the window during
+        which a stolen key could be exploited. A new key should be generated
+        in the Google Admin Console before the next audit run.
+        """
+        if self.auth_manager.method != "service_account":
+            return
+
+        key_path = self.auth_manager.credentials_file
+        if not os.path.exists(key_path):
+            return
+
+        try:
+            os.remove(key_path)
+            console.print(
+                f"\n[green]Service account key file deleted:[/green] {key_path}\n"
+                "[dim]Generate a new key in the Google Admin Console before your next run.[/dim]"
+            )
+            logger.info("Deleted service account key file: %s", key_path)
+        except OSError as exc:
+            console.print(
+                f"\n[yellow]Warning: could not delete key file {key_path}: {exc}[/yellow]"
+            )
+            logger.warning("Failed to delete service account key file %s: %s", key_path, exc)
 
     def _print_summary(self):
         """Print audit summary to console."""
