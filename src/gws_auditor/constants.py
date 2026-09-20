@@ -506,11 +506,13 @@ REMEDIATION_THEMES = {
         "CIS-3.1.3.2.1", "CIS-3.1.3.2.2", "CIS-3.1.3.2.3",
         "GWS.GMAIL.4.1", "GWS.GMAIL.4.2", "GWS.GMAIL.4.3", "GWS.GMAIL.4.4",
         "ADD-05", "ADD-06",
+        "ADD-50",
     ],
     "Multi-Factor Authentication": [
         "CIS-4.1.1.1", "CIS-4.1.1.2", "CIS-4.1.1.3",
         "GWS.COMMONCONTROLS.1.3", "GWS.COMMONCONTROLS.1.4", "GWS.COMMONCONTROLS.1.5",
         "ADD-18", "ADD-32",
+        "GWS.COMMONCONTROLS.1.1",
     ],
     "Phishing & Malware Protection": [
         "CIS-3.1.3.4.1.1", "CIS-3.1.3.4.1.2", "CIS-3.1.3.4.1.3",
@@ -519,6 +521,7 @@ REMEDIATION_THEMES = {
         "CIS-3.1.3.4.3.4", "CIS-3.1.3.4.3.5",
         "CIS-3.1.3.6.1", "CIS-3.1.3.6.2",
         "GWS.GMAIL.5.5", "ADD-02", "ADD-08",
+        "GWS.GMAIL.5.4", "GWS.GMAIL.6.4", "GWS.GMAIL.7.6", "GWS.GMAIL.7.7",
     ],
     "External Sharing & Data Protection": [
         "CIS-3.1.2.1.1.1", "CIS-3.1.2.1.1.2", "CIS-3.1.2.1.1.3",
@@ -527,6 +530,7 @@ REMEDIATION_THEMES = {
         "GWS.DRIVEDOCS.1.5", "GWS.DRIVEDOCS.1.6", "GWS.DRIVEDOCS.1.7",
         "GWS.DRIVEDOCS.1.8", "GWS.DRIVEDOCS.1.9",
         "ADD-25",
+        "GWS.DRIVEDOCS.1.10", "GWS.DRIVEDOCS.1.11",
     ],
     "Data Loss Prevention": [
         "CIS-4.2.3.1", "ADD-12", "ADD-22", "ADD-23",
@@ -544,6 +548,7 @@ REMEDIATION_THEMES = {
         "CIS-3.1.3.7.1", "CIS-3.1.3.7.2",
         "GWS.GMAIL.8.1", "GWS.GMAIL.10.1", "GWS.GMAIL.14.1",
         "GWS.GMAIL.18.1", "GWS.GMAIL.18.2", "GWS.GMAIL.18.3",
+        "ADD-51",
     ],
     "Shared Drives": [
         "CIS-3.1.2.1.2.1", "CIS-3.1.2.1.2.2", "CIS-3.1.2.1.2.3", "CIS-3.1.2.1.2.4",
@@ -554,6 +559,7 @@ REMEDIATION_THEMES = {
         "CIS-4.2.2.1", "CIS-4.2.4.1", "CIS-4.2.5.1",
         "GWS.COMMONCONTROLS.2.1", "GWS.COMMONCONTROLS.4.1",
         "ADD-20",
+        "ADD-47",
     ],
     "Calendar Security": [
         "CIS-3.1.1.1.1", "CIS-3.1.1.1.2", "CIS-3.1.1.1.3",
@@ -564,6 +570,7 @@ REMEDIATION_THEMES = {
         "CIS-3.1.4.2.1", "CIS-3.1.4.4.1", "CIS-3.1.4.4.2",
         "GWS.CHAT.1.1", "GWS.CHAT.1.2", "GWS.CHAT.3.1",
         "GWS.CHAT.5.1", "GWS.CHAT.5.2",
+        "GWS.CHAT.2.1", "ADD-45",
     ],
     "Meet Security": [
         "GWS.MEET.1.1", "GWS.MEET.2.1", "GWS.MEET.3.1",
@@ -574,6 +581,7 @@ REMEDIATION_THEMES = {
         "CIS-3.1.6.1", "CIS-3.1.6.2", "CIS-3.1.6.3", "CIS-3.1.8.1",
         "GWS.GROUPS.1.1", "GWS.GROUPS.1.2", "GWS.GROUPS.1.3",
         "GWS.GROUPS.3.1", "GWS.GROUPS.4.1", "ADD-37",
+        "ADD-46",
     ],
     "Account & Directory Security": [
         "CIS-1.1.1", "CIS-1.1.2", "CIS-1.1.3", "CIS-1.2.1.1",
@@ -582,6 +590,7 @@ REMEDIATION_THEMES = {
         "GWS.COMMONCONTROLS.8.2", "GWS.COMMONCONTROLS.8.3",
         "GWS.COMMONCONTROLS.9.1", "GWS.COMMONCONTROLS.9.2",
         "ADD-34",
+        "GWS.COMMONCONTROLS.5.1", "GWS.COMMONCONTROLS.5.3", "GWS.COMMONCONTROLS.5.5", "GWS.COMMONCONTROLS.5.6", "GWS.COMMONCONTROLS.13.1", "ADD-41", "ADD-42", "ADD-43", "ADD-44", "ADD-48", "ADD-49", "ADD-52",
     ],
     "Gemini & AI Controls": [
         "ADD-13", "ADD-14", "ADD-15", "ADD-16",

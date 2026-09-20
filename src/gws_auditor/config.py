@@ -48,6 +48,11 @@ DEFAULT_CONFIG = {
         "max_log_events": DEFAULT_MAX_LOG_EVENTS,
         "chat_inactive_days": 90,
         "device_inactive_days": 90,
+        "user_inactive_days": 90,
+        # Per-mailbox forwarding (ADD-50) impersonates each user: one Gmail API call per
+        # mailbox, so it is opt-in and capped.
+        "collect_mailbox_forwarding": False,
+        "mailbox_forwarding_max_users": 500,
         "trust_rules_file": None,
         # OU paths or fnmatch patterns whose permissive sharing is
         # intentional. Empty list = use the built-in pattern set in

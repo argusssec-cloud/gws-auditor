@@ -90,6 +90,7 @@ class Provider:
         ("app_passwords", "_get_app_passwords"),
         ("user_tokens", "_get_user_tokens"),
         ("shared_drives", "_get_shared_drives"),
+        ("mailbox_forwarding", "_get_mailbox_forwarding"),
     ]
 
     def __init__(self, auth_manager: AuthManager, config: dict):
@@ -130,6 +131,7 @@ class Provider:
             "app_passwords": self._get_app_passwords(),
             "user_tokens": self._get_user_tokens(),
             "shared_drives": self._get_shared_drives(),
+            "mailbox_forwarding": self._get_mailbox_forwarding(),
             "subscription_info": self._get_subscription_info(),
             "drive_sdk_enabled": self._detect_drive_sdk(),
             "calendar_acls": {},
@@ -643,12 +645,16 @@ class Provider:
             "source": "",
         }
         sku_counts: Counter[str] = Counter()
+        licensed_users: set[str] = set()
 
         for product_id in self._GWS_PRODUCT_IDS:
             for item in self._list_license_assignments(product_id):
                 sku_id = item.get("skuId", "")
                 if sku_id:
                     sku_counts[sku_id] += 1
+                    if item.get("userId"):
+                        licensed_users.add(str(item["userId"]).lower())
+        result["licensed_users"] = sorted(licensed_users)
 
         if not sku_counts:
             logger.debug("No license assignments found for any Workspace product")
@@ -884,6 +890,36 @@ class Provider:
         except Exception as e:
             self._record_error("get_app_passwords", e)
             return []
+
+    def _get_mailbox_forwarding(self) -> dict:
+        """Fetch per-mailbox forwarding addresses (opt-in: ``options.collect_mailbox_forwarding``).
+
+        Returns ``{"collected": bool, "users_checked": int, "truncated": bool,
+        "forwarding": {user_email: [forwarding address, ...]}}``.
+        """
+        result: dict = {"collected": False, "users_checked": 0, "truncated": False, "forwarding": {}}
+        if not self.options.get("collect_mailbox_forwarding", False):
+            return result
+        try:
+            from .api.gmail import GmailClient
+            client = GmailClient(self.auth)
+            limit = int(self.options.get("mailbox_forwarding_max_users", 500))
+            active = [u for u in self._get_users_and_admins()
+                      if not u.get("suspended") and u.get("primaryEmail")]
+            result["truncated"] = len(active) > limit
+            for user in active[:limit]:
+                email = user["primaryEmail"]
+                addresses = [a.get("forwardingEmail", "") for a in client.get_forwarding_addresses(email)]
+                result["users_checked"] += 1
+                if any(addresses):
+                    result["forwarding"][email] = sorted(a for a in addresses if a)
+            self._propagate_client_errors(client)
+            result["collected"] = True
+            logger.info("Checked forwarding on %d mailboxes (%d forward)",
+                        result["users_checked"], len(result["forwarding"]))
+        except Exception as e:
+            self._record_error("get_mailbox_forwarding", e)
+        return result
 
     def _get_user_tokens(self) -> list[dict]:
         """Fetch active OAuth tokens (third-party app grants) for all users.
@@ -2881,7 +2917,7 @@ def _normalize_dns_records(dns_records: dict) -> dict:
         norm = dict(data)  # shallow copy
 
         # Add record_found alias for exists in SPF/DKIM/DMARC
-        for key in ("spf", "dkim", "dmarc"):
+        for key in ("spf", "dkim", "dmarc", "mta_sts", "tls_rpt"):
             sub = norm.get(key, {})
             if isinstance(sub, dict) and "record_found" not in sub:
                 sub["record_found"] = sub.get("exists", False)

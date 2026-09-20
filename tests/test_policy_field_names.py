@@ -40,29 +40,49 @@ def _strings(node) -> set[str]:
     return {n.value for n in ast.walk(node) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
 
 
+def _setting_keys(func) -> set[str]:
+    """Setting keys a function looks up: string args of get_ou_values() or of a private helper."""
+    keys = set()
+    for node in ast.walk(func):
+        if isinstance(node, ast.Call):
+            name = getattr(node.func, "id", "")
+            if name == "get_ou_values" or name.startswith("_"):
+                keys |= {a.value for a in node.args
+                         if isinstance(a, ast.Constant) and isinstance(a.value, str) and a.value in FIELDS_BY_KEY}
+    return keys
+
+
+def _is_check(func) -> bool:
+    return any(getattr(getattr(d, "func", d), "id", "") == "check" for d in func.decorator_list)
+
+
 def _cases():
     for path in sorted(CHECKS_DIR.glob("*.py")):
         tree = ast.parse(path.read_text())
-        # Module-level helpers and constants a check may read its field names through
-        module_names: dict[str, set[str]] = {}
+        # Module-level helpers and constants a check may read its setting keys / field names through
+        strings: dict[str, set[str]] = {}
+        keys: dict[str, set[str]] = {}
+        refs: dict[str, set[str]] = {}
         for node in tree.body:
             if isinstance(node, ast.FunctionDef):
-                module_names[node.name] = _strings(node)
+                strings[node.name], keys[node.name] = _strings(node), _setting_keys(node)
+                refs[node.name] = {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
             elif isinstance(node, ast.Assign):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
-                        module_names[target.id] = _strings(node.value)
-        for func in (n for n in tree.body if isinstance(n, ast.FunctionDef)):
-            keys, strings = set(), _strings(func)
-            for node in ast.walk(func):
-                if isinstance(node, ast.Name) and node.id in module_names and node.id != func.name:
-                    strings |= module_names[node.id]
-                if (isinstance(node, ast.Call) and getattr(node.func, "id", "") == "get_ou_values"
-                        and len(node.args) >= 2 and isinstance(node.args[1], ast.Constant)):
-                    keys.add(node.args[1].value)
-            for key in sorted(keys):
-                if key in FIELDS_BY_KEY and (func.name, key) not in EXEMPT:
-                    yield pytest.param(path.name, func.name, key, strings, id=f"{path.stem}.{func.name}[{key}]")
+                        strings[target.id], keys[target.id], refs[target.id] = _strings(node.value), set(), set()
+        for func in (n for n in tree.body if isinstance(n, ast.FunctionDef) and _is_check(n)):
+            seen, todo = set(), [func.name]
+            while todo:  # transitive closure over helpers/constants defined in this module
+                name = todo.pop()
+                if name in seen or name not in strings:
+                    continue
+                seen.add(name)
+                todo.extend(refs[name])
+            all_strings = set().union(*(strings[n] for n in seen))
+            for key in sorted(set().union(*(keys[n] for n in seen))):
+                if (func.name, key) not in EXEMPT:
+                    yield pytest.param(path.name, func.name, key, all_strings, id=f"{path.stem}.{func.name}[{key}]")
 
 
 @pytest.mark.parametrize("module, func, key, strings", list(_cases()))

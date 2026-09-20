@@ -87,16 +87,19 @@ class DNSClient(BaseAPIClient):
             "exists": False,
             "record": "",
             "valid": False,
+            "record_count": 0,
         }
         try:
             answers = self._resolver.resolve(domain, "TXT")
             for rdata in answers:
                 txt = rdata.to_text().strip('"')
                 if txt.lower().startswith("v=spf1"):
-                    result["exists"] = True
-                    result["record"] = txt
-                    result["valid"] = self._validate_spf(txt)
-                    break
+                    # RFC 7208: more than one SPF record is a permerror, so count them all
+                    result["record_count"] += 1
+                    if not result["exists"]:
+                        result["exists"] = True
+                        result["record"] = txt
+                        result["valid"] = self._validate_spf(txt)
             logger.debug("SPF for %s: %s", domain, result)
         except dns.resolver.NoAnswer:
             logger.debug("No TXT records found for %s", domain)
@@ -337,6 +340,30 @@ class DNSClient(BaseAPIClient):
     # Aggregate
     # ------------------------------------------------------------------
 
+    def _check_txt_policy(self, name: str, version_tag: str) -> dict[str, Any]:
+        """Look up a versioned TXT policy record (``v=STSv1`` / ``v=TLSRPTv1``) at *name*."""
+        result: dict[str, Any] = {"exists": False, "record": ""}
+        try:
+            for rdata in self._resolver.resolve(name, "TXT"):
+                txt = rdata.to_text().replace('" "', "").strip('"')
+                if txt.lower().startswith(version_tag.lower()):
+                    result.update(exists=True, record=txt)
+                    break
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+            logger.debug("No %s record at %s", version_tag, name)
+        except dns.exception.DNSException as exc:
+            logger.warning("DNS error looking up %s: %s", name, exc)
+            result["error"] = str(exc)
+        return result
+
+    def check_mta_sts(self, domain: str) -> dict[str, Any]:
+        """Look up the MTA-STS discovery record (``_mta-sts.<domain>``, RFC 8461)."""
+        return {"domain": domain, **self._check_txt_policy(f"_mta-sts.{domain}", "v=STSv1")}
+
+    def check_tls_rpt(self, domain: str) -> dict[str, Any]:
+        """Look up the SMTP TLS reporting record (``_smtp._tls.<domain>``, RFC 8460)."""
+        return {"domain": domain, **self._check_txt_policy(f"_smtp._tls.{domain}", "v=TLSRPTv1")}
+
     def check_all(self, domain: str) -> dict[str, Any]:
         """Run all DNS checks for *domain* and return a combined result.
 
@@ -353,6 +380,8 @@ class DNSClient(BaseAPIClient):
             "dkim": self.check_dkim(domain),
             "dmarc": self.check_dmarc(domain),
             "mx": self.check_mx(domain),
+            "mta_sts": self.check_mta_sts(domain),
+            "tls_rpt": self.check_tls_rpt(domain),
         }
 
 

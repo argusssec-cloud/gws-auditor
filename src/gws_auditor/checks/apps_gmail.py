@@ -7,7 +7,7 @@
 CIS Google Workspace Benchmark v1.3.0 - Gmail controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, result_from_setting_changes
 from ..models import CheckResult, Status
 
 
@@ -239,6 +239,7 @@ def check_gmail_spf(data: dict) -> CheckResult:
     missing_spf = []
     permissive_spf = []
     neutral_spf = []
+    duplicate_spf = []
     for domain in domains:
         domain_name = domain if isinstance(domain, str) else domain.get("domainName", domain.get("domain_name", ""))
         domain_dns = dns_records.get(domain_name, {})
@@ -248,6 +249,8 @@ def check_gmail_spf(data: dict) -> CheckResult:
             continue
         # A record that ends in "+all"/"all" authorises every sender, i.e. no protection;
         # "?all" (neutral) gives receivers no guidance.
+        if int(spf.get("record_count") or 1) > 1:
+            duplicate_spf.append(domain_name)  # RFC 7208: multiple SPF records = permerror
         terms = str(spf.get("record", "")).lower().split()
         all_term = next((t for t in reversed(terms) if t.lstrip("+-~?") == "all"), "")
         if all_term in ("+all", "all"):
@@ -264,6 +267,17 @@ def check_gmail_spf(data: dict) -> CheckResult:
             actual_value={"permissive_spf_domains": permissive_spf, "missing_spf_domains": missing_spf},
             expected_value="SPF ending in -all or ~all",
             remediation="Replace '+all' with '~all' or '-all' in the SPF TXT record. https://knowledge.workspace.google.com/admin/security/set-up-spf",
+        )
+
+    if duplicate_spf:
+        return make_fail(
+            check_id="CIS-3.1.3.2.2",
+            title="Ensure SPF records are configured for all domains",
+            level="L1", source="CIS", section="Gmail",
+            details=f"More than one SPF record is published (receivers treat this as a permanent error) for: {', '.join(duplicate_spf)}",
+            actual_value={"duplicate_spf_domains": duplicate_spf},
+            expected_value="Exactly one SPF record per domain",
+            remediation="Merge the SPF TXT records into a single 'v=spf1 ...' record. https://knowledge.workspace.google.com/admin/security/set-up-spf",
         )
 
     if not missing_spf and neutral_spf:
@@ -1563,6 +1577,18 @@ def check_gmail_external_recipient_warning(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
     user_settings = gmail.get("user_settings", {})
     ext_warning = user_settings.get("external_recipient_warning_enabled", None)
+
+    if ext_warning is None:
+        # Not exposed by the Policy API (SCuBA GWS.GMAIL.13.1): infer from the latest admin-log
+        # change of the "disable warning" setting; "true" means the warning was turned off.
+        inferred = result_from_setting_changes(
+            data, "OutOfDomainWarningProto disable_untrusted_recipient_warning", ("true",),
+            check_id="CIS-3.1.3.5.4", title="Ensure external recipient warnings are enabled",
+            level="L1", source="CIS", section="Gmail", what="External recipient warning",
+            remediation="Admin console > Apps > Google Workspace > Gmail > End User Access. Enable 'Warn for external recipients'.",
+        )
+        if inferred is not None:
+            return inferred
 
     if ext_warning is True:
         return make_pass(
