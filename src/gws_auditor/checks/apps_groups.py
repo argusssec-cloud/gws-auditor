@@ -49,12 +49,13 @@ def check_groups_external_access(data: dict) -> CheckResult:
     # Check individual groups for overly permissive settings
     public_groups_set = set()
     for group in groups:
-        who_view = group.get("whoCanViewGroup", "")
-        who_view_members = group.get("whoCanViewMembership", "")
+        settings = group.get("settings") or {}
+        who_view = settings.get("whoCanViewGroup", group.get("whoCanViewGroup", ""))
+        who_view_members = settings.get("whoCanViewMembership", group.get("whoCanViewMembership", ""))
         email = group.get("email", "unknown")
-        if who_view in ("ANYONE_CAN_VIEW", "ALL_IN_DOMAIN_CAN_VIEW"):
-            public_groups_set.add(email)
-        elif who_view_members in ("ANYONE_CAN_VIEW", "ALL_IN_DOMAIN_CAN_VIEW"):
+        # This control is about *external* access: only ANYONE_CAN_VIEW exposes a group
+        # outside the organization (ALL_IN_DOMAIN_CAN_VIEW is internal-only).
+        if who_view == "ANYONE_CAN_VIEW" or who_view_members == "ANYONE_CAN_VIEW":
             public_groups_set.add(email)
     public_groups = sorted(public_groups_set)
 

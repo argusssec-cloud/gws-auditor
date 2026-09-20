@@ -1,0 +1,405 @@
+{
+ "_comment": "Cloud Identity Policy API setting types and the field names they return. Field names only (no tenant values). Sources: a real tenant capture and the CISA ScubaGoggles policy_api.py schema. Used by test_policy_field_names.py.",
+ "settings": {
+  "access_management.user_scoping": [
+   "accessManagementRegime"
+  ],
+  "api_controls.app_approval_requests": [
+   "allowedForAll"
+  ],
+  "api_controls.custom_user_message": [
+   "errorText"
+  ],
+  "api_controls.internal_apps": [
+   "trustInternalApps"
+  ],
+  "api_controls.unconfigured_third_party_apps": [
+   "accessLevel",
+   "accessLevelUnder18"
+  ],
+  "blogger.service_status": [
+   "serviceState"
+  ],
+  "blogger.user_takeout": [
+   "takeoutStatus"
+  ],
+  "books.user_takeout": [
+   "takeoutStatus"
+  ],
+  "calendar.appointment_schedules": [
+   "enablePayments"
+  ],
+  "calendar.calendar_offline_access": [
+   "enableOfflineAccess"
+  ],
+  "calendar.external_invitations": [
+   "warnOnInvite"
+  ],
+  "calendar.interoperability": [
+   "enableExchangeRoomBooking",
+   "enableFullEventDetails",
+   "enableInteroperability"
+  ],
+  "calendar.primary_calendar_max_allowed_external_sharing": [
+   "maxAllowedExternalSharing"
+  ],
+  "calendar.secondary_calendar_max_allowed_external_sharing": [
+   "maxAllowedExternalSharing"
+  ],
+  "calendar.service_status": [
+   "serviceState"
+  ],
+  "chat.chat_apps_access": [
+   "enableApps",
+   "enableWebhooks"
+  ],
+  "chat.chat_external_spaces": [
+   "domainAllowlistMode",
+   "enabled"
+  ],
+  "chat.chat_file_sharing": [
+   "externalFileSharing",
+   "internalFileSharing"
+  ],
+  "chat.chat_history": [
+   "allowUserModification",
+   "historyOnByDefault"
+  ],
+  "chat.chat_space_access_default": [
+   "accessType"
+  ],
+  "chat.chat_third_party_archiving": [
+   "archivalFrequency",
+   "customHeaders",
+   "destinationEmailAddress",
+   "enabled"
+  ],
+  "chat.external_chat_restriction": [
+   "allowExternalChat",
+   "externalChatRestriction"
+  ],
+  "chat.service_status": [
+   "serviceState"
+  ],
+  "chat.space_history": [
+   "historyState"
+  ],
+  "classroom.api_data_access": [
+   "enableApiAccess"
+  ],
+  "classroom.class_membership": [
+   "whichClassesCanUsersJoin",
+   "whoCanJoinClasses"
+  ],
+  "classroom.guardian_access": [
+   "allowAccess",
+   "whoCanManageGuardianAccess"
+  ],
+  "classroom.originality_reports": [
+   "enableOriginalityReportsSchoolMatches"
+  ],
+  "classroom.roster_import": [
+   "rosterImportOption"
+  ],
+  "classroom.service_status": [
+   "serviceState"
+  ],
+  "classroom.student_unenrollment": [
+   "whoCanUnenrollStudents"
+  ],
+  "classroom.teacher_permissions": [
+   "whoCanCreateClasses"
+  ],
+  "data_regions.data_at_rest_region": [
+   "region"
+  ],
+  "data_regions.data_processing_region": [
+   "limitToStorageRegion"
+  ],
+  "directory.external_directory_sharing": [
+   "sharingOption"
+  ],
+  "drive_and_docs.drive_for_desktop": [
+   "allowDriveForDesktop",
+   "allowRealTimePresence",
+   "restrictToAuthorizedDevices",
+   "showDownloadLink"
+  ],
+  "drive_and_docs.drive_sdk": [
+   "enableDriveSdkApiAccess"
+  ],
+  "drive_and_docs.external_file_warning": [
+   "highlightingEnabled"
+  ],
+  "drive_and_docs.external_sharing": [
+   "accessCheckerSuggestions",
+   "allowNonGoogleInvites",
+   "allowNonGoogleInvitesInAllowlistedDomains",
+   "allowPublishingFiles",
+   "allowReceivingExternalFiles",
+   "allowReceivingFilesOutsideAllowlistedDomains",
+   "allowedPartiesForDistributingContent",
+   "externalSharingMode",
+   "warnForExternalSharing",
+   "warnForSharingOutsideAllowlistedDomains"
+  ],
+  "drive_and_docs.file_security_update": [
+   "allowUsersToManageUpdate",
+   "securityUpdate"
+  ],
+  "drive_and_docs.general_access_default": [
+   "defaultFileAccess"
+  ],
+  "drive_and_docs.service_status": [
+   "serviceState"
+  ],
+  "drive_and_docs.shared_drive_creation": [
+   "allowContentManagersToShareFolders",
+   "allowExternalUserAccess",
+   "allowManagersToOverrideSettings",
+   "allowNonMemberAccess",
+   "allowSharedDriveCreation",
+   "allowedPartiesForDownloadPrintCopy",
+   "customOrgUnit",
+   "orgUnitForNewSharedDrives"
+  ],
+  "enterprise_service_restrictions.service_status": [
+   "serviceState"
+  ],
+  "gmail.auto_forwarding": [
+   "enableAutoForwarding"
+  ],
+  "gmail.comprehensive_mail_storage": [
+   "ruleId"
+  ],
+  "gmail.confidential_mode": [
+   "enableConfidentialMode"
+  ],
+  "gmail.email_attachment_safety": [
+   "anomalousAttachmentProtectionConsequence",
+   "anomalousAttachmentProtectionQuarantineId",
+   "applyFutureRecommendedSettingsAutomatically",
+   "attachmentWithScriptsProtectionConsequence",
+   "attachmentWithScriptsProtectionQuarantineId",
+   "enableAnomalousAttachmentProtection",
+   "enableAttachmentWithScriptsProtection",
+   "enableEncryptedAttachmentProtection",
+   "encryptedAttachmentProtectionConsequence",
+   "encryptedAttachmentProtectionQuarantineId"
+  ],
+  "gmail.email_spam_filter_ip_allowlist": [
+   "allowedIpAddresses"
+  ],
+  "gmail.enhanced_pre_delivery_message_scanning": [
+   "enableImprovedSuspiciousContentDetection"
+  ],
+  "gmail.enhanced_smime_encryption": [
+   "allowUserToUploadCertificates"
+  ],
+  "gmail.imap_access": [
+   "enableImapAccess",
+   "imapAccessRestriction"
+  ],
+  "gmail.links_and_external_images": [
+   "applyFutureSettingsAutomatically",
+   "enableAggressiveWarningsOnUntrustedLinks",
+   "enableExternalImageScanning",
+   "enableShortenerScanning"
+  ],
+  "gmail.mail_delegation": [
+   "allowCustomDelegateAttribution",
+   "enableDelegateAttribution",
+   "enableMailDelegation",
+   "enableMailboxGroupDelegation"
+  ],
+  "gmail.per_user_outbound_gateway": [
+   "allowUsersToUseExternalSmtpServers"
+  ],
+  "gmail.pop_access": [
+   "enablePopAccess"
+  ],
+  "gmail.rule_states": [
+   "ruleStates",
+   "ruleStates[].enabled",
+   "ruleStates[].ruleId"
+  ],
+  "gmail.service_status": [
+   "serviceState"
+  ],
+  "gmail.spam_override_lists": [
+   "spamOverride",
+   "spamOverride[].addToQuarantine",
+   "spamOverride[].bypassInternalSenders",
+   "spamOverride[].bypassSelectedSenders",
+   "spamOverride[].description",
+   "spamOverride[].enableAggressiveFiltering",
+   "spamOverride[].hideWarningBannerFromSelectedSenders",
+   "spamOverride[].quarantineId",
+   "spamOverride[].ruleId"
+  ],
+  "gmail.spoofing_and_authentication": [
+   "applyFutureSettingsAutomatically",
+   "detectDomainNameSpoofing",
+   "detectDomainSpoofingFromUnauthenticatedSenders",
+   "detectEmployeeNameSpoofing",
+   "detectGroupsSpoofing",
+   "detectUnauthenticatedEmails",
+   "domainNameSpoofingConsequence",
+   "domainNameSpoofingQuarantineId",
+   "domainSpoofingConsequence",
+   "domainSpoofingQuarantineId",
+   "employeeNameSpoofingConsequence",
+   "employeeNameSpoofingQuarantineId",
+   "groupsSpoofingConsequence",
+   "groupsSpoofingQuarantineId",
+   "groupsSpoofingVisibilityType",
+   "unauthenticatedEmailConsequence",
+   "unauthenticatedEmailQuarantineId"
+  ],
+  "gmail.user_email_uploads": [
+   "enableMailAndContactsImport"
+  ],
+  "gmail.workspace_sync_for_outlook": [
+   "enableGoogleWorkspaceSyncForMicrosoftOutlook"
+  ],
+  "groups_for_business.groups_sharing": [
+   "collaborationCapability",
+   "createGroupsAccessLevel",
+   "newGroupsAreHidden",
+   "ownersCanAllowExternalMembers",
+   "ownersCanAllowIncomingMailFromPublic",
+   "ownersCanHideGroups",
+   "viewTopicsDefaultAccessLevel"
+  ],
+  "groups_for_business.service_status": [
+   "serviceState"
+  ],
+  "location_history.user_takeout": [
+   "takeoutStatus"
+  ],
+  "maps.user_takeout": [
+   "takeoutStatus"
+  ],
+  "meet.meet_incoming_call_restrictions": [
+   "allowedCallers"
+  ],
+  "meet.meet_joining": [
+   "allowedAudience"
+  ],
+  "meet.meet_messaging": [
+   "enabled"
+  ],
+  "meet.meet_polls": [
+   "enabled"
+  ],
+  "meet.meet_presenting": [
+   "enabled"
+  ],
+  "meet.meet_questions": [
+   "enabled"
+  ],
+  "meet.safety_access": [
+   "meetingsAllowedToJoin"
+  ],
+  "meet.safety_domain": [
+   "usersAllowedToJoin"
+  ],
+  "meet.safety_external_participants": [
+   "enableExternalLabel"
+  ],
+  "meet.safety_host_management": [
+   "enableHostManagement"
+  ],
+  "meet.service_status": [
+   "serviceState"
+  ],
+  "meet.video_recording": [
+   "enableRecording"
+  ],
+  "pay.user_takeout": [
+   "takeoutStatus"
+  ],
+  "photos.user_takeout": [
+   "takeoutStatus"
+  ],
+  "play.user_takeout": [
+   "takeoutStatus"
+  ],
+  "play_console.user_takeout": [
+   "takeoutStatus"
+  ],
+  "rule.system_defined_alerts": [
+   "action",
+   "createTime",
+   "description",
+   "displayName",
+   "state",
+   "updateTime"
+  ],
+  "security.advanced_protection_program": [
+   "enableAdvancedProtectionSelfEnrollment",
+   "securityCodeOption"
+  ],
+  "security.less_secure_apps": [
+   "allowLessSecureApps"
+  ],
+  "security.login_challenges": [
+   "enableEmployeeIdChallenge"
+  ],
+  "security.passkeys_restriction": [
+   "allowedPasskeysType"
+  ],
+  "security.password": [
+   "allowReuse",
+   "allowedStrength",
+   "enforceRequirementsAtLogin",
+   "expirationDuration",
+   "maximumLength",
+   "minimumLength"
+  ],
+  "security.session_controls": [
+   "webSessionDuration"
+  ],
+  "security.super_admin_account_recovery": [
+   "enableAccountRecovery"
+  ],
+  "security.two_step_verification_device_trust": [
+   "allowTrustingDevice"
+  ],
+  "security.two_step_verification_enforcement": [
+   "enforcedFrom"
+  ],
+  "security.two_step_verification_enforcement_factor": [
+   "allowedSignInFactorSet"
+  ],
+  "security.two_step_verification_enrollment": [
+   "allowEnrollment"
+  ],
+  "security.two_step_verification_grace_period": [
+   "enrollmentGracePeriod"
+  ],
+  "security.two_step_verification_sign_in_code": [
+   "backupCodeExceptionPeriod"
+  ],
+  "security.user_account_recovery": [
+   "enableAccountRecovery"
+  ],
+  "sites.service_status": [
+   "serviceState"
+  ],
+  "sites.sites_creation_and_modification": [
+   "allowSitesCreation",
+   "allowSitesModification"
+  ],
+  "takeout.service_status": [
+   "serviceState"
+  ],
+  "workspace_marketplace.apps_access_options": [
+   "accessLevel",
+   "allowAllInternalApps"
+  ],
+  "youtube.user_takeout": [
+   "takeoutStatus"
+  ]
+ }
+}

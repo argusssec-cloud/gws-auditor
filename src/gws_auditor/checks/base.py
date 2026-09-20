@@ -464,6 +464,56 @@ def evaluate_ous(ou_values: list[dict], predicate: Callable,
     }
 
 
+def latest_setting_changes(data: dict, setting_name: str) -> dict[str, str]:
+    """Return ``{org_unit: latest NEW_VALUE}`` for an admin audit-log setting name.
+
+    Used for settings the Cloud Identity Policy API does not expose: the most recent
+    ``SETTING_NAME`` change event per OU in ``data["admin_logs"]`` gives the current value.
+    Returns ``{}`` when no event exists in the log window (state unknown, not "default").
+    """
+    latest: dict[str, tuple[str, str]] = {}
+    for log in data.get("admin_logs", []):
+        params = log.get("parameters", {})
+        if not isinstance(params, dict) or params.get("SETTING_NAME") != setting_name:
+            continue
+        if "NEW_VALUE" not in params:
+            continue
+        ou = params.get("ORG_UNIT_NAME") or "/"
+        when = log.get("time", "")
+        if ou not in latest or when > latest[ou][0]:
+            latest[ou] = (when, str(params["NEW_VALUE"]))
+    return {ou: value for ou, (_, value) in latest.items()}
+
+
+def result_from_setting_changes(data: dict, setting_name: str, unsafe_values: tuple[str, ...], *,
+                                check_id: str, title: str, level: str, source: str, section: str,
+                                what: str, remediation: str = ""):
+    """Judge a setting the Policy API does not expose from its admin audit-log changes.
+
+    Returns a PASS/FAIL ``CheckResult`` when ``data["admin_logs"]`` holds a change event for
+    *setting_name*, else ``None`` so the caller can fall back (usually to MANUAL). An OU whose
+    latest value is in *unsafe_values* (case-insensitive) is non-compliant.
+    """
+    changes = {ou: v for ou, v in latest_setting_changes(data, setting_name).items()
+               if v.upper() != "INHERIT_FROM_PARENT"}
+    if not changes:
+        return None
+    unsafe = {v.lower() for v in unsafe_values}
+    bad = sorted(ou for ou, v in changes.items() if v.lower() in unsafe)
+    if bad:
+        return make_fail(
+            check_id=check_id, title=title, level=level, source=source, section=section,
+            details=f"{what}: non-compliant in {len(bad)} OU(s) per the latest admin-log change: {', '.join(bad)}",
+            actual_value=", ".join(f"{ou} → {changes[ou]}" for ou in bad),
+            expected_value="Compliant for all OUs", remediation=remediation,
+        )
+    return make_pass(
+        check_id=check_id, title=title, level=level, source=source, section=section,
+        details=f"{what}: compliant in {len(changes)} OU(s) per the latest admin-log change.",
+        actual_value=f"{len(changes)} OU(s) safe", expected_value="Compliant for all OUs",
+    )
+
+
 def get_ou_values(category_dict: dict, raw_setting_key: str,
                    admin_only: bool = False) -> list[dict]:
     """Return per-OU entries for a raw API setting across all OUs.

@@ -773,10 +773,10 @@ class TestChatHistoryEnabledOU:
 
         full_audit_data["policies"]["chat"] = {
             "_ou_policies": [
-                make_ou_policy("chat", "space_history",
-                                {"historyEnabled": True}, "/"),
-                make_ou_policy("chat", "space_history",
-                                {"historyEnabled": True}, "/Engineering"),
+                make_ou_policy("chat", "chat_history",
+                                {"historyOnByDefault": True}, "/"),
+                make_ou_policy("chat", "chat_history",
+                                {"historyOnByDefault": True}, "/Engineering"),
             ],
         }
         result = check_chat_history_enabled(full_audit_data)
@@ -788,10 +788,10 @@ class TestChatHistoryEnabledOU:
 
         full_audit_data["policies"]["chat"] = {
             "_ou_policies": [
-                make_ou_policy("chat", "space_history",
-                                {"historyEnabled": True}, "/"),
-                make_ou_policy("chat", "space_history",
-                                {"historyEnabled": False}, "/Contractors"),
+                make_ou_policy("chat", "chat_history",
+                                {"historyOnByDefault": True}, "/"),
+                make_ou_policy("chat", "chat_history",
+                                {"historyOnByDefault": False}, "/Contractors"),
             ],
         }
         result = check_chat_history_enabled(full_audit_data)
@@ -816,9 +816,9 @@ class TestChatHistoryUserControlOU:
 
         full_audit_data["policies"]["chat"] = {
             "_ou_policies": [
-                make_ou_policy("chat", "space_history",
+                make_ou_policy("chat", "chat_history",
                                 {"allowUserModification": False}, "/"),
-                make_ou_policy("chat", "space_history",
+                make_ou_policy("chat", "chat_history",
                                 {"allowUserModification": False}, "/Engineering"),
             ],
         }
@@ -831,9 +831,9 @@ class TestChatHistoryUserControlOU:
 
         full_audit_data["policies"]["chat"] = {
             "_ou_policies": [
-                make_ou_policy("chat", "space_history",
+                make_ou_policy("chat", "chat_history",
                                 {"allowUserModification": False}, "/"),
-                make_ou_policy("chat", "space_history",
+                make_ou_policy("chat", "chat_history",
                                 {"allowUserModification": True}, "/Marketing"),
             ],
         }

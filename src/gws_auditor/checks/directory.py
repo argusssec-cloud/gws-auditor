@@ -26,7 +26,8 @@ from ..models import CheckResult, Status
 def check_super_admin_count_min(data: dict) -> CheckResult:
     """At least 2 super admin accounts should exist for redundancy."""
     users = data.get("users", [])
-    super_admins = [u for u in users if u.get("is_super_admin", False)]
+    # A suspended super admin cannot sign in, so it provides no redundancy
+    super_admins = [u for u in users if u.get("is_super_admin", False) and not u.get("suspended", False)]
     count = len(super_admins)
 
     if count >= 2:

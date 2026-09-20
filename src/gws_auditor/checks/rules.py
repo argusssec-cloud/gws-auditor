@@ -56,10 +56,27 @@ SYSTEM_DEFINED_ALERTS: dict[str, dict] = {
 }
 
 
+def _system_defined_alert_policies(data: dict) -> list[dict]:
+    """Return ``[{"name", "state", "org_unit"}]`` for rule.system_defined_alerts policies."""
+    rules = data.get("policies", {}).get("rules", {})
+    out = []
+    for policy in rules.get("_ou_policies", []) if isinstance(rules, dict) else []:
+        setting = policy.get("setting", {}) if isinstance(policy, dict) else {}
+        if not str(setting.get("type", "")).endswith("rule.system_defined_alerts"):
+            continue
+        value = setting.get("value", {}) or {}
+        if value.get("displayName") and value.get("state"):
+            out.append({"name": value["displayName"], "state": str(value["state"]).upper(),
+                        "org_unit": policy.get("orgUnit", "/")})
+    return out
+
+
 def _check_alert_rule(data: dict, rule_keyword: str, rule_display: str) -> bool | None:
     """Check if an alert rule matching the keyword is configured.
 
     Checks multiple data sources for evidence that the alert rule is active:
+    0. ``data["policies"]["rules"]`` — ``rule.system_defined_alerts`` policies carry the
+       real ``state`` (ACTIVE/INACTIVE) for every rule an admin has modified.
     1. ``data["admin_logs"]`` — ``SYSTEM_DEFINED_RULE_UPDATED`` events from
        the Admin SDK Reports API.  The most recent event for a matching rule
        name determines its current ON/OFF status.
@@ -82,6 +99,13 @@ def _check_alert_rule(data: dict, rule_keyword: str, rule_display: str) -> bool 
     match_names = list(system_alert["names"]) if system_alert else []
     kw = rule_keyword.lower()
     match_names.extend([kw, kw.replace("_", " "), kw.replace("_", "-")])
+
+    # 0. Authoritative: rule.system_defined_alerts from the Cloud Identity Policy API.
+    #    The API only returns rules an admin has modified, so absence falls through.
+    states = [a["state"] for a in _system_defined_alert_policies(data)
+              if any(n in a["name"].lower() for n in match_names)]
+    if states:
+        return all(s == "ACTIVE" for s in states)
 
     # 1. Check SYSTEM_DEFINED_RULE_UPDATED events in admin logs.
     #    These record ON/OFF toggles for system-defined alert rules.

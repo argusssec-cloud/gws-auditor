@@ -71,7 +71,8 @@ class TestGroupsExternalAccess:
         result = check_groups_external_access(full_audit_data)
         assert result.status == Status.FAIL
 
-    def test_fail_with_domain_wide_view(self, full_audit_data):
+    def test_domain_wide_view_is_not_external_access(self, full_audit_data):
+        """ALL_IN_DOMAIN_CAN_VIEW is internal-only; this control covers external access."""
         from gws_auditor.checks.apps_groups import check_groups_external_access
 
         full_audit_data["policies"]["groups"] = {
@@ -81,12 +82,15 @@ class TestGroupsExternalAccess:
         full_audit_data["groups"] = [
             {
                 "email": "domain-visible@example.com",
-                "whoCanViewGroup": "ALL_IN_DOMAIN_CAN_VIEW",
-                "whoCanViewMembership": "ALL_MANAGERS_CAN_VIEW",
+                "settings": {
+                    "whoCanViewGroup": "ALL_IN_DOMAIN_CAN_VIEW",
+                    "whoCanViewMembership": "ALL_IN_DOMAIN_CAN_VIEW",
+                },
             },
         ]
         result = check_groups_external_access(full_audit_data)
-        assert result.status == Status.FAIL
+        assert result.status == Status.PASS
+        assert "domain-visible@example.com" not in str(result.details)
 
     def test_manual_when_no_data(self, full_audit_data):
         from gws_auditor.checks.apps_groups import check_groups_external_access

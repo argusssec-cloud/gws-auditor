@@ -17,6 +17,7 @@ from .base import (
     make_warn,
     make_manual,
     make_review,
+    is_default_policy,
     make_not_applicable,
     get_ou_values,
     format_ou_values_readable,
@@ -228,6 +229,25 @@ def check_inbound_gateway_spf(data: dict) -> CheckResult:
             ),
         )
 
+    if spf_check is None:
+        # A spam-filter IP allowlist exists, but whether it is an inbound gateway and whether
+        # it rejects on SPF failure is not exposed by the Policy API — do not assume a failure.
+        return make_review(
+            check_id="ADD-06",
+            title="Ensure inbound gateway SPF configuration is correct",
+            level="L2", source="GOOGLE", section="Gmail",
+            details=(
+                "A spam-filter IP allowlist is configured, which may indicate an inbound gateway. "
+                "The gateway's SPF rejection setting is not exposed by the Cloud Identity Policy API "
+                "— verify in Admin console."
+            ),
+            remediation=(
+                "Admin console > Apps > Google Workspace > Gmail > Spam, Phishing "
+                "and Malware > Inbound gateway. If using an inbound gateway, ensure "
+                "'Reject all mail not from gateway IPs' and SPF checks are enabled. https://knowledge.workspace.google.com/admin/security/set-up-spf"
+            ),
+        )
+
     return make_fail(
         check_id="ADD-06",
         title="Ensure inbound gateway SPF configuration is correct",
@@ -260,7 +280,8 @@ def check_partner_tls(data: dict) -> CheckResult:
     policies = data.get("policies", {})
     gmail = policies.get("gmail", {})
     compliance = gmail.get("compliance", {})
-    partner_tls = compliance.get("partner_domain_tls_rules", [])
+    # Default to None (not []) so "not collected" reaches the undetermined branch below
+    partner_tls = compliance.get("partner_domain_tls_rules", None)
     tls_required_default = compliance.get("tls_required", None)
 
     if isinstance(partner_tls, list) and len(partner_tls) > 0:
@@ -284,11 +305,14 @@ def check_partner_tls(data: dict) -> CheckResult:
         )
 
     if partner_tls is None and tls_required_default is None:
-        return make_manual(
+        return make_review(
             check_id="ADD-07",
             title="Ensure TLS is enforced for partner domains",
             level="L2", source="GOOGLE", section="Gmail",
-            details="Could not determine partner domain TLS settings.",
+            details=(
+                "Partner domain TLS compliance rules are not exposed by the Cloud Identity "
+                "Policy API — verify in Admin console."
+            ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Gmail > Compliance. "
                 "Add TLS compliance rules for key partner domains. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
@@ -392,6 +416,47 @@ def check_takeout_restriction(data: dict) -> CheckResult:
     security = policies.get("security", {})
     data_export = security.get("data_export", {})
     takeout_enabled = data_export.get("takeout_enabled", None)
+
+    # Policy API: takeout.service_status.serviceState plus one <service>.user_takeout.takeoutStatus
+    # per service. Admin-set values win over Google defaults for the same OU and setting.
+    statuses: dict[tuple[str, str], tuple[bool, str]] = {}
+    takeout = policies.get("takeout", {})
+    for policy in takeout.get("_ou_policies", []) if isinstance(takeout, dict) else []:
+        setting = policy.get("setting", {}) if isinstance(policy, dict) else {}
+        stype = str(setting.get("type", "")).replace("settings/", "")
+        value = setting.get("value", {}) or {}
+        state = value.get("takeoutStatus", value.get("serviceState"))
+        if state is None or not (stype.endswith(".user_takeout") or stype.startswith("takeout.")):
+            continue
+        is_default = is_default_policy({"_raw": policy.get("_raw", {}), "name": policy.get("name", "")})
+        key = (policy.get("orgUnit", "/"), stype.split(".", 1)[0])
+        if key not in statuses or (statuses[key][0] and not is_default):
+            statuses[key] = (is_default, str(state).upper())
+    if statuses:
+        enabled = sorted(f"{ou}: {service}" for (ou, service), (_, state) in statuses.items()
+                         if state != "DISABLED")
+        if enabled:
+            return make_fail(
+                check_id="ADD-09",
+                title="Ensure Google Takeout is restricted",
+                level="L1", source="GOOGLE", section="Security",
+                details=f"Takeout (data export) is allowed for {len(enabled)} service/OU pair(s): "
+                        + ", ".join(enabled[:12]) + ("..." if len(enabled) > 12 else ""),
+                actual_value={"takeout_enabled_for": enabled},
+                expected_value="Takeout disabled for all services",
+                remediation=(
+                    "Admin console > Data > Data import & export > Google Takeout > User access. "
+                    "Set each service to 'Don't allow'."
+                ),
+            )
+        return make_pass(
+            check_id="ADD-09",
+            title="Ensure Google Takeout is restricted",
+            level="L1", source="GOOGLE", section="Security",
+            details=f"Takeout is disabled for all {len(statuses)} service/OU setting(s) returned.",
+            actual_value={"takeout_enabled_for": []},
+            expected_value="Takeout disabled for all services",
+        )
 
     if takeout_enabled is False:
         return make_pass(
@@ -2227,9 +2292,10 @@ def check_2sv_inventory(data: dict) -> CheckResult:
 
 def _classify_scope_risk(scope: str) -> str | None:
     """Return the risk level for a scope, or None if not dangerous."""
-    for pattern, level in OAUTH_SCOPE_RISK_LEVELS.items():
+    # Longest pattern first so "drive.admin" / "drive.file" are not shadowed by "drive"
+    for pattern in sorted(OAUTH_SCOPE_RISK_LEVELS, key=len, reverse=True):
         if pattern in scope:
-            return level
+            return OAUTH_SCOPE_RISK_LEVELS[pattern]
     return None
 
 
@@ -2476,6 +2542,16 @@ def check_shared_drive_restrictions(data: dict) -> CheckResult:
 
     shared_drives = data.get("shared_drives", [])
 
+    if not shared_drives and any(
+        e.get("operation") == "get_shared_drives" for e in data.get("api_errors", []) if isinstance(e, dict)
+    ):
+        # An empty list after a failed enumeration is "unknown", not "no Shared Drives"
+        return make_manual(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Shared Drives could not be enumerated (API error) — restrictions were not evaluated.",
+            remediation=_REMED,
+        )
+
     if not shared_drives:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
@@ -2698,4 +2774,80 @@ def check_active_oauth_tokens(data: dict) -> CheckResult:
             "anonymous_apps": anonymous_count,
         },
         expected_value="No apps with dangerous scopes",
+    )
+
+
+@check(
+    check_id="ADD-41",
+    title="Ensure admin roles are not assigned to groups anyone can join",
+    level="L1",
+    source="OTHER",
+    section="Security",
+    severity="HIGH",
+    remediation=(
+        "Admin console > Account > Admin roles. Review roles assigned to groups: every member of the "
+        "group inherits the admin role. Restrict who can join and who can add members for those groups "
+        "(Groups settings), or assign the role to individual users instead. "
+        "https://knowledge.workspace.google.com/admin/users/assign-specific-admin-roles"
+    ),
+)
+def check_admin_roles_assigned_to_groups(data: dict) -> CheckResult:
+    """An admin role assigned to a group is inherited by whoever can get into that group."""
+    _ID = "ADD-41"
+    _TITLE = "Ensure admin roles are not assigned to groups anyone can join"
+    _L, _S, _SEC = "L1", "OTHER", "Security"
+    _REMED = (
+        "Admin console > Account > Admin roles. Review roles assigned to groups and restrict who can "
+        "join or add members to those groups, or assign the role to individual users instead."
+    )
+
+    roles_data = data.get("roles")
+    if not isinstance(roles_data, dict) or "assignments" not in roles_data:
+        return make_manual(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Admin role assignments were not collected.", remediation=_REMED,
+        )
+    if any(e.get("operation") in ("list_roles", "list_role_assignments")
+           for e in data.get("api_errors", []) if isinstance(e, dict)):
+        return make_manual(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Admin roles could not be fully enumerated (API error).", remediation=_REMED,
+        )
+
+    role_names = {str(r.get("roleId")): r.get("roleName", str(r.get("roleId")))
+                  for r in roles_data.get("roles", [])}
+    groups_by_id = {str(g.get("id")): g for g in data.get("groups", []) if g.get("id")}
+    group_assignments = [a for a in roles_data["assignments"]
+                         if str(a.get("assigneeType", "")).lower() == "group"]
+    if not group_assignments:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="No admin role is assigned to a group.",
+            actual_value={"group_role_assignments": 0}, expected_value="No open group holds an admin role",
+        )
+
+    open_join = ("ANYONE_CAN_JOIN", "ALL_IN_DOMAIN_CAN_JOIN")
+    risky, reviewed = [], []
+    for a in group_assignments:
+        group = groups_by_id.get(str(a.get("assignedTo")), {})
+        settings = group.get("settings") or {}
+        label = f"{group.get('email', a.get('assignedTo'))} ({role_names.get(str(a.get('roleId')), a.get('roleId'))})"
+        if settings.get("whoCanJoin") in open_join or str(settings.get("allowExternalMembers")).lower() == "true":
+            risky.append(label)
+        else:
+            reviewed.append(label)
+    if risky:
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"{len(risky)} admin role(s) are assigned to groups that users can join themselves or that "
+                    f"allow external members: {', '.join(sorted(risky))}",
+            actual_value={"open_groups_with_admin_role": sorted(risky)},
+            expected_value="No open group holds an admin role", remediation=_REMED,
+        )
+    return make_warn(
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        details=f"{len(reviewed)} admin role(s) are assigned to groups (membership is restricted). Anyone who "
+                f"can add members to these groups can grant the role: {', '.join(sorted(reviewed))}",
+        actual_value={"group_role_assignments": sorted(reviewed)},
+        expected_value="No open group holds an admin role", remediation=_REMED,
     )

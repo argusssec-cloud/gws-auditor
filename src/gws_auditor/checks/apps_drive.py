@@ -157,10 +157,13 @@ def check_drive_external_sharing_warning(data: dict) -> CheckResult:
     ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
     if ou_values:
         def _warn_value(entry: dict):
-            return entry.get("value", {}).get(
-                "warnForExternalSharing",
-                entry.get("value", {}).get("warnOnExternalSharing", None),
-            )
+            value = entry.get("value", {})
+            mode = value.get("externalSharingMode")
+            if mode == "DISALLOWED":
+                return True  # no external sharing, nothing to warn about
+            if mode == "ALLOWLISTED_DOMAINS" and "warnForSharingOutsideAllowlistedDomains" in value:
+                return value["warnForSharingOutsideAllowlistedDomains"]
+            return value.get("warnForExternalSharing", value.get("warnOnExternalSharing", None))
 
         triage = _triage_external_sharing_ous(
             ou_values, lambda e: _warn_value(e) is True, _warn_value,
@@ -383,6 +386,12 @@ def check_drive_domain_allowlist(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
+            # Policy API field is externalSharingMode; DISALLOWED is stricter than an allowlist
+            mode = entry["value"].get("externalSharingMode", None)
+            if mode is not None:
+                if mode not in ("ALLOWLISTED_DOMAINS", "DISALLOWED"):
+                    unsafe_ous.append({"org_unit": entry["org_unit"], "value": mode})
+                continue
             val = entry["value"].get("allowlistedDomainsEnabled", None)
             if val is not True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
@@ -470,6 +479,8 @@ def check_drive_allowlist_warning(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
+            if entry["value"].get("externalSharingMode") == "DISALLOWED":
+                continue  # no external sharing, nothing to warn about
             val = entry["value"].get("warnForSharingOutsideAllowlistedDomains",
                         entry["value"].get("warnOnAllowlistedDomainSharing", None))
             if val is not True:
@@ -628,7 +639,8 @@ def check_drive_external_distribution(data: dict) -> CheckResult:
         for entry in ou_values:
             val = entry["value"].get("allowedPartiesForDistributingContent",
                         entry["value"].get("externalDistributionAllowedFor", ""))
-            if "internal" not in val.lower():
+            # NONE ("No one") is stricter than internal-only
+            if "internal" not in val.lower() and val.upper() != "NONE":
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
         if unsafe_ous:
             ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)

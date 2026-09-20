@@ -35,13 +35,17 @@ def check_third_party_app_access(data: dict) -> CheckResult:
         "Set to 'Don't allow users to access any third-party apps' or restrict "
         "to trusted applications. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     )
-    _SAFE = ("RESTRICTED", "LIMITED", "BLOCKED")
+    # Policy API enums: BLOCK_ALL_SCOPES (block) / sign-in-scopes-only; rest are legacy aliases
+    _SAFE = ("BLOCK_ALL_SCOPES", "ALLOW_SIGN_IN_SCOPES_ONLY", "SIGN_IN_ONLY",
+             "RESTRICTED", "LIMITED", "BLOCKED")
 
     policies = data.get("policies", {})
     security = policies.get("security", {})
 
     # OU-aware path
     ou_values = get_ou_values(security, "unconfigured_third_party_apps")
+    if not ou_values:
+        ou_values = get_ou_values(policies.get("api_controls", {}), "unconfigured_third_party_apps")
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -176,6 +180,16 @@ def check_third_party_app_review(data: dict) -> CheckResult:
     access_control = policies.get("access_control", {})
     app_access_policy = access_control.get("app_access_policy", "")
 
+    # The Policy API exposes this as api_controls.unconfigured_third_party_apps.accessLevel
+    if not app_access_policy:
+        ou_values = get_ou_values(policies.get("security", {}), "unconfigured_third_party_apps")
+        if not ou_values:
+            ou_values = get_ou_values(policies.get("api_controls", {}), "unconfigured_third_party_apps")
+        levels = [str(e["value"].get("accessLevel", "")) for e in ou_values if e["value"].get("accessLevel")]
+        if levels:
+            restricted = all(lv == "BLOCK_ALL_SCOPES" or "SIGN_IN" in lv for lv in levels)
+            app_access_policy = "restricted" if restricted else "unrestricted"
+
     # If no app access control policy is configured, this is a failure
     if not app_access_policy or app_access_policy.lower() in ("unrestricted", ""):
         return make_fail(
@@ -308,15 +322,47 @@ def check_domain_wide_delegation(data: dict) -> CheckResult:
             remediation=_REMED,
         )
 
-    # Fallback: detect DWD clients from AUTHORIZE_API_CLIENT_ACCESS admin log events
+    # Fallback: detect DWD clients from AUTHORIZE_API_CLIENT_ACCESS admin log events.
+    # The latest event per client wins; a later REMOVE_API_CLIENT_ACCESS revokes the grant.
+    from .additional import _classify_scope_risk
+
     admin_logs = data.get("admin_logs", [])
-    dwd_client_ids: set[str] = set()
+    latest: dict[str, tuple[str, str, str]] = {}
     for log in admin_logs:
-        if log.get("event_name") == "AUTHORIZE_API_CLIENT_ACCESS":
-            params = log.get("parameters", {})
-            client_id = params.get("API_CLIENT_NAME", "")
-            if client_id:
-                dwd_client_ids.add(client_id)
+        event = log.get("event_name")
+        if event not in ("AUTHORIZE_API_CLIENT_ACCESS", "REMOVE_API_CLIENT_ACCESS"):
+            continue
+        params = log.get("parameters", {})
+        client_id = params.get("API_CLIENT_NAME", "")
+        when = log.get("time", "")
+        if client_id and (client_id not in latest or when >= latest[client_id][0]):
+            latest[client_id] = (when, event, str(params.get("API_SCOPES", "")))
+    grants = {c: scopes for c, (_, event, scopes) in latest.items()
+              if event == "AUTHORIZE_API_CLIENT_ACCESS"}
+    dwd_client_ids = set(grants)
+
+    # Delegated scopes apply to every user in the domain, so write access to mail, Drive
+    # or the directory is org-wide impersonation. Read-only scopes are reported, not flagged.
+    risky: dict[str, list[str]] = {}
+    for client_id, scopes in grants.items():
+        for scope in (s.strip() for s in scopes.replace(" ", ",").split(",") if s.strip()):
+            if scope.endswith(".readonly"):
+                continue
+            if _classify_scope_risk(scope) in ("CRITICAL", "HIGH"):
+                risky.setdefault(client_id, []).append(scope.rsplit("/", 1)[-1])
+
+    if risky:
+        summary = "; ".join(f"{c}: {', '.join(sorted(set(s))[:6])}" for c, s in sorted(risky.items()))
+        return make_warn(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(
+                f"{len(risky)} of {len(grants)} domain-wide delegation client(s) hold high-risk write "
+                f"scopes that allow org-wide impersonation: {summary}"
+            ),
+            actual_value={"delegation_count": len(grants), "high_risk_clients": len(risky)},
+            expected_value="Delegations limited to least-privilege scopes",
+            remediation=_REMED,
+        )
 
     if dwd_client_ids:
         return make_review(

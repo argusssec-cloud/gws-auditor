@@ -46,6 +46,16 @@ POLICY_CATEGORIES = {
     "multi_party_approval": "multi_party_approval",
     "access_management": "access_management",
     "access_approval": "access_approval",
+    # GWS.COMMONCONTROLS.16.1 / 16.2 (service_status.serviceState)
+    "enterprise_service_restrictions": "enterprise_service_restrictions",
+    "early_access_apps": "early_access_apps",
+    # Takeout: takeout.service_status plus the per-service <service>.user_takeout settings
+    "takeout": "takeout",
+}
+
+# Categories whose setting types do not share a single "<prefix>." — full type regex instead.
+CATEGORY_TYPE_PATTERNS = {
+    "takeout": r"^settings/(takeout\\..*|.*\\.user_takeout)$",
 }
 
 
@@ -339,9 +349,10 @@ class PolicyClient(BaseAPIClient):
         # The Policy API uses CEL (Common Expression Language) filters.
         # Setting types follow the pattern: settings/<prefix>.<setting>
         # Reference: https://docs.cloud.google.com/identity/docs/reference/rest/v1/policies/list
-        cel_filter = (
-            f"setting.type.matches('^settings/{setting_prefix}\\\\..*$')"
+        pattern = CATEGORY_TYPE_PATTERNS.get(
+            policy_type.lower(), f"^settings/{setting_prefix}\\\\..*$"
         )
+        cel_filter = f"setting.type.matches('{pattern}')"
         if self.customer_id:
             cel_filter += f' && customer == "customers/{self.customer_id}"'
         try:

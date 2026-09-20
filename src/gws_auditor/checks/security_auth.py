@@ -66,7 +66,7 @@ def check_2sv_admin_enforcement(data: dict) -> CheckResult:
         admins_without_2sv = [
             u.get("primary_email", "unknown")
             for u in admins
-            if not u.get("is_enrolled_in_2sv", False)
+            if not u.get("is_enrolled_in_2sv", False) and not u.get("suspended", False)
         ]
         if unsafe_ous or admins_without_2sv:
             details_parts = []
@@ -99,7 +99,7 @@ def check_2sv_admin_enforcement(data: dict) -> CheckResult:
     admins_without_2sv = [
         u.get("primary_email", "unknown")
         for u in admins
-        if not u.get("is_enrolled_in_2sv", False)
+        if not u.get("is_enrolled_in_2sv", False) and not u.get("suspended", False)
     ]
 
     if admin_enforcement == "enforced" and not admins_without_2sv:
@@ -162,7 +162,9 @@ def check_security_keys_admin(data: dict) -> CheckResult:
         "Set 'Allowed 2-step verification methods' to 'Only security key' "
         "for admin OUs. https://knowledge.workspace.google.com/admin/security/deploy-2-step-verification"
     )
-    _SAFE = ("ONLY_SECURITY_KEY", "SECURITY_KEY_ONLY", "security_key_only", "security_key")
+    # Policy API enums for "Only security key" (with or without backup security codes)
+    _SAFE = ("PASSKEY_ONLY", "PASSKEY_PLUS_SECURITY_CODE", "PASSKEY_PLUS_IP_BOUND_SECURITY_CODE",
+             "ONLY_SECURITY_KEY", "SECURITY_KEY_ONLY", "security_key_only", "security_key")
 
     policies = data.get("policies", {})
     security = policies.get("security", {})
@@ -194,7 +196,7 @@ def check_security_keys_admin(data: dict) -> CheckResult:
     twosv = security.get("two_step_verification", {})
     admin_method = twosv.get("admin_allowed_methods", "")
 
-    if admin_method in ("security_key_only", "security_key"):
+    if admin_method in ("security_key_only", "security_key") or str(admin_method).startswith("passkey"):
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Hardware security keys are required for admin 2SV.",
@@ -269,7 +271,7 @@ def check_2sv_all_users(data: dict) -> CheckResult:
         users_without_2sv = [
             u.get("primary_email", "unknown")
             for u in users
-            if not u.get("is_enrolled_in_2sv", False)
+            if not u.get("is_enrolled_in_2sv", False) and not u.get("suspended", False)
         ]
         if unsafe_ous or users_without_2sv:
             details_parts = []
@@ -321,7 +323,7 @@ def check_2sv_all_users(data: dict) -> CheckResult:
     users_without_2sv = [
         u.get("primary_email", "unknown")
         for u in users
-        if not u.get("is_enrolled_in_2sv", False)
+        if not u.get("is_enrolled_in_2sv", False) and not u.get("suspended", False)
     ]
     total_users = len(users)
     enrolled_count = total_users - len(users_without_2sv)

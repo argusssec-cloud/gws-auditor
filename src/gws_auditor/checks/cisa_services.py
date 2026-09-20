@@ -7,13 +7,37 @@
 Only checks NOT already covered by CIS/OTHER/GOOGLE or the main cisa_scuba module.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy, latest_setting_changes
 from ..models import CheckResult, Status
 
 
 # ===========================================================================
 # Gmail - CISA SCuBA service-specific checks
 # ===========================================================================
+
+
+# gmail.email_attachment_safety consequence enums (SPAM_FOLDER / QUARANTINE / WARNING ...)
+_ATTACHMENT_CONSEQUENCE_FIELDS = (
+    "anomalousAttachmentProtectionConsequence",
+    "encryptedAttachmentProtectionConsequence",
+    "attachmentWithScriptsProtectionConsequence",
+)
+
+
+def _spam_override_rules(value: dict) -> list[dict]:
+    """Return the rule dicts of a gmail.spam_override_lists policy value (``spamOverride[]``)."""
+    rules = value.get("spamOverride", [])
+    return [r for r in rules if isinstance(r, dict)] if isinstance(rules, list) else []
+
+
+def _rule_bypasses_all_senders(rule: dict) -> bool:
+    """True if a spam override rule bypasses filters for internal or all senders."""
+    if rule.get("bypassInternalSenders") is True:
+        return True
+    # The "all internal and external senders" option; exact field name is not documented
+    return any(v is True for k, v in rule.items()
+               if "all" in k.lower() and ("bypass" in k.lower() or "hidewarning" in k.lower()))
+
 
 @check(
     check_id="GWS.GMAIL.4.1",
@@ -157,10 +181,21 @@ def check_flagged_email_action(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spam_override_lists", admin_only=True)
+    # Policy API: gmail.email_attachment_safety carries one *Consequence enum per protection
+    ou_values = get_ou_values(gmail, "email_attachment_safety", admin_only=True)
+    if not any(k in e["value"] for e in ou_values for k in _ATTACHMENT_CONSEQUENCE_FIELDS):
+        ou_values = get_ou_values(gmail, "spam_override_lists", admin_only=True)  # legacy shape
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
+            consequences = {k: entry["value"][k] for k in _ATTACHMENT_CONSEQUENCE_FIELDS
+                            if k in entry["value"]}
+            if consequences:
+                left_in_inbox = sorted(f"{k}={v}" for k, v in consequences.items()
+                                       if v not in ("SPAM_FOLDER", "QUARANTINE"))
+                if left_in_inbox:
+                    unsafe_ous.append({"org_unit": entry["org_unit"], "value": ", ".join(left_in_inbox)})
+                continue
             act = entry["value"].get("flaggedEmailAction",
                                      entry["value"].get("flagged_email_action", None))
             if act not in ("quarantine", "spam"):
@@ -252,6 +287,11 @@ def check_spam_approved_senders_domains(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
+            rules = [r for r in _spam_override_rules(entry["value"])
+                     if r.get("bypassSelectedSenders") is True]
+            if rules:
+                unsafe_ous.append({"org_unit": entry["org_unit"], "value": len(rules)})
+                continue
             domains = entry["value"].get("approvedSendersDomains",
                                           entry["value"].get("approved_senders_domains", None))
             if isinstance(domains, list) and len(domains) > 0:
@@ -345,6 +385,12 @@ def check_spam_domains_bypass_hide_warnings(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
+            rules = [r for r in _spam_override_rules(entry["value"])
+                     if r.get("bypassSelectedSenders") is True
+                     and r.get("hideWarningBannerFromSelectedSenders") is True]
+            if rules:
+                unsafe_ous.append({"org_unit": entry["org_unit"], "value": len(rules)})
+                continue
             bypass = entry["value"].get("domainsBypassAndHideWarnings",
                                          entry["value"].get("domains_bypass_and_hide_warnings", None))
             if isinstance(bypass, list) and len(bypass) > 0:
@@ -440,6 +486,8 @@ def check_spam_bypass_internal(data: dict) -> CheckResult:
         for entry in ou_values:
             bypass = entry["value"].get("bypassSpamFiltersForInternal",
                                          entry["value"].get("bypass_internal", None))
+            if any(_rule_bypasses_all_senders(r) for r in _spam_override_rules(entry["value"])):
+                bypass = True
             if bypass is True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": bypass})
         if unsafe_ous:
@@ -535,9 +583,15 @@ def check_drive_external_sharing_warning(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            warn = entry["value"].get("warnForExternalSharing",
-                                       entry["value"].get("warnOnExternalSharing",
-                                       entry["value"].get("warn_for_external_sharing", None)))
+            mode = entry["value"].get("externalSharingMode")
+            if mode == "DISALLOWED":
+                continue  # no external sharing, nothing to warn about
+            if mode == "ALLOWLISTED_DOMAINS":
+                warn = entry["value"].get("warnForSharingOutsideAllowlistedDomains", None)
+            else:
+                warn = entry["value"].get("warnForExternalSharing",
+                                           entry["value"].get("warnOnExternalSharing",
+                                           entry["value"].get("warn_for_external_sharing", None)))
             if warn is not True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": warn})
         if unsafe_ous:
@@ -721,9 +775,18 @@ def check_drive_external_upload(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            upload = entry["value"].get("allowReceivingExternalFiles",
-                                         entry["value"].get("allowUploadToExternalDrives",
-                                         entry["value"].get("allow_upload_to_external_drives", None)))
+            # External sharing fully off -> content cannot leave the organization
+            if entry["value"].get("externalSharingMode") == "DISALLOWED":
+                continue
+            # Policy API field is allowedPartiesForDistributingContent; only NONE ("No one")
+            # is compliant. allowReceivingExternalFiles is the *receiving* setting (1.2).
+            parties = entry["value"].get("allowedPartiesForDistributingContent", None)
+            if parties is not None:
+                if parties != "NONE":
+                    unsafe_ous.append({"org_unit": entry["org_unit"], "value": parties})
+                continue
+            upload = entry["value"].get("allowUploadToExternalDrives",
+                                         entry["value"].get("allow_upload_to_external_drives", None))
             # Skip DEFAULT/SYSTEM entries where field is absent
             if upload is None and is_default_policy(entry):
                 continue
@@ -1089,14 +1152,33 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
     policies = data.get("policies", {})
     drive = policies.get("drive", {})
 
-    # OU-aware path
-    ou_values = get_ou_values(drive, "drive_sdk", admin_only=True)
+    # Add-ons are not exposed by the Policy API (drive_sdk.enableDriveSdkApiAccess is the
+    # separate Drive SDK setting). Infer from the latest ENABLE_DOCS_ADD_ONS admin-log change.
+    changes = latest_setting_changes(data, "ENABLE_DOCS_ADD_ONS")
+    changes = {ou: v for ou, v in changes.items() if v.upper() != "INHERIT_FROM_PARENT"}
+    if changes:
+        enabled_ous = sorted(ou for ou, v in changes.items() if v.lower() != "false")
+        if enabled_ous:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=f"{len(enabled_ous)} OU(s) have Drive Add-Ons enabled (from admin logs): {', '.join(enabled_ous)}",
+                actual_value=", ".join(f"{ou} → enabled" for ou in enabled_ous),
+                expected_value="Disabled for all OUs", remediation=_REMED,
+            )
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"Drive Add-Ons were disabled in {len(changes)} OU(s) (latest admin-log change).",
+            actual_value=f"{len(changes)} OU(s) safe", expected_value="Disabled for all OUs",
+        )
+
+    # Legacy shape (older caches / explicit addOnsEnabled field)
+    ou_values = [e for e in get_ou_values(drive, "drive_sdk", admin_only=True)
+                 if "addOnsEnabled" in e["value"] or "add_ons_enabled" in e["value"]]
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
             add_ons = entry["value"].get("addOnsEnabled",
-                                          entry["value"].get("enableDriveSdkApiAccess",
-                                          entry["value"].get("add_ons_enabled", None)))
+                                          entry["value"].get("add_ons_enabled", None))
             # Skip DEFAULT/SYSTEM entries where field is absent
             if add_ons is None and is_default_policy(entry):
                 continue
@@ -1314,11 +1396,11 @@ def check_chat_space_history(data: dict) -> CheckResult:
                                                 entry["value"].get("space_history_enabled", None)))
             # Normalize: historyState values or boolean
             if isinstance(history_state, str):
-                enabled = "HISTORY_ON" in history_state.upper()
+                enabled = history_state.upper() in ("DEFAULT_HISTORY_ON", "HISTORY_ALWAYS_ON", "ALWAYS_ON")
             else:
                 enabled = history_state is True
             if not enabled:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
+                unsafe_ous.append({"org_unit": entry["org_unit"], "value": history_state})
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
             return make_fail(
@@ -1694,8 +1776,11 @@ def check_groups_external_members(data: dict) -> CheckResult:
         unsafe_ous = []
         for entry in ou_values:
             # collaborationCapability: FULL_COLLABORATION means external members allowed
+            owners_allow = entry["value"].get("ownersCanAllowExternalMembers")
             collab = entry["value"].get("collaborationCapability")
-            if collab is not None:
+            if owners_allow is not None:
+                val = owners_allow is not False
+            elif collab is not None:
                 val = collab == "FULL_COLLABORATION"
             else:
                 val = entry["value"].get("allowExternalMembers",

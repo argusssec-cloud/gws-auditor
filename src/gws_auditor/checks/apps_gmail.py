@@ -237,12 +237,45 @@ def check_gmail_spf(data: dict) -> CheckResult:
         )
 
     missing_spf = []
+    permissive_spf = []
+    neutral_spf = []
     for domain in domains:
         domain_name = domain if isinstance(domain, str) else domain.get("domainName", domain.get("domain_name", ""))
         domain_dns = dns_records.get(domain_name, {})
         spf = domain_dns.get("spf", {})
         if not spf.get("record_found", False):
             missing_spf.append(domain_name)
+            continue
+        # A record that ends in "+all"/"all" authorises every sender, i.e. no protection;
+        # "?all" (neutral) gives receivers no guidance.
+        terms = str(spf.get("record", "")).lower().split()
+        all_term = next((t for t in reversed(terms) if t.lstrip("+-~?") == "all"), "")
+        if all_term in ("+all", "all"):
+            permissive_spf.append(domain_name)
+        elif all_term == "?all":
+            neutral_spf.append(domain_name)
+
+    if permissive_spf:
+        return make_fail(
+            check_id="CIS-3.1.3.2.2",
+            title="Ensure SPF records are configured for all domains",
+            level="L1", source="CIS", section="Gmail",
+            details=f"SPF record authorises all senders (+all) for: {', '.join(permissive_spf)}",
+            actual_value={"permissive_spf_domains": permissive_spf, "missing_spf_domains": missing_spf},
+            expected_value="SPF ending in -all or ~all",
+            remediation="Replace '+all' with '~all' or '-all' in the SPF TXT record. https://knowledge.workspace.google.com/admin/security/set-up-spf",
+        )
+
+    if not missing_spf and neutral_spf:
+        return make_warn(
+            check_id="CIS-3.1.3.2.2",
+            title="Ensure SPF records are configured for all domains",
+            level="L1", source="CIS", section="Gmail",
+            details=f"SPF record uses the neutral '?all' qualifier for: {', '.join(neutral_spf)}",
+            actual_value={"neutral_spf_domains": neutral_spf},
+            expected_value="SPF ending in -all or ~all",
+            remediation="Replace '?all' with '~all' or '-all' in the SPF TXT record. https://knowledge.workspace.google.com/admin/security/set-up-spf",
+        )
 
     if not missing_spf:
         return make_pass(
@@ -1748,10 +1781,27 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
     ou_values = get_ou_values(gmail, "comprehensive_mail_storage", admin_only=True)
     if ou_values:
         unsafe_ous = []
+        undetermined = 0
         for entry in ou_values:
-            enabled = entry["value"].get("enableComprehensiveMailStorage", None)
+            enabled = entry["value"].get("enableComprehensiveMailStorage",
+                                         entry["value"].get("enabled", None))
+            if enabled is None:
+                # The Policy API returns only a ruleId for this setting, with no
+                # enabled/disabled flag, so the state cannot be determined here.
+                undetermined += 1
+                continue
             if enabled is not True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
+        if undetermined == len(ou_values):
+            return make_review(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=(
+                    "A comprehensive mail storage policy exists but the Policy API does not "
+                    "expose whether it is enabled. Verify manually in Admin console > Apps > "
+                    "Google Workspace > Gmail > Compliance."
+                ),
+                remediation=_REMED,
+            )
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
             return make_fail(

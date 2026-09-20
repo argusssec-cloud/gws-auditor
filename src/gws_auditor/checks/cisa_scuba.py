@@ -14,7 +14,7 @@ Check IDs use the GWS.* format from ScubaGoggles.
 Reference: https://github.com/cisagov/ScubaGoggles
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy, result_from_setting_changes, latest_setting_changes
 from ..models import CheckResult, Status
 
 
@@ -598,15 +598,17 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "space_history", admin_only=True)
+    # chat.chat_history carries historyOnByDefault; chat.space_history (historyState)
+    # is the separate spaces setting evaluated by GWS.CHAT.3.1.
+    ou_values = get_ou_values(chat, "chat_history", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
             val = entry["value"]
-            # Check historyState first (raw API field), then boolean aliases
+            # historyState kept for old caches that only had space_history
             history_state = val.get("historyState", "")
             if history_state:
-                enabled = history_state in ("DEFAULT_HISTORY_ON", "ALWAYS_ON")
+                enabled = history_state in ("DEFAULT_HISTORY_ON", "HISTORY_ALWAYS_ON", "ALWAYS_ON")
             else:
                 enabled = val.get("historyEnabled",
                                   val.get("historyOnByDefault", None))
@@ -696,7 +698,8 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "space_history", admin_only=True)
+    # allowUserModification lives on chat.chat_history, not chat.space_history
+    ou_values = get_ou_values(chat, "chat_history", admin_only=True)
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -968,9 +971,15 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            non_google_val = entry["value"].get("sharingWithNonGoogleUsers",
-                                                entry["value"].get("allowNonGoogleAccountSharing",
-                                                entry["value"].get("allowNonGoogleInvites", None)))
+            mode = entry["value"].get("externalSharingMode")
+            if mode == "DISALLOWED":
+                continue  # no external sharing at all
+            if mode == "ALLOWLISTED_DOMAINS":
+                non_google_val = entry["value"].get("allowNonGoogleInvitesInAllowlistedDomains", None)
+            else:
+                non_google_val = entry["value"].get("sharingWithNonGoogleUsers",
+                                                    entry["value"].get("allowNonGoogleAccountSharing",
+                                                    entry["value"].get("allowNonGoogleInvites", None)))
             if non_google_val is not False:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": non_google_val})
         if unsafe_ous:
@@ -1059,8 +1068,13 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            anyone_link_val = entry["value"].get("anyoneWithLinkEnabled",
-                                                  entry["value"].get("publishToWeb", None))
+            # External sharing fully off -> nothing can be published
+            if entry["value"].get("externalSharingMode") == "DISALLOWED":
+                continue
+            # Policy API field is allowPublishingFiles (drive_and_docs.external_sharing)
+            anyone_link_val = entry["value"].get("allowPublishingFiles",
+                                                  entry["value"].get("anyoneWithLinkEnabled",
+                                                  entry["value"].get("publishToWeb", None)))
             if anyone_link_val is not False:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": anyone_link_val})
         if unsafe_ous:
@@ -1249,6 +1263,9 @@ def check_drive_security_updates(data: dict) -> CheckResult:
             updates = raw == "APPLY_TO_IMPACTED_FILES" if isinstance(raw, str) else raw
             if updates is not True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": updates})
+            elif entry["value"].get("allowUsersToManageUpdate") is True:
+                # Update applied, but users may remove it from their files
+                unsafe_ous.append({"org_unit": entry["org_unit"], "value": "allowUsersToManageUpdate=True"})
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
             return make_fail(
@@ -1434,15 +1451,19 @@ def check_meet_non_gws_access(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "safety_domain", admin_only=True)
+    # SCuBA 2.1 is meet.safety_access.meetingsAllowedToJoin (which meetings users may
+    # join); meet.safety_domain.usersAllowedToJoin is the separate 1.1 setting.
+    ou_values = (get_ou_values(meet, "safety_access", admin_only=True)
+                 or get_ou_values(meet, "safety_domain", admin_only=True))
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            users = entry["value"].get("usersAllowedToJoin",
+            users = entry["value"].get("meetingsAllowedToJoin", entry["value"].get("usersAllowedToJoin",
                                        entry["value"].get("nonWorkspaceMeetingsAllowed",
-                                       entry["value"].get("enabled", None)))
+                                       entry["value"].get("enabled", None))))
             # "ALL" means anyone can join (insecure); safe values restrict to org
-            _SAFE_DOMAIN = ("SAME_ORGANIZATION_ONLY", "SAME_DOMAIN_ONLY", "TRUSTED_DOMAINS", False)
+            _SAFE_DOMAIN = ("SAME_ORGANIZATION_ONLY", "ANY_WORKSPACE_ORGANIZATION",
+                            "SAME_DOMAIN_ONLY", "TRUSTED_DOMAINS", False)
             allowed = users not in _SAFE_DOMAIN
             if allowed:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": allowed})
@@ -1806,7 +1827,13 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "video_recording", admin_only=True)
+    # meet.video_recording only says whether recording is *allowed*; the automatic-recording
+    # default is not exposed there. Only entries that carry a determinable value are judged.
+    ou_values = [
+        e for e in get_ou_values(meet, "video_recording", admin_only=True)
+        if e["value"].get("enableRecording") is False
+        or e["value"].get("autoRecordingEnabled", e["value"].get("autoRecording")) is not None
+    ]
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1901,14 +1928,17 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "video_recording", admin_only=True)
+    # The automatic-transcription default is not part of meet.video_recording; an absent
+    # field is unknown (not "disabled"), so only entries that carry the field are judged.
+    ou_values = [
+        e for e in get_ou_values(meet, "video_recording", admin_only=True)
+        if e["value"].get("autoTranscriptionEnabled", e["value"].get("autoTranscription")) is not None
+    ]
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
             auto = entry["value"].get("autoTranscriptionEnabled",
                                       entry["value"].get("autoTranscription", None))
-            # None means the field isn't present (feature not available in edition)
-            # — treat as disabled (safe)
             if auto is True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": auto})
         if unsafe_ous:
@@ -2214,6 +2244,7 @@ def check_sms_voice_mfa_disabled(data: dict) -> CheckResult:
             ml = methods.lower()
             sms_blocked = (
                 "security_key_only" in ml
+                or "passkey" in ml  # PASSKEY_ONLY / PASSKEY_PLUS_* exclude SMS and voice
                 or "no_telephony" in ml
                 or "no_sms" in ml
                 or "no_phone" in ml
@@ -2242,6 +2273,7 @@ def check_sms_voice_mfa_disabled(data: dict) -> CheckResult:
     am = str(allowed_methods).lower()
     sms_blocked = (
         "security_key_only" in am
+        or "passkey" in am  # PASSKEY_ONLY / PASSKEY_PLUS_* exclude SMS and voice
         or "no_telephony" in am
         or "no_sms" in am
         or "no_phone" in am
@@ -2652,12 +2684,19 @@ def check_data_regions(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "data_regions")
+    ou_values = (get_ou_values(security, "data_at_rest_region")
+                 or get_ou_values(security, "data_regions"))
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            val = entry["value"].get("configured",
-                                      entry["value"].get("dataRegionsConfigured", None))
+            region = entry["value"].get("region")
+            if region is not None:
+                # Policy API: data_regions.data_at_rest_region.region (US / EUROPE / NO_PREFERENCE)
+                r = str(region).upper()
+                val = True if (r and r != "NO_PREFERENCE" and "UNSPECIFIED" not in r) else region
+            else:
+                val = entry["value"].get("configured",
+                                          entry["value"].get("dataRegionsConfigured", None))
             if val is not True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
         if unsafe_ous:
@@ -2766,6 +2805,16 @@ def check_multi_party_approval(data: dict) -> CheckResult:
             actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
+    # Not exposed by the Policy API: infer from the latest admin audit-log change
+    # (setting name as used by CISA ScubaGoggles). No event -> fall through to MANUAL.
+    inferred = result_from_setting_changes(
+        data, "Multi Party Approval (MPA) Control Multi Party Approval Control", ('disabled',),
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        what="Multi-party approval", remediation=_REMED,
+    )
+    if inferred is not None:
+        return inferred
+
     # Fallback: mapped root-level value
     mpa = security.get("multi_party_approval", {})
     enabled = mpa.get("enabled", None)
@@ -2843,6 +2892,7 @@ def check_class_membership_restricted(data: dict) -> CheckResult:
     # and legacy normalised forms)
     _SAFE = frozenset({
         "ANYONE_IN_DOMAIN", "anyone_in_domain",
+        "ANYONE_IN_ALLOWLISTED_DOMAINS",
         "DOMAIN_ONLY", "domain_only",
         "ALLOWLISTED_DOMAINS", "allowlisted_domains",
     })
@@ -2851,12 +2901,13 @@ def check_class_membership_restricted(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = get_ou_values(classroom, "sharing")
+    ou_values = (get_ou_values(classroom, "class_membership")
+                 or get_ou_values(classroom, "sharing"))
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            val = entry["value"].get("classMembership",
-                                      entry["value"].get("class_membership", None))
+            val = entry["value"].get("whoCanJoinClasses", entry["value"].get("classMembership",
+                                      entry["value"].get("class_membership", None)))
             if val not in _SAFE:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
         if unsafe_ous:
@@ -2931,6 +2982,7 @@ def check_classes_to_join_restricted(data: dict) -> CheckResult:
     # and legacy normalised forms)
     _SAFE = frozenset({
         "CLASSES_IN_DOMAIN", "classes_in_domain",
+        "CLASSES_IN_ALLOWLISTED_DOMAINS",
         "DOMAIN_ONLY", "domain_only",
         "ALLOWLISTED_DOMAINS", "allowlisted_domains",
     })
@@ -2939,12 +2991,13 @@ def check_classes_to_join_restricted(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = get_ou_values(classroom, "sharing")
+    ou_values = (get_ou_values(classroom, "class_membership")
+                 or get_ou_values(classroom, "sharing"))
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            val = entry["value"].get("classesToJoin",
-                                      entry["value"].get("classes_to_join", None))
+            val = entry["value"].get("whichClassesCanUsersJoin", entry["value"].get("classesToJoin",
+                                      entry["value"].get("classes_to_join", None)))
             if val not in _SAFE:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
         if unsafe_ous:
@@ -3016,12 +3069,13 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = get_ou_values(classroom, "api_access")
+    ou_values = (get_ou_values(classroom, "api_data_access")
+                 or get_ou_values(classroom, "api_access"))
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            val = entry["value"].get("enabled",
-                                      entry["value"].get("apiAccessEnabled", None))
+            val = entry["value"].get("enableApiAccess", entry["value"].get("enabled",
+                                      entry["value"].get("apiAccessEnabled", None)))
             if val is not False:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
         if unsafe_ous:
@@ -3110,8 +3164,12 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            val = entry["value"].get("cleverEnabled",
-                                      entry["value"].get("clever_enabled", None))
+            option = entry["value"].get("rosterImportOption", None)
+            if option is not None:
+                val = str(option).upper() != "OFF"
+            else:
+                val = entry["value"].get("cleverEnabled",
+                                          entry["value"].get("clever_enabled", None))
             if val is not False:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
         if unsafe_ous:
@@ -3196,13 +3254,14 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = get_ou_values(classroom, "class_settings")
+    ou_values = (get_ou_values(classroom, "student_unenrollment")
+                 or get_ou_values(classroom, "class_settings"))
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
             val = entry["value"].get("whoCanUnenrollStudents",
                                       entry["value"].get("who_can_unenroll_students", None))
-            if val not in ("teachers_only", "teachers", "TEACHERS_ONLY"):
+            if str(val).lower() not in ("teachers_only", "teachers"):
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
@@ -3222,7 +3281,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
     class_settings = classroom.get("class_settings", {})
     who_can_unenroll = class_settings.get("who_can_unenroll_students", None)
 
-    if who_can_unenroll in ("teachers_only", "teachers"):
+    if str(who_can_unenroll).lower() in ("teachers_only", "teachers"):
         return make_pass(
             check_id="GWS.CLASSROOM.4.1",
             title="Ensure only teachers can unenroll students",
@@ -3287,13 +3346,14 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = get_ou_values(classroom, "class_settings")
+    ou_values = (get_ou_values(classroom, "teacher_permissions")
+                 or get_ou_values(classroom, "class_settings"))
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
             val = entry["value"].get("whoCanCreateClasses",
                                       entry["value"].get("who_can_create_classes", None))
-            if val not in ("verified_teachers", "verified_teachers_only", "VERIFIED_TEACHERS"):
+            if str(val).lower() not in ("verified_teachers", "verified_teachers_only"):
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
@@ -3313,7 +3373,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
     class_settings = classroom.get("class_settings", {})
     who_can_create = class_settings.get("who_can_create_classes", None)
 
-    if who_can_create in ("verified_teachers", "verified_teachers_only"):
+    if str(who_can_create).lower() in ("verified_teachers", "verified_teachers_only"):
         return make_pass(
             check_id="GWS.CLASSROOM.5.1",
             title="Ensure class creation is restricted to verified teachers",
@@ -3403,6 +3463,16 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
             details=f"All {len(ou_values)} OU(s) restrict Gemini to licensed users.",
             actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
+
+    # Not exposed by the Policy API: infer from the latest admin audit-log change
+    # (setting name as used by CISA ScubaGoggles). No event -> fall through to MANUAL.
+    inferred = result_from_setting_changes(
+        data, "BardNonDuetEnablementProto enable_bard_non_duet_access", ('true',),
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        what="Gemini access regardless of license", remediation=_REMED,
+    )
+    if inferred is not None:
+        return inferred
 
     # Fallback: mapped root-level value
     access = gemini.get("access", {})
@@ -3496,6 +3566,16 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
             details=f"All {len(ou_values)} OU(s) have alpha Gemini features disabled.",
             actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
         )
+
+    # Not exposed by the Policy API: infer from the latest admin audit-log change
+    # (setting name as used by CISA ScubaGoggles). No event -> fall through to MANUAL.
+    inferred = result_from_setting_changes(
+        data, "GenAiAlphaSettingsProto alpha_enabled", ('true',),
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        what="Alpha Gemini features", remediation=_REMED,
+    )
+    if inferred is not None:
+        return inferred
 
     # Fallback: mapped root-level value
     features = gemini.get("features", {})
@@ -3595,6 +3675,16 @@ def check_access_approvals_enabled(data: dict) -> CheckResult:
             actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
         )
 
+    # Not exposed by the Policy API: infer from the latest "Access Approvals enabled"
+    # admin audit-log change (setting name as used by CISA ScubaGoggles).
+    inferred = result_from_setting_changes(
+        data, "Access Approvals enabled", ("false",),
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        what="Access approvals", remediation=_REMED,
+    )
+    if inferred is not None:
+        return inferred
+
     # Fallback: mapped root-level value
     assured = security.get("assured_controls", {})
     enabled = assured.get("access_approvals_enabled", None)
@@ -3666,6 +3756,27 @@ def check_support_access_region(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
+    # Policy API: access_management.user_scoping.accessManagementRegime
+    regimes = get_ou_values(policies.get("access_management", {}), "user_scoping")
+    regimes = [e for e in regimes if e["value"].get("accessManagementRegime") is not None]
+    if regimes:
+        _US_REGIMES = ("US_GOOGLE_STAFF", "CJIS_IRS_1075_GOOGLE_STAFF")
+        bad = [{"org_unit": e["org_unit"], "value": e["value"]["accessManagementRegime"]}
+               for e in regimes if e["value"]["accessManagementRegime"] not in _US_REGIMES]
+        if bad:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=f"{len(bad)} OU(s) do not restrict Google support access to US staff: "
+                        + ", ".join(f"{b['org_unit']} ({b['value']})" for b in bad),
+                actual_value=format_ou_values_readable(bad), expected_value="US_GOOGLE_STAFF for all OUs",
+                remediation=_REMED,
+            )
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"All {len(regimes)} OU(s) restrict Google support access to US staff.",
+            actual_value=f"{len(regimes)} OU(s) safe", expected_value="US_GOOGLE_STAFF for all OUs",
+        )
+
     ou_values = get_ou_values(security, "assured_controls")
     if ou_values:
         unsafe_ous = []
@@ -3779,6 +3890,30 @@ def check_multi_region_processing_disabled(data: dict) -> CheckResult:
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) have multi-region processing disabled.",
             actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        )
+
+    # Not exposed by the Policy API: each app logs a "<App>NonRegionalizedFunctionality..."
+    # setting change; ENABLED means data may be processed across regions for that app.
+    enabled_apps: dict[str, list[str]] = {}
+    seen_event = False
+    for app in ("Calendar", "Docs", "Gmail", "Chat", "Meet", "Gemini"):
+        changes = latest_setting_changes(data, f"{app}NonRegionalizedFunctionalityStateSettingsProto state")
+        for ou, value in changes.items():
+            seen_event = True
+            if value.upper() == "ENABLED":
+                enabled_apps.setdefault(ou, []).append(app)
+    if enabled_apps:
+        summary = "; ".join(f"{ou}: {', '.join(apps)}" for ou, apps in sorted(enabled_apps.items()))
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"Multi-region data processing is enabled (latest admin-log change) for {summary}",
+            actual_value=summary, expected_value="Disabled for all apps and OUs", remediation=_REMED,
+        )
+    if seen_event:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Multi-region data processing was disabled in every logged setting change.",
+            actual_value="disabled", expected_value="Disabled for all apps and OUs",
         )
 
     # Fallback: mapped root-level value

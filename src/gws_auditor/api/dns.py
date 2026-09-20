@@ -116,7 +116,8 @@ class DNSClient(BaseAPIClient):
         if not parts:
             return False
         last = parts[-1].lower()
-        return last in ("-all", "~all", "+all", "?all")
+        # "+all" authorises every sender and "?all" is neutral: neither is a valid protective policy
+        return last in ("-all", "~all")
 
     # ------------------------------------------------------------------
     # DKIM

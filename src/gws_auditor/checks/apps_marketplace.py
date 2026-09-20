@@ -40,10 +40,16 @@ def check_external_groups_disabled(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            ext_groups = entry["value"].get(
-                "externalGroupsAccessEnabled",
-                entry["value"].get("allowExternalGroupsAccess", None),
-            )
+            # Policy API: groups_for_business.groups_sharing.collaborationCapability;
+            # anything other than DOMAIN_USERS_ONLY opens groups to people outside the org.
+            capability = entry["value"].get("collaborationCapability")
+            if capability is not None:
+                ext_groups = True if capability != "DOMAIN_USERS_ONLY" else False
+            else:
+                ext_groups = entry["value"].get(
+                    "externalGroupsAccessEnabled",
+                    entry["value"].get("allowExternalGroupsAccess", None),
+                )
             if ext_groups is True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": ext_groups})
         if unsafe_ous:
@@ -125,8 +131,9 @@ def check_marketplace_restriction(data: dict) -> CheckResult:
                 or entry["value"].get("accessOption", "")
             )
             is_restricted = (
+                # ALLOW_NONE (block all installs) is stricter than an allowlist
                 policy.lower() in ("allowlist_only", "allowlisted_only", "approved_only",
-                                    "allow_listed_apps")
+                                    "allow_listed_apps", "allow_none")
             ) if policy else False
             if not is_restricted:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": policy or "(empty)"})

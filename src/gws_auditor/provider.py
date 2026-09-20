@@ -73,6 +73,7 @@ class Provider:
         ("org_units", "_get_org_units"),
         ("groups", "_get_groups_with_settings"),
         ("group_members", "_get_group_members"),
+        ("roles", "_get_roles"),
         ("policies", "_get_all_policies"),
         ("chrome_policies", "_get_chrome_policies"),
         ("admin_logs", "_get_admin_activity_logs"),
@@ -112,6 +113,7 @@ class Provider:
             "org_units": self._get_org_units(),
             "groups": groups,
             "group_members": self._get_group_members(groups),
+            "roles": self._get_roles(),
             "policies": self._get_all_policies(),
             "chrome_policies": self._get_chrome_policies(),
             "admin_logs": self._get_admin_activity_logs(),
@@ -218,6 +220,20 @@ class Provider:
         except Exception as e:
             self._record_error("list_domains", e)
             return []
+
+    def _get_roles(self) -> dict:
+        """Fetch admin roles and role assignments (``{"roles": [...], "assignments": [...]}``)."""
+        try:
+            from .api.directory import DirectoryClient
+            client = DirectoryClient(self.auth)
+            roles = client.list_roles(self.customer_id)
+            self._propagate_client_errors(client)
+            logger.info("Collected %d roles, %d role assignments",
+                        len(roles.get("roles", [])), len(roles.get("assignments", [])))
+            return roles
+        except Exception as e:
+            self._record_error("list_roles", e)
+            return {"roles": [], "assignments": []}
 
     def _get_org_units(self) -> list[dict]:
         """Fetch organizational units (cached after first call)."""
@@ -1689,6 +1705,15 @@ def _map_gmail(policies: dict) -> None:
             ss = gmail.setdefault("spam_settings", {})
             ss["domains_bypass_and_hide_warnings"] = bypass_domains
 
+    # --- Spam override rules (spamOverride[]) → internal-sender bypass (CIS-3.1.3.6.2) ---
+    sol_rules = gmail.get("spam_override_lists", {})
+    sol_rules = sol_rules.get("spamOverride") if isinstance(sol_rules, dict) else None
+    if isinstance(sol_rules, list):
+        gmail.setdefault("spam_settings", {}).setdefault(
+            "bypass_spam_for_internal_senders",
+            any(isinstance(r, dict) and r.get("bypassInternalSenders") is True for r in sol_rules),
+        )
+
     # --- Email spam filter IP allowlist ---
     # The Cloud Identity Policy API exposes inbound-gateway state via the
     # spam-filter IP allowlist. A non-empty list means a gateway is in use;
@@ -2029,14 +2054,25 @@ def _map_chat(policies: dict) -> None:
     if isinstance(sh, dict) and sh:
         state = sh.get("historyState", "")
         if state:
-            is_on = state in ("DEFAULT_HISTORY_ON", "ALWAYS_ON")
+            # API enums: DEFAULT_HISTORY_ON/OFF, HISTORY_ALWAYS_ON/OFF
+            is_on = state in ("DEFAULT_HISTORY_ON", "HISTORY_ALWAYS_ON", "ALWAYS_ON")
             hist = chat.setdefault("history", {})
             hist["history_on_by_default"] = is_on
             hist["history_enabled"] = is_on  # alias for CISA cisa_scuba
             hist["space_history_enabled"] = is_on  # alias for CISA cisa_services
             hist["history_state"] = state
             # CISA check_chat_history_user_control expects allow_user_modification
-            hist["allow_user_modification"] = state != "ALWAYS_ON"
+            hist["allow_user_modification"] = state not in ("HISTORY_ALWAYS_ON", "HISTORY_ALWAYS_OFF", "ALWAYS_ON")
+
+    # --- Chat history (chat.chat_history) → history; authoritative for GWS.CHAT.1.1/1.2 ---
+    ch = chat.get("chat_history", {})
+    if isinstance(ch, dict) and ch:
+        hist = chat.setdefault("history", {})
+        if ch.get("historyOnByDefault") is not None:
+            hist["history_on_by_default"] = ch["historyOnByDefault"]
+            hist["history_enabled"] = ch["historyOnByDefault"]
+        if ch.get("allowUserModification") is not None:
+            hist["allow_user_modification"] = ch["allowUserModification"]
 
     # --- Content reporting ---
     cr = chat.get("chat_reporting", {})
@@ -2196,9 +2232,9 @@ def _map_classroom(policies: dict) -> None:
     if isinstance(ri, dict) and ri:
         option = ri.get("rosterImportOption", "")
         if option:
-            # "CLEVER" or "SDS" = enabled; "OFF" = disabled
+            # API enum: "OFF" = disabled; "ON_CLEVER" (or any other provider) = enabled
             classroom.setdefault("roster_import", {})["clever_enabled"] = (
-                option.upper() == "CLEVER"
+                option.upper() != "OFF"
             )
 
     # Flatten service_status dict to string
@@ -2355,6 +2391,12 @@ def _map_security(policies: dict) -> None:
         authn["passkeys_enforced"] = allowed == "security_key_only"
 
 
+def _is_specific_data_region(region) -> bool:
+    """True when a data-at-rest region is pinned (e.g. US, EUROPE), not NO_PREFERENCE/unspecified."""
+    r = str(region or "").upper()
+    return bool(r) and r != "NO_PREFERENCE" and "UNSPECIFIED" not in r
+
+
 def _map_data_regions(policies: dict) -> None:
     """Map data_regions policy category into security.data_regions.
 
@@ -2372,7 +2414,14 @@ def _map_data_regions(policies: dict) -> None:
 
     # Check if any data region settings are configured
     # The API may return various keys depending on the tenant's edition.
-    dr_out["configured"] = bool(dr)
+    # A returned policy is not enough: region NO_PREFERENCE / unspecified means no region is pinned.
+    dar = dr.get("data_at_rest_region")
+    region = dar.get("region") if isinstance(dar, dict) else None
+    if region is not None:
+        dr_out["region"] = region
+        dr_out["configured"] = _is_specific_data_region(region)
+    else:
+        dr_out["configured"] = bool(dr)
 
     # Map known data-region fields
     for key in ("data_at_rest_region", "data_processing_region",
@@ -2548,7 +2597,11 @@ def _map_marketplace(policies: dict) -> None:
         )
         if policy:
             mp["app_install_policy"] = policy.lower()
-            mp["restrict_to_approved_apps"] = "allowlist" in policy.lower() or "approved" in policy.lower()
+            # API enums: ALLOW_ALL / ALLOW_LISTED_APPS / ALLOW_NONE
+            mp["restrict_to_approved_apps"] = (
+                policy.lower() in ("allow_listed_apps", "allow_none")
+                or "allowlist" in policy.lower() or "approved" in policy.lower()
+            )
 
     # --- Apps allowlist → restrict_to_approved_apps ---
     al = mp.get("apps_allowlist", {})
@@ -2707,6 +2760,32 @@ def _map_rules(policies: dict) -> None:
     if calendar_rules:
         dlp["calendar_dlp_rules"] = calendar_rules
         dlp["calendar_dlp_enabled"] = True
+
+    # --- rule.dlp policies → per-app DLP state ---
+    # Each DLP rule is a ``settings/rule.dlp`` policy whose value carries
+    # ``state`` (ACTIVE/INACTIVE) and an ``action`` object keyed by the app it
+    # applies to (driveAction / gmailAction / chatAction). DLP rules are always
+    # admin-created, so once the ``rule`` category was fetched, no ACTIVE rule
+    # for an app means DLP is not configured for it.
+    ou_policies = rules.get("_ou_policies", [])
+    if isinstance(ou_policies, list) and ou_policies:
+        active: dict[str, list[dict]] = {"drive": [], "gmail": [], "chat": []}
+        for policy in ou_policies:
+            setting = policy.get("setting", {}) if isinstance(policy, dict) else {}
+            if not str(setting.get("type", "")).endswith("rule.dlp"):
+                continue
+            value = setting.get("value", {}) or {}
+            if str(value.get("state", "")).upper() != "ACTIVE":
+                continue
+            action = value.get("action", {}) if isinstance(value.get("action"), dict) else {}
+            for app in active:
+                if f"{app}Action" in action:
+                    active[app].append({"name": value.get("displayName", "unnamed"),
+                                        "org_unit": policy.get("orgUnit", "/")})
+        for app, app_rules in active.items():
+            dlp.setdefault(f"{app}_dlp_rules", app_rules)
+            dlp.setdefault(f"{app}_dlp_enabled", bool(app_rules))
+        dlp.setdefault("drive_rule_count", len(active["drive"]))
 
 
 def _normalize_activity_logs(logs: list) -> list:

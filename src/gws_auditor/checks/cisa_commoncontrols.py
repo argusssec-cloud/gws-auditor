@@ -44,7 +44,28 @@ def check_context_aware_access(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "login_challenges")
+    # Context-Aware Access is not a Policy API setting (security.login_challenges only carries
+    # enableEmployeeIdChallenge). The latest TOGGLE_CAA_ENABLEMENT admin-log event gives the state.
+    caa_events = [log for log in data.get("admin_logs", [])
+                  if log.get("event_name") == "TOGGLE_CAA_ENABLEMENT"
+                  and isinstance(log.get("parameters"), dict) and "NEW_VALUE" in log["parameters"]]
+    if caa_events:
+        state = str(max(caa_events, key=lambda log: log.get("time", ""))["parameters"]["NEW_VALUE"]).upper()
+        if state == "ENABLED":
+            return make_pass(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details="Context-Aware Access is enabled (latest admin-log change).",
+                actual_value=state, expected_value="ENABLED",
+            )
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Context-Aware Access was turned off (latest admin-log change).",
+            actual_value=state, expected_value="ENABLED", remediation=_REMED,
+        )
+
+    # Legacy shape only: entries that actually carry a configured/enabled flag
+    ou_values = [e for e in get_ou_values(security, "login_challenges")
+                 if "devicePoliciesConfigured" in e["value"] or "enabled" in e["value"]]
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -554,7 +575,31 @@ def check_admin_advanced_protection(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "advanced_protection_program")
+    # Policy API: security.advanced_protection_program only says whether users MAY self-enroll
+    # (enableAdvancedProtectionSelfEnrollment); per-account enrollment is not exposed.
+    app_values = [e for e in get_ou_values(security, "advanced_protection_program")
+                  if e["value"].get("enableAdvancedProtectionSelfEnrollment") is not None]
+    if app_values:
+        blocked = [{"org_unit": e["org_unit"], "value": "self-enrollment disabled"}
+                   for e in app_values if e["value"]["enableAdvancedProtectionSelfEnrollment"] is False]
+        if blocked:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=f"Advanced Protection self-enrollment is disabled in {len(blocked)} OU(s), so accounts "
+                        f"there cannot enroll: {', '.join(b['org_unit'] for b in blocked)}",
+                actual_value=format_ou_values_readable(blocked), expected_value="Enrollment allowed and completed",
+                remediation=_REMED,
+            )
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Advanced Protection self-enrollment is allowed, but which accounts are actually enrolled "
+                    "is not exposed by the API — verify enrollment in Admin console > Users.",
+            remediation=_REMED,
+        )
+
+    # Legacy shape only
+    ou_values = [e for e in get_ou_values(security, "advanced_protection_program")
+                 if 'adminEnrollmentEnforced' in e["value"] or 'enabled' in e["value"]]
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -648,7 +693,31 @@ def check_sensitive_user_advanced_protection(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "advanced_protection_program")
+    # Policy API: security.advanced_protection_program only says whether users MAY self-enroll
+    # (enableAdvancedProtectionSelfEnrollment); per-account enrollment is not exposed.
+    app_values = [e for e in get_ou_values(security, "advanced_protection_program")
+                  if e["value"].get("enableAdvancedProtectionSelfEnrollment") is not None]
+    if app_values:
+        blocked = [{"org_unit": e["org_unit"], "value": "self-enrollment disabled"}
+                   for e in app_values if e["value"]["enableAdvancedProtectionSelfEnrollment"] is False]
+        if blocked:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=f"Advanced Protection self-enrollment is disabled in {len(blocked)} OU(s), so accounts "
+                        f"there cannot enroll: {', '.join(b['org_unit'] for b in blocked)}",
+                actual_value=format_ou_values_readable(blocked), expected_value="Enrollment allowed and completed",
+                remediation=_REMED,
+            )
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Advanced Protection self-enrollment is allowed, but which accounts are actually enrolled "
+                    "is not exposed by the API — verify enrollment in Admin console > Users.",
+            remediation=_REMED,
+        )
+
+    # Legacy shape only
+    ou_values = [e for e in get_ou_values(security, "advanced_protection_program")
+                 if 'sensitiveUserEnrollment' in e["value"] or 'sensitiveUsersEnrolled' in e["value"]]
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -959,8 +1028,10 @@ def check_unconfigured_internal_apps(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            val = entry["value"].get("trustUnconfiguredInternalApps",
-                                      entry["value"].get("trust_unconfigured_internal_apps", None))
+            # Policy API field is trustInternalApps (api_controls.internal_apps)
+            val = entry["value"].get("trustInternalApps",
+                                      entry["value"].get("trustUnconfiguredInternalApps",
+                                      entry["value"].get("trust_unconfigured_internal_apps", None)))
             if val is not False:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
         if unsafe_ous:
@@ -1056,6 +1127,14 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
+            # Policy API field is accessLevel (api_controls.unconfigured_third_party_apps);
+            # only BLOCK_ALL_SCOPES blocks unconfigured apps (sign-in-only still allows access).
+            access_level = entry["value"].get("accessLevel",
+                                              entry["value"].get("access_level", None))
+            if access_level is not None:
+                if str(access_level).upper() != "BLOCK_ALL_SCOPES":
+                    unsafe_ous.append({"org_unit": entry["org_unit"], "value": access_level})
+                continue
             val = entry["value"].get("allowUnconfiguredThirdPartyApps",
                                       entry["value"].get("allow_unconfigured_third_party_apps", None))
             if val is not False:
@@ -1299,6 +1378,27 @@ def check_unused_services_disabled(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
+    # Policy API: enterprise_service_restrictions.service_status.serviceState. The naming is
+    # inverted: restrictions ENABLED means services without an individual control are OFF.
+    restrictions = [e for e in get_ou_values(policies.get("enterprise_service_restrictions", {}), "service_status")
+                    if e["value"].get("serviceState") is not None]
+    if restrictions:
+        bad = [{"org_unit": e["org_unit"], "value": e["value"]["serviceState"]}
+               for e in restrictions if str(e["value"]["serviceState"]).upper() != "ENABLED"]
+        if bad:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=f"{len(bad)} OU(s) allow access to services without an individual control: "
+                        + ", ".join(b["org_unit"] for b in bad),
+                actual_value=format_ou_values_readable(bad), expected_value="Restricted for all OUs",
+                remediation=_REMED,
+            )
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"All {len(restrictions)} OU(s) restrict services without an individual control.",
+            actual_value=f"{len(restrictions)} OU(s) safe", expected_value="Restricted for all OUs",
+        )
+
     ou_values = get_ou_values(security, "service_status")
     if ou_values:
         unsafe_ous = []
@@ -1394,6 +1494,25 @@ def check_early_access_disabled(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
+    # Policy API: early_access_apps.service_status.serviceState
+    early = [e for e in get_ou_values(policies.get("early_access_apps", {}), "service_status")
+             if e["value"].get("serviceState") is not None]
+    if early:
+        bad = [{"org_unit": e["org_unit"], "value": e["value"]["serviceState"]}
+               for e in early if str(e["value"]["serviceState"]).upper() != "DISABLED"]
+        if bad:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=f"{len(bad)} OU(s) have early access apps enabled: " + ", ".join(b["org_unit"] for b in bad),
+                actual_value=format_ou_values_readable(bad), expected_value="Disabled for all OUs",
+                remediation=_REMED,
+            )
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"All {len(early)} OU(s) have early access apps disabled.",
+            actual_value=f"{len(early)} OU(s) safe", expected_value="Disabled for all OUs",
+        )
+
     ou_values = get_ou_values(security, "service_status")
     if ou_values:
         unsafe_ous = []
@@ -1752,4 +1871,94 @@ def check_dlp_block_external(data: dict) -> CheckResult:
             "Warn-only or audit-only actions do not prevent data loss and "
             "should only be used during initial policy tuning. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
         ),
+    )
+
+
+@check(
+    check_id="GWS.COMMONCONTROLS.8.2",
+    title="Ensure user account self-recovery is disabled",
+    level="L1",
+    source="CISA",
+    section="Security",
+    remediation=(
+        "Admin console > Security > Authentication > Account recovery > User account recovery. "
+        "Turn off 'Allow users and non-super admins to recover their account'. "
+        "Note: CIS-4.1.2.2 recommends the opposite; choose the framework your organization follows. "
+        "https://knowledge.workspace.google.com/admin/security/set-up-password-recovery-for-users"
+    ),
+)
+def check_user_account_recovery_disabled(data: dict) -> CheckResult:
+    """SCuBA requires user self-service account recovery to be disabled (conflicts with CIS-4.1.2.2)."""
+    _ID = "GWS.COMMONCONTROLS.8.2"
+    _TITLE = "Ensure user account self-recovery is disabled"
+    _L, _S, _SEC = "L1", "CISA", "Security"
+    _REMED = (
+        "Admin console > Security > Authentication > Account recovery > User account recovery. "
+        "Turn off 'Allow users and non-super admins to recover their account'. "
+        "Note: CIS-4.1.2.2 recommends the opposite; choose the framework your organization follows."
+    )
+
+    security = data.get("policies", {}).get("security", {})
+    ou_values = get_ou_values(security, "user_account_recovery")
+    determined = [e for e in ou_values if e["value"].get("enableAccountRecovery") is not None]
+    if not determined:
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="User account recovery setting was not returned by the Cloud Identity Policy API — verify in Admin console.",
+            remediation=_REMED,
+        )
+    unsafe_ous = [{"org_unit": e["org_unit"], "value": True}
+                  for e in determined if e["value"]["enableAccountRecovery"] is True]
+    if unsafe_ous:
+        ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"{len(unsafe_ous)} OU(s) allow user account self-recovery: {ou_list}. "
+                     "(CIS-4.1.2.2 requires the opposite value.)"),
+            actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
+            remediation=_REMED,
+        )
+    return make_pass(
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        details=f"All {len(determined)} OU(s) have user account self-recovery disabled.",
+        actual_value=f"{len(determined)} OU(s) safe", expected_value="Disabled for all OUs",
+    )
+
+
+@check(
+    check_id="GWS.COMMONCONTROLS.13.1",
+    title="Ensure system-defined alerting rules are enabled",
+    level="L1",
+    source="CISA",
+    section="Alert Rules",
+    remediation=(
+        "Admin console > Rules. Filter by 'System defined' and turn on every required alerting rule. "
+        "https://knowledge.workspace.google.com/admin/security/use-rules-to-turn-alerts-on-or-off"
+    ),
+)
+def check_system_defined_alerts_enabled(data: dict) -> CheckResult:
+    """System-defined alerting rules should be active (state read from the Policy API)."""
+    from .rules import _system_defined_alert_policies
+
+    _ID = "GWS.COMMONCONTROLS.13.1"
+    _TITLE = "Ensure system-defined alerting rules are enabled"
+    _L, _S, _SEC = "L1", "CISA", "Alert Rules"
+    _REMED = "Admin console > Rules. Filter by 'System defined' and turn on every required alerting rule."
+
+    alerts = _system_defined_alert_policies(data)
+    inactive = sorted({a["name"] for a in alerts if a["state"] != "ACTIVE"})
+    if inactive:
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"{len(inactive)} system-defined alerting rule(s) are turned off: {', '.join(inactive)}",
+            actual_value={"inactive_rules": inactive}, expected_value="All system-defined rules ACTIVE",
+            remediation=_REMED,
+        )
+    # The Policy API only returns rules an admin has modified, so rules left at
+    # Google's default (some of which default to OFF) cannot be confirmed here.
+    return make_review(
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        details=(f"{len(alerts)} admin-modified system-defined rule(s) found, all ACTIVE. Rules never modified "
+                 "are not returned by the Policy API — verify the remaining rules in Admin console > Rules."),
+        remediation=_REMED,
     )
