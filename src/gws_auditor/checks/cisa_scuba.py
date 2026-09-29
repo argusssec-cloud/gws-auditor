@@ -1827,6 +1827,24 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
+    # Policy API (editions with the feature): meet.automatic_recording.enabled. Google defaults
+    # are real state here, so SYSTEM entries count too.
+    auto_entries = [e for e in get_ou_values(meet, "automatic_recording") if e["value"].get("enabled") is not None]
+    if auto_entries:
+        on = [{"org_unit": e["org_unit"], "value": True} for e in auto_entries if e["value"]["enabled"] is True]
+        if on:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=f"{len(on)} OU(s) have automatic recording enabled: " + ", ".join(o["org_unit"] for o in on),
+                actual_value=format_ou_values_readable(on), expected_value="Disabled for all OUs",
+                remediation=_REMED,
+            )
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"All {len(auto_entries)} OU(s) have automatic recording disabled.",
+            actual_value=f"{len(auto_entries)} OU(s) safe", expected_value="Disabled for all OUs",
+        )
+
     # meet.video_recording only says whether recording is *allowed*; the automatic-recording
     # default is not exposed there. Only entries that carry a determinable value are judged.
     ou_values = [
@@ -1928,6 +1946,24 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
+    # Policy API (editions with the feature): meet.automatic_transcription.enabled. Google defaults
+    # are real state here, so SYSTEM entries count too.
+    auto_entries = [e for e in get_ou_values(meet, "automatic_transcription") if e["value"].get("enabled") is not None]
+    if auto_entries:
+        on = [{"org_unit": e["org_unit"], "value": True} for e in auto_entries if e["value"]["enabled"] is True]
+        if on:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=f"{len(on)} OU(s) have automatic transcription enabled: " + ", ".join(o["org_unit"] for o in on),
+                actual_value=format_ou_values_readable(on), expected_value="Disabled for all OUs",
+                remediation=_REMED,
+            )
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"All {len(auto_entries)} OU(s) have automatic transcription disabled.",
+            actual_value=f"{len(auto_entries)} OU(s) safe", expected_value="Disabled for all OUs",
+        )
+
     # The automatic-transcription default is not part of meet.video_recording; an absent
     # field is unknown (not "disabled"), so only entries that carry the field are judged.
     ou_values = [
@@ -2691,9 +2727,9 @@ def check_data_regions(data: dict) -> CheckResult:
         for entry in ou_values:
             region = entry["value"].get("region")
             if region is not None:
-                # Policy API: data_regions.data_at_rest_region.region (US / EUROPE / NO_PREFERENCE)
+                # Policy API: data_regions.data_at_rest_region.region (US / EUROPE / ANY_REGION)
                 r = str(region).upper()
-                val = True if (r and r != "NO_PREFERENCE" and "UNSPECIFIED" not in r) else region
+                val = True if (r and r not in ("ANY_REGION", "NO_PREFERENCE") and "UNSPECIFIED" not in r) else region
             else:
                 val = entry["value"].get("configured",
                                           entry["value"].get("dataRegionsConfigured", None))
@@ -2783,6 +2819,24 @@ def check_multi_party_approval(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
+    # Policy API: multi_party_approval.require_approvals.multiPartyApprovalState
+    mpa_entries = [e for e in get_ou_values(policies.get("multi_party_approval", {}), "require_approvals")
+                   if e["value"].get("multiPartyApprovalState") is not None]
+    if mpa_entries:
+        off = [{"org_unit": e["org_unit"], "value": e["value"]["multiPartyApprovalState"]}
+               for e in mpa_entries if str(e["value"]["multiPartyApprovalState"]).upper() != "ENABLED"]
+        if off:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=f"Multi-party approval is not required in {len(off)} OU(s): " + ", ".join(o["org_unit"] for o in off),
+                actual_value=format_ou_values_readable(off), expected_value="ENABLED", remediation=_REMED,
+            )
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"Multi-party approval is required in all {len(mpa_entries)} OU(s).",
+            actual_value=f"{len(mpa_entries)} OU(s) safe", expected_value="ENABLED",
+        )
+
     ou_values = get_ou_values(security, "multi_party_approval")
     if ou_values:
         unsafe_ous = []

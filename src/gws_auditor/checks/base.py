@@ -464,6 +464,16 @@ def evaluate_ous(ou_values: list[dict], predicate: Callable,
     }
 
 
+def drop_unspecified(entries: list[dict], field: str) -> list[dict]:
+    """Drop per-OU entries whose enum *field* is an ``..._UNSPECIFIED`` placeholder.
+
+    The Policy API returns e.g. ``ACCESS_LEVEL_UNSPECIFIED`` when it does not report the
+    configured value. That is "unknown", not "insecure": callers fall through to their
+    fallback (usually MANUAL) when nothing determinable is left.
+    """
+    return [e for e in entries if "UNSPECIFIED" not in str(e["value"].get(field, "")).upper()]
+
+
 def latest_setting_changes(data: dict, setting_name: str) -> dict[str, str]:
     """Return ``{org_unit: latest NEW_VALUE}`` for an admin audit-log setting name.
 

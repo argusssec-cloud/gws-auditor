@@ -12,7 +12,7 @@
 <p align="center">
   <a href="#-installation"><img src="https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python&logoColor=white" alt="Python 3.9+"></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0"></a>
-  <a href="#at-a-glance"><img src="https://img.shields.io/badge/checks-226-blue" alt="226 Security Checks"></a>
+  <a href="#at-a-glance"><img src="https://img.shields.io/badge/checks-227-blue" alt="227 Security Checks"></a>
   <a href="#at-a-glance"><img src="https://img.shields.io/badge/frameworks-4-blueviolet" alt="4 Frameworks"></a>
   <a href="#-interactive-dashboard"><img src="https://img.shields.io/badge/dashboard-Plotly%20Dash-E5484D?logo=plotly&logoColor=white" alt="Dashboard: Plotly Dash"></a>
   <a href="#-standalone-executable"><img src="https://img.shields.io/badge/build-standalone%20exe-orange" alt="Standalone Executable"></a>
@@ -23,11 +23,11 @@
 
 ## Description
 
-GWS Security Auditor is a Python-based tool that automatically evaluates your Google Workspace configuration against four industry-standard security frameworks. It connects to your tenant via read-only API scopes, collects configuration data, evaluates **226 security checks** (including 24 critical-severity checks), and generates actionable reports in HTML, JSON, and CSV formats.
+GWS Security Auditor is a Python-based tool that automatically evaluates your Google Workspace configuration against four industry-standard security frameworks. It connects to your tenant and performs read-only API calls, collects configuration data, evaluates **227 security checks** (including 24 critical-severity checks), and generates actionable reports in HTML, JSON, and CSV formats.
 
 ### Key Features
 
-- **226 security checks** across 4 frameworks (CIS, CISA SCuBA, Google, Other)
+- **227 security checks** across 4 frameworks (CIS, CISA SCuBA, Google, Other)
 - **Critical severity system** -- 24 checks flagged as critical with impact explanations
 - **Interactive setup wizard** -- `gws-auditor setup` automates GCP project, API enablement, and service account creation
 - **Multi-credential profiles** -- switch between tenants with `--profile`
@@ -50,7 +50,7 @@ $ gws-auditor
 
       Audit Summary
   ┌─────────────────────┬───────┐
-  │ Total Checks        │   226 │
+  │ Total Checks        │   227 │
   │ Passed              │    96 │
   │ Failed              │    64 │
   │   Critical Failures │    13 │
@@ -71,10 +71,10 @@ $ gws-auditor
 | Framework | Full Name | Checks |
 |-----------|-----------|-------:|
 | **CIS** | CIS Google Workspace Foundations Benchmark v1.3.0 | 84 |
-| **CISA** | CISA SCuBA Baselines for Google Workspace | 96 |
+| **CISA** | CISA SCuBA Baselines for Google Workspace | 97 |
 | **GOOGLE** | Google Security Checklist for Medium & Large Businesses | 21 |
 | **OTHER** | Additional best-practice checks | 25 |
-| | **Total** | **226** |
+| | **Total** | **227** |
 
 > [!TIP]
 > Run `gws-auditor --list-checks` to see the full check list with IDs, titles, levels, sources, and severity.
@@ -384,7 +384,7 @@ GWS Security Auditor is and will always be free and open source. For teams that 
 
 | | Open Source (Free) | Argus Cloud (from €12.50/mo) |
 |---|:---:|:---:|
-| 226 security checks, 4 frameworks | ✓ | ✓ |
+| 227 security checks, 4 frameworks | ✓ | ✓ |
 | HTML, JSON, CSV reports | ✓ | ✓ |
 | Interactive dashboard | ✓ | ✓ |
 | AI Analyst | BYO API key | Included |

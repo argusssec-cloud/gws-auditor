@@ -202,6 +202,31 @@ def check_phishing_resistant_mfa(data: dict) -> CheckResult:
                      actual_value=f"{len(factors)} OU(s) safe", expected_value="PASSKEY_ONLY with 2SV enforced")
 
 
+_SA_RECOVERY_REMED = (
+    "Admin console > Security > Authentication > Account recovery > Super admin account recovery. "
+    "Turn off 'Allow super admins to recover their account'. "
+    "https://knowledge.workspace.google.com/admin/security/set-up-password-recovery-for-users"
+)
+
+
+@check(
+    check_id="GWS.COMMONCONTROLS.8.1",
+    title="Ensure super admin account self-recovery is disabled",
+    level="L1", source="CISA", section="Security",
+    remediation=_SA_RECOVERY_REMED,
+)
+def check_super_admin_recovery_disabled(data: dict) -> CheckResult:
+    """Self-service recovery lets an attacker who controls a recovery email/phone take over a super admin."""
+    return _evaluate_setting(
+        data, "security", "super_admin_account_recovery", ("enableAccountRecovery",),
+        lambda v: None if v.get("enableAccountRecovery") is False else v.get("enableAccountRecovery"),
+        check_id="GWS.COMMONCONTROLS.8.1", title="Ensure super admin account self-recovery is disabled",
+        level="L1", section="Security",
+        ok="disable super admin self-recovery", bad="allow super admins to recover their own account",
+        expected="Disabled for all OUs", remediation=_SA_RECOVERY_REMED,
+    )
+
+
 _PW_REMED = "Admin console > Security > Authentication > Password management. "
 
 

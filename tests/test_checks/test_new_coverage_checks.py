@@ -252,3 +252,14 @@ class TestCollectors:
         assert spf["record_count"] == 2 and spf["record"] == "v=spf1 include:a -all"
         assert client.check_mta_sts("example.com")["exists"] is True
         assert client.check_tls_rpt("example.com")["exists"] is False
+
+
+class TestSuperAdminRecovery:
+    @pytest.mark.parametrize("enabled, status", [(False, Status.PASS), (True, Status.FAIL)])
+    def test_super_admin_recovery(self, full_audit_data, enabled, status):
+        from gws_auditor.checks.cisa_additions import check_super_admin_recovery_disabled
+
+        _set(full_audit_data, "security", "super_admin_account_recovery", {"enableAccountRecovery": enabled})
+        result = check_super_admin_recovery_disabled(full_audit_data)
+        assert result.status == status
+        assert result.severity.value == "CRITICAL"  # resolved from CRITICAL_CHECKS

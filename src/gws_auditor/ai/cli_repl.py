@@ -41,7 +41,8 @@ def _load_report(reports_dir: str, filename: str | None = None) -> tuple[dict, s
             sys.exit(1)
     else:
         # Find most recent audit report
-        files = sorted(reports_path.glob("audit_*.json"), reverse=True)
+        # skip dashboard comment sidecars (audit_<ts>.json.comments.json)
+        files = sorted((f for f in reports_path.glob("audit_*.json") if not f.name.endswith(".comments.json")), reverse=True)
         if not files:
             console.print(f"[red]No audit reports found in {reports_dir}[/red]")
             sys.exit(1)

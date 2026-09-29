@@ -8,7 +8,7 @@ Supplements the main cisa_scuba module with deeper CommonControls coverage.
 Only checks NOT already covered by CIS/OTHER/GOOGLE or the main CISA module.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable, is_default_policy
 from ..models import CheckResult, Status
 
 
@@ -63,14 +63,14 @@ def check_context_aware_access(data: dict) -> CheckResult:
             actual_value=state, expected_value="ENABLED", remediation=_REMED,
         )
 
-    # Legacy shape only: entries that actually carry a configured/enabled flag
+    # Legacy shape only. A bare "enabled" key is NOT accepted: the provider adds it to the real
+    # login_challenges value as an alias of enableEmployeeIdChallenge, which is unrelated to CAA.
     ou_values = [e for e in get_ou_values(security, "login_challenges")
-                 if "devicePoliciesConfigured" in e["value"] or "enabled" in e["value"]]
+                 if "devicePoliciesConfigured" in e["value"] and "enableEmployeeIdChallenge" not in e["value"]]
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            configured_val = entry["value"].get("devicePoliciesConfigured",
-                                                entry["value"].get("enabled", None))
+            configured_val = entry["value"].get("devicePoliciesConfigured", None)
             if configured_val is not True:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": configured_val})
         if unsafe_ous:
@@ -102,11 +102,14 @@ def check_context_aware_access(data: dict) -> CheckResult:
         )
 
     if configured is None:
-        return make_manual(
+        # Not an error: Context-Aware Access is not a Policy API setting and there is no
+        # TOGGLE_CAA_ENABLEMENT event in the audit-log window, so the state is unknown.
+        return make_review(
             check_id="GWS.COMMONCONTROLS.2.1",
             title="Ensure context-aware access policies are implemented",
             level="L2", source="CISA", section="Security",
-            details="Could not determine context-aware access configuration.",
+            details=("Context-Aware Access is not exposed by the Cloud Identity Policy API and no enablement change was found "
+                     "in the admin audit log — verify in Admin console > Security > Context-Aware Access."),
             remediation=(
                 "Admin console > Security > Context-aware access. "
                 "Create device policies that enforce device trust levels "
@@ -819,6 +822,7 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
     if not ou_values:
         api_controls = policies.get("api_controls", {})
         ou_values = get_ou_values(api_controls, "unconfigured_third_party_apps")
+    ou_values = drop_unspecified(ou_values, "accessLevel")  # ACCESS_LEVEL_UNSPECIFIED = unknown
     if ou_values:
         unsafe_ous = []
         # Safe access levels that restrict third-party apps
@@ -869,7 +873,7 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
         )
 
     if restricted is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.COMMONCONTROLS.10.1",
             title="Ensure app access control policies restrict third-party access",
             level="L1", source="CISA", section="Security",
@@ -1124,6 +1128,7 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
     if not ou_values:
         api_controls = policies.get("api_controls", {})
         ou_values = get_ou_values(api_controls, "unconfigured_third_party_apps")
+    ou_values = drop_unspecified(ou_values, "accessLevel")  # ACCESS_LEVEL_UNSPECIFIED = unknown
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -1168,7 +1173,7 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
         )
 
     if allow_unconfigured is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.COMMONCONTROLS.10.4",
             title="Ensure unconfigured third-party apps are blocked",
             level="L1", source="CISA", section="Security",
@@ -1925,6 +1930,21 @@ def check_user_account_recovery_disabled(data: dict) -> CheckResult:
     )
 
 
+# Rules CISA SCuBA GWS.COMMONCONTROLS.13.1 requires (baseline v0.6); other system-defined rules are optional.
+SCUBA_REQUIRED_ALERT_RULES = (
+    'Government-backed attacks', 'User-reported phishing', "User's Admin privilege revoked",
+    'User suspended for spamming through relay', 'User suspended for spamming', 'User suspended due to suspicious activity',
+    'User suspended (Google identity alert)', 'User granted Admin privilege', 'Suspicious programmatic login',
+    'Suspicious message reported', 'Suspicious login', 'Suspicious device activity',
+    'Spike in user-reported spam', 'Rate limited recipient', 'Phishing message detected post-delivery',
+    'Phishing in inboxes due to bad whitelist', 'Mobile settings changed', 'Malware message detected post-delivery',
+    'Leaked password', 'Google Operations', 'Gmail potential employee spoofing',
+    'Email settings changed', 'Drive settings changed', 'Domain data export initiated',
+    'Device compromised', 'Calendar settings changed', 'Account suspension warning',
+    'Super admin password reset', 'SSO profile added', 'SSO profile updated',
+)
+
+
 @check(
     check_id="GWS.COMMONCONTROLS.13.1",
     title="Ensure system-defined alerting rules are enabled",
@@ -1946,19 +1966,33 @@ def check_system_defined_alerts_enabled(data: dict) -> CheckResult:
     _REMED = "Admin console > Rules. Filter by 'System defined' and turn on every required alerting rule."
 
     alerts = _system_defined_alert_policies(data)
-    inactive = sorted({a["name"] for a in alerts if a["state"] != "ACTIVE"})
+    norm = lambda name: str(name).lower().replace("\u2019", "'").strip()  # noqa: E731
+    states = {norm(a["name"]): a["state"] for a in alerts}
+    required = {norm(r): r for r in SCUBA_REQUIRED_ALERT_RULES}
+    inactive = sorted(label for key, label in required.items() if states.get(key, "ACTIVE") != "ACTIVE")
+    unknown = sorted(label for key, label in required.items() if key not in states)
+    optional_off = sorted(a["name"] for a in alerts if a["state"] != "ACTIVE" and norm(a["name"]) not in required)
+    note = f" ({len(optional_off)} optional rule(s) are also off: {', '.join(optional_off)})" if optional_off else ""
     if inactive:
         return make_fail(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"{len(inactive)} system-defined alerting rule(s) are turned off: {', '.join(inactive)}",
-            actual_value={"inactive_rules": inactive}, expected_value="All system-defined rules ACTIVE",
+            details=f"{len(inactive)} of {len(required)} required system-defined alerting rule(s) are turned off: "
+                    f"{', '.join(inactive)}.{note}",
+            actual_value={"inactive_required_rules": inactive, "inactive_optional_rules": optional_off},
+            expected_value="All required system-defined rules ACTIVE", remediation=_REMED,
+        )
+    if unknown:
+        # Some tenants only get back the rules an admin has modified; a rule that was not
+        # returned cannot be confirmed either way.
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"{len(required) - len(unknown)} required rule(s) are ACTIVE; {len(unknown)} were not returned by the "
+                    f"Policy API and must be verified in Admin console > Rules: {', '.join(unknown)}.{note}",
             remediation=_REMED,
         )
-    # The Policy API only returns rules an admin has modified, so rules left at
-    # Google's default (some of which default to OFF) cannot be confirmed here.
-    return make_review(
+    return make_pass(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-        details=(f"{len(alerts)} admin-modified system-defined rule(s) found, all ACTIVE. Rules never modified "
-                 "are not returned by the Policy API — verify the remaining rules in Admin console > Rules."),
-        remediation=_REMED,
+        details=f"All {len(required)} required system-defined alerting rules are ACTIVE.{note}",
+        actual_value={"inactive_required_rules": [], "inactive_optional_rules": optional_off},
+        expected_value="All required system-defined rules ACTIVE",
     )

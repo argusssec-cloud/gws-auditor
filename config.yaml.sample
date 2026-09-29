@@ -21,6 +21,18 @@ options:
   max_retries: 5
   rate_limit_qps: 10
 
+  # Accounts with no sign-in for this many days are reported by ADD-42
+  # (super admins, scored) and ADD-44 (all active users, informational).
+  # user_inactive_days: 90
+
+  # Per-mailbox forwarding audit (ADD-51). Off by default: it impersonates
+  # every active user through domain-wide delegation and makes one Gmail API
+  # call per mailbox (scope gmail.settings.basic, already part of the standard
+  # setup). Without it ADD-51 reports MANUAL. The cap bounds run time on large
+  # tenants; ADD-51 says so when the cap was hit.
+  # collect_mailbox_forwarding: false
+  # mailbox_forwarding_max_users: 500
+
   # Drive trust rules (Admin console > Drive and Docs > Trust rules) are not
   # exposed by any read API. Export them to a JSON array and point at the file
   # here; CIS-3.1.2.1.1.1 and CIS-3.1.2.1.1.2 then credit an OU whose sharing

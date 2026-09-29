@@ -22,7 +22,11 @@ class ReportStore:
     def _scan(self) -> list[Path]:
         if not self.reports_dir.exists():
             return []
-        files = sorted(self.reports_dir.glob("audit_*.json"), reverse=True)
+        # The comments sidecar (audit_<ts>.json.comments.json) also matches the glob
+        files = sorted(
+            (f for f in self.reports_dir.glob("audit_*.json") if not f.name.endswith(".comments.json")),
+            reverse=True,
+        )
         return files
 
     def refresh(self) -> None:

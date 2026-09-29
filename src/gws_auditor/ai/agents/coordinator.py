@@ -166,7 +166,7 @@ class AgentCoordinator:
         reports_dir = self.project_root / "reports"
         if not reports_dir.exists():
             return None
-        jsons = sorted(reports_dir.glob("audit_*.json"))
+        jsons = sorted(f for f in reports_dir.glob("audit_*.json") if not f.name.endswith(".comments.json"))
         return jsons[-1] if jsons else None
 
     def _load_error_check_ids(self) -> list[str]:

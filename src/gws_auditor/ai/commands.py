@@ -139,7 +139,7 @@ def cmd_reset(session: AnalystSession, console: Console, args: str, ctx: Command
 
 @command("/reports", "List available reports", category="General")
 def cmd_reports(session: AnalystSession, console: Console, args: str, ctx: CommandContext) -> str | None:
-    report_files = sorted(Path(ctx.reports_dir).glob("audit_*.json"), reverse=True)
+    report_files = sorted((f for f in Path(ctx.reports_dir).glob("audit_*.json") if not f.name.endswith(".comments.json")), reverse=True)
     if not report_files:
         console.print("[yellow]No reports found.[/yellow]")
     else:

@@ -1483,12 +1483,23 @@ def _normalize_policies(policies, ou_id_map: dict[str, str] | None = None) -> di
                         raw_ou = policy.get("orgUnit", "/")
                         policy["orgUnit"] = _resolve_org_unit(raw_ou, ou_id_map)
 
-                # Sort so root OU "/" comes last and wins in dict
-                # assignment when multiple OUs define the same setting.
-                sorted_policies = sorted(
-                    value,
-                    key=lambda p: (p.get("orgUnit", "/") == "/"),
-                )
+                # Later entries win the dict assignment below, so order them by precedence:
+                # root OU "/" over child OUs, OU-wide policies over group-targeted ones, and
+                # an admin-set (ADMIN) policy over Google's default (SYSTEM) for the same setting.
+                # Without the last two, a SYSTEM default listed after the ADMIN policy replaced
+                # the admin's value in every mapped (non per-OU) lookup.
+                def _precedence(p):
+                    if not isinstance(p, dict):
+                        return (False, False, False)
+                    raw = p.get("_raw") if isinstance(p.get("_raw"), dict) else p
+                    query = raw.get("policyQuery", {}) if isinstance(raw.get("policyQuery"), dict) else {}
+                    return (
+                        p.get("orgUnit", "/") == "/",
+                        not query.get("group"),
+                        str(raw.get("type", "")).upper() == "ADMIN",
+                    )
+
+                sorted_policies = sorted(value, key=_precedence)
 
                 for policy in sorted_policies:
                     if not isinstance(policy, dict):
@@ -2193,9 +2204,18 @@ def _map_meet(policies: dict) -> None:
         if enabled is not None:
             recording = meet.setdefault("recording", {})
             recording["enabled"] = enabled
-            # Alias for CISA check_meet_auto_recording: if recording is
-            # disabled entirely, auto-recording is certainly disabled.
-            recording.setdefault("auto_recording_enabled", enabled)
+            # If recording is disabled entirely, auto-recording is certainly disabled.
+            # enableRecording=True only means recording is *allowed*, which says nothing
+            # about the automatic-recording default.
+            if enabled is False:
+                recording.setdefault("auto_recording_enabled", False)
+
+    # meet.automatic_recording / meet.automatic_transcription ({"enabled": bool})
+    for raw_key, mapped_key in (("automatic_recording", "auto_recording_enabled"),
+                                ("automatic_transcription", "auto_transcription_enabled")):
+        auto = meet.get(raw_key, {})
+        if isinstance(auto, dict) and auto.get("enabled") is not None:
+            meet.setdefault("recording", {})[mapped_key] = auto["enabled"]
 
     # Flatten service_status dict to string
     ss = meet.get("service_status")
@@ -2430,7 +2450,7 @@ def _map_security(policies: dict) -> None:
 def _is_specific_data_region(region) -> bool:
     """True when a data-at-rest region is pinned (e.g. US, EUROPE), not NO_PREFERENCE/unspecified."""
     r = str(region or "").upper()
-    return bool(r) and r != "NO_PREFERENCE" and "UNSPECIFIED" not in r
+    return bool(r) and r not in ("ANY_REGION", "NO_PREFERENCE") and "UNSPECIFIED" not in r
 
 
 def _map_data_regions(policies: dict) -> None:
@@ -2508,6 +2528,9 @@ def _map_api_controls_to_security(policies: dict) -> None:
         if level:
             # UNSPECIFIED_UBER_BLOCK = restricted, UNSPECIFIED_UBER_ALLOW = unrestricted
             is_restricted = "BLOCK" in level.upper()
+        # A bare ..._UNSPECIFIED (e.g. ACCESS_LEVEL_UNSPECIFIED) means the API did not report
+        # the configured level: leave everything unset so checks report MANUAL, not FAIL.
+        if level and not ("UNSPECIFIED" in level.upper() and "UBER" not in level.upper()):
             api_access["third_party_apps_restricted"] = is_restricted
             api_access["trust_policy"] = "restricted" if is_restricted else "unrestricted"
             # CISA CommonControls aliases
@@ -2746,9 +2769,11 @@ def _map_multi_party_approval(policies: dict) -> None:
     # require_approvals → enabled
     ra = mpa_raw.get("require_approvals", {})
     if isinstance(ra, dict) and ra:
-        mpa["enabled"] = ra.get(
-            "enableMultiPartyApproval", ra.get("enabled", False)
-        )
+        state = ra.get("multiPartyApprovalState")
+        if state is not None:
+            mpa["enabled"] = str(state).upper() == "ENABLED"
+        else:
+            mpa["enabled"] = ra.get("enableMultiPartyApproval", ra.get("enabled", False))
 
     # security_actions may list covered actions — check for vault
     sa = mpa_raw.get("security_actions", {})
@@ -2806,6 +2831,7 @@ def _map_rules(policies: dict) -> None:
     ou_policies = rules.get("_ou_policies", [])
     if isinstance(ou_policies, list) and ou_policies:
         active: dict[str, list[dict]] = {"drive": [], "gmail": [], "chat": []}
+        action_kinds: list[list[str]] = []
         for policy in ou_policies:
             setting = policy.get("setting", {}) if isinstance(policy, dict) else {}
             if not str(setting.get("type", "")).endswith("rule.dlp"):
@@ -2814,10 +2840,22 @@ def _map_rules(policies: dict) -> None:
             if str(value.get("state", "")).upper() != "ACTIVE":
                 continue
             action = value.get("action", {}) if isinstance(value.get("action"), dict) else {}
+            action_kinds.append([k for app in active for k in (action.get(f"{app}Action") or {})])
             for app in active:
                 if f"{app}Action" in action:
                     active[app].append({"name": value.get("displayName", "unnamed"),
                                         "org_unit": policy.get("orgUnit", "/")})
+        # The action object is keyed by what the rule does, e.g. {"driveAction": {"warnUser": {}}}.
+        # Warn/audit-only rules do not stop data leaving; "default_action" feeds the
+        # "DLP must block" check and stays unset when an unrecognised action kind is seen.
+        kinds = {kind.lower() for kinds_for_rule in action_kinds for kind in kinds_for_rule}
+        if kinds:
+            if any(("block" in k or "quarantine" in k or "restrict" in k) for k in kinds):
+                dlp.setdefault("default_action", "block")
+            elif kinds <= {"warnuser", "auditonly", "warn", "audit"}:
+                dlp.setdefault("default_action", "warn")
+            dlp.setdefault("action_kinds", sorted(kinds))
+
         for app, app_rules in active.items():
             dlp.setdefault(f"{app}_dlp_rules", app_rules)
             dlp.setdefault(f"{app}_dlp_enabled", bool(app_rules))

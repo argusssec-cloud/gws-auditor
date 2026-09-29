@@ -5,6 +5,58 @@ All notable changes to GWS Security Auditor will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-09-22
+
+Results will change on upgrade for some tenants without any change in the tenant: see **Fixed**. 200 → 227 checks.
+
+### Added
+
+- **Missing CISA SCuBA controls** (`checks/cisa_additions.py`) -- **GWS.CHAT.2.1** (external Chat file sharing), **GWS.GMAIL.7.6** (spoofed/unauthenticated mail must be moved to spam or quarantined, not just warned about), **GWS.GMAIL.5.4 / 6.4 / 7.7** (apply future recommended settings automatically), **GWS.COMMONCONTROLS.1.1** (phishing-resistant MFA: `PASSKEY_ONLY` with 2SV enforced), **5.1 / 5.3 / 5.5 / 5.6** (password strength, 15-character minimum, no reuse, no expiry), **8.1** (super admin self-recovery; it was already listed in `CRITICAL_CHECKS` and the docs but no check existed, so the documented "24 critical checks" was really 23), **8.2** (user self-recovery), **13.1** (system-defined alert rules) and **GWS.DRIVEDOCS.1.10 / 1.11** (Forms; MANUAL, as SCuBA itself classifies them).
+- **Account, group, device and role posture** (`checks/additional_identity.py`) -- **ADD-41** admin role assigned to a group that users can join themselves or that allows external members, **ADD-42** super admins with no sign-in for `user_inactive_days`, **ADD-43** suspended accounts still holding an admin role, **ADD-44** stale active users (unscored), **ADD-45** Chat spaces open to any external domain, **ADD-46** groups joinable by anyone on the internet, **ADD-47** compromised / unencrypted / unlocked devices that still have access, **ADD-48** custom admin roles carrying account-takeover privileges, **ADD-49** Vault privilege holders (unscored), **ADD-50** MTA-STS and TLS-RPT, **ADD-51** mailboxes forwarding to external addresses, **ADD-52** unlicensed active users (unscored).
+- **Admin roles are collected** -- `data["roles"]` (`roles` + `assignments`). `DirectoryClient.list_roles()` and the `rolemanagement.readonly` scope already existed but the provider never called them.
+- **Opt-in per-mailbox forwarding collection** -- `options.collect_mailbox_forwarding` (default `false`) with `mailbox_forwarding_max_users` (default 500). Reads each active user's forwarding addresses through domain-wide delegation; this is the first use of the `gmail.settings.basic` scope the setup has always requested. Without it ADD-51 reports MANUAL.
+- **More Policy API categories** -- `takeout` (`takeout.service_status` plus the nine `<service>.user_takeout` settings, giving **ADD-09** a real data source), `enterprise_service_restrictions` and `early_access_apps` (**GWS.COMMONCONTROLS.16.1 / 16.2**, which could previously never return PASS or FAIL). `CATEGORY_TYPE_PATTERNS` lets a category match setting types that do not share one prefix.
+- **DNS** -- `_mta-sts.<domain>` and `_smtp._tls.<domain>` lookups; SPF lookups count records so **CIS-3.1.3.2.2** fails on duplicate SPF records (an RFC 7208 permerror).
+- **Admin-log inference for settings the Policy API does not expose** -- `latest_setting_changes()` / `result_from_setting_changes()` in `checks/base.py` judge a setting from its most recent `SETTING_NAME` change per OU, using the setting names CISA ScubaGoggles uses. Applied to **GWS.GEMINI.1.1 / 2.1**, **GWS.DRIVEDOCS.5.1** (add-ons), **GWS.COMMONCONTROLS.17.1** (multi-party approval), **GWS.ASSUREDCONTROLS.1.1 / 2.1**, **GWS.COMMONCONTROLS.2.1** (`TOGGLE_CAA_ENABLEMENT`) and **CIS-3.1.3.5.4** (external recipient warning). No event in the log window yields MANUAL.
+- **Guard against invented field names** -- `tests/fixtures/policy_api_shapes.json` catalogues 102 real setting types and their fields (names only, from a real tenant capture and the CC0 ScubaGoggles schema). `tests/test_policy_field_names.py` fails when a check looks up a known setting type, directly or through a helper, but references none of its real fields. On its first run it found four bugs that review had missed.
+- **Generated check reference** -- `scripts/generate_check_reference.py` writes `docs/checks.md` and `wiki/Check-Reference.md` from the registry (`--check` for CI); `tests/test_check_reference_docs.py` fails when they drift. The previous hand-maintained `docs/checks.md` listed 146 checks, omitted 90 current ones and included ids that no longer exist.
+- **`options.user_inactive_days`** (default 90).
+- **Wiki pages** -- Dashboard, AI Analyst and Architecture (the Home page linked to them but they did not exist), plus the generated Check Reference.
+
+### Changed
+
+- **Alert rule checks read real state** -- **CIS-6.1 ... 6.8** consult `rule.system_defined_alerts[].state` (ACTIVE / INACTIVE) before falling back to admin-log inference and Google's defaults, so a rule disabled before the log window no longer passes as "active by default". The API returns only rules an admin has modified, so 13.1 can FAIL definitively but reports MANUAL rather than PASS otherwise.
+- **Drive sharing checks are `externalSharingMode`-aware** -- **GWS.DRIVEDOCS.1.3 / 1.4 / 1.5 / 1.7**, **CIS-3.1.2.1.1.1 / .1.3 / .1.4**: in `ALLOWLISTED_DOMAINS` mode the `...InAllowlistedDomains` / `...OutsideAllowlistedDomains` fields govern, and `DISALLOWED` satisfies the control. **GWS.DRIVEDOCS.3.1** additionally requires `allowUsersToManageUpdate == false`.
+- **DLP checks evaluate real rules** -- `_map_rules` maps ACTIVE `rule.dlp` policies per app (`driveAction` / `gmailAction` / `chatAction`) for **CIS-4.2.3.1**, **ADD-12** and **GWS.COMMONCONTROLS.18.1 / 18.2**.
+- **CIS-4.2.1.4 classifies delegated scopes** -- reads `API_SCOPES` from `AUTHORIZE_API_CLIENT_ACCESS` events, honours a later `REMOVE_API_CLIENT_ACCESS`, and WARNs on non-read-only HIGH/CRITICAL scopes instead of only counting clients for manual review.
+- **`ACCESS_LEVEL_UNSPECIFIED` is unknown, not insecure** -- when the Policy API does not report the unconfigured third-party apps level, **GWS.COMMONCONTROLS.10.1 / 10.4** and **CIS-4.2.1.1 / 4.2.1.2** return MANUAL instead of FAIL (`drop_unspecified()` in `checks/base.py`). `UNSPECIFIED_UBER_BLOCK` / `UNSPECIFIED_UBER_ALLOW` keep their existing meaning (restricted / unrestricted).
+- **GWS.COMMONCONTROLS.13.1 judges only the 30 rules SCuBA requires** -- other system-defined rules are optional and are listed for information. PASS requires every required rule to be returned and ACTIVE; required rules the API did not return yield MANUAL.
+- **GWS.COMMONCONTROLS.18.4 evaluates real rule actions** -- each `rule.dlp` action is keyed by what it does (`{"driveAction": {"warnUser": {}}}`); warn/audit-only rules FAIL, a blocking action passes, an unrecognised action kind stays MANUAL.
+- **Unknown is MANUAL, not a guess** -- **GWS.MEET.6.1 / 6.2** (the API exposes only `enableRecording`; the two checks previously guessed in opposite directions on the missing field), **GWS.COMMONCONTROLS.9.1 / 9.2** (the API says whether users *may* enroll in Advanced Protection, not who has), **CIS-3.1.3.7.1** (only a rule id is returned), **ADD-06** (it failed "SPF rejection not enabled" with no data on that setting), **ADD-07**. **ADD-35** returns ERROR rather than PASS when Shared Drive enumeration failed.
+- **CIS-3.1.6.1 flags only `ANYONE_CAN_VIEW`** -- the control concerns *external* access; `ALL_IN_DOMAIN_CAN_VIEW` is internal-only. (Its per-group branch had also been dead: it read settings from the wrong level.)
+- **CIS-1.1.1** no longer counts suspended super admins towards redundancy. 2SV checks no longer list suspended users.
+- **CIS-3.1.3.2.2** fails `+all`, warns on `?all`; `DNSClient._validate_spf` no longer accepts either.
+- **GWS.COMMONCONTROLS.15.1** requires a pinned region; `NO_PREFERENCE` no longer counts as configured.
+
+### Fixed
+
+Checks that read field names or enum values the Cloud Identity Policy API does not return. Their unit tests used the same invented names, so they passed. Verified against a real tenant where the licence allowed; the rest against the ScubaGoggles schema.
+
+- **False FAIL on correctly configured tenants** -- **GWS.COMMONCONTROLS.10.3** (`trustInternalApps`), **10.4** and **CIS-4.2.1.1 / 4.2.1.2** (`accessLevel`), **GWS.CHAT.1.1 / 1.2** (`chat.chat_history`, not `space_history`), **GWS.CHAT.3.1** and `_map_chat` (`HISTORY_ALWAYS_ON`), **GWS.DRIVEDOCS.1.5** (`allowPublishingFiles`), **CIS-3.1.2.1.1.3** (`externalSharingMode`, which no check read), **CIS-3.1.2.1.1.6** (`NONE` rejected), **GWS.COMMONCONTROLS.1.3** and **CIS-4.1.1.2** (`PASSKEY_ONLY` / `PASSKEY_PLUS_*` rejected, so the strongest setting failed), **GWS.CLASSROOM.4.1 / 5.1** (case-sensitive enum compare), **CIS-3.1.9.1.1** (`ALLOW_NONE` rejected; the mapper also missed `ALLOW_LISTED_APPS` because `"allowlist"` is not a substring of `"allow_listed_apps"`).
+- **False PASS** -- **GWS.GMAIL.18.1 / 18.2 / 18.3** now read `spamOverride[]` rule flags (`bypassSelectedSenders`, `hideWarningBannerFromSelectedSenders`, `bypassInternalSenders`); **CIS-3.1.8.1** could never fail and now reads `collaborationCapability`; **GWS.CLASSROOM.3.1** tested `== "CLEVER"` against the real enum `ON_CLEVER`; **GWS.GROUPS.1.2** ignored `ownersCanAllowExternalMembers`.
+- **Wrong setting** -- **GWS.DRIVEDOCS.1.7** read `allowReceivingExternalFiles` (the 1.2 setting) instead of `allowedPartiesForDistributingContent`; **GWS.GMAIL.5.5** read a non-existent field in `spam_override_lists` instead of the `*Consequence` enums in `email_attachment_safety`; **GWS.MEET.2.1** read `safety_domain` instead of `safety_access.meetingsAllowedToJoin`; **GWS.DRIVEDOCS.5.1** duplicated the Drive SDK check; **GWS.COMMONCONTROLS.2.1** read `login_challenges`; **GWS.ASSUREDCONTROLS.1.2** now reads `access_management.user_scoping.accessManagementRegime`; Classroom checks used setting keys that do not exist for their per-OU path.
+- **Dashboard comment files were listed as audit reports** -- the comments sidecar is named `audit_<ts>.json.comments.json`, which matches the `audit_*.json` glob used to discover reports, and it sorts *before* the report it belongs to. After annotating the newest report and restarting, the dashboard opened on an empty bogus "report" by default, and `gws-auditor analyst` loaded the comments file as its default report. Report discovery in the dashboard, the analyst REPL, `/reports` and the agent coordinator now skips `*.comments.json`.
+- **Admin policies lost to Google defaults in the root merge** -- `_normalize_policies` only guaranteed that the root OU came last; when the API listed a `SYSTEM` default after the `ADMIN` policy for the same setting, the default replaced the admin's value in every mapped (non per-OU) lookup. Found on a live tenant where **CIS-4.2.1.3** failed although the admin had disabled internal-app trust. Root entries are now ordered OU-wide over group-targeted and `ADMIN` over `SYSTEM`.
+- **Found by running 1.5.0 against a live Enterprise Standard tenant** -- **GWS.COMMONCONTROLS.15.1** passed on `region = ANY_REGION` (the real "no region" enum; `NO_PREFERENCE` does not exist). **GWS.MEET.6.1** failed because the mapper turned "recording allowed" (`video_recording.enableRecording`) into "automatic recording on"; 6.1 / 6.2 now read `meet.automatic_recording.enabled` / `meet.automatic_transcription.enabled`, which the API does return on editions with the feature. **GWS.COMMONCONTROLS.17.1** and `_map_multi_party_approval` read `require_approvals.multiPartyApprovalState`. **GWS.COMMONCONTROLS.2.1** could be failed by the `enabled` alias the provider adds to `login_challenges` (employee-ID challenge), and reported ERROR rather than MANUAL when the state is simply unknown.
+- **`_classify_scope_risk` substring ordering** -- `"drive"` shadowed `drive.admin` (rated HIGH instead of CRITICAL) and `drive.file` / `drive.readonly` (HIGH instead of MEDIUM) in **ADD-33 / ADD-36**; the longest pattern now wins.
+
+### Known limitations
+
+- **CIS-4.1.2.2** (user self-recovery enabled) and **GWS.COMMONCONTROLS.8.2** (disabled) contradict each other by design; exclude the framework you do not follow.
+- Still MANUAL for lack of any data source: **ADD-02**, **CIS-3.1.3.5.4** without a log event, **CIS-3.1.3.7.2**, **GWS.COMMONCONTROLS.7.1**, **18.3**.
+- Verified against a live Enterprise Standard tenant: the new `takeout`, `enterprise_service_restrictions` and `early_access_apps` policy queries, the roles collector, MTA-STS lookups, DLP rules, Meet recording, data regions and multi-party approval. Still schema-verified only (Enterprise Plus / Assured Controls features): **GWS.COMMONCONTROLS.16.1 / 16.2** evaluation and **GWS.ASSUREDCONTROLS.***.
+- ADD-48 / ADD-49 match Directory privilege names by pattern and therefore WARN for review rather than FAIL.
+
 ## [1.4.0] - 2026-08-03
 
 ### Added
@@ -166,6 +218,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docker support** with Dockerfile and docker-compose.yml
 - **GitHub Actions workflow** for automated release builds
 
+[1.5.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.5.0
+[1.4.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.4.0
 [1.3.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.3.0
 [1.2.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.2.0
 [1.1.0]: https://github.com/argusssec-cloud/gws-auditor/releases/tag/v1.1.0

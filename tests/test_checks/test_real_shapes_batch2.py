@@ -38,20 +38,28 @@ class TestAlertRules:
         full_audit_data["policies"]["rules"] = {"_ou_policies": [_alert("User's password changed", "ACTIVE")]}
         assert check_alert_password_change(full_audit_data).status == Status.PASS
 
-    def test_13_1_fails_on_any_inactive_rule(self, full_audit_data):
+    def test_13_1_fails_only_on_required_rules(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_system_defined_alerts_enabled
 
+        # "User's password changed" is optional in SCuBA; "Leaked password" is required
         full_audit_data["policies"]["rules"] = {"_ou_policies": [
-            _alert("User granted Admin privilege", "ACTIVE"), _alert("User's password changed", "INACTIVE")]}
+            _alert("Leaked password", "ACTIVE"), _alert("User's password changed", "INACTIVE")]}
+        assert check_system_defined_alerts_enabled(full_audit_data).status != Status.FAIL
+        full_audit_data["policies"]["rules"] = {"_ou_policies": [
+            _alert("Leaked password", "INACTIVE"), _alert("User's password changed", "ACTIVE")]}
         result = check_system_defined_alerts_enabled(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "User's password changed" in result.details
+        assert result.status == Status.FAIL and "Leaked password" in result.details
 
-    def test_13_1_cannot_confirm_unmodified_rules(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_system_defined_alerts_enabled
+    def test_13_1_pass_needs_every_required_rule(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import (
+            SCUBA_REQUIRED_ALERT_RULES, check_system_defined_alerts_enabled)
 
-        full_audit_data["policies"]["rules"] = {"_ou_policies": [_alert("User granted Admin privilege", "ACTIVE")]}
-        assert check_system_defined_alerts_enabled(full_audit_data).status == Status.MANUAL
+        full_audit_data["policies"]["rules"] = {"_ou_policies": [_alert("Leaked password", "ACTIVE")]}
+        assert check_system_defined_alerts_enabled(full_audit_data).status == Status.MANUAL  # rest not returned
+        full_audit_data["policies"]["rules"] = {"_ou_policies": [
+            _alert(name, "ACTIVE") for name in SCUBA_REQUIRED_ALERT_RULES] + [_alert("Apps outage alert", "INACTIVE")]}
+        result = check_system_defined_alerts_enabled(full_audit_data)
+        assert result.status == Status.PASS and "Apps outage alert" in result.details
 
 
 class TestAccountRecoveryFrameworkConflict:

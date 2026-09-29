@@ -124,6 +124,30 @@ class TestFeatureX:
         assert result.status == Status.FAIL
 ```
 
+#### Use real Policy API field names
+
+A check that reads a field the Cloud Identity Policy API does not return fails (or passes) on every tenant, and a test written with the same invented name will happily stay green. To prevent that:
+
+- `tests/fixtures/policy_api_shapes.json` lists the setting types and field names the API really returns. Build test payloads from it with `make_ou_policy(category, setting_key, {...})`.
+- `tests/test_policy_field_names.py` fails when a check looks up a known setting type (directly through `get_ou_values`, or through a private helper) but references none of that setting's real fields. If you add a setting type that is not in the catalogue yet, add it to the JSON from a real API response -- field names only, never tenant values.
+- Deliberate exceptions (a legacy-shape fallback kept for old caches) go in that test's `EXEMPT` dict with a one-line justification.
+
+When a value cannot be determined, return `make_review(...)` (MANUAL). Do not default a missing field to PASS or FAIL.
+
+#### Settings the Policy API does not expose
+
+Some settings (Gemini, Drive add-ons, multi-party approval, access approvals, external recipient warnings) are only visible as change events in the admin audit log. Use `result_from_setting_changes(data, "<SETTING_NAME>", unsafe_values, ...)` from `checks/base.py`: it returns PASS/FAIL from the latest change per OU, or `None` when there is no event so you can fall back to `make_review`.
+
+#### Regenerate the check reference
+
+`docs/checks.md` and `wiki/Check-Reference.md` are generated from the registry. After adding, renaming or re-levelling a check:
+
+```bash
+python scripts/generate_check_reference.py
+```
+
+`tests/test_check_reference_docs.py` fails if they are out of date.
+
 ### Step 3: Run Tests
 
 ```bash

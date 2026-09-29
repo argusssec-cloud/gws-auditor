@@ -25,6 +25,28 @@
 | `Rate limit exceeded` | Too many API requests | Reduce `rate_limit_qps` in config.yaml (default: 10) |
 | `DNS lookup failed` | DNS resolution error | Check network connectivity; DNS checks require outbound port 53 |
 
+## Check Results
+
+**A check reports MANUAL instead of PASS or FAIL**
+The auditor does not guess. MANUAL means one of:
+
+- *No Google API exposes the setting* (for example Google Forms response settings, partner TLS rules, Security Sandbox). Verify it in the Admin console using the remediation path shown.
+- *The setting is only visible through the admin audit log* (Gemini access, Drive add-ons, multi-party approval, access approvals, external recipient warnings, Context-Aware Access enablement). The auditor reads the most recent change event; if the setting has not been changed inside the log window there is no event to read. Changing and re-saving the setting once makes it visible to future audits.
+- *The API returns the policy but not its state* (comprehensive mail storage returns only a rule id; Advanced Protection exposes whether users may enroll, not who has).
+- *Collection is opt-in and was not enabled* (**ADD-51** per-mailbox forwarding -- see [Configuration](Configuration)).
+
+**A check reports ERROR with "was not collected"**
+The data the check needs is missing. After upgrading, this is normal when re-scoring an old cache with `--cached`: admin roles (ADD-41, ADD-48, ADD-49), MTA-STS records (ADD-50) and licence holders (ADD-52) are only present in caches written by this version or later. Run a live collection. On a live run it means the API call failed -- check the "API errors" section of the report and that the scope is delegated (`admin.directory.rolemanagement.readonly` for roles).
+
+**Two checks contradict each other on user account recovery**
+That is deliberate. **CIS-4.1.2.2** requires user self-recovery to be *enabled*; **GWS.COMMONCONTROLS.8.2** (CISA SCuBA) requires it *disabled*. A tenant cannot pass both -- follow the framework your organization is assessed against and exclude the other with `checks.exclude`.
+
+**A result changed after upgrading although nothing changed in the tenant**
+Several checks previously read field names the Cloud Identity Policy API does not return, which produced FAIL (and occasionally PASS) regardless of the real setting. They now read the real fields. See the [changelog](https://github.com/argusssec-cloud/gws-auditor/blob/main/CHANGELOG.md) for the list; a changed result reflects the tenant's actual configuration.
+
+**GWS.COMMONCONTROLS.13.1 is MANUAL although every alert rule is on**
+The Policy API only returns system-defined alert rules that an admin has modified at least once, so rules still at Google's default cannot be confirmed. The check FAILs definitively when any returned rule is inactive, and otherwise asks you to confirm the rest in Admin console > Rules.
+
 ## AI Analyst Errors
 
 | Error | Cause | Solution |

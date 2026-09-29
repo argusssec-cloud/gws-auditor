@@ -129,5 +129,5 @@ If Google later publishes a Policy API surface for either CAA toggle, both check
 ## Related
 
 - [Posture Score](Posture-Score) -- how `NOT_APPLICABLE` results are excluded from the score
-- [Check Reference](Check-Reference) -- complete list of all 200 checks
+- [Check Reference](Check-Reference) -- complete list of all 227 checks
 - [Critical Checks](Critical-Checks) -- the 24 critical-severity checks (ADD-20 and ADD-40 are MEDIUM)

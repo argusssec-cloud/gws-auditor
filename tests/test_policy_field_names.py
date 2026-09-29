@@ -32,6 +32,9 @@ EXEMPT: dict[tuple[str, str], str] = {
     ("check_drive_add_ons_disabled", "drive_sdk"): "legacy-shape fallback; add-ons are not in the Policy API (admin-log inference is used)",
     ("check_meet_auto_transcription", "video_recording"): "legacy-shape fallback; API exposes only enableRecording, so the result is MANUAL",
     ("check_context_aware_access", "login_challenges"): "legacy-shape fallback; CAA is not in the Policy API (TOGGLE_CAA_ENABLEMENT log event is used)",
+    ("check_dlp_chat", "dlp"): "legacy lookup under the security category; real rule.dlp policies arrive via provider._map_rules",
+    ("check_dlp_gmail", "dlp"): "legacy lookup under the security category; real rule.dlp policies arrive via provider._map_rules",
+    ("check_dlp_block_external", "dlp"): "legacy lookup under the security category; real rule.dlp policies arrive via provider._map_rules",
     ("check_gmail_comprehensive_storage", "comprehensive_mail_storage"): "API returns only a ruleId; the check reports MANUAL when no enabled flag exists",
 }
 

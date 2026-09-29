@@ -74,6 +74,15 @@
    "destinationEmailAddress",
    "enabled"
   ],
+  "chat.content_reporting": [
+   "customReportingFormDescription",
+   "customReportingFormTitle",
+   "groupDirectMessagesReporting",
+   "oneOnOneDirectMessagesReporting",
+   "reportingFormCustomizationEnabled",
+   "spacesReporting",
+   "spacesReportingType"
+  ],
   "chat.external_chat_restriction": [
    "allowExternalChat",
    "externalChatRestriction"
@@ -119,6 +128,10 @@
   "directory.external_directory_sharing": [
    "sharingOption"
   ],
+  "directory.workspace_resource_type_visibility": [
+   "domainSharedContacts",
+   "googleGroups"
+  ],
   "drive_and_docs.drive_for_desktop": [
    "allowDriveForDesktop",
    "allowRealTimePresence",
@@ -162,6 +175,9 @@
    "allowedPartiesForDownloadPrintCopy",
    "customOrgUnit",
    "orgUnitForNewSharedDrives"
+  ],
+  "early_access_apps.service_status": [
+   "serviceState"
   ],
   "enterprise_service_restrictions.service_status": [
    "serviceState"
@@ -259,6 +275,10 @@
   "gmail.user_email_uploads": [
    "enableMailAndContactsImport"
   ],
+  "gmail.web_offline": [
+   "enabled",
+   "signoutDataDeletionEnforced"
+  ],
   "gmail.workspace_sync_for_outlook": [
    "enableGoogleWorkspaceSyncForMicrosoftOutlook"
   ],
@@ -279,6 +299,12 @@
   ],
   "maps.user_takeout": [
    "takeoutStatus"
+  ],
+  "meet.automatic_recording": [
+   "enabled"
+  ],
+  "meet.automatic_transcription": [
+   "enabled"
   ],
   "meet.meet_incoming_call_restrictions": [
    "allowedCallers"
@@ -316,6 +342,34 @@
   "meet.video_recording": [
    "enableRecording"
   ],
+  "multi_party_approval.calendar_actions": [
+   "calendarSharingMultiPartyApprovalState",
+   "generalCalendarSettingsMultiPartyApprovalState",
+   "thirdPartyArchivingSettingsMultiPartyApprovalState"
+  ],
+  "multi_party_approval.domains_actions": [
+   "domainsApiMultiPartyApprovalState"
+  ],
+  "multi_party_approval.groups_actions": [
+   "groupsSharingMultiPartyApprovalState"
+  ],
+  "multi_party_approval.require_approvals": [
+   "multiPartyApprovalState"
+  ],
+  "multi_party_approval.security_actions": [
+   "accountRecoveryMultiPartyApprovalState",
+   "advancedProtectionProgramMultiPartyApprovalState",
+   "contextAwareAccessMultiPartyApprovalState",
+   "domainWideDelegationMultiPartyApprovalState",
+   "loginChallengesMultiPartyApprovalState",
+   "passwordlessMultiPartyApprovalState",
+   "sessionControlsMultiPartyApprovalState",
+   "ssoWithThirdPartyIdpsMultiPartyApprovalState",
+   "twoStepVerificationMultiPartyApprovalState"
+  ],
+  "multi_party_approval.security_actions_api_access": [
+   "ssoWithThirdPartyIdpsMultiPartyApprovalState"
+  ],
   "pay.user_takeout": [
    "takeoutStatus"
   ],
@@ -328,8 +382,19 @@
   "play_console.user_takeout": [
    "takeoutStatus"
   ],
+  "rule.dlp": [
+   "action",
+   "condition",
+   "createTime",
+   "description",
+   "displayName",
+   "state",
+   "triggers",
+   "updateTime"
+  ],
   "rule.system_defined_alerts": [
    "action",
+   "condition",
    "createTime",
    "description",
    "displayName",

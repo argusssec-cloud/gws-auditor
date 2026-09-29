@@ -594,7 +594,10 @@ def check_gmail_dlp(data: dict) -> CheckResult:
             check_id="ADD-12",
             title="Ensure DLP rules are configured for Gmail",
             level="L1", source="GOOGLE", section="Gmail",
-            details=f"DLP is configured for Gmail ({total_rules} rule(s) found).",
+            details=(
+                f"DLP is configured for Gmail: {len(dlp.get('gmail_dlp_rules') or [])} active data protection rule(s) "
+                f"apply to Gmail, plus {total_rules} content compliance rule(s)."
+            ),
             actual_value={
                 "gmail_dlp_enabled": gmail_dlp_enabled,
                 "dlp_rules": len(dlp_rules),

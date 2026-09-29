@@ -7,7 +7,7 @@
 CIS Google Workspace Benchmark v1.3.0 - Access and data control checks.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable
 from ..models import CheckResult, Status
 
 
@@ -46,6 +46,7 @@ def check_third_party_app_access(data: dict) -> CheckResult:
     ou_values = get_ou_values(security, "unconfigured_third_party_apps")
     if not ou_values:
         ou_values = get_ou_values(policies.get("api_controls", {}), "unconfigured_third_party_apps")
+    ou_values = drop_unspecified(ou_values, "accessLevel")  # ACCESS_LEVEL_UNSPECIFIED = unknown
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
@@ -185,10 +186,27 @@ def check_third_party_app_review(data: dict) -> CheckResult:
         ou_values = get_ou_values(policies.get("security", {}), "unconfigured_third_party_apps")
         if not ou_values:
             ou_values = get_ou_values(policies.get("api_controls", {}), "unconfigured_third_party_apps")
-        levels = [str(e["value"].get("accessLevel", "")) for e in ou_values if e["value"].get("accessLevel")]
+        reported = [e for e in ou_values if e["value"].get("accessLevel")]
+        levels = [str(e["value"]["accessLevel"]) for e in drop_unspecified(reported, "accessLevel")]
         if levels:
             restricted = all(lv == "BLOCK_ALL_SCOPES" or "SIGN_IN" in lv for lv in levels)
             app_access_policy = "restricted" if restricted else "unrestricted"
+        elif reported:
+            # Only ACCESS_LEVEL_UNSPECIFIED came back: the configured policy is unknown, not absent
+            return make_review(
+                check_id="CIS-4.2.1.2",
+                title="Ensure third-party apps are reviewed",
+                level="L2", source="CIS", section="Access Control",
+                details=(
+                    f"Found {len(oauth_apps)} unique third-party app(s) with OAuth grants. The Policy API did not "
+                    "report the unconfigured-apps access level (ACCESS_LEVEL_UNSPECIFIED) — verify the app access "
+                    "policy in Admin console > Security > API controls."
+                ),
+                remediation=(
+                    "Admin console > Security > API controls > App access control. "
+                    "Review the list of third-party apps that have been granted access to organizational data."
+                ),
+            )
 
     # If no app access control policy is configured, this is a failure
     if not app_access_policy or app_access_policy.lower() in ("unrestricted", ""):
