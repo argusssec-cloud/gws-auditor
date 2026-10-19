@@ -17,6 +17,7 @@
   <a href="#-interactive-dashboard"><img src="https://img.shields.io/badge/dashboard-Plotly%20Dash-E5484D?logo=plotly&logoColor=white" alt="Dashboard: Plotly Dash"></a>
   <a href="#-standalone-executable"><img src="https://img.shields.io/badge/build-standalone%20exe-orange" alt="Standalone Executable"></a>
   <a href="#ai-security-analyst"><img src="https://img.shields.io/badge/AI-analyst%20%2B%20agents-FF6F00?logo=openai&logoColor=white" alt="AI Analyst + Agents"></a>
+  <a href="https://workspace.google.com/marketplace/app/argussec/133488094837"><img src="https://img.shields.io/badge/Google%20Workspace-Marketplace-4285F4?logo=google&logoColor=white" alt="Available on Google Workspace Marketplace"></a>
 </p>
 
 ---
@@ -394,9 +395,16 @@ GWS Security Auditor is and will always be free and open source. For teams that 
 | Regression alerts (Slack, email) | — | ✓ |
 | Multi-tenant & team access | — | ✓ |
 | JIRA, webhooks, RBAC | — | ✓ |
+| Google Workspace add-on (Gmail, Drive, Sheets, Chat) | — | ✓ |
 | Priority support | Community | Email |
 
 [Sign up for free trial](https://app.argussec.io/) | [Pricing](https://argussec.io/pricing.html)
+
+### Inside Google Workspace
+
+[![Available on Google Workspace Marketplace](https://img.shields.io/badge/Google%20Workspace-Marketplace-4285F4?logo=google&logoColor=white)](https://workspace.google.com/marketplace/app/argussec/133488094837)
+
+Argus Cloud ships a [Google Workspace add-on](https://workspace.google.com/marketplace/app/argussec/133488094837) that puts audit results where admins already work: a findings panel in the Gmail and Drive side panels, a one-click import of the full report into Google Sheets, and a Google Chat app with `/gws-status`, `/gws-audit`, `/gws-findings` and `/gws-remediate` plus free-text questions answered by the AI Analyst. The add-on requests five non-sensitive scopes and never reads mail or files; the audit data comes from the same read-only service account this CLI uses. It is a thin card layer over Argus Cloud, so every finding it shows is produced by the checks in this repository. See the [announcement](https://argussec.io/blog/argussec-on-google-workspace-marketplace.html).
 
 > [!TIP]
 > To suppress the CLI cloud info banner, pass `--no-cloud-info` or set `GWS_AUDITOR_NO_CLOUD_INFO=1`.
