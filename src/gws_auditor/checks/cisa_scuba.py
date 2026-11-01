@@ -52,7 +52,7 @@ def check_dmarc_strict_alignment(data: dict) -> CheckResult:
         domain_name = domain if isinstance(domain, str) else domain.get("domainName", domain.get("domain_name", ""))
         domain_dns = dns_records.get(domain_name, {})
         dmarc = domain_dns.get("dmarc", {})
-        record = dmarc.get("record", "")
+        record = str(dmarc.get("record", "") or "").lower().replace(" ", "")
         if dmarc.get("record_found", False):
             # Per RFC 7489, missing aspf/adkim tags default to relaxed ("r").
             # Only flag domains with explicit aspf=r or adkim=r.
@@ -61,6 +61,9 @@ def check_dmarc_strict_alignment(data: dict) -> CheckResult:
             has_adkim_r = "adkim=r" in record
             if has_aspf_r or has_adkim_r:
                 relaxed_domains.append(domain_name)
+        else:
+            # No DMARC record at all: alignment cannot be strict.
+            relaxed_domains.append(f"{domain_name} (no DMARC record)")
 
     if not relaxed_domains:
         return make_pass(
@@ -120,8 +123,10 @@ def check_dmarc_reporting(data: dict) -> CheckResult:
         domain_name = domain if isinstance(domain, str) else domain.get("domainName", domain.get("domain_name", ""))
         domain_dns = dns_records.get(domain_name, {})
         dmarc = domain_dns.get("dmarc", {})
-        record = dmarc.get("record", "")
-        if dmarc.get("record_found", False) and "rua=" not in record:
+        record = str(dmarc.get("record", "") or "").lower().replace(" ", "")
+        if not dmarc.get("record_found", False):
+            missing_rua.append(f"{domain_name} (no DMARC record)")
+        elif "rua=" not in record:
             missing_rua.append(domain_name)
 
     if not missing_rua:
@@ -883,8 +888,15 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            receive = entry["value"].get("receiveFilesFromNonAllowlisted",
-                                         entry["value"].get("allowReceivingExternalFiles", None))
+            value = entry["value"]
+            if value.get("externalSharingMode") == "ALLOWLISTED_DOMAINS":
+                # Receiving from allowlisted domains is the point of allowlist mode;
+                # the control is about files from OUTSIDE the allowlist.
+                receive = value.get("allowReceivingFilesOutsideAllowlistedDomains",
+                                    value.get("receiveFilesFromNonAllowlisted", None))
+            else:
+                receive = value.get("receiveFilesFromNonAllowlisted",
+                                    value.get("allowReceivingExternalFiles", None))
             if receive is not False:
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": receive})
         if unsafe_ous:

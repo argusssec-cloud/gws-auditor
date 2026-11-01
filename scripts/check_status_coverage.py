@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""Coverage gate: every scored check must have tests that produce PASS and FAIL (or WARN/PARTIAL).
+
+Runs the check test suite with the status recorder in tests/conftest.py enabled, then compares
+the recorded statuses with the check registry. Exit status 1 when a scored check lacks a PASS
+or a negative verdict and is not in KNOWN_GAPS. Shrink KNOWN_GAPS as plan phase P1 lands.
+
+    python scripts/check_status_coverage.py            # gate
+    python scripts/check_status_coverage.py --report   # print the full matrix
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+
+NEGATIVE = {"FAIL", "WARN", "PARTIAL"}
+
+# check_id -> reason the gap is tolerated for now (plan phases P1/P3).
+KNOWN_GAPS: dict[str, str] = {
+    "CIS-3.1.2.1.1.4": "P1: no tests at all",
+    "CIS-3.1.3.6.2": "P1: no tests at all",
+    "GWS.COMMONCONTROLS.7.1": "P3: dead setting key, no tests",
+    "CIS-1.1.3": "P1: WARN path now covered; PASS is MANUAL by design",
+    "CIS-3.1.2.2.3": "P1: FAIL untested",
+    "CIS-3.1.3.7.2": "P1: FAIL untested",
+    "CIS-4.2.1.2": "P1: PASS untested",
+    "CIS-4.2.1.4": "P1: PASS untested (MANUAL/WARN only today)",
+    "CIS-4.2.3.1": "P3: reads never-populated keys; FAIL unreachable",
+    "ADD-08": "P1: FAIL untested",
+    "ADD-20": "P1: FAIL untested",
+    "ADD-40": "P1: FAIL untested",
+    "ADD-44": "P1: PASS untested",
+    "ADD-52": "P1: PASS untested",
+    "GWS.COMMONCONTROLS.14.1": "P1: FAIL untested",
+}
+
+
+def main() -> int:
+    report = "--report" in sys.argv
+    with tempfile.TemporaryDirectory() as tmp:
+        record = Path(tmp) / "statuses.json"
+        env = {**os.environ, "GWS_STATUS_RECORD": str(record)}
+        proc = subprocess.run(
+            [sys.executable, "-m", "pytest", "tests/test_checks", "-q", "-p", "no:cacheprovider"],
+            cwd=ROOT, env=env, capture_output=True, text=True)
+        if proc.returncode != 0:
+            sys.stderr.write(proc.stdout[-3000:])
+            return proc.returncode
+        recorded = json.loads(record.read_text())
+
+    from gws_auditor.checks.registry import CheckRegistry
+
+    gaps: list[str] = []
+    for meta in CheckRegistry().get_all_checks():
+        statuses = set(recorded.get(meta.check_id, {}))
+        if report:
+            print(f"{meta.check_id:28} {'scored' if meta.scored else 'unscored':8} {', '.join(sorted(statuses)) or '-'}")
+        if not meta.scored:
+            continue
+        missing = []
+        if "PASS" not in statuses:
+            missing.append("PASS")
+        if not statuses & NEGATIVE:
+            missing.append("FAIL/WARN/PARTIAL")
+        if missing and meta.check_id not in KNOWN_GAPS:
+            gaps.append(f"{meta.check_id}: missing {', '.join(missing)} (has {', '.join(sorted(statuses)) or 'nothing'})")
+
+    resolved = [cid for cid in KNOWN_GAPS
+                if "PASS" in recorded.get(cid, {}) and set(recorded.get(cid, {})) & NEGATIVE]
+    if resolved:
+        print("KNOWN_GAPS entries now fully covered; remove them: " + ", ".join(sorted(resolved)))
+    if gaps:
+        print("Scored checks without both a PASS and a negative test:")
+        print("\n".join("  " + g for g in gaps))
+        return 1
+    print(f"status coverage gate passed ({len(KNOWN_GAPS)} known gaps tolerated)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

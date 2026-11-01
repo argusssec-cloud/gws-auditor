@@ -86,8 +86,9 @@ def compute_posture_score(
         List of ``CheckResult`` objects or dicts (from JSON reports).
     overrides:
         Optional mapping of ``check_id`` → override status (``"PASS"``
-        or ``"FAIL"``).  Applied before scoring so that muting a
-        finding can improve the score.
+        or ``"FAIL"``) set manually in the console.  Applied before the
+        scored/status filters, so an override also brings an unscored
+        (admin-console-only) or MANUAL check into the score.
 
     Returns
     -------
@@ -119,7 +120,17 @@ def compute_posture_score(
             severity = _normalize_severity(getattr(r, "severity", Severity.MEDIUM))
             check_id = getattr(r, "check_id", "")
 
-        if not scored:
+        # A manual PASS/FAIL set in the console overrides the computed status and
+        # makes the check participate in the score even when it is unscored
+        # (admin-console-only controls) or could not be evaluated (MANUAL/ERROR).
+        overridden = False
+        if check_id in overrides:
+            override = str(overrides[check_id]).upper()
+            if override in ("PASS", "FAIL"):
+                status = override
+                overridden = True
+
+        if not scored and not overridden:
             excluded_count += 1
             continue
 
@@ -131,12 +142,6 @@ def compute_posture_score(
         if severity is None or severity not in SEVERITY_WEIGHTS:
             excluded_count += 1
             continue
-
-        # Apply override
-        if check_id in overrides:
-            override = overrides[check_id].upper()
-            if override in ("PASS", "FAIL"):
-                status = override
 
         scored_count += 1
 

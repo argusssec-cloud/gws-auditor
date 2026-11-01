@@ -28,7 +28,7 @@ The GWS Security Auditor implements **227 security checks** across four framewor
 | **MEDIUM** | 80 |
 | **LOW** | 42 |
 
-13 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
+21 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
 
 ## Check Statuses
 
@@ -163,8 +163,8 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 | GWS.DRIVEDOCS.1.7 | Ensure users cannot upload to external shared drives | L2 | CISA | MEDIUM |  |
 | GWS.DRIVEDOCS.1.8 | Ensure default access for new items is 'private to owner' | L1 | CISA | HIGH |  |
 | GWS.DRIVEDOCS.1.9 | Ensure out-of-domain file-level warnings are enabled | L1 | CISA | MEDIUM |  |
-| GWS.DRIVEDOCS.1.10 | Ensure forms cannot accept external responses when external sharing is off | L2 | CISA | LOW |  |
-| GWS.DRIVEDOCS.1.11 | Ensure users cannot respond to external forms when receiving files is off | L2 | CISA | LOW |  |
+| GWS.DRIVEDOCS.1.10 | Ensure forms cannot accept external responses when external sharing is off | L2 | CISA | LOW | unscored |
+| GWS.DRIVEDOCS.1.11 | Ensure users cannot respond to external forms when receiving files is off | L2 | CISA | LOW | unscored |
 | GWS.DRIVEDOCS.2.1 | Ensure shared drive manager override is disabled | L2 | CISA | MEDIUM |  |
 | GWS.DRIVEDOCS.2.2 | Ensure non-members can be added to shared drive files | L1 | CISA | MEDIUM |  |
 | GWS.DRIVEDOCS.3.1 | Ensure security updates for files are applied | L1 | CISA | MEDIUM |  |
@@ -291,10 +291,10 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 
 | ID | Title | Level | Source | Severity | Notes |
 |----|-------|-------|--------|----------|-------|
-| CIS-5.1.1.1 | Ensure App Usage Activity Report is reviewed | L1 | CIS | LOW |  |
-| CIS-5.1.1.2 | Ensure Security Investigation Tool is used | L1 | CIS | LOW | Enterprise Standard+ |
+| CIS-5.1.1.1 | Ensure App Usage Activity Report is reviewed | L1 | CIS | LOW | unscored |
+| CIS-5.1.1.2 | Ensure Security Investigation Tool is used | L1 | CIS | LOW | unscored, Enterprise Standard+ |
 | GWS.COMMONCONTROLS.14.1 | Ensure audit logging is enabled | L1 | CISA | HIGH |  |
-| GWS.COMMONCONTROLS.14.2 | Ensure audit log retention meets minimum requirements | L1 | CISA | HIGH |  |
+| GWS.COMMONCONTROLS.14.2 | Ensure audit log retention meets minimum requirements | L1 | CISA | HIGH | unscored |
 
 ## Security
 
@@ -303,8 +303,8 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 | ADD-08 | Ensure password protection warning is enabled | L2 | GOOGLE | HIGH |  |
 | ADD-09 | Ensure Google Takeout is restricted | L1 | GOOGLE | MEDIUM |  |
 | ADD-11 | Ensure client-side encryption is enabled | L2 | GOOGLE | MEDIUM | Enterprise Plus |
-| ADD-16 | Ensure Apple Intelligence Writing Tools are disabled for Workspace | L2 | GOOGLE | LOW |  |
-| ADD-18 | Ensure passkeys are enforced as primary authentication | L2 | GOOGLE | CRITICAL |  |
+| ADD-16 | Ensure Apple Intelligence Writing Tools are disabled for Workspace | L2 | GOOGLE | LOW | unscored |
+| ADD-18 | Ensure passkeys are enforced as primary authentication | L2 | GOOGLE | CRITICAL | unscored |
 | ADD-20 | Ensure Context-Aware Access is applied to OIDC apps | L2 | GOOGLE | MEDIUM | Enterprise Standard+ |
 | ADD-21 | Ensure Multi-Party Approval covers Vault exports | L2 | GOOGLE | MEDIUM | Enterprise Standard+ |
 | ADD-32 | Users without 2-Step Verification by OU inventory | L1 | OTHER | LOW | unscored |
@@ -340,7 +340,7 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 | GWS.COMMONCONTROLS.7.1 | Ensure conflicting account management is configured | L1 | CISA | LOW |  |
 | GWS.COMMONCONTROLS.8.1 | Ensure super admin account self-recovery is disabled | L1 | CISA | CRITICAL |  |
 | GWS.COMMONCONTROLS.8.2 | Ensure user account self-recovery is disabled | L1 | CISA | MEDIUM |  |
-| GWS.COMMONCONTROLS.8.3 | Ensure adding recovery information is disabled | L2 | CISA | MEDIUM |  |
+| GWS.COMMONCONTROLS.8.3 | Ensure adding recovery information is disabled | L2 | CISA | MEDIUM | unscored |
 | GWS.COMMONCONTROLS.9.1 | Ensure privileged accounts are in Advanced Protection Program | L1 | CISA | HIGH |  |
 | GWS.COMMONCONTROLS.9.2 | Ensure sensitive users are in Advanced Protection Program | L2 | CISA | HIGH |  |
 | GWS.COMMONCONTROLS.10.1 | Ensure app access control policies restrict third-party access | L1 | CISA | HIGH |  |

@@ -7,8 +7,19 @@
 CIS Google Workspace Benchmark v1.3.0 - Access and data control checks.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable, is_admin_configured
 from ..models import CheckResult, Status
+
+
+# api_controls.unconfigured_third_party_apps: the Admin console labels the permissive option
+# "(Default) Allow users to access any third-party apps"; the API has no enum member for it and
+# returns the zero value ACCESS_LEVEL_UNSPECIFIED on the ADMIN policy (console-verified 2026-11-01).
+_DEFAULT_ALLOW_LABEL = "ACCESS_LEVEL_UNSPECIFIED (console default: allow any third-party app)"
+
+
+def _is_default_allow(entry: dict) -> bool:
+    level = str(entry.get("value", {}).get("accessLevel", "")).upper()
+    return level == "ACCESS_LEVEL_UNSPECIFIED" and is_admin_configured(entry)
 
 
 @check(
@@ -35,9 +46,10 @@ def check_third_party_app_access(data: dict) -> CheckResult:
         "Set to 'Don't allow users to access any third-party apps' or restrict "
         "to trusted applications. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     )
-    # Policy API enums: BLOCK_ALL_SCOPES (block) / sign-in-scopes-only; rest are legacy aliases
-    _SAFE = ("BLOCK_ALL_SCOPES", "ALLOW_SIGN_IN_SCOPES_ONLY", "SIGN_IN_ONLY",
-             "RESTRICTED", "LIMITED", "BLOCKED")
+    # Policy API enums (documented): BLOCK_ALL / ALLOW_SIGN_IN_ONLY; BLOCK_ALL_SCOPES and
+    # ALLOW_SIGN_IN_SCOPES_ONLY were returned by older API versions; rest are legacy aliases.
+    _SAFE = ("BLOCK_ALL", "BLOCK_ALL_SCOPES", "ALLOW_SIGN_IN_ONLY", "ALLOW_SIGN_IN_SCOPES_ONLY",
+             "SIGN_IN_ONLY", "RESTRICTED", "LIMITED", "BLOCKED")
 
     policies = data.get("policies", {})
     security = policies.get("security", {})
@@ -46,9 +58,13 @@ def check_third_party_app_access(data: dict) -> CheckResult:
     ou_values = get_ou_values(security, "unconfigured_third_party_apps")
     if not ou_values:
         ou_values = get_ou_values(policies.get("api_controls", {}), "unconfigured_third_party_apps")
-    ou_values = drop_unspecified(ou_values, "accessLevel")  # ACCESS_LEVEL_UNSPECIFIED = unknown
-    if ou_values:
-        unsafe_ous = []
+    # An ADMIN policy whose accessLevel is ACCESS_LEVEL_UNSPECIFIED is the console option
+    # "(Default) Allow users to access any third-party apps" (verified against the Admin
+    # console on 2026-11-01): the permissive state. A SYSTEM-only UNSPECIFIED stays unknown.
+    default_allow = [e for e in ou_values if _is_default_allow(e)]
+    ou_values = drop_unspecified(ou_values, "accessLevel")  # SYSTEM ACCESS_LEVEL_UNSPECIFIED = unknown
+    if ou_values or default_allow:
+        unsafe_ous = [{"org_unit": e["org_unit"], "value": _DEFAULT_ALLOW_LABEL} for e in default_allow]
         for entry in ou_values:
             access = entry["value"].get("accessLevel", "")
             if access.upper() not in _SAFE:
@@ -188,8 +204,9 @@ def check_third_party_app_review(data: dict) -> CheckResult:
             ou_values = get_ou_values(policies.get("api_controls", {}), "unconfigured_third_party_apps")
         reported = [e for e in ou_values if e["value"].get("accessLevel")]
         levels = [str(e["value"]["accessLevel"]) for e in drop_unspecified(reported, "accessLevel")]
+        levels += ["ALLOW_ALL (console default)" for e in reported if _is_default_allow(e)]
         if levels:
-            restricted = all(lv == "BLOCK_ALL_SCOPES" or "SIGN_IN" in lv for lv in levels)
+            restricted = all(lv in ("BLOCK_ALL", "BLOCK_ALL_SCOPES") or "SIGN_IN" in lv for lv in levels)
             app_access_policy = "restricted" if restricted else "unrestricted"
         elif reported:
             # Only ACCESS_LEVEL_UNSPECIFIED came back: the configured policy is unknown, not absent

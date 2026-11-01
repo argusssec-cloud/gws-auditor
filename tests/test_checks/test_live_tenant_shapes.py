@@ -85,7 +85,9 @@ class TestUnspecifiedAccessLevelIsUnknown:
         _set(data, "api_controls", "unconfigured_third_party_apps",
              {"accessLevel": "ACCESS_LEVEL_UNSPECIFIED", "accessLevelUnder18": "ACCESS_LEVEL_UNDER18_UNSPECIFIED"})
 
-    def test_not_a_fail(self, full_audit_data):
+    def test_admin_unspecified_is_the_permissive_console_default(self, full_audit_data):
+        """Admin console verification (2026-11-01): the ADMIN policy carries ACCESS_LEVEL_UNSPECIFIED
+        when the console shows "(Default) Allow users to access any third-party apps"."""
         from gws_auditor.checks.cisa_commoncontrols import (
             check_third_party_api_restricted, check_unconfigured_third_party_apps)
         from gws_auditor.checks.security_access import check_third_party_app_access, check_third_party_app_review
@@ -94,6 +96,18 @@ class TestUnspecifiedAccessLevelIsUnknown:
         full_audit_data["token_logs"] = [{"app_name": "Some App", "client_id": "1"}]
         for check in (check_third_party_api_restricted, check_unconfigured_third_party_apps,
                       check_third_party_app_access, check_third_party_app_review):
+            assert check(full_audit_data).status == Status.FAIL, check.__name__
+
+    def test_system_only_unspecified_is_unknown(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import (
+            check_third_party_api_restricted, check_unconfigured_third_party_apps)
+        from gws_auditor.checks.security_access import check_third_party_app_access
+
+        self._unspecified(full_audit_data)
+        for entry in full_audit_data["policies"]["api_controls"]["_ou_policies"]:
+            entry["_raw"] = {"type": "SYSTEM"}
+        for check in (check_third_party_api_restricted, check_unconfigured_third_party_apps,
+                      check_third_party_app_access):
             assert check(full_audit_data).status in (Status.MANUAL, Status.ERROR), check.__name__
 
     def test_a_reported_level_is_still_judged(self, full_audit_data):

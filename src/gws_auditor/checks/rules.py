@@ -33,6 +33,7 @@ SYSTEM_DEFINED_ALERTS: dict[str, dict] = {
     "admin_privilege": {
         "names": ["admin privilege", "user granted admin privilege",
                   "admin privilege granted"],
+        "exclude": ["revoked"],
         "default_active": False,
     },
     "suspicious_programmatic_login": {
@@ -99,11 +100,16 @@ def _check_alert_rule(data: dict, rule_keyword: str, rule_display: str) -> bool 
     match_names = list(system_alert["names"]) if system_alert else []
     kw = rule_keyword.lower()
     match_names.extend([kw, kw.replace("_", " "), kw.replace("_", "-")])
+    exclude = [x.lower() for x in (system_alert or {}).get("exclude", [])]
+
+    def _matches(name: str) -> bool:
+        name = (name or "").lower()
+        return any(n in name for n in match_names) and not any(x in name for x in exclude)
 
     # 0. Authoritative: rule.system_defined_alerts from the Cloud Identity Policy API.
     #    The API only returns rules an admin has modified, so absence falls through.
     states = [a["state"] for a in _system_defined_alert_policies(data)
-              if any(n in a["name"].lower() for n in match_names)]
+              if _matches(a["name"])]
     if states:
         return all(s == "ACTIVE" for s in states)
 
@@ -118,8 +124,8 @@ def _check_alert_rule(data: dict, rule_keyword: str, rule_display: str) -> bool 
         params = log.get("parameters", {})
         if not isinstance(params, dict):
             continue
-        rule_name = params.get("SYSTEM_DEFINED_RULE_NAME", "").lower()
-        if any(n in rule_name for n in match_names):
+        rule_name = params.get("SYSTEM_DEFINED_RULE_NAME", "")
+        if _matches(rule_name):
             event_time = log.get("time", "")
             if event_time > latest_time:
                 latest_time = event_time
@@ -136,16 +142,14 @@ def _check_alert_rule(data: dict, rule_keyword: str, rule_display: str) -> bool 
 
     # 2. Check alert_center_rules (populated by provider if API is available)
     for rule in data.get("alert_center_rules", []):
-        rule_name = rule.get("name", "").lower()
+        rule_name = rule.get("name", "")
         enabled = rule.get("enabled", rule.get("status", "") == "active")
-        if enabled and any(n in rule_name for n in match_names):
+        if enabled and _matches(rule_name):
             return True
 
     # 3. Check policies for alert rule definitions
     for rule in alert_rules:
-        rule_name = rule.get("name", "").lower()
-        rule_type = rule.get("type", "").lower()
-        if any(n in rule_name or n in rule_type for n in match_names):
+        if _matches(rule.get("name", "")) or _matches(rule.get("type", "")):
             return True
 
     # 4. Check known system-defined alerts from Google

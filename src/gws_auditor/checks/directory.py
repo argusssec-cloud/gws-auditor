@@ -126,7 +126,8 @@ def check_super_admin_usage(data: dict) -> CheckResult:
     for email in sa_emails:
         login_count = sum(
             1 for log in login_logs
-            if log.get("actor", {}).get("email", "") == email
+            if (log.get("actor_email") or (log.get("actor") or {}).get("email", "")) == email
+            and log.get("event_name", "login_success") in ("login_success", "")
         )
         if login_count > 10:
             heavy_users.append(f"{email} ({login_count} logins)")

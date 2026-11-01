@@ -185,21 +185,27 @@ def check_flagged_email_action(data: dict) -> CheckResult:
     ou_values = get_ou_values(gmail, "email_attachment_safety", admin_only=True)
     if not any(k in e["value"] for e in ou_values for k in _ATTACHMENT_CONSEQUENCE_FIELDS):
         ou_values = get_ou_values(gmail, "spam_override_lists", admin_only=True)  # legacy shape
+    judged = 0
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
             consequences = {k: entry["value"][k] for k in _ATTACHMENT_CONSEQUENCE_FIELDS
                             if k in entry["value"]}
             if consequences:
+                judged += 1
                 left_in_inbox = sorted(f"{k}={v}" for k, v in consequences.items()
                                        if v not in ("SPAM_FOLDER", "QUARANTINE"))
                 if left_in_inbox:
                     unsafe_ous.append({"org_unit": entry["org_unit"], "value": ", ".join(left_in_inbox)})
                 continue
+            if not any(k in entry["value"] for k in ("flaggedEmailAction", "flagged_email_action")):
+                continue  # entry says nothing about this control
+            judged += 1
             act = entry["value"].get("flaggedEmailAction",
                                      entry["value"].get("flagged_email_action", None))
             if act not in ("quarantine", "spam"):
                 unsafe_ous.append({"org_unit": entry["org_unit"], "value": act})
+    if judged:
         if unsafe_ous:
             ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
             return make_fail(
@@ -210,8 +216,8 @@ def check_flagged_email_action(data: dict) -> CheckResult:
             )
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) move flagged emails to quarantine/spam.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="quarantine or spam",
+            details=f"All {judged} OU(s) move flagged emails to quarantine/spam.",
+            actual_value=f"{judged} OU(s) safe", expected_value="quarantine or spam",
         )
 
     # Fallback: mapped root-level value

@@ -8,13 +8,24 @@ Supplements the main cisa_scuba module with deeper CommonControls coverage.
 Only checks NOT already covered by CIS/OTHER/GOOGLE or the main CISA module.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable, is_default_policy
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable, is_default_policy, is_admin_configured
 from ..models import CheckResult, Status
 
 
 # ===========================================================================
 # Common Controls 2 - Context-Aware Access
 # ===========================================================================
+
+# api_controls.unconfigured_third_party_apps: the Admin console labels the permissive option
+# "(Default) Allow users to access any third-party apps"; the API has no enum member for it and
+# returns the zero value ACCESS_LEVEL_UNSPECIFIED on the ADMIN policy (console-verified 2026-11-01).
+_DEFAULT_ALLOW_LABEL = "ACCESS_LEVEL_UNSPECIFIED (console default: allow any third-party app)"
+
+
+def _is_default_allow(entry: dict) -> bool:
+    level = str(entry.get("value", {}).get("accessLevel", "")).upper()
+    return level == "ACCESS_LEVEL_UNSPECIFIED" and is_admin_configured(entry)
+
 
 @check(
     check_id="GWS.COMMONCONTROLS.2.1",
@@ -363,12 +374,12 @@ def check_session_duration(data: dict) -> CheckResult:
                 web_dur = entry["value"].get("webSessionDuration", "")
                 if isinstance(web_dur, str) and web_dur.endswith("s"):
                     try:
-                        hours = int(float(web_dur[:-1])) // 3600
+                        hours = float(web_dur[:-1]) / 3600
                     except (ValueError, TypeError):
                         pass
             if hours is not None:
                 try:
-                    hours = int(hours)
+                    hours = float(hours)
                 except (ValueError, TypeError):
                     hours = None
             # Skip entries where the field is absent (DEFAULT/SYSTEM entries
@@ -376,7 +387,8 @@ def check_session_duration(data: dict) -> CheckResult:
             if hours is None and is_default_policy(entry):
                 continue
             if hours is None or hours > 12:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": hours})
+                shown = None if hours is None else (int(hours) if hours == int(hours) else round(hours, 2))
+                unsafe_ous.append({"org_unit": entry["org_unit"], "value": shown})
         if unsafe_ous:
             ou_list = ", ".join(f"{u['org_unit']} ({u['value']}h)" for u in unsafe_ous)
             return make_fail(
@@ -508,6 +520,7 @@ def check_admin_cloud_only(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.COMMONCONTROLS.8.3",
+    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure adding recovery information is disabled",
     level="L2",
     source="CISA",
@@ -822,12 +835,14 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
     if not ou_values:
         api_controls = policies.get("api_controls", {})
         ou_values = get_ou_values(api_controls, "unconfigured_third_party_apps")
-    ou_values = drop_unspecified(ou_values, "accessLevel")  # ACCESS_LEVEL_UNSPECIFIED = unknown
-    if ou_values:
-        unsafe_ous = []
-        # Safe access levels that restrict third-party apps
+    default_allow = [e for e in ou_values if _is_default_allow(e)]
+    ou_values = drop_unspecified(ou_values, "accessLevel")  # SYSTEM ACCESS_LEVEL_UNSPECIFIED = unknown
+    if ou_values or default_allow:
+        unsafe_ous = [{"org_unit": e["org_unit"], "value": _DEFAULT_ALLOW_LABEL} for e in default_allow]
+        # Safe access levels that restrict third-party apps (BLOCK_ALL is the documented enum,
+        # BLOCK_ALL_SCOPES was returned by older API versions)
         _SAFE_LEVELS = frozenset({
-            "BLOCK_ALL_SCOPES", "block_all_scopes",
+            "BLOCK_ALL", "block_all", "BLOCK_ALL_SCOPES", "block_all_scopes",
             "LIMITED_SCOPES", "limited_scopes",
         })
         for entry in ou_values:
@@ -1128,16 +1143,18 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
     if not ou_values:
         api_controls = policies.get("api_controls", {})
         ou_values = get_ou_values(api_controls, "unconfigured_third_party_apps")
-    ou_values = drop_unspecified(ou_values, "accessLevel")  # ACCESS_LEVEL_UNSPECIFIED = unknown
-    if ou_values:
-        unsafe_ous = []
+    default_allow = [e for e in ou_values if _is_default_allow(e)]
+    ou_values = drop_unspecified(ou_values, "accessLevel")  # SYSTEM ACCESS_LEVEL_UNSPECIFIED = unknown
+    if ou_values or default_allow:
+        unsafe_ous = [{"org_unit": e["org_unit"], "value": _DEFAULT_ALLOW_LABEL} for e in default_allow]
         for entry in ou_values:
             # Policy API field is accessLevel (api_controls.unconfigured_third_party_apps);
-            # only BLOCK_ALL_SCOPES blocks unconfigured apps (sign-in-only still allows access).
+            # only BLOCK_ALL (older API: BLOCK_ALL_SCOPES) blocks unconfigured apps
+            # (sign-in-only still allows access).
             access_level = entry["value"].get("accessLevel",
                                               entry["value"].get("access_level", None))
             if access_level is not None:
-                if str(access_level).upper() != "BLOCK_ALL_SCOPES":
+                if str(access_level).upper() not in ("BLOCK_ALL", "BLOCK_ALL_SCOPES"):
                     unsafe_ous.append({"org_unit": entry["org_unit"], "value": access_level})
                 continue
             val = entry["value"].get("allowUnconfiguredThirdPartyApps",
@@ -1207,6 +1224,7 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.COMMONCONTROLS.14.2",
+    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure audit log retention meets minimum requirements",
     level="L1",
     source="CISA",

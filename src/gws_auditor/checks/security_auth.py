@@ -709,11 +709,17 @@ def check_password_policy(data: dict) -> CheckResult:
     if ou_values:
         unsafe_ous = []
         for entry in ou_values:
-            min_len = entry["value"].get("minimumLength", 0)
+            try:
+                min_len = int(entry["value"].get("minimumLength", 0) or 0)
+            except (TypeError, ValueError):
+                min_len = 0
             enforce = entry["value"].get("enforceRequirementsAtLogin", None)
+            strength = str(entry["value"].get("allowedStrength", "") or "").upper()
             issues = []
             if min_len < 12:
                 issues.append(f"min_length={min_len}")
+            if strength == "WEAK":
+                issues.append("strength=WEAK")
             if enforce is not True:
                 issues.append(f"enforce_at_login={enforce}")
             if issues:

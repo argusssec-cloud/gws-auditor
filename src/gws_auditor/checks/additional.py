@@ -143,8 +143,13 @@ def check_mx_records(data: dict) -> CheckResult:
         # Legacy cache: re-derive from host strings.
         has_google_mx = False
         for mx in mx_records:
-            mx_host = mx.get("host", "").lower() if isinstance(mx, dict) else str(mx).lower()
-            if any(pattern in mx_host for pattern in google_mx_patterns):
+            if isinstance(mx, dict):
+                mx_host = str(mx.get("host") or mx.get("exchange") or "")
+            else:
+                mx_host = str(mx)
+            mx_host = mx_host.lower().rstrip(".")
+            if mx_host in google_mx_patterns or any(
+                    mx_host.endswith("." + pattern) for pattern in google_mx_patterns):
                 has_google_mx = True
                 break
 
@@ -826,6 +831,7 @@ def check_workspace_studio(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-16",
+    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure Apple Intelligence Writing Tools are disabled for Workspace",
     level="L2",
     source="GOOGLE",
@@ -866,6 +872,7 @@ def check_apple_writing_tools(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-18",
+    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure passkeys are enforced as primary authentication",
     level="L2",
     source="GOOGLE",

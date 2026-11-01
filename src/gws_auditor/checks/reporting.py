@@ -13,6 +13,7 @@ from ..models import CheckResult, Status
 
 @check(
     check_id="CIS-5.1.1.1",
+    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure App Usage Activity Report is reviewed",
     level="L1",
     source="CIS",
@@ -67,6 +68,7 @@ def check_usage_report_reviewed(data: dict) -> CheckResult:
 
 @check(
     check_id="CIS-5.1.1.2",
+    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure Security Investigation Tool is used",
     level="L1",
     source="CIS",
@@ -110,12 +112,12 @@ def check_security_investigation_tool(data: dict) -> CheckResult:
             ),
         )
 
-    return make_fail(
+    return make_review(
         check_id="CIS-5.1.1.2",
         title="Ensure Security Investigation Tool is used",
         level="L1", source="CIS", section="Reporting",
         details=(
-            "No evidence of Security Investigation Tool usage found in admin logs."
+            "No Security Investigation Tool activity is visible in the admin audit log; the log does not record tool usage reliably, so review usage manually."
         ),
         remediation=(
             "Admin console > Security > Investigation tool. "

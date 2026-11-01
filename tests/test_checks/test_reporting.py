@@ -56,7 +56,7 @@ class TestSecurityInvestigationTool:
         assert result.status == Status.MANUAL
         assert "1" in result.details
 
-    def test_fail_no_investigation_events(self, full_audit_data):
+    def test_no_investigation_events_is_manual(self, full_audit_data):
         from gws_auditor.checks.reporting import check_security_investigation_tool
 
         full_audit_data["admin_logs"] = [
@@ -64,13 +64,19 @@ class TestSecurityInvestigationTool:
             {"event_name": "password_change", "parameters": {}},
         ]
         result = check_security_investigation_tool(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "No evidence" in result.details
+        # The admin audit log does not record Investigation Tool use under any known event
+        # name, so absence of evidence is MANUAL, never a scored FAIL (plan Decision C).
+        assert result.status == Status.MANUAL
+        assert result.scored is False
+        assert "review usage manually" in result.details
 
-    def test_fail_with_empty_admin_logs(self, full_audit_data):
+    def test_empty_admin_logs_is_manual(self, full_audit_data):
         from gws_auditor.checks.reporting import check_security_investigation_tool
 
         full_audit_data["admin_logs"] = []
         result = check_security_investigation_tool(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "No evidence" in result.details
+        # The admin audit log does not record Investigation Tool use under any known event
+        # name, so absence of evidence is MANUAL, never a scored FAIL (plan Decision C).
+        assert result.status == Status.MANUAL
+        assert result.scored is False
+        assert "review usage manually" in result.details

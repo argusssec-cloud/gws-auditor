@@ -300,3 +300,44 @@ class TestHandCalculation:
         # score = round((1 - 67/158) * 100) = round(57.59) = 58
         assert out["score"] == 58
         assert out["grade"] == "D"
+
+
+class TestConsoleOverridesOnUnscoredAndManualChecks:
+    """Plan Decision C: pure-manual checks are unscored, but a PASS/FAIL set in the
+    console must move the score."""
+
+    def _manual(self, check_id="GWS.COMMONCONTROLS.8.3", scored=False):
+        from gws_auditor.models import CheckResult, Severity, Status
+        return CheckResult(check_id=check_id, title="t", status=Status.MANUAL,
+                           severity=Severity.MEDIUM, scored=scored)
+
+    def _failing(self):
+        from gws_auditor.models import CheckResult, Severity, Status
+        return CheckResult(check_id="X-1", title="t", status=Status.FAIL, severity=Severity.MEDIUM)
+
+    def test_unscored_manual_check_is_excluded_without_override(self):
+        from gws_auditor.scoring import compute_posture_score
+        r = compute_posture_score([self._manual(), self._failing()])
+        assert r["scored_count"] == 1 and r["excluded_count"] == 1 and r["score"] == 0
+
+    def test_override_pass_brings_unscored_check_into_score(self):
+        from gws_auditor.scoring import compute_posture_score
+        r = compute_posture_score([self._manual(), self._failing()], overrides={"GWS.COMMONCONTROLS.8.3": "PASS"})
+        assert r["scored_count"] == 2 and r["excluded_count"] == 0
+        assert r["score"] == 50
+
+    def test_override_fail_brings_unscored_check_into_score(self):
+        from gws_auditor.scoring import compute_posture_score
+        passing = self._failing(); passing.status = passing.status.__class__.PASS
+        r = compute_posture_score([self._manual(), passing], overrides={"GWS.COMMONCONTROLS.8.3": "FAIL"})
+        assert r["scored_count"] == 2 and r["score"] == 50
+
+    def test_override_on_scored_manual_check_counts(self):
+        from gws_auditor.scoring import compute_posture_score
+        r = compute_posture_score([self._manual("M-9", scored=True), self._failing()], overrides={"M-9": "PASS"})
+        assert r["scored_count"] == 2 and r["score"] == 50
+
+    def test_unknown_override_value_is_ignored(self):
+        from gws_auditor.scoring import compute_posture_score
+        r = compute_posture_score([self._manual(), self._failing()], overrides={"GWS.COMMONCONTROLS.8.3": "WARN"})
+        assert r["scored_count"] == 1

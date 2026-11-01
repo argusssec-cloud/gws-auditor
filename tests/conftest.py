@@ -350,3 +350,41 @@ def full_audit_data(
         "_options": {},
         "api_errors": [],
     }
+
+
+# ---------------------------------------------------------------------------
+# Status recorder (plan Layer 0 coverage gate). Enabled only when the
+# GWS_STATUS_RECORD environment variable names an output file; it records every
+# (check_id, status) a test produced so scripts/check_status_coverage.py can
+# verify that each scored check has PASS and FAIL/WARN/PARTIAL tests.
+# ---------------------------------------------------------------------------
+import collections as _collections
+import json as _json
+import os as _os
+
+_STATUS_RECORD_PATH = _os.environ.get("GWS_STATUS_RECORD")
+if _STATUS_RECORD_PATH:
+    from gws_auditor import models as _models
+
+    _RECORDED: dict = _collections.defaultdict(lambda: _collections.defaultdict(set))
+    _CURRENT_TEST = {"id": None}
+    _ORIGINAL_INIT = _models.CheckResult.__init__
+
+    def _recording_init(self, *args, **kwargs):
+        _ORIGINAL_INIT(self, *args, **kwargs)
+        if _CURRENT_TEST["id"]:
+            _RECORDED[self.check_id][self.status.value].add(_CURRENT_TEST["id"])
+
+    _models.CheckResult.__init__ = _recording_init
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_call(item):
+        _CURRENT_TEST["id"] = item.nodeid
+        yield
+        _CURRENT_TEST["id"] = None
+
+    def pytest_sessionfinish(session, exitstatus):
+        out = {cid: {st: sorted(tests) for st, tests in by_status.items()}
+               for cid, by_status in _RECORDED.items()}
+        with open(_STATUS_RECORD_PATH, "w") as fh:
+            _json.dump(out, fh, indent=1)

@@ -162,8 +162,8 @@ def make_dns_domain(
         ),
         mx=mx_records if mx_records is not None else (
             [
-                {"priority": 1, "exchange": "aspmx.l.google.com."},
-                {"priority": 5, "exchange": "alt1.aspmx.l.google.com."},
+                {"priority": 1, "host": "aspmx.l.google.com"},
+                {"priority": 5, "host": "alt1.aspmx.l.google.com"},
             ] if mx_uses_google else []
         ),
         mx_uses_google=mx_uses_google,

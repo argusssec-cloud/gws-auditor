@@ -313,6 +313,7 @@ def _forms_manual(check_id: str, title: str, guidance: str) -> CheckResult:
 
 @check(
     check_id="GWS.DRIVEDOCS.1.10",
+    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure forms cannot accept external responses when external sharing is off",
     level="L2", source="CISA", section="Drive and Docs", severity="LOW",
     remediation="Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options.",
@@ -327,6 +328,7 @@ def check_forms_external_responses(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.DRIVEDOCS.1.11",
+    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure users cannot respond to external forms when receiving files is off",
     level="L2", source="CISA", section="Drive and Docs", severity="LOW",
     remediation="Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options.",
