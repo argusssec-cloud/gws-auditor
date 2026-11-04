@@ -74,8 +74,9 @@ DOCUMENTED_DEFAULTS: dict[str, dict] = {
     },
     "security.super_admin_account_recovery": {"enableAccountRecovery": False},
     "security.two_step_verification_device_trust": {"allowTrustingDevice": True},
-    # Google documents enforcedFrom as "Unset": no enforcement. Represented as an absent field.
-    "security.two_step_verification_enforcement": {},
+    # Google documents enforcedFrom as "Unset": no enforcement. Represented as an explicit
+    # None so an absent enforcement policy still yields an entry that says "not enforced".
+    "security.two_step_verification_enforcement": {"enforcedFrom": None},
     "security.two_step_verification_enforcement_factor": {"allowedSignInFactorSet": "ALL"},
     "security.two_step_verification_enrollment": {"allowEnrollment": True},
     "security.two_step_verification_grace_period": {"enrollmentGracePeriod": "0s"},

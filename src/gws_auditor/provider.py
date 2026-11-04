@@ -1743,14 +1743,24 @@ def _map_gmail(policies: dict) -> None:
     # --- Spam override lists → spam_settings ---
     sol = gmail.get("spam_override_lists", {})
     if isinstance(sol, dict) and sol:
-        domains = sol.get("approvedSendersDomains", sol.get("domains", []))
-        if isinstance(domains, list):
-            ss = gmail.setdefault("spam_settings", {})
-            ss["approved_senders_domains"] = domains
-        bypass_domains = sol.get("domainsBypassAndHideWarnings", sol.get("bypassDomains", []))
-        if isinstance(bypass_domains, list):
-            ss = gmail.setdefault("spam_settings", {})
-            ss["domains_bypass_and_hide_warnings"] = bypass_domains
+        ss = gmail.setdefault("spam_settings", {})
+        # Real shape: spamOverride[] rules with flags; the legacy lists name the rules
+        # that bypass filters (bypassSelectedSenders) or hide the warning banner.
+        rules = sol.get("spamOverride")
+        if isinstance(rules, list):
+            ss["approved_senders_domains"] = [
+                str(r.get("description") or f"rule-{i}") for i, r in enumerate(rules)
+                if isinstance(r, dict) and r.get("bypassSelectedSenders") is True]
+            ss["domains_bypass_and_hide_warnings"] = [
+                str(r.get("description") or f"rule-{i}") for i, r in enumerate(rules)
+                if isinstance(r, dict) and r.get("hideWarningBannerFromSelectedSenders") is True]
+        else:  # older cache shapes
+            domains = sol.get("approvedSendersDomains", sol.get("domains", []))
+            if isinstance(domains, list):
+                ss["approved_senders_domains"] = domains
+            bypass_domains = sol.get("domainsBypassAndHideWarnings", sol.get("bypassDomains", []))
+            if isinstance(bypass_domains, list):
+                ss["domains_bypass_and_hide_warnings"] = bypass_domains
 
     # --- Spam override rules (spamOverride[]) → internal-sender bypass (CIS-3.1.3.6.2) ---
     sol_rules = gmail.get("spam_override_lists", {})
@@ -1814,8 +1824,10 @@ def _map_drive(policies: dict) -> None:
     if isinstance(fsu, dict) and fsu:
         update_val = fsu.get("securityUpdate", "")
         if update_val:
+            # Applied AND users cannot remove it (allowUsersToManageUpdate) is the compliant state.
             drive.setdefault("features", {})["security_update_for_files"] = (
                 update_val == "APPLY_TO_IMPACTED_FILES"
+                and fsu.get("allowUsersToManageUpdate") is not True
             )
 
     # --- Drive for Desktop → features ---
@@ -2077,13 +2089,22 @@ def _map_chat(policies: dict) -> None:
             chat.setdefault("spaces", {})["external_spaces_enabled"] = enabled
         mode = ces.get("domainAllowlistMode", "")
         if mode:
-            restriction_map = {
-                "ALL_DOMAINS": "unrestricted",
-                "ALLOWLISTED_DOMAINS": "allowlisted_domains",
-            }
-            chat.setdefault("external_chat", {})["restriction_mode"] = (
-                restriction_map.get(mode, mode.lower())
-            )
+            # External *spaces* allowlist mode; the 1:1 external chat restriction is a
+            # different setting (external_chat_restriction, mapped below).
+            chat.setdefault("spaces", {})["domain_allowlist_mode"] = mode
+
+    # --- External chat restriction (the 1:1 chat control) → external_chat ---
+    ecr = chat.get("external_chat_restriction", {})
+    if isinstance(ecr, dict) and ecr:
+        ext = chat.setdefault("external_chat", {})
+        allow = ecr.get("allowExternalChat")
+        restriction = str(ecr.get("externalChatRestriction") or "").upper()
+        if allow is False:
+            ext["restriction_mode"] = "disabled"
+        elif allow is True and restriction == "TRUSTED_DOMAINS":
+            ext["restriction_mode"] = "allowlisted_domains"
+        elif allow is True and restriction == "NO_RESTRICTION":
+            ext["restriction_mode"] = "unrestricted"
 
     # --- Chat apps access → apps ---
     caa = chat.get("chat_apps_access", {})
@@ -2104,8 +2125,8 @@ def _map_chat(policies: dict) -> None:
             # API enums: DEFAULT_HISTORY_ON/OFF, HISTORY_ALWAYS_ON/OFF
             is_on = state in ("DEFAULT_HISTORY_ON", "HISTORY_ALWAYS_ON", "ALWAYS_ON")
             hist = chat.setdefault("history", {})
-            hist["history_on_by_default"] = is_on
-            hist["history_enabled"] = is_on  # alias for CISA cisa_scuba
+            # space_history governs spaces only; chat_history (below) decides the
+            # 1:1 / group history defaults read by GWS.CHAT.1.1 and 1.2.
             hist["space_history_enabled"] = is_on  # alias for CISA cisa_services
             hist["history_state"] = state
             # CISA check_chat_history_user_control expects allow_user_modification

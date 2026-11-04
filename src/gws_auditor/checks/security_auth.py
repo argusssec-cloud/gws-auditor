@@ -115,7 +115,7 @@ def check_2sv_admin_enforcement(data: dict) -> CheckResult:
         if not u.get("is_enrolled_in_2sv", False) and not u.get("suspended", False)
     ]
 
-    if admin_enforcement == "enforced" and not admins_without_2sv:
+    if admin_enforcement in ("enforced", True) and not admins_without_2sv:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"2SV is enforced for all {len(admins)} admin account(s).",
@@ -136,7 +136,7 @@ def check_2sv_admin_enforcement(data: dict) -> CheckResult:
             remediation=_REMED,
         )
 
-    if admin_enforcement != "enforced":
+    if admin_enforcement not in ("enforced", True):
         return make_fail(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"2SV enforcement for admins is '{admin_enforcement}' instead of 'enforced'.",
@@ -347,7 +347,7 @@ def check_2sv_all_users(data: dict) -> CheckResult:
     total_users = len(users)
     enrolled_count = total_users - len(users_without_2sv)
 
-    if enforcement == "enforced" and not users_without_2sv:
+    if enforcement in ("enforced", True) and not users_without_2sv:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"2SV is enforced and all {total_users} users are enrolled.",
@@ -372,7 +372,7 @@ def check_2sv_all_users(data: dict) -> CheckResult:
             remediation=_REMED,
         )
 
-    if enforcement != "enforced":
+    if enforcement not in ("enforced", True):
         return make_fail(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"2SV enforcement is '{enforcement}' instead of 'enforced'.",

@@ -1,0 +1,749 @@
+{
+ "_comment": "One ADMIN and/or SYSTEM value per Cloud Identity Policy API setting type, as returned for a real tenant (2026-04 to 2026-09 snapshots), with identifiers, descriptions and addresses replaced by placeholders. Used by the pipeline round-trip tests.",
+ "settings": {
+  "api_controls.app_approval_requests": {
+   "SYSTEM": {
+    "allowedForAll": "ENABLED"
+   }
+  },
+  "api_controls.custom_user_message": {
+   "SYSTEM": {}
+  },
+  "api_controls.internal_apps": {
+   "ADMIN": {
+    "trustInternalApps": false
+   },
+   "SYSTEM": {
+    "trustInternalApps": true
+   }
+  },
+  "api_controls.unconfigured_third_party_apps": {
+   "ADMIN": {
+    "accessLevel": "ACCESS_LEVEL_UNSPECIFIED",
+    "accessLevelUnder18": "ACCESS_LEVEL_UNDER18_UNSPECIFIED"
+   },
+   "SYSTEM": {
+    "accessLevel": "ACCESS_LEVEL_UNSPECIFIED",
+    "accessLevelUnder18": "ACCESS_LEVEL_UNDER18_UNSPECIFIED"
+   }
+  },
+  "blogger.user_takeout": {
+   "SYSTEM": {
+    "takeoutStatus": "ENABLED"
+   }
+  },
+  "books.user_takeout": {
+   "SYSTEM": {
+    "takeoutStatus": "ENABLED"
+   }
+  },
+  "calendar.appointment_schedules": {
+   "SYSTEM": {
+    "enablePayments": false
+   }
+  },
+  "calendar.external_invitations": {
+   "ADMIN": {
+    "warnOnInvite": true
+   }
+  },
+  "calendar.primary_calendar_max_allowed_external_sharing": {
+   "ADMIN": {
+    "maxAllowedExternalSharing": "EXTERNAL_FREE_BUSY_ONLY"
+   }
+  },
+  "calendar.secondary_calendar_max_allowed_external_sharing": {
+   "ADMIN": {
+    "maxAllowedExternalSharing": "EXTERNAL_FREE_BUSY_ONLY"
+   }
+  },
+  "calendar.service_status": {
+   "ADMIN": {
+    "serviceState": "ENABLED"
+   }
+  },
+  "chat.chat_apps_access": {
+   "ADMIN": {
+    "enableApps": true,
+    "enableWebhooks": false
+   },
+   "SYSTEM": {
+    "enableApps": true,
+    "enableWebhooks": true
+   }
+  },
+  "chat.chat_external_spaces": {
+   "SYSTEM": {
+    "domainAllowlistMode": "ALL_DOMAINS",
+    "enabled": true
+   }
+  },
+  "chat.chat_file_sharing": {
+   "SYSTEM": {
+    "externalFileSharing": "ALL_FILES",
+    "internalFileSharing": "ALL_FILES"
+   }
+  },
+  "chat.chat_history": {
+   "ADMIN": {
+    "allowUserModification": false,
+    "historyOnByDefault": true
+   }
+  },
+  "chat.chat_space_access_default": {
+   "ADMIN": {
+    "accessType": "RESTRICTED"
+   },
+   "SYSTEM": {
+    "accessType": "PRIMARY_TARGET_AUDIENCE"
+   }
+  },
+  "chat.chat_third_party_archiving": {
+   "SYSTEM": {
+    "archivalFrequency": "86400s",
+    "enabled": false
+   }
+  },
+  "chat.content_reporting": {
+   "SYSTEM": {
+    "groupDirectMessagesReporting": "CONTENT_REPORTING_STATE_UNSPECIFIED",
+    "oneOnOneDirectMessagesReporting": "CONTENT_REPORTING_STATE_UNSPECIFIED",
+    "reportingFormCustomizationEnabled": false,
+    "spacesReporting": "CONTENT_REPORTING_STATE_UNSPECIFIED",
+    "spacesReportingType": "SPACES_REPORTING_TYPE_UNSPECIFIED"
+   }
+  },
+  "chat.external_chat_restriction": {
+   "ADMIN": {
+    "allowExternalChat": false,
+    "externalChatRestriction": "NO_RESTRICTION"
+   }
+  },
+  "chat.service_status": {
+   "ADMIN": {
+    "serviceState": "ENABLED"
+   }
+  },
+  "chat.space_history": {
+   "ADMIN": {
+    "historyState": "HISTORY_ALWAYS_ON"
+   },
+   "SYSTEM": {
+    "historyState": "DEFAULT_HISTORY_ON"
+   }
+  },
+  "classroom.api_data_access": {
+   "SYSTEM": {
+    "enableApiAccess": true
+   }
+  },
+  "classroom.class_membership": {
+   "SYSTEM": {
+    "whichClassesCanUsersJoin": "CLASSES_IN_DOMAIN",
+    "whoCanJoinClasses": "ANYONE_IN_DOMAIN"
+   }
+  },
+  "classroom.guardian_access": {
+   "SYSTEM": {
+    "allowAccess": false,
+    "whoCanManageGuardianAccess": "VERIFIED_TEACHERS_AND_DOMAIN_ADMINS"
+   }
+  },
+  "classroom.originality_reports": {
+   "SYSTEM": {
+    "enableOriginalityReportsSchoolMatches": false
+   }
+  },
+  "classroom.roster_import": {
+   "SYSTEM": {
+    "rosterImportOption": "OFF"
+   }
+  },
+  "classroom.service_status": {
+   "ADMIN": {
+    "serviceState": "ENABLED"
+   }
+  },
+  "classroom.student_unenrollment": {
+   "SYSTEM": {
+    "whoCanUnenrollStudents": "STUDENTS_AND_TEACHERS"
+   }
+  },
+  "classroom.teacher_permissions": {
+   "SYSTEM": {
+    "whoCanCreateClasses": "ALL_PENDING_AND_VERIFIED_TEACHERS"
+   }
+  },
+  "data_regions.data_at_rest_region": {
+   "SYSTEM": {
+    "region": "ANY_REGION"
+   }
+  },
+  "data_regions.data_processing_region": {
+   "SYSTEM": {
+    "limitToStorageRegion": false
+   }
+  },
+  "directory.external_directory_sharing": {
+   "ADMIN": {
+    "sharingOption": "REQUESTER_BASIC_PROFILE_ONLY"
+   }
+  },
+  "directory.workspace_resource_type_visibility": {
+   "SYSTEM": {
+    "domainSharedContacts": true,
+    "googleGroups": true
+   }
+  },
+  "drive_and_docs.drive_for_desktop": {
+   "ADMIN": {
+    "allowDriveForDesktop": false,
+    "allowRealTimePresence": true,
+    "restrictToAuthorizedDevices": false,
+    "showDownloadLink": true
+   },
+   "SYSTEM": {
+    "allowDriveForDesktop": true,
+    "allowRealTimePresence": true,
+    "restrictToAuthorizedDevices": false,
+    "showDownloadLink": true
+   }
+  },
+  "drive_and_docs.drive_sdk": {
+   "ADMIN": {
+    "enableDriveSdkApiAccess": false
+   }
+  },
+  "drive_and_docs.external_file_warning": {
+   "SYSTEM": {
+    "highlightingEnabled": true
+   }
+  },
+  "drive_and_docs.external_sharing": {
+   "ADMIN": {
+    "accessCheckerSuggestions": "RECIPIENTS_ONLY",
+    "allowNonGoogleInvites": false,
+    "allowNonGoogleInvitesInAllowlistedDomains": false,
+    "allowPublishingFiles": false,
+    "allowReceivingExternalFiles": true,
+    "allowReceivingFilesOutsideAllowlistedDomains": false,
+    "allowedPartiesForDistributingContent": "ELIGIBLE_INTERNAL_USERS",
+    "externalSharingMode": "ALLOWLISTED_DOMAINS",
+    "warnForExternalSharing": true,
+    "warnForSharingOutsideAllowlistedDomains": true
+   }
+  },
+  "drive_and_docs.file_security_update": {
+   "SYSTEM": {
+    "allowUsersToManageUpdate": true,
+    "securityUpdate": "APPLY_TO_IMPACTED_FILES"
+   }
+  },
+  "drive_and_docs.service_status": {
+   "ADMIN": {
+    "serviceState": "ENABLED"
+   }
+  },
+  "drive_and_docs.shared_drive_creation": {
+   "ADMIN": {
+    "allowContentManagersToShareFolders": true,
+    "allowExternalUserAccess": true,
+    "allowManagersToOverrideSettings": true,
+    "allowNonMemberAccess": true,
+    "allowSharedDriveCreation": true,
+    "allowedPartiesForDownloadPrintCopy": "ALL",
+    "customOrgUnit": "sample-id",
+    "orgUnitForNewSharedDrives": "CUSTOM_ORG_UNIT"
+   },
+   "SYSTEM": {
+    "allowContentManagersToShareFolders": true,
+    "allowExternalUserAccess": true,
+    "allowManagersToOverrideSettings": true,
+    "allowNonMemberAccess": true,
+    "allowSharedDriveCreation": false,
+    "allowedPartiesForDownloadPrintCopy": "ALL",
+    "customOrgUnit": "",
+    "orgUnitForNewSharedDrives": "CUSTOM_ORG_UNIT"
+   }
+  },
+  "early_access_apps.service_status": {
+   "ADMIN": {
+    "serviceState": "DISABLED"
+   }
+  },
+  "enterprise_service_restrictions.service_status": {
+   "ADMIN": {
+    "serviceState": "DISABLED"
+   }
+  },
+  "gmail.auto_forwarding": {
+   "ADMIN": {
+    "enableAutoForwarding": true
+   }
+  },
+  "gmail.comprehensive_mail_storage": {
+   "ADMIN": {
+    "ruleId": "sample-id"
+   }
+  },
+  "gmail.confidential_mode": {
+   "SYSTEM": {
+    "enableConfidentialMode": true
+   }
+  },
+  "gmail.email_attachment_safety": {
+   "ADMIN": {
+    "anomalousAttachmentProtectionConsequence": "WARNING",
+    "anomalousAttachmentProtectionQuarantineId": 0,
+    "applyFutureRecommendedSettingsAutomatically": true,
+    "attachmentWithScriptsProtectionConsequence": "WARNING",
+    "attachmentWithScriptsProtectionQuarantineId": 0,
+    "enableAnomalousAttachmentProtection": true,
+    "enableAttachmentWithScriptsProtection": true,
+    "enableEncryptedAttachmentProtection": true,
+    "encryptedAttachmentProtectionConsequence": "WARNING",
+    "encryptedAttachmentProtectionQuarantineId": 0
+   },
+   "SYSTEM": {
+    "anomalousAttachmentProtectionConsequence": "WARNING",
+    "anomalousAttachmentProtectionQuarantineId": 0,
+    "applyFutureRecommendedSettingsAutomatically": true,
+    "attachmentWithScriptsProtectionConsequence": "WARNING",
+    "attachmentWithScriptsProtectionQuarantineId": 0,
+    "enableAnomalousAttachmentProtection": false,
+    "enableAttachmentWithScriptsProtection": true,
+    "enableEncryptedAttachmentProtection": true,
+    "encryptedAttachmentProtectionConsequence": "WARNING",
+    "encryptedAttachmentProtectionQuarantineId": 0
+   }
+  },
+  "gmail.enhanced_pre_delivery_message_scanning": {
+   "ADMIN": {
+    "enableImprovedSuspiciousContentDetection": true
+   },
+   "SYSTEM": {
+    "enableImprovedSuspiciousContentDetection": true
+   }
+  },
+  "gmail.enhanced_smime_encryption": {
+   "SYSTEM": {
+    "allowUserToUploadCertificates": false
+   }
+  },
+  "gmail.imap_access": {
+   "ADMIN": {
+    "enableImapAccess": true,
+    "imapAccessRestriction": {
+     "allowAllClients": true
+    }
+   }
+  },
+  "gmail.links_and_external_images": {
+   "ADMIN": {
+    "applyFutureSettingsAutomatically": true,
+    "enableAggressiveWarningsOnUntrustedLinks": true,
+    "enableExternalImageScanning": true,
+    "enableShortenerScanning": true
+   },
+   "SYSTEM": {
+    "applyFutureSettingsAutomatically": true,
+    "enableAggressiveWarningsOnUntrustedLinks": true,
+    "enableExternalImageScanning": true,
+    "enableShortenerScanning": true
+   }
+  },
+  "gmail.mail_delegation": {
+   "ADMIN": {
+    "allowCustomDelegateAttribution": true,
+    "enableDelegateAttribution": true,
+    "enableMailDelegation": false,
+    "enableMailboxGroupDelegation": false
+   }
+  },
+  "gmail.per_user_outbound_gateway": {
+   "ADMIN": {
+    "allowUsersToUseExternalSmtpServers": false
+   }
+  },
+  "gmail.pop_access": {
+   "ADMIN": {
+    "enablePopAccess": true
+   }
+  },
+  "gmail.rule_states": {
+   "ADMIN": {
+    "ruleStates": [
+     {
+      "enabled": true,
+      "ruleId": "sample-id"
+     },
+     {
+      "enabled": true,
+      "ruleId": "sample-id"
+     }
+    ]
+   }
+  },
+  "gmail.service_status": {
+   "ADMIN": {
+    "serviceState": "ENABLED"
+   }
+  },
+  "gmail.spam_override_lists": {
+   "ADMIN": {
+    "spamOverride": [
+     {
+      "addToQuarantine": true,
+      "bypassInternalSenders": false,
+      "bypassSelectedSenders": true,
+      "enableAggressiveFiltering": false,
+      "hideWarningBannerFromSelectedSenders": false,
+      "quarantineId": 0,
+      "ruleId": "sample-id"
+     }
+    ]
+   }
+  },
+  "gmail.spoofing_and_authentication": {
+   "ADMIN": {
+    "applyFutureSettingsAutomatically": true,
+    "detectDomainNameSpoofing": true,
+    "detectDomainSpoofingFromUnauthenticatedSenders": true,
+    "detectEmployeeNameSpoofing": true,
+    "detectGroupsSpoofing": true,
+    "detectUnauthenticatedEmails": true,
+    "domainNameSpoofingConsequence": "WARNING",
+    "domainNameSpoofingQuarantineId": 0,
+    "domainSpoofingConsequence": "WARNING",
+    "domainSpoofingQuarantineId": 0,
+    "employeeNameSpoofingConsequence": "WARNING",
+    "employeeNameSpoofingQuarantineId": 0,
+    "groupsSpoofingConsequence": "WARNING",
+    "groupsSpoofingQuarantineId": 0,
+    "groupsSpoofingVisibilityType": "PRIVATE_GROUPS_ONLY",
+    "unauthenticatedEmailConsequence": "WARNING",
+    "unauthenticatedEmailQuarantineId": 0
+   },
+   "SYSTEM": {
+    "applyFutureSettingsAutomatically": true,
+    "detectDomainNameSpoofing": true,
+    "detectDomainSpoofingFromUnauthenticatedSenders": true,
+    "detectEmployeeNameSpoofing": true,
+    "detectGroupsSpoofing": false,
+    "detectUnauthenticatedEmails": false,
+    "domainNameSpoofingConsequence": "WARNING",
+    "domainNameSpoofingQuarantineId": 0,
+    "domainSpoofingConsequence": "WARNING",
+    "domainSpoofingQuarantineId": 0,
+    "employeeNameSpoofingConsequence": "WARNING",
+    "employeeNameSpoofingQuarantineId": 0,
+    "groupsSpoofingConsequence": "WARNING",
+    "groupsSpoofingQuarantineId": 0,
+    "groupsSpoofingVisibilityType": "PRIVATE_GROUPS_ONLY",
+    "unauthenticatedEmailConsequence": "WARNING",
+    "unauthenticatedEmailQuarantineId": 0
+   }
+  },
+  "gmail.user_email_uploads": {
+   "SYSTEM": {
+    "enableMailAndContactsImport": false
+   }
+  },
+  "gmail.web_offline": {
+   "SYSTEM": {
+    "enabled": false,
+    "signoutDataDeletionEnforced": false
+   }
+  },
+  "gmail.workspace_sync_for_outlook": {
+   "ADMIN": {
+    "enableGoogleWorkspaceSyncForMicrosoftOutlook": false
+   }
+  },
+  "groups_for_business.groups_sharing": {
+   "ADMIN": {
+    "collaborationCapability": "DOMAIN_USERS_ONLY",
+    "createGroupsAccessLevel": "ADMIN_ONLY",
+    "newGroupsAreHidden": false,
+    "ownersCanAllowExternalMembers": false,
+    "ownersCanAllowIncomingMailFromPublic": false,
+    "ownersCanHideGroups": false,
+    "viewTopicsDefaultAccessLevel": "GROUP_MEMBERS"
+   }
+  },
+  "groups_for_business.service_status": {
+   "ADMIN": {
+    "serviceState": "ENABLED"
+   }
+  },
+  "location_history.user_takeout": {
+   "SYSTEM": {
+    "takeoutStatus": "ENABLED"
+   }
+  },
+  "maps.user_takeout": {
+   "SYSTEM": {
+    "takeoutStatus": "ENABLED"
+   }
+  },
+  "meet.automatic_recording": {
+   "SYSTEM": {
+    "enabled": false
+   }
+  },
+  "meet.automatic_transcription": {
+   "SYSTEM": {
+    "enabled": false
+   }
+  },
+  "meet.meet_incoming_call_restrictions": {
+   "SYSTEM": {
+    "allowedCallers": "CONTACTS_AND_ORGANIZATION_ONLY"
+   }
+  },
+  "meet.meet_joining": {
+   "SYSTEM": {
+    "allowedAudience": "TRUSTED"
+   }
+  },
+  "meet.meet_messaging": {
+   "SYSTEM": {
+    "enabled": true
+   }
+  },
+  "meet.meet_polls": {
+   "SYSTEM": {
+    "enabled": true
+   }
+  },
+  "meet.meet_presenting": {
+   "SYSTEM": {
+    "enabled": true
+   }
+  },
+  "meet.meet_questions": {
+   "SYSTEM": {
+    "enabled": true
+   }
+  },
+  "meet.safety_access": {
+   "ADMIN": {
+    "meetingsAllowedToJoin": "SAME_ORGANIZATION_ONLY"
+   },
+   "SYSTEM": {
+    "meetingsAllowedToJoin": "ALL"
+   }
+  },
+  "meet.safety_domain": {
+   "ADMIN": {
+    "usersAllowedToJoin": "SAME_ORGANIZATION_ONLY"
+   },
+   "SYSTEM": {
+    "usersAllowedToJoin": "ALL"
+   }
+  },
+  "meet.safety_external_participants": {
+   "SYSTEM": {
+    "enableExternalLabel": true
+   }
+  },
+  "meet.safety_host_management": {
+   "ADMIN": {
+    "enableHostManagement": true
+   },
+   "SYSTEM": {
+    "enableHostManagement": false
+   }
+  },
+  "meet.service_status": {
+   "ADMIN": {
+    "serviceState": "ENABLED"
+   }
+  },
+  "meet.video_recording": {
+   "SYSTEM": {
+    "enableRecording": false
+   }
+  },
+  "multi_party_approval.calendar_actions": {
+   "SYSTEM": {
+    "calendarSharingMultiPartyApprovalState": "ENABLED",
+    "generalCalendarSettingsMultiPartyApprovalState": "ENABLED",
+    "thirdPartyArchivingSettingsMultiPartyApprovalState": "ENABLED"
+   }
+  },
+  "multi_party_approval.domains_actions": {
+   "SYSTEM": {
+    "domainsApiMultiPartyApprovalState": "DISABLED"
+   }
+  },
+  "multi_party_approval.groups_actions": {
+   "SYSTEM": {
+    "groupsSharingMultiPartyApprovalState": "ENABLED"
+   }
+  },
+  "multi_party_approval.require_approvals": {
+   "SYSTEM": {
+    "multiPartyApprovalState": "DISABLED"
+   }
+  },
+  "multi_party_approval.security_actions": {
+   "SYSTEM": {
+    "accountRecoveryMultiPartyApprovalState": "ENABLED",
+    "advancedProtectionProgramMultiPartyApprovalState": "ENABLED",
+    "contextAwareAccessMultiPartyApprovalState": "ENABLED",
+    "domainWideDelegationMultiPartyApprovalState": "ENABLED",
+    "loginChallengesMultiPartyApprovalState": "ENABLED",
+    "passwordlessMultiPartyApprovalState": "ENABLED",
+    "sessionControlsMultiPartyApprovalState": "ENABLED",
+    "ssoWithThirdPartyIdpsMultiPartyApprovalState": "ENABLED",
+    "twoStepVerificationMultiPartyApprovalState": "ENABLED"
+   }
+  },
+  "multi_party_approval.security_actions_api_access": {
+   "SYSTEM": {
+    "ssoWithThirdPartyIdpsMultiPartyApprovalState": "ENABLED"
+   }
+  },
+  "pay.user_takeout": {
+   "SYSTEM": {
+    "takeoutStatus": "ENABLED"
+   }
+  },
+  "photos.user_takeout": {
+   "SYSTEM": {
+    "takeoutStatus": "ENABLED"
+   }
+  },
+  "play.user_takeout": {
+   "SYSTEM": {
+    "takeoutStatus": "ENABLED"
+   }
+  },
+  "play_console.user_takeout": {
+   "SYSTEM": {
+    "takeoutStatus": "ENABLED"
+   }
+  },
+  "security.advanced_protection_program": {
+   "ADMIN": {
+    "enableAdvancedProtectionSelfEnrollment": true,
+    "securityCodeOption": "ALLOWED_WITHOUT_REMOTE_ACCESS"
+   },
+   "SYSTEM": {
+    "enableAdvancedProtectionSelfEnrollment": true,
+    "securityCodeOption": "ALLOWED_WITHOUT_REMOTE_ACCESS"
+   }
+  },
+  "security.less_secure_apps": {
+   "ADMIN": {
+    "allowLessSecureApps": true
+   }
+  },
+  "security.login_challenges": {
+   "ADMIN": {
+    "enableEmployeeIdChallenge": false
+   },
+   "SYSTEM": {
+    "enableEmployeeIdChallenge": false
+   }
+  },
+  "security.passkeys_restriction": {
+   "SYSTEM": {
+    "allowedPasskeysType": "ANY_DEVICE_OR_PLATFORM"
+   }
+  },
+  "security.password": {
+   "ADMIN": {
+    "allowReuse": false,
+    "allowedStrength": "WEAK",
+    "enforceRequirementsAtLogin": true,
+    "expirationDuration": "0s",
+    "maximumLength": 100,
+    "minimumLength": 8
+   },
+   "SYSTEM": {
+    "allowReuse": false,
+    "allowedStrength": "STRONG",
+    "enforceRequirementsAtLogin": false,
+    "expirationDuration": "0s",
+    "maximumLength": 100,
+    "minimumLength": 8
+   }
+  },
+  "security.session_controls": {
+   "SYSTEM": {
+    "webSessionDuration": "1209600s"
+   }
+  },
+  "security.super_admin_account_recovery": {
+   "ADMIN": {
+    "enableAccountRecovery": false
+   },
+   "SYSTEM": {
+    "enableAccountRecovery": true
+   }
+  },
+  "security.two_step_verification_device_trust": {
+   "ADMIN": {
+    "allowTrustingDevice": false
+   }
+  },
+  "security.two_step_verification_enforcement": {
+   "ADMIN": {
+    "enforcedFrom": "2026-03-15T19:32:19.954Z"
+   }
+  },
+  "security.two_step_verification_enforcement_factor": {
+   "ADMIN": {
+    "allowedSignInFactorSet": "NO_TELEPHONY"
+   }
+  },
+  "security.two_step_verification_enrollment": {
+   "ADMIN": {
+    "allowEnrollment": true
+   }
+  },
+  "security.two_step_verification_grace_period": {
+   "ADMIN": {
+    "enrollmentGracePeriod": "604800s"
+   }
+  },
+  "security.two_step_verification_sign_in_code": {
+   "ADMIN": {
+    "backupCodeExceptionPeriod": "86400s"
+   }
+  },
+  "security.user_account_recovery": {
+   "ADMIN": {
+    "enableAccountRecovery": false
+   }
+  },
+  "sites.service_status": {
+   "ADMIN": {
+    "serviceState": "DISABLED"
+   }
+  },
+  "sites.sites_creation_and_modification": {
+   "SYSTEM": {
+    "allowSitesCreation": true,
+    "allowSitesModification": true
+   }
+  },
+  "takeout.service_status": {
+   "ADMIN": {
+    "serviceState": "ENABLED"
+   }
+  },
+  "workspace_marketplace.apps_access_options": {
+   "ADMIN": {
+    "accessLevel": "ALLOW_ALL"
+   }
+  },
+  "youtube.user_takeout": {
+   "SYSTEM": {
+    "takeoutStatus": "ENABLED"
+   }
+  }
+ }
+}
