@@ -183,7 +183,8 @@
    "serviceState"
   ],
   "gmail.auto_forwarding": [
-   "enableAutoForwarding"
+   "enableAutoForwarding",
+   "allowedForwardingDestination"
   ],
   "gmail.comprehensive_mail_storage": [
    "ruleId"
@@ -466,5 +467,20 @@
   "youtube.user_takeout": [
    "takeoutStatus"
   ]
+ },
+ "enum_values_seen_live": {
+  "workspace_marketplace.apps_access_options.accessLevel": [
+   "ALLOW_ALL",
+   "ALLOW_LISTED_APPS"
+  ],
+  "gmail.auto_forwarding.allowedForwardingDestination": [
+   "ANY_ADDRESS"
+  ],
+  "api_controls.unconfigured_third_party_apps.accessLevel": [
+   "ACCESS_LEVEL_UNSPECIFIED (console: allow any)",
+   "BLOCK_ALL",
+   "UNSPECIFIED_UBER_BLOCK (SYSTEM, undocumented)"
+  ],
+  "_note": "Members observed on a live tenant during P6 flip tests (2026-11-01 and 2026-11-04)."
  }
 }
