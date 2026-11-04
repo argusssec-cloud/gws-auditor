@@ -25,30 +25,7 @@ KNOWN_KEYS = {t.split(".", 1)[1] for t in SHAPES}
 MATRIX = json.loads((Path(__file__).parent / "fixtures" / "check_test_matrix.json").read_text())
 
 # (check function, setting key) -> why it is still looked up although the API never returns it.
-DEAD_SETTING_KEYS: dict[tuple[str, str], str] = {
-    ("check_primary_cal_internal_sharing", "primary_calendar_max_allowed_internal_sharing"): "P3: not in Policy API; ACL sampling path remains",
-    ("check_secondary_cal_internal_sharing", "secondary_calendar_max_allowed_internal_sharing"): "P3: not in Policy API; always MANUAL",
-    ("check_drive_offline_access", "drive_offline"): "P3: not in Policy API; always MANUAL",
-    ("check_access_approvals_enabled", "assured_controls"): "P3: admin-log inference is the live path",
-    ("check_support_access_region", "assured_controls"): "P3: access_management.user_scoping is the live path",
-    ("check_multi_region_processing_disabled", "assured_controls"): "P3: admin-log inference is the live path",
-    ("check_chat_content_reporting", "chat_reporting"): "P3: real type is chat.content_reporting",
-    ("check_chat_reporting_categories", "chat_reporting"): "P3: real type is chat.content_reporting",
-    ("check_class_membership_restricted", "sharing"): "P3: real type is classroom.class_membership",
-    ("check_classes_to_join_restricted", "sharing"): "P3: real type is classroom.class_membership",
-    ("check_classroom_api_disabled", "api_access"): "P3: real type is classroom.api_data_access",
-    ("check_teachers_only_unenroll", "class_settings"): "P3: real type is classroom.student_unenrollment",
-    ("check_class_creation_verified_teachers", "class_settings"): "P3: real type is classroom.teacher_permissions",
-    ("check_user_consent_low_risk", "app_access"): "P3: decide against api_controls.unconfigured_third_party_apps",
-    ("check_data_regions", "data_regions"): "P3: real type is data_regions.data_at_rest_region",
-    ("check_data_processing_in_region", "data_regions"): "P3: real type is data_regions.data_processing_region",
-    ("check_multi_party_approval", "multi_party_approval"): "P3: real type is multi_party_approval.require_approvals",
-    ("check_sso_verification", "sso"): "P3: not in Policy API; always ERROR today",
-    ("check_third_party_sso_verification", "sso"): "P3: not in Policy API; always ERROR today",
-    ("check_conflicting_accounts", "account_management"): "P3: not in Policy API; always MANUAL",
-    ("check_gemini_unlicensed_access", "access"): "P3: admin-log inference is the live path",
-    ("check_gemini_alpha_features", "features"): "P3: admin-log inference is the live path",
-}
+DEAD_SETTING_KEYS: dict[tuple[str, str], str] = {}  # all resolved in plan phase P3
 
 # GOOGLE_DEFAULTS setting type -> invented field names tolerated until P0 decides the defaults policy.
 DEFAULTS_WITH_INVENTED_FIELDS: dict[str, set[str]] = {}

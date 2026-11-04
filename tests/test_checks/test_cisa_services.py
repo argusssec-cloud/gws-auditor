@@ -1005,42 +1005,17 @@ class TestChatSpaceHistoryOU:
         assert "/Support" in result.details
 
 
-class TestChatReportingCategoriesOU:
-    """OU-aware tests for GWS.CHAT.5.2: check_chat_reporting_categories."""
+class TestChatReportingCategoriesIsManualByDesign:
+    """P3: the Policy API exposes no reporting-category list, so GWS.CHAT.5.2 is review-only and unscored."""
 
-    def test_all_ous_safe(self, full_audit_data):
+    def test_real_content_reporting_entry_is_review(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_chat_reporting_categories
-
-        full_audit_data["policies"]["chat"] = {
-            "_ou_policies": [
-                make_ou_policy("chat", "chat_reporting",
-                                {"allCategoriesSelected": True}, "/"),
-                make_ou_policy("chat", "chat_reporting",
-                                {"allCategoriesSelected": True}, "/Engineering"),
-            ],
-        }
+        full_audit_data["subscription_type"] = "Google Workspace Enterprise Plus"
+        full_audit_data["policies"]["chat"] = {"_ou_policies": [
+            make_ou_policy("chat", "content_reporting", {"spacesReporting": "CONTENT_REPORTING_STATE_ENABLED"}, "/")]}
         result = check_chat_reporting_categories(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
-
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_services import check_chat_reporting_categories
-
-        full_audit_data["policies"]["chat"] = {
-            "_ou_policies": [
-                make_ou_policy("chat", "chat_reporting",
-                                {"allCategoriesSelected": True}, "/"),
-                make_ou_policy("chat", "chat_reporting",
-                                {"allCategoriesSelected": False}, "/Contractors"),
-            ],
-        }
-        result = check_chat_reporting_categories(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Contractors" in result.details
-
-
-# -- Calendar OU-aware tests --
-
+        assert result.status in (Status.MANUAL, Status.ERROR)
+        assert result.scored is False
 
 class TestCalendarInteropAuthMethodGlobal:
     """Global-level tests for GWS.CALENDAR.3.2 (not per-OU)."""
@@ -1212,7 +1187,6 @@ class TestUnknownValuesAreManual:
         ("drive", "shared_drive_creation", "check_drive_non_member_access"),
         ("drive", "drive_for_desktop", "check_drive_desktop_restricted"),
         ("chat", "space_history", "check_chat_space_history"),
-        ("chat", "chat_reporting", "check_chat_reporting_categories"),
     ])
     def test_empty_value_without_documented_default_is_manual(self, full_audit_data, category, setting_key, check_name):
         """Was FAIL for every one of these."""

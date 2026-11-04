@@ -425,6 +425,7 @@ def check_domain_wide_delegation(data: dict) -> CheckResult:
 
 @check(
     check_id="CIS-4.2.2.1",
+    scored=False,  # P3: Context-Aware Access policies are not exposed by the Policy API; MANUAL by design
     title="Ensure geo-blocking is configured",
     level="L2",
     source="CIS",
@@ -660,6 +661,7 @@ def _parse_session_duration_hours(duration) -> float | None:
 
 @check(
     check_id="CIS-4.2.5.1",
+    scored=False,  # P3: Google Cloud session control is not exposed by the Policy API; MANUAL by design
     title="Ensure cloud session control is configured",
     level="L2",
     source="CIS",

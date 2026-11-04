@@ -36,10 +36,7 @@ BY_DESIGN: dict[str, str] = {
 }
 
 # check_id -> reason the gap is tolerated for now (plan phase P3: dead setting keys).
-KNOWN_GAPS: dict[str, str] = {
-    "GWS.COMMONCONTROLS.7.1": "P3: dead setting key, no tests",
-    "CIS-4.2.3.1": "P3: reads never-populated keys; FAIL unreachable",
-}
+KNOWN_GAPS: dict[str, str] = {}
 
 
 def main() -> int:

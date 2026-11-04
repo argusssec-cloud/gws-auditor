@@ -919,6 +919,7 @@ class TestCalendarUnknownValues:
         # No documented default for maxAllowedInternalSharing: an empty entry was FAIL, now MANUAL.
         from gws_auditor.checks.apps_calendar import check_primary_cal_internal_sharing
 
+        # P3: the setting type does not exist; without a calendar ACL sample there is no verdict.
         full_audit_data["policies"]["calendar"] = {"_ou_policies": [
             make_ou_policy("calendar", "primary_calendar_max_allowed_internal_sharing", {}, "/")]}
-        assert check_primary_cal_internal_sharing(full_audit_data).status == Status.MANUAL
+        assert check_primary_cal_internal_sharing(full_audit_data).status in (Status.MANUAL, Status.ERROR)

@@ -2818,9 +2818,26 @@ def _map_rules(policies: dict) -> None:
                     calendar_rules.append(rule_data)
                     break
 
+    # Real rule.dlp policies: one entry per rule in _ou_policies (the flattened dict above
+    # keeps only the last rule per setting name, so it is not enough on its own).
+    rule_policies = [p for p in rules.get("_ou_policies", []) or []
+                     if isinstance(p, dict) and str(p.get("setting", {}).get("type", "")).endswith("rule.dlp")]
+    for policy in rule_policies:
+        value = policy.get("setting", {}).get("value", {}) or {}
+        if str(value.get("state", "")).upper() != "ACTIVE":
+            continue
+        triggers = value.get("triggers", []) or []
+        blob = " ".join(str(t.get("app", t.get("application", t))) if isinstance(t, dict) else str(t) for t in triggers)
+        if "calendar" in blob.lower() and value not in calendar_rules:
+            calendar_rules.append(value)
+
     if calendar_rules:
         dlp["calendar_dlp_rules"] = calendar_rules
         dlp["calendar_dlp_enabled"] = True
+    elif rule_policies or rules.get("_ou_policies"):
+        # The rules category was fetched and holds no active Calendar rule.
+        dlp["calendar_dlp_rules"] = []
+        dlp["calendar_dlp_enabled"] = False
 
     # --- rule.dlp policies → per-app DLP state ---
     # Each DLP rule is a ``settings/rule.dlp`` policy whose value carries

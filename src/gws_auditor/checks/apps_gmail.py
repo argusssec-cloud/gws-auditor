@@ -101,6 +101,22 @@ def check_gmail_offline(data: dict) -> CheckResult:
     """Offline Gmail should be disabled to prevent cached data exposure."""
     policies = data.get("policies", {})
     gmail = policies.get("gmail", {})
+
+    # OU-aware path: real type gmail.web_offline.enabled
+    ou_values = get_ou_values(gmail, "web_offline")
+    if ou_values:
+        def _judge(entry):
+            enabled = field_value(entry, "enabled", "offlineAccessEnabled")
+            return None if enabled is None else (enabled is False, enabled)
+        return ou_verdict(
+            ou_values, _judge, check_id="CIS-3.1.3.1.2", title="Ensure offline Gmail is disabled",
+            level="L2", source="CIS", section="Gmail",
+            fail_text="have offline Gmail enabled", pass_text="have offline Gmail disabled",
+            expected_value="Disabled for all OUs",
+            remediation=("Admin console > Apps > Google Workspace > Gmail > User settings. "
+                         "Disable 'Enable offline Gmail'. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"),
+        )
+
     user_settings = gmail.get("user_settings", {})
     offline_enabled = user_settings.get("offline_access_enabled", None)
 
@@ -1690,12 +1706,21 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(gmail, "comprehensive_mail_storage")
     if ou_values:
+        # The Policy API returns only a ruleId for this setting; whether that rule is
+        # switched on lives in gmail.rule_states.ruleStates[] (ruleId, enabled) for the OU.
+        rule_states: dict[str, dict[str, bool]] = {}
+        for st in get_ou_values(gmail, "rule_states"):
+            for rs in (st.get("value") or {}).get("ruleStates", []) or []:
+                if isinstance(rs, dict) and rs.get("ruleId") is not None:
+                    rule_states.setdefault(st["org_unit"], {})[str(rs["ruleId"])] = rs.get("enabled")
+
         def _judge(entry: dict):
-            # The Policy API returns only a ruleId for this setting, with no
-            # enabled/disabled flag, so the state is unknown unless a legacy
-            # flag is present.
             enabled = field_value(entry, "enableComprehensiveMailStorage", "enabled")
-            return None if enabled is None else enabled is True
+            if enabled is None:
+                rule_id = field_value(entry, "ruleId")
+                if rule_id is not None:
+                    enabled = rule_states.get(entry["org_unit"], rule_states.get("/", {})).get(str(rule_id))
+            return None if enabled is None else (enabled is True, enabled)
 
         return ou_verdict(
             ou_values, _judge,
@@ -1744,6 +1769,7 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
 
 @check(
     check_id="CIS-3.1.3.7.2",
+    scored=False,  # P3: TLS compliance rules are not exposed by the Policy API; MANUAL by design
     title="Ensure secure TLS connection is enforced",
     level="L1",
     source="CIS",

@@ -452,11 +452,12 @@ class TestMpaVaultExports:
         result = check_mpa_vault_exports(full_audit_data)
         assert result.status == Status.FAIL
 
-    def test_mpa_vault_not_configured_fail(self, full_audit_data):
+    def test_mpa_vault_not_exposed_is_review(self, full_audit_data):
+        """P3: the Policy API has no Vault multi-party-approval setting; unknown is MANUAL, not FAIL."""
         from gws_auditor.checks.additional import check_mpa_vault_exports
-        # No multi_party_approval key
         result = check_mpa_vault_exports(full_audit_data)
-        assert result.status == Status.FAIL
+        assert result.status == Status.MANUAL
+        assert result.scored is False
 
 
 class TestGmailClassificationLabels:
@@ -513,11 +514,11 @@ class TestCalendarDlp:
         result = check_calendar_dlp(full_audit_data)
         assert result.status == Status.FAIL
 
-    def test_calendar_dlp_not_configured_fail(self, full_audit_data):
+    def test_calendar_dlp_rules_not_collected_is_review(self, full_audit_data):
+        """No rules category at all: unknown, not FAIL (P3)."""
         from gws_auditor.checks.additional import check_calendar_dlp
-        # No dlp_rules key in calendar, no dlp key in security
         result = check_calendar_dlp(full_audit_data)
-        assert result.status == Status.FAIL
+        assert result.status == Status.MANUAL
 
 
 class TestGmailCse:

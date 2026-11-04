@@ -28,6 +28,7 @@ from ..constants import DANGEROUS_OAUTH_SCOPES, OAUTH_SCOPE_RISK_LEVELS
 
 @check(
     check_id="ADD-02",
+    scored=False,  # P3: Security Sandbox is not exposed by the Policy API; MANUAL by design
     title="Ensure Security Sandbox is enabled for Gmail",
     level="L1",
     source="OTHER",
@@ -270,6 +271,7 @@ def check_inbound_gateway_spf(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-07",
+    scored=False,  # P3: partner TLS compliance rules are not exposed by the Policy API; MANUAL by design
     title="Ensure TLS is enforced for partner domains",
     level="L2",
     source="GOOGLE",
@@ -505,6 +507,7 @@ def check_takeout_restriction(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-11",
+    scored=False,  # P3: client-side encryption is not exposed by the Policy API; MANUAL by design
     title="Ensure client-side encryption is enabled",
     level="L2",
     source="GOOGLE",
@@ -653,6 +656,7 @@ def check_gmail_dlp(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-13",
+    scored=False,  # P3: Gemini Workspace features are not exposed by any API; MANUAL by design
     title="Ensure Gemini features in Workspace apps are controlled",
     level="L1",
     source="GOOGLE",
@@ -771,6 +775,7 @@ def check_gemini_chrome(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-15",
+    scored=False,  # P3: Workspace Studio is not exposed by any API; MANUAL by design
     title="Ensure Google Workspace Studio access is controlled",
     level="L2",
     source="GOOGLE",
@@ -1176,6 +1181,7 @@ def check_caa_saml_default(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-21",
+    scored=False,  # P3: Vault multi-party approval is not exposed by the Policy API; MANUAL by design
     title="Ensure Multi-Party Approval covers Vault exports",
     level="L2",
     source="GOOGLE",
@@ -1205,7 +1211,7 @@ def check_mpa_vault_exports(data: dict) -> CheckResult:
         )
 
     if vault_covered is None:
-        return make_fail(
+        return make_review(
             check_id="ADD-21",
             title="Ensure Multi-Party Approval covers Vault exports",
             level="L2", source="GOOGLE", section="Security",
@@ -1236,6 +1242,7 @@ def check_mpa_vault_exports(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-22",
+    scored=False,  # P3: Gmail classification labels are not exposed by any API; MANUAL by design
     title="Ensure data classification labels are enabled for Gmail",
     level="L1",
     source="GOOGLE",
@@ -1334,7 +1341,7 @@ def check_calendar_dlp(data: dict) -> CheckResult:
         )
 
     if calendar_dlp_enabled is None and cal_dlp_rules is None:
-        return make_fail(
+        return make_review(
             check_id="ADD-23",
             title="Ensure DLP rules are configured for Calendar",
             level="L2", source="GOOGLE", section="Calendar",
@@ -1368,6 +1375,7 @@ def check_calendar_dlp(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-24",
+    scored=False,  # P3: Drive AI classification is not exposed by any API; MANUAL by design
     title="Ensure AI-powered data classification is enabled for Drive",
     level="L2",
     source="GOOGLE",
@@ -1487,6 +1495,7 @@ def check_drive_trust_rules(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-26",
+    scored=False,  # P3: Gmail CSE is not exposed by the Policy API; MANUAL by design
     title="Ensure CSE is enabled for Gmail",
     level="L2",
     source="GOOGLE",

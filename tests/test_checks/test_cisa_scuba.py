@@ -852,50 +852,34 @@ class TestChatHistoryUserControlOU:
 
 
 class TestChatContentReportingOU:
-    """OU-aware tests for GWS.CHAT.5.1."""
+    """GWS.CHAT.5.1 on the real chat.content_reporting states. The enabled/disabled enum members are
+    not documented; the check recognises *ENABLED* / *DISABLED* and treats *_UNSPECIFIED as unknown."""
+
+    def _set(self, data, *entries):
+        data["subscription_type"] = "Google Workspace Enterprise Plus"
+        data["policies"]["chat"] = {"_ou_policies": [
+            make_ou_policy("chat", "content_reporting", {
+                "oneOnOneDirectMessagesReporting": st, "groupDirectMessagesReporting": st, "spacesReporting": st}, ou)
+            for ou, st in entries]}
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_chat_content_reporting
-
-        full_audit_data["policies"]["chat"] = {
-            "_ou_policies": [
-                make_ou_policy("chat", "chat_reporting",
-                                {"contentReportingEnabled": True}, "/"),
-                make_ou_policy("chat", "chat_reporting",
-                                {"contentReportingEnabled": True}, "/Engineering"),
-            ],
-        }
+        self._set(full_audit_data, ("/", "CONTENT_REPORTING_STATE_ENABLED"), ("/Engineering", "CONTENT_REPORTING_STATE_ENABLED"))
         result = check_chat_content_reporting(full_audit_data)
         assert result.status == Status.PASS
         assert "2 OU(s)" in result.details
 
     def test_child_ou_unsafe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_chat_content_reporting
-
-        full_audit_data["policies"]["chat"] = {
-            "_ou_policies": [
-                make_ou_policy("chat", "chat_reporting",
-                                {"contentReportingEnabled": True}, "/"),
-                make_ou_policy("chat", "chat_reporting",
-                                {"contentReportingEnabled": False}, "/Contractors"),
-            ],
-        }
+        self._set(full_audit_data, ("/", "CONTENT_REPORTING_STATE_ENABLED"), ("/Contractors", "CONTENT_REPORTING_STATE_DISABLED"))
         result = check_chat_content_reporting(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Contractors" in result.details
 
-    def test_fallback_when_no_ou_policies(self, full_audit_data):
+    def test_live_unspecified_states_are_unknown(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_chat_content_reporting
-
-        full_audit_data["policies"]["chat"] = {
-            "content_reporting": {"enabled": True},
-        }
-        result = check_chat_content_reporting(full_audit_data)
-        assert result.status == Status.PASS
-
-
-# --- Drive and Docs OU tests ---
-
+        self._set(full_audit_data, ("/", "CONTENT_REPORTING_STATE_UNSPECIFIED"))
+        assert check_chat_content_reporting(full_audit_data).status == Status.MANUAL
 
 class TestDriveReceiveNonAllowlistedOU:
     """OU-aware tests for GWS.DRIVEDOCS.1.2."""  # real fields; invented receiveFilesFromNonAllowlisted dropped

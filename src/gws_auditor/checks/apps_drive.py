@@ -898,6 +898,7 @@ def check_shared_drive_viewer_restrictions(data: dict) -> CheckResult:
 
 @check(
     check_id="CIS-3.1.2.2.1",
+    scored=False,  # P3: Drive offline access is not exposed by the Policy API; MANUAL by design
     title="Ensure offline access to Drive is disabled",
     level="L2",
     source="CIS",
@@ -922,7 +923,7 @@ def check_drive_offline_access(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "drive_offline")
+    ou_values = []  # P3: "drive_and_docs.drive_offline" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         def _judge(entry: dict):
             val = field_value(entry, "enableOfflineAccess", "enabled")

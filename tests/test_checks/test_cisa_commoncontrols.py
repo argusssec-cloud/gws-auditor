@@ -413,73 +413,20 @@ class TestContextAwareAccessOU:
         assert "/Sales" in result.details
 
 
-class TestSSOVerificationOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.3.1 SSO verification."""
+class TestSsoVerificationIsManualByDesign:
+    """P3: SSO profiles are not a Policy API setting type, so GWS.COMMONCONTROLS.3.1 / 3.2 can
+    only ask for review and are unscored."""
 
-    def test_all_ous_safe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_sso_verification
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "sso",
-                                {"postSsoVerificationEnabled": True}, "/"),
-                make_ou_policy("security", "sso",
-                                {"postSsoVerificationEnabled": True}, "/Engineering"),
-            ],
-        }
-        result = check_sso_verification(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
-
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_sso_verification
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "sso",
-                                {"postSsoVerificationEnabled": True}, "/"),
-                make_ou_policy("security", "sso",
-                                {"postSsoVerificationEnabled": False}, "/Marketing"),
-            ],
-        }
-        result = check_sso_verification(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Marketing" in result.details
-
-
-class TestThirdPartySSOVerificationOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.3.2 third-party SSO verification."""
-
-    def test_all_ous_safe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_third_party_sso_verification
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "sso",
-                                {"thirdPartySsoVerificationEnabled": True}, "/"),
-                make_ou_policy("security", "sso",
-                                {"thirdPartySsoVerificationEnabled": True}, "/Finance"),
-            ],
-        }
-        result = check_third_party_sso_verification(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
-
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_third_party_sso_verification
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "sso",
-                                {"thirdPartySsoVerificationEnabled": True}, "/"),
-                make_ou_policy("security", "sso",
-                                {"thirdPartySsoVerificationEnabled": False}, "/Contractors"),
-            ],
-        }
-        result = check_third_party_sso_verification(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Contractors" in result.details
-
+    def test_any_sso_shaped_input_is_review(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import (
+            check_sso_verification, check_third_party_sso_verification)
+        full_audit_data["subscription_type"] = "Google Workspace Enterprise Plus"
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "sso", {"postSsoVerificationEnabled": True}, "/")]}
+        for check in (check_sso_verification, check_third_party_sso_verification):
+            result = check(full_audit_data)
+            assert result.status in (Status.MANUAL, Status.ERROR), check.__name__
+            assert result.scored is False
 
 class TestSessionDurationOU:
     """OU-aware tests for GWS.COMMONCONTROLS.4.1 session duration.
@@ -705,38 +652,33 @@ class TestThirdPartyApiRestrictedOU:
 
 
 class TestUserConsentLowRiskOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.10.2 user consent low-risk scopes."""
+    """GWS.COMMONCONTROLS.10.2 on the real api_controls.unconfigured_third_party_apps.accessLevel."""
+
+    def _set(self, data, *levels):
+        data["subscription_type"] = "Google Workspace Enterprise Plus"
+        data["policies"]["security"] = {}
+        data["policies"]["api_controls"] = {"_ou_policies": [
+            make_ou_policy("api_controls", "unconfigured_third_party_apps", {"accessLevel": lv}, ou)
+            for ou, lv in levels]}
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "app_access",
-                                {"allowUserConsentLowRisk": False}, "/"),
-                make_ou_policy("security", "app_access",
-                                {"allowUserConsentLowRisk": False}, "/Legal"),
-            ],
-        }
+        self._set(full_audit_data, ("/", "BLOCK_ALL"), ("/Legal", "BLOCK_ALL_SCOPES"))
         result = check_user_consent_low_risk(full_audit_data)
         assert result.status == Status.PASS
         assert "2 OU(s)" in result.details
 
     def test_child_ou_unsafe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "app_access",
-                                {"allowUserConsentLowRisk": False}, "/"),
-                make_ou_policy("security", "app_access",
-                                {"allowUserConsentLowRisk": True}, "/Marketing"),
-            ],
-        }
+        self._set(full_audit_data, ("/", "BLOCK_ALL"), ("/Marketing", "ALLOW_SIGN_IN_ONLY"))
         result = check_user_consent_low_risk(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Marketing" in result.details
 
+    def test_console_default_allow_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
+        self._set(full_audit_data, ("/", "ACCESS_LEVEL_UNSPECIFIED"))
+        assert check_user_consent_low_risk(full_audit_data).status == Status.FAIL
 
 class TestUnconfiguredInternalAppsOU:
     """OU-aware tests for GWS.COMMONCONTROLS.10.3 unconfigured internal apps.
@@ -844,38 +786,37 @@ class TestUnconfiguredThirdPartyAppsOU:
 
 
 class TestDataProcessingInRegionOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.15.2 data processing in region."""
+    """GWS.COMMONCONTROLS.15.2 on the real data_regions.data_processing_region.limitToStorageRegion."""
+
+    def _set(self, data, *flags):
+        data["subscription_type"] = "Google Workspace Enterprise Plus"
+        data["policies"]["security"] = {}
+        data["policies"]["data_regions"] = {"_ou_policies": [
+            make_ou_policy("data_regions", "data_processing_region", {"limitToStorageRegion": v}, ou)
+            for ou, v in flags]}
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_data_processing_in_region
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "data_regions",
-                                {"processingInRegion": True}, "/"),
-                make_ou_policy("security", "data_regions",
-                                {"processingInRegion": True}, "/Finance"),
-            ],
-        }
+        self._set(full_audit_data, ("/", True), ("/Finance", True))
         result = check_data_processing_in_region(full_audit_data)
         assert result.status == Status.PASS
         assert "2 OU(s)" in result.details
 
     def test_child_ou_unsafe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_data_processing_in_region
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "data_regions",
-                                {"processingInRegion": True}, "/"),
-                make_ou_policy("security", "data_regions",
-                                {"processingInRegion": False}, "/Remote"),
-            ],
-        }
+        self._set(full_audit_data, ("/", True), ("/Remote", False))
         result = check_data_processing_in_region(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Remote" in result.details
 
+    def test_live_system_default_fails(self, full_audit_data):
+        """The live SYSTEM policy says limitToStorageRegion=false: the value in force fails."""
+        from gws_auditor.checks.cisa_commoncontrols import check_data_processing_in_region
+        self._set(full_audit_data, ("/", False))
+        for e in full_audit_data["policies"]["data_regions"]["_ou_policies"]:
+            e["_raw"] = {"type": "SYSTEM"}
+        result = check_data_processing_in_region(full_audit_data)
+        assert result.status == Status.FAIL and "Google default" in result.details
 
 class TestUnusedServicesDisabledOU:
     """OU-aware tests for GWS.COMMONCONTROLS.16.1 unused services.
@@ -1077,11 +1018,9 @@ class TestUnknownValuesAreManual:
     is unknown. No OU may PASS or FAIL because of it; a real non-compliant OU still wins."""
 
     @pytest.mark.parametrize("setting_key, check_name", [
-        ("sso", "check_sso_verification"),
-        ("sso", "check_third_party_sso_verification"),
-        ("app_access", "check_user_consent_low_risk"),
+        ("unconfigured_third_party_apps", "check_user_consent_low_risk"),
         ("internal_apps", "check_unconfigured_internal_apps"),
-        ("data_regions", "check_data_processing_in_region"),
+        ("data_processing_region", "check_data_processing_in_region"),
         ("dlp", "check_dlp_chat"),
         ("dlp", "check_dlp_gmail"),
         ("dlp", "check_dlp_block_external"),
@@ -1099,9 +1038,10 @@ class TestUnknownValuesAreManual:
     def test_non_compliant_ou_beats_unknown_ou(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
 
+        full_audit_data["subscription_type"] = "Google Workspace Enterprise Plus"
         full_audit_data["policies"]["security"] = {"_ou_policies": [
-            make_ou_policy("security", "app_access", {}, "/"),
-            make_ou_policy("security", "app_access", {"allowUserConsentLowRisk": True}, "/Marketing"),
+            make_ou_policy("api_controls", "unconfigured_third_party_apps", {}, "/"),
+            make_ou_policy("api_controls", "unconfigured_third_party_apps", {"accessLevel": "ALLOW_SIGN_IN_ONLY"}, "/Marketing"),
         ]}
         result = check_user_consent_low_risk(full_audit_data)
         assert result.status == Status.FAIL

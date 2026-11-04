@@ -136,9 +136,8 @@ def check_primary_cal_internal_sharing(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(
-        cal, "primary_calendar_max_allowed_internal_sharing",
-    )
+    ou_values = []  # P3: "calendar.primary_calendar_max_allowed_internal_sharing" is not a Cloud Identity Policy API setting type; nothing to look up
+    # The calendar ACL sample below is the live evidence for this control.
     if ou_values:
         def _judge(entry):
             sharing = field_value(entry, "maxAllowedInternalSharing")
@@ -346,6 +345,7 @@ def check_secondary_cal_external_sharing(data: dict) -> CheckResult:
 
 @check(
     check_id="CIS-3.1.1.2.2",
+    scored=False,  # P3: secondary-calendar internal sharing is not exposed by the Policy API; MANUAL by design
     title="Ensure internal sharing for secondary calendars is configured",
     level="L2",
     source="CIS",
@@ -370,9 +370,7 @@ def check_secondary_cal_internal_sharing(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(
-        cal, "secondary_calendar_max_allowed_internal_sharing",
-    )
+    ou_values = []  # P3: "calendar.secondary_calendar_max_allowed_internal_sharing" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         def _judge(entry):
             sharing = field_value(entry, "maxAllowedInternalSharing")

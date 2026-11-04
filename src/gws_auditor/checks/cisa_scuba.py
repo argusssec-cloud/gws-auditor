@@ -734,13 +734,24 @@ def check_chat_content_reporting(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "chat_reporting")
+    ou_values = get_ou_values(chat, "content_reporting")
     if ou_values:
         def _judge(entry):
-            enabled = field_value(entry, "contentReportingEnabled", "enabled")
-            if enabled is None:
+            # Real fields: oneOnOneDirectMessagesReporting, groupDirectMessagesReporting,
+            # spacesReporting (CONTENT_REPORTING_STATE_* enums). The enabled/disabled
+            # members are not documented; *_UNSPECIFIED (seen live on editions without
+            # the feature) is unknown.
+            states = [field_value(entry, f) for f in ("oneOnOneDirectMessagesReporting",
+                                                      "groupDirectMessagesReporting", "spacesReporting")]
+            if any(st is None for st in states):
                 return None
-            return (enabled is True, enabled)
+            off = [st for st in states if "DISABLED" in str(st).upper() or str(st).upper().endswith("_OFF")]
+            on = [st for st in states if "ENABLED" in str(st).upper() or str(st).upper().endswith("_ON")]
+            if off:
+                return (False, ", ".join(sorted(set(off))))
+            if len(on) == len(states):
+                return (True, "enabled")
+            return None
 
         return ou_verdict(
             ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
@@ -2366,6 +2377,7 @@ def check_trust_device_disabled(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.COMMONCONTROLS.7.1",
+    scored=False,  # P3: conflicting-account management is not exposed by the v1 Policy API; MANUAL by design
     title="Ensure conflicting account management is configured",
     level="L1",
     source="CISA",
@@ -2389,7 +2401,7 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "account_management")
+    ou_values = []  # P3: "security.account_management" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "conflictingAccountsManaged", "conflicting_accounts_managed")
@@ -2525,8 +2537,7 @@ def check_data_regions(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = (get_ou_values(security, "data_at_rest_region")
-                 or get_ou_values(security, "data_regions"))
+    ou_values = (get_ou_values(security, "data_at_rest_region"))
     if ou_values:
         def _judge(entry):
             # Policy API: data_regions.data_at_rest_region.region (US / EUROPE / ANY_REGION)
@@ -2630,7 +2641,7 @@ def check_multi_party_approval(data: dict) -> CheckResult:
             expected_value="ENABLED", remediation=_REMED,
         )
 
-    ou_values = get_ou_values(security, "multi_party_approval")
+    ou_values = []  # P3: "multi_party_approval.multi_party_approval" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "enabled", "multiPartyApprovalEnabled")
@@ -2740,8 +2751,7 @@ def check_class_membership_restricted(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = (get_ou_values(classroom, "class_membership")
-                 or get_ou_values(classroom, "sharing"))
+    ou_values = (get_ou_values(classroom, "class_membership"))
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "whoCanJoinClasses", "classMembership", "class_membership")
@@ -2822,8 +2832,7 @@ def check_classes_to_join_restricted(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = (get_ou_values(classroom, "class_membership")
-                 or get_ou_values(classroom, "sharing"))
+    ou_values = (get_ou_values(classroom, "class_membership"))
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "whichClassesCanUsersJoin", "classesToJoin", "classes_to_join")
@@ -2892,8 +2901,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = (get_ou_values(classroom, "api_data_access")
-                 or get_ou_values(classroom, "api_access"))
+    ou_values = (get_ou_values(classroom, "api_data_access"))
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "enableApiAccess", "enabled", "apiAccessEnabled")
@@ -3060,8 +3068,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = (get_ou_values(classroom, "student_unenrollment")
-                 or get_ou_values(classroom, "class_settings"))
+    ou_values = (get_ou_values(classroom, "student_unenrollment"))
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "whoCanUnenrollStudents", "who_can_unenroll_students")
@@ -3145,8 +3152,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
     classroom = policies.get("classroom", {})
 
     # OU-aware path
-    ou_values = (get_ou_values(classroom, "teacher_permissions")
-                 or get_ou_values(classroom, "class_settings"))
+    ou_values = (get_ou_values(classroom, "teacher_permissions"))
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "whoCanCreateClasses", "who_can_create_classes")
@@ -3234,7 +3240,7 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
     gemini = policies.get("gemini", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gemini, "access")
+    ou_values = []  # P3: "gemini.access" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "unlicensedAccessEnabled", "unlicensed_access_enabled")
@@ -3329,7 +3335,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
     gemini = policies.get("gemini", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gemini, "features")
+    ou_values = []  # P3: "gemini.features" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "alphaFeaturesEnabled", "alpha_features_enabled")
@@ -3429,7 +3435,7 @@ def check_access_approvals_enabled(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "assured_controls")
+    ou_values = []  # P3: "security.assured_controls" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "accessApprovalsEnabled", "access_approvals_enabled")
@@ -3542,7 +3548,7 @@ def check_support_access_region(data: dict) -> CheckResult:
             expected_value="US_GOOGLE_STAFF for all OUs", remediation=_REMED,
         )
 
-    ou_values = get_ou_values(security, "assured_controls")
+    ou_values = []  # P3: "security.assured_controls" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "supportAccessRegion", "support_access_region")
@@ -3627,7 +3633,7 @@ def check_multi_region_processing_disabled(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "assured_controls")
+    ou_values = []  # P3: "security.assured_controls" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         def _judge(entry):
             val = field_value(entry, "multiRegionProcessingEnabled", "multi_region_processing_enabled")

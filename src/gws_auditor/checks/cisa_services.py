@@ -1345,6 +1345,7 @@ def check_chat_space_history(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.CHAT.5.2",
+    scored=False,  # P3: reporting categories are not exposed by the Policy API; MANUAL by design
     title="Ensure all Chat reporting categories are selected",
     level="L2",
     source="CISA",
@@ -1371,7 +1372,7 @@ def check_chat_reporting_categories(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "chat_reporting")
+    ou_values = []  # P3: "chat.chat_reporting (and chat.content_reporting carries no category list)" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         return ou_verdict(
             ou_values, _flag_judge("allCategoriesSelected", "all_categories_selected", expected=True),
@@ -1430,6 +1431,7 @@ def check_chat_reporting_categories(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.CALENDAR.3.2",
+    scored=False,  # P3: the interop authentication method is not exposed by the Policy API; MANUAL by design
     title="Ensure Calendar Interop uses Microsoft 365 Graph API",
     level="L2",
     source="CISA",

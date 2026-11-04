@@ -147,6 +147,7 @@ def check_context_aware_access(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.COMMONCONTROLS.3.1",
+    scored=False,  # P3: SSO profiles are not exposed by the Policy API; MANUAL by design
     title="Ensure SSO verification is enabled for organization SSO profile",
     level="L2",
     source="CISA",
@@ -173,7 +174,7 @@ def check_sso_verification(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "sso")
+    ou_values = []  # P3: "security.sso" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         return ou_verdict(
             ou_values, _flag_judge("postSsoVerificationEnabled", "post_sso_verification_enabled", expected=True),
@@ -227,6 +228,7 @@ def check_sso_verification(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.COMMONCONTROLS.3.2",
+    scored=False,  # P3: SSO profiles are not exposed by the Policy API; MANUAL by design
     title="Ensure post-SSO verification is enabled for third-party SSO",
     level="L2",
     source="CISA",
@@ -253,7 +255,7 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "sso")
+    ou_values = []  # P3: "security.sso" is not a Cloud Identity Policy API setting type; nothing to look up
     if ou_values:
         return ou_verdict(
             ou_values, _flag_judge("thirdPartySsoVerificationEnabled", "third_party_sso_verification_enabled",
@@ -886,10 +888,25 @@ def check_user_consent_low_risk(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "app_access")
+    # Real signal: api_controls.unconfigured_third_party_apps.accessLevel. Users can consent to
+    # low-risk (sign-in) scopes of unconfigured apps unless access is blocked entirely.
+    ou_values = (get_ou_values(security, "unconfigured_third_party_apps")
+                 or get_ou_values(policies.get("api_controls", {}), "unconfigured_third_party_apps"))
     if ou_values:
+        def _consent_judge(entry):
+            if _is_default_allow(entry):
+                return (False, _DEFAULT_ALLOW_LABEL)
+            level = field_value(entry, "accessLevel")
+            if level is None:
+                return None
+            lv = str(level).upper()
+            if lv in ("BLOCK_ALL", "BLOCK_ALL_SCOPES"):
+                return (True, level)
+            if "SIGN_IN" in lv or "ALLOW" in lv:
+                return (False, level)
+            return None
         return ou_verdict(
-            ou_values, _flag_judge("allowUserConsentLowRisk", "allow_user_consent_low_risk", expected=False),
+            ou_values, _consent_judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             fail_text="allow user consent to low-risk scopes",
             pass_text="prevent user consent to low-risk scopes",
@@ -1215,10 +1232,12 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
     security = policies.get("security", {})
 
     # OU-aware path
-    ou_values = get_ou_values(security, "data_regions")
+    # Real type: data_regions.data_processing_region.limitToStorageRegion
+    ou_values = (get_ou_values(security, "data_processing_region")
+                 or get_ou_values(policies.get("data_regions", {}), "data_processing_region"))
     if ou_values:
         return ou_verdict(
-            ou_values, _flag_judge("processingInRegion", "processing_in_region", expected=True),
+            ou_values, _flag_judge("limitToStorageRegion", "processingInRegion", "processing_in_region", expected=True),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             fail_text="do not restrict data processing to region",
             pass_text="restrict data processing to selected region",
