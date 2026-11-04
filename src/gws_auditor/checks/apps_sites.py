@@ -34,7 +34,18 @@ def check_sites_creation_disabled(data: dict) -> CheckResult:
     sites = policies.get("sites", {})
 
     # OU-aware path
-    ou_values = get_ou_values(sites, "sites_creation_and_modification")
+    # A Sites service that is OFF for the OU cannot be used to create sites (console-verified
+    # 2026-11-04: service OFF for everyone while the SYSTEM creation flag stayed true).
+    service_off = [e["org_unit"] for e in get_ou_values(sites, "service_status")
+                   if str(field_value(e, "serviceState") or "").upper() == "DISABLED"]
+    ou_values = [e for e in get_ou_values(sites, "sites_creation_and_modification")
+                 if e["org_unit"] not in service_off]
+    if service_off and not ou_values:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"Google Sites is turned off for OU(s): {', '.join(sorted(service_off))}; sites cannot be created.",
+            actual_value="service OFF", expected_value="Disabled for all OUs",
+        )
     if ou_values:
         def _judge(entry):
             allow = field_value(entry, "allowSitesCreation")

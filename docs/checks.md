@@ -28,7 +28,7 @@ The GWS Security Auditor implements **227 security checks** across four framewor
 | **MEDIUM** | 80 |
 | **LOW** | 42 |
 
-40 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
+41 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
 
 ## Check Statuses
 
@@ -91,7 +91,7 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 | CIS-3.1.1.1.3 | Ensure external invitations show warning | L1 | CIS | MEDIUM |  |
 | CIS-3.1.1.2.1 | Ensure external sharing for secondary calendars is limited | L1 | CIS | MEDIUM |  |
 | CIS-3.1.1.2.2 | Ensure internal sharing for secondary calendars is configured | L2 | CIS | MEDIUM | unscored |
-| CIS-3.1.1.3.1 | Ensure Calendar web offline access is disabled | L2 | CIS | MEDIUM |  |
+| CIS-3.1.1.3.1 | Ensure Calendar web offline access is disabled | L2 | CIS | MEDIUM | unscored |
 | GWS.CALENDAR.3.1 | Ensure Calendar Interop is disabled | L1 | CISA | MEDIUM |  |
 | GWS.CALENDAR.3.2 | Ensure Calendar Interop uses Microsoft 365 Graph API | L2 | CISA | MEDIUM | unscored |
 | GWS.CALENDAR.4.1 | Ensure paid appointment scheduling is disabled | L1 | CISA | LOW | Business Standard+ |

@@ -422,6 +422,7 @@ def check_secondary_cal_internal_sharing(data: dict) -> CheckResult:
 
 @check(
     check_id="CIS-3.1.1.3.1",
+    scored=False,  # P6: the Policy API never returns calendar_offline_access; MANUAL by design
     title="Ensure Calendar web offline access is disabled",
     level="L2",
     source="CIS",

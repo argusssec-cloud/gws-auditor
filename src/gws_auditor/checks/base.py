@@ -645,6 +645,11 @@ def get_ou_values(category_dict: dict, raw_setting_key: str,
     # DEFAULT), so an admin override beats Google's default and a SYSTEM-only
     # setting is the value in force. Fields still absent take Google's documented
     # default when one exists.
+    # An injected DEFAULT entry (synthetic, from the policy client or an older cache) is only
+    # evidence while Google documents that default; a stale one must not be judged.
+    raw_results = [e for e in raw_results
+                   if not (is_default_policy(e) and str((e.get("_raw") or {}).get("type", "")).upper() != "SYSTEM"
+                           and not defaults_for_setting(raw_setting_key))]
     if not raw_results and synthesized is not None:
         # The API was queried for this setting family and returned no policy for the
         # setting: per Google, every field then takes its documented default.

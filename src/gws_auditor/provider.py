@@ -1504,6 +1504,10 @@ def _normalize_policies(policies, ou_id_map: dict[str, str] | None = None) -> di
                 for policy in sorted_policies:
                     if not isinstance(policy, dict):
                         continue
+                    if _is_stale_injected_default(policy):
+                        # A synthetic default from an older version for a setting Google
+                        # documents no default for: a guess, not evidence (plan P6).
+                        continue
 
                     setting = policy.get("setting", {})
                     setting_type = ""
@@ -1555,6 +1559,15 @@ def _normalize_policies(policies, ou_id_map: dict[str, str] | None = None) -> di
             normalized[category] = {}
 
     return normalized
+
+
+def _is_stale_injected_default(policy: dict) -> bool:
+    raw = policy.get("_raw") if isinstance(policy.get("_raw"), dict) else policy
+    if str(raw.get("type", policy.get("type", ""))).upper() != "DEFAULT" and "/_default/" not in str(policy.get("name", "")):
+        return False
+    from .google_defaults import ALL_DEFAULTS
+    setting_type = str(policy.get("setting", {}).get("type", "")).replace("settings/", "")
+    return not ALL_DEFAULTS.get(setting_type)
 
 
 def _parse_duration_seconds(duration_str: str) -> int:

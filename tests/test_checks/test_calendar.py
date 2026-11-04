@@ -355,8 +355,9 @@ class TestCalOfflineAccess:
         result = check_cal_offline_access(full_audit_data)
         assert result.status == Status.MANUAL
 
-    def test_end_to_end_default_injection(self, full_audit_data):
-        """An injected documented default is the value in force: judged, with provenance."""
+    def test_end_to_end_stale_default_injection_is_ignored(self, full_audit_data):
+        """A synthetic DEFAULT for calendar_offline_access (older caches) is not documented by
+        Google and contradicted the console (P6): it is dropped, the check is MANUAL and unscored."""
         from gws_auditor.provider import normalize_data
         from gws_auditor.checks.apps_calendar import check_cal_offline_access
 
@@ -380,8 +381,8 @@ class TestCalOfflineAccess:
         }
         result = normalize_data(raw)
         check_result = check_cal_offline_access(result)
-        assert check_result.status == Status.FAIL
-        assert "Google default" in check_result.details
+        assert check_result.status == Status.MANUAL
+        assert check_result.scored is False
 
     def test_end_to_end_disabled(self, full_audit_data):
         """API returns enableOfflineAccess=False → PASS via normalize_data."""
@@ -907,13 +908,15 @@ class TestCalendarUnknownValues:
         assert check_primary_cal_external_sharing(full_audit_data).status == Status.PASS
         assert check_secondary_cal_external_sharing(full_audit_data).status == Status.FAIL
 
-    def test_offline_access_empty_uses_admin_help_default(self, full_audit_data):
-        # Admin Help documents offline access as enabled by default, so an empty entry is FAIL.
+    def test_offline_access_without_api_entry_is_manual(self, full_audit_data):
+        """P6: the Policy API never returns calendar_offline_access and the Admin-Help default
+        contradicted the console (offline OFF while the default said on), so no default is
+        injected: an empty or absent entry is unknown and the check is unscored."""
         from gws_auditor.checks.apps_calendar import check_cal_offline_access
-
         full_audit_data["policies"]["calendar"] = {"_ou_policies": [
             make_ou_policy("calendar", "calendar_offline_access", {}, "/")]}
-        assert check_cal_offline_access(full_audit_data).status == Status.FAIL
+        result = check_cal_offline_access(full_audit_data)
+        assert result.status == Status.MANUAL and result.scored is False
 
     def test_internal_sharing_unknown_is_manual(self, full_audit_data):
         # No documented default for maxAllowedInternalSharing: an empty entry was FAIL, now MANUAL.

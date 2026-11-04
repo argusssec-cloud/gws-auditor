@@ -104,9 +104,9 @@ ADMIN_HELP_DEFAULTS: dict[str, dict] = {
     "gmail.per_user_outbound_gateway": {"allowUsersToUseExternalSmtpServers": False},
     # No approved-sender list exists until an admin creates one.
     "gmail.spam_override_lists": {"spamOverride": []},
-    # "By default, user can use Calendar even when offline."
-    # https://knowledge.workspace.google.com/admin/security/monitor-the-health-of-your-calendar-settings
-    "calendar.calendar_offline_access": {"enableOfflineAccess": True},
+    # calendar.calendar_offline_access is deliberately absent: the API never returned it and
+    # the Admin-Help default ("on") contradicted a tenant whose console showed it off
+    # (verified 2026-11-04). An absent setting is unknown.
     # "By default, Users can edit sites and Allow users to create new sites are enabled."
     # https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off (API also returns a SYSTEM policy)
     "sites.sites_creation_and_modification": {"allowSitesCreation": True, "allowSitesModification": True},

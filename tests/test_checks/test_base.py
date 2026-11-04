@@ -352,3 +352,29 @@ class TestAbsentSettingTakesDocumentedDefault:
         result = check_gmail_auto_forwarding(full_audit_data)
         assert result.status == Status.FAIL  # documented default: auto-forwarding enabled
         assert "Google default" in result.details
+
+
+class TestStaleInjectedDefaultsAreIgnored:
+    """A cache written by an older version may carry an injected DEFAULT entry for a setting
+    Google documents no default for (P6: calendar offline). It is a guess, not evidence."""
+
+    def test_stale_default_entry_is_dropped(self):
+        from gws_auditor.checks.base import get_ou_values
+        from tests.factories import make_ou_policy
+        stale = make_ou_policy("calendar", "calendar_offline_access", {"enableOfflineAccess": True})
+        stale["_raw"] = {"type": "DEFAULT"}; stale["name"] = "policies/_default/calendar.calendar_offline_access"
+        assert get_ou_values({"_ou_policies": [stale]}, "calendar_offline_access") == []
+
+    def test_system_policy_is_never_dropped(self):
+        from gws_auditor.checks.base import get_ou_values
+        from tests.factories import make_ou_policy
+        sysp = make_ou_policy("calendar", "calendar_offline_access", {"enableOfflineAccess": True})
+        sysp["_raw"] = {"type": "SYSTEM"}
+        assert len(get_ou_values({"_ou_policies": [sysp]}, "calendar_offline_access")) == 1
+
+    def test_documented_default_entry_is_kept(self):
+        from gws_auditor.checks.base import get_ou_values
+        from tests.factories import make_ou_policy
+        dflt = make_ou_policy("gmail", "mail_delegation", {"enableMailDelegation": False})
+        dflt["_raw"] = {"type": "DEFAULT"}; dflt["name"] = "policies/_default/gmail.mail_delegation"
+        assert len(get_ou_values({"_ou_policies": [dflt]}, "mail_delegation")) == 1
