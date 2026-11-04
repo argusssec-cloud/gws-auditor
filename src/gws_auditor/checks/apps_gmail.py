@@ -7,7 +7,10 @@
 CIS Google Workspace Benchmark v1.3.0 - Gmail controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, result_from_setting_changes
+from .base import (
+    check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
+    result_from_setting_changes, field_value, ou_verdict,
+)
 from ..models import CheckResult, Status
 
 
@@ -40,25 +43,18 @@ def check_gmail_mail_delegation(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "mail_delegation", admin_only=True)
+    ou_values = get_ou_values(gmail, "mail_delegation")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableMailDelegation", None)
-            if enabled is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have mail delegation enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "enableMailDelegation")
+            return None if value is None else value is False
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have mail delegation disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have mail delegation enabled",
+            pass_text="have mail delegation disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -494,25 +490,18 @@ def check_gmail_encrypted_attachment(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "email_attachment_safety", admin_only=True)
+    ou_values = get_ou_values(gmail, "email_attachment_safety")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableEncryptedAttachmentProtection", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack encrypted attachment protection: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "enableEncryptedAttachmentProtection")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have encrypted attachment protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack encrypted attachment protection",
+            pass_text="have encrypted attachment protection enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -568,25 +557,18 @@ def check_gmail_script_attachment(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "email_attachment_safety", admin_only=True)
+    ou_values = get_ou_values(gmail, "email_attachment_safety")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableAttachmentWithScriptsProtection", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack script attachment protection: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "enableAttachmentWithScriptsProtection")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have script attachment protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack script attachment protection",
+            pass_text="have script attachment protection enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -642,25 +624,18 @@ def check_gmail_anomalous_attachment(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "email_attachment_safety", admin_only=True)
+    ou_values = get_ou_values(gmail, "email_attachment_safety")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableAnomalousAttachmentProtection", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack anomalous attachment protection: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "enableAnomalousAttachmentProtection")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have anomalous attachment protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack anomalous attachment protection",
+            pass_text="have anomalous attachment protection enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -720,25 +695,18 @@ def check_gmail_shortened_urls(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "links_and_external_images", admin_only=True)
+    ou_values = get_ou_values(gmail, "links_and_external_images")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableShortenerScanning", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack shortened URL identification: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "enableShortenerScanning")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have shortened URL identification enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack shortened URL identification",
+            pass_text="have shortened URL identification enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -794,25 +762,18 @@ def check_gmail_linked_image_scanning(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "links_and_external_images", admin_only=True)
+    ou_values = get_ou_values(gmail, "links_and_external_images")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableExternalImageScanning", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack linked image scanning: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "enableExternalImageScanning")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have linked image scanning enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack linked image scanning",
+            pass_text="have linked image scanning enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -870,25 +831,18 @@ def check_gmail_untrusted_link_warning(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "links_and_external_images", admin_only=True)
+    ou_values = get_ou_values(gmail, "links_and_external_images")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableAggressiveWarningsOnUntrustedLinks", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack untrusted link warnings: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "enableAggressiveWarningsOnUntrustedLinks")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have untrusted link warnings enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack untrusted link warnings",
+            pass_text="have untrusted link warnings enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -950,25 +904,18 @@ def check_gmail_domain_spoofing(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("detectDomainNameSpoofing", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack domain spoofing protection: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "detectDomainNameSpoofing")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have domain spoofing protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack domain spoofing protection",
+            pass_text="have domain spoofing protection enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1026,25 +973,18 @@ def check_gmail_employee_spoofing(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("detectEmployeeNameSpoofing", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack employee name spoofing protection: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "detectEmployeeNameSpoofing")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have employee name spoofing protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack employee name spoofing protection",
+            pass_text="have employee name spoofing protection enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1102,25 +1042,18 @@ def check_gmail_inbound_spoofing(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("detectDomainSpoofingFromUnauthenticatedSenders", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack inbound domain spoofing protection: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "detectDomainSpoofingFromUnauthenticatedSenders")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have inbound domain spoofing protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack inbound domain spoofing protection",
+            pass_text="have inbound domain spoofing protection enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1176,25 +1109,18 @@ def check_gmail_unauthenticated_email(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("detectUnauthenticatedEmails", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack unauthenticated email protection: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "detectUnauthenticatedEmails")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have unauthenticated email protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack unauthenticated email protection",
+            pass_text="have unauthenticated email protection enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1252,25 +1178,18 @@ def check_gmail_groups_spoofing(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "spoofing_and_authentication", admin_only=True)
+    ou_values = get_ou_values(gmail, "spoofing_and_authentication")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("detectGroupsSpoofing", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack Groups spoofing protection: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "detectGroupsSpoofing")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Groups spoofing protection enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack Groups spoofing protection",
+            pass_text="have Groups spoofing protection enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1330,52 +1249,38 @@ def check_gmail_pop_imap(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path: check both pop_access and imap_access settings
-    pop_ou_values = get_ou_values(gmail, "pop_access", admin_only=True)
-    imap_ou_values = get_ou_values(gmail, "imap_access", admin_only=True)
+    pop_ou_values = get_ou_values(gmail, "pop_access")
+    imap_ou_values = get_ou_values(gmail, "imap_access")
     if pop_ou_values or imap_ou_values:
-        unsafe_ous = []
-        # Check POP across OUs
+        # Merge the two settings per OU so one verdict covers both protocols.
+        merged: dict[str, dict] = {}
         for entry in pop_ou_values:
-            pop_enabled = entry["value"].get("enablePopAccess",
-                            entry["value"].get("enablePop3Access", None))
-            if pop_enabled is True:
-                unsafe_ous.append({
-                    "org_unit": entry["org_unit"],
-                    "value": f"POP={pop_enabled}",
-                })
-        # Check IMAP across OUs
+            pop_enabled = field_value(entry, "enablePopAccess", "enablePop3Access")
+            ou = merged.setdefault(entry["org_unit"], {"org_unit": entry["org_unit"], "value": {}})
+            if pop_enabled is not None:
+                ou["value"]["enablePopAccess"] = pop_enabled
         for entry in imap_ou_values:
-            imap_enabled = entry["value"].get("enableImapAccess", None)
-            if imap_enabled is True:
-                # Avoid duplicate OU entries; append IMAP info
-                existing = next(
-                    (u for u in unsafe_ous if u["org_unit"] == entry["org_unit"]),
-                    None,
-                )
-                if existing:
-                    existing["value"] += f", IMAP={imap_enabled}"
-                else:
-                    unsafe_ous.append({
-                        "org_unit": entry["org_unit"],
-                        "value": f"IMAP={imap_enabled}",
-                    })
-        if unsafe_ous:
-            ou_list = ", ".join(
-                f"{u['org_unit']} ({u['value']})" for u in unsafe_ous
-            )
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have POP/IMAP enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous),
-                expected_value={"pop": False, "imap": False},
-                remediation=_REMED,
-            )
-        total_ous = max(len(pop_ou_values), len(imap_ou_values))
-        return make_pass(
+            imap_enabled = field_value(entry, "enableImapAccess")
+            ou = merged.setdefault(entry["org_unit"], {"org_unit": entry["org_unit"], "value": {}})
+            if imap_enabled is not None:
+                ou["value"]["enableImapAccess"] = imap_enabled
+
+        def _judge(entry: dict):
+            flags = (("POP", field_value(entry, "enablePopAccess")),
+                     ("IMAP", field_value(entry, "enableImapAccess")))
+            enabled = [name for name, flag in flags if flag is True]
+            if enabled:
+                return False, ", ".join(f"{name}=True" for name in enabled)
+            if any(flag is None for _, flag in flags):
+                return None  # one protocol's state is unknown for this OU
+            return True
+
+        return ou_verdict(
+            list(merged.values()), _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {total_ous} OU(s) have POP and IMAP access disabled.",
-            actual_value=f"{total_ous} OU(s) safe",
-            expected_value={"pop": False, "imap": False},
+            fail_text="have POP/IMAP enabled",
+            pass_text="have POP and IMAP access disabled",
+            expected_value={"pop": False, "imap": False}, remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1434,25 +1339,18 @@ def check_gmail_auto_forwarding(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "auto_forwarding", admin_only=True)
+    ou_values = get_ou_values(gmail, "auto_forwarding")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableAutoForwarding", None)
-            if enabled is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have auto-forwarding enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "enableAutoForwarding")
+            return None if value is None else value is False
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have auto-forwarding disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have auto-forwarding enabled",
+            pass_text="have auto-forwarding disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1508,26 +1406,19 @@ def check_gmail_outbound_gateway(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "per_user_outbound_gateway", admin_only=True)
+    ou_values = get_ou_values(gmail, "per_user_outbound_gateway")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("allowUsersToUseExternalSmtpServers",
-                            entry["value"].get("enablePerUserOutboundGateway", None))
-            if enabled is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have per-user outbound gateways enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "allowUsersToUseExternalSmtpServers",
+                                "enablePerUserOutboundGateway")
+            return None if value is None else value is False
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have per-user outbound gateways disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have per-user outbound gateways enabled",
+            pass_text="have per-user outbound gateways disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1659,25 +1550,18 @@ def check_gmail_predelivery_scanning(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "enhanced_pre_delivery_message_scanning", admin_only=True)
+    ou_values = get_ou_values(gmail, "enhanced_pre_delivery_message_scanning")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableImprovedSuspiciousContentDetection", None)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack enhanced pre-delivery scanning: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "enableImprovedSuspiciousContentDetection")
+            return None if value is None else value is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have enhanced pre-delivery scanning enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack enhanced pre-delivery scanning",
+            pass_text="have enhanced pre-delivery scanning enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1804,42 +1688,26 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "comprehensive_mail_storage", admin_only=True)
+    ou_values = get_ou_values(gmail, "comprehensive_mail_storage")
     if ou_values:
-        unsafe_ous = []
-        undetermined = 0
-        for entry in ou_values:
-            enabled = entry["value"].get("enableComprehensiveMailStorage",
-                                         entry["value"].get("enabled", None))
-            if enabled is None:
-                # The Policy API returns only a ruleId for this setting, with no
-                # enabled/disabled flag, so the state cannot be determined here.
-                undetermined += 1
-                continue
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if undetermined == len(ou_values):
-            return make_review(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=(
-                    "A comprehensive mail storage policy exists but the Policy API does not "
-                    "expose whether it is enabled. Verify manually in Admin console > Apps > "
-                    "Google Workspace > Gmail > Compliance."
-                ),
-                remediation=_REMED,
-            )
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack comprehensive mail storage: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            # The Policy API returns only a ruleId for this setting, with no
+            # enabled/disabled flag, so the state is unknown unless a legacy
+            # flag is present.
+            enabled = field_value(entry, "enableComprehensiveMailStorage", "enabled")
+            return None if enabled is None else enabled is True
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have comprehensive mail storage enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack comprehensive mail storage",
+            pass_text="have comprehensive mail storage enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
+            unknown_text=(
+                "A comprehensive mail storage policy exists but the Policy API does not "
+                "expose whether it is enabled. Verify manually in Admin console > Apps > "
+                "Google Workspace > Gmail > Compliance."
+            ),
         )
 
     # Fallback: existing mapped value logic

@@ -307,9 +307,9 @@ class TestGroupsCreationRestrictionOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups_for_business", "groups_sharing",
-                                {"whoCanCreateGroups": "ADMINS_ONLY"}, "/"),
+                                {"createGroupsAccessLevel": "ADMIN_ONLY"}, "/"),
                 make_ou_policy("groups_for_business", "groups_sharing",
-                                {"whoCanCreateGroups": "ADMINS_ONLY"}, "/Engineering"),
+                                {"createGroupsAccessLevel": "ADMIN_ONLY"}, "/Engineering"),
             ],
         }
         result = check_groups_creation_restriction(full_audit_data)
@@ -322,9 +322,9 @@ class TestGroupsCreationRestrictionOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups_for_business", "groups_sharing",
-                                {"whoCanCreateGroups": "ADMINS_ONLY"}, "/"),
+                                {"createGroupsAccessLevel": "ADMIN_ONLY"}, "/"),
                 make_ou_policy("groups_for_business", "groups_sharing",
-                                {"whoCanCreateGroups": "ALL_USERS_IN_DOMAIN"}, "/Sales"),
+                                {"createGroupsAccessLevel": "USERS_IN_DOMAIN"}, "/Sales"),
             ],
         }
         result = check_groups_creation_restriction(full_audit_data)
@@ -337,7 +337,7 @@ class TestGroupsCreationRestrictionOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups_for_business", "groups_sharing",
-                                {"whoCanCreateGroups": "ADMINS_ONLY"}, "/"),
+                                {"createGroupsAccessLevel": "ADMIN_ONLY"}, "/"),
                 make_ou_policy("groups_for_business", "groups_sharing",
                                 {}, "/HR"),
             ],
@@ -354,3 +354,21 @@ class TestGroupsCreationRestrictionOU:
         }
         result = check_groups_creation_restriction(full_audit_data)
         assert result.status == Status.PASS
+
+
+class TestGroupsCreationUnknownValues:
+    def test_unspecified_access_level_is_manual(self, full_audit_data):
+        from gws_auditor.checks.apps_groups import check_groups_creation_restriction
+
+        full_audit_data["policies"]["groups"] = {"_ou_policies": [
+            make_ou_policy("groups_for_business", "groups_sharing",
+                           {"createGroupsAccessLevel": "CREATE_GROUPS_ACCESS_LEVEL_UNSPECIFIED"}, "/")]}
+        assert check_groups_creation_restriction(full_audit_data).status == Status.MANUAL
+
+    def test_empty_uses_documented_default(self, full_audit_data):
+        # Google documents USERS_IN_DOMAIN as the default, so an empty entry fails.
+        from gws_auditor.checks.apps_groups import check_groups_creation_restriction
+
+        full_audit_data["policies"]["groups"] = {"_ou_policies": [
+            make_ou_policy("groups_for_business", "groups_sharing", {}, "/")]}
+        assert check_groups_creation_restriction(full_audit_data).status == Status.FAIL

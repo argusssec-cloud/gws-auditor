@@ -214,7 +214,7 @@ class TestGetPoliciesBackfill:
             if p.get("_raw", {}).get("type") == "DEFAULT"
         ]
         assert len(default_policy) == 1
-        assert default_policy[0]["setting"]["value"]["sharing_option"] == "REQUESTER_BASIC_PROFILE_ONLY"
+        assert default_policy[0]["setting"]["value"]["sharingOption"] == "ORGANIZATION_DIRECTORY_DATA"
 
 
 class TestGoogleDefaults:
@@ -245,7 +245,7 @@ class TestGoogleDefaults:
             if p.get("_raw", {}).get("type") == "DEFAULT"
         ]
         assert len(default_policy) == 1
-        assert default_policy[0]["setting"]["value"] == {"accessLevel": "ALLOW_ALL"}
+        assert default_policy[0]["setting"]["value"] == {"allowAllInternalApps": False}
         assert default_policy[0]["name"] == "policies/_default/workspace_marketplace.apps_access_options"
 
     def test_defaults_not_applied_when_api_returns_data(self):

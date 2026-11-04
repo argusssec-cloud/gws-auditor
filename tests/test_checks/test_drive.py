@@ -116,9 +116,9 @@ class TestDriveExternalSharingWarningOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"warnOnExternalSharing": True}, "/"),
+                                {"warnForExternalSharing": True}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"warnOnExternalSharing": True}, "/Engineering"),
+                                {"warnForExternalSharing": True}, "/Engineering"),
             ],
         }
         result = check_drive_external_sharing_warning(full_audit_data)
@@ -131,9 +131,9 @@ class TestDriveExternalSharingWarningOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"warnOnExternalSharing": True}, "/"),
+                                {"warnForExternalSharing": True}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"warnOnExternalSharing": False}, "/Sales"),
+                                {"warnForExternalSharing": False}, "/Sales"),
             ],
         }
         result = check_drive_external_sharing_warning(full_audit_data)
@@ -159,9 +159,9 @@ class TestDrivePublicPublishingOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"allowPublicPublishing": False}, "/"),
+                                {"allowPublishingFiles": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"allowPublicPublishing": False}, "/HR"),
+                                {"allowPublishingFiles": False}, "/HR"),
             ],
         }
         result = check_drive_public_publishing(full_audit_data)
@@ -174,9 +174,9 @@ class TestDrivePublicPublishingOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"allowPublicPublishing": False}, "/"),
+                                {"allowPublishingFiles": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"allowPublicPublishing": True}, "/Marketing"),
+                                {"allowPublishingFiles": True}, "/Marketing"),
             ],
         }
         result = check_drive_public_publishing(full_audit_data)
@@ -214,9 +214,9 @@ def _drive_with_unsafe_sales(full_audit_data, trust_rules=None, ou_id="03ph8a2z1
     full_audit_data["policies"]["drive"] = {
         "_ou_policies": [
             make_ou_policy("drive", "external_sharing",
-                            {"warnOnExternalSharing": True}, "/"),
+                            {"warnForExternalSharing": True}, "/"),
             make_ou_policy("drive", "external_sharing",
-                            {"warnOnExternalSharing": False}, "/Sales"),
+                            {"warnForExternalSharing": False}, "/Sales"),
         ],
     }
     if trust_rules is not None:
@@ -307,9 +307,9 @@ class TestDriveTrustRules:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"allowPublicPublishing": False}, "/"),
+                                {"allowPublishingFiles": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"allowPublicPublishing": True}, "/Sales"),
+                                {"allowPublishingFiles": True}, "/Sales"),
             ],
             "trust_rules": [_trust_rule("03ph8a2z1", "BLOCK_SHARE")],
         }
@@ -324,9 +324,9 @@ class TestDriveExternalSharingExceptionOUs:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"warnOnExternalSharing": True}, "/"),
+                                {"warnForExternalSharing": True}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"warnOnExternalSharing": False}, ou_path),
+                                {"warnForExternalSharing": False}, ou_path),
             ],
         }
         return full_audit_data
@@ -353,9 +353,9 @@ class TestDriveExternalSharingExceptionOUs:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"warnOnExternalSharing": False}, "/Contractors"),
+                                {"warnForExternalSharing": False}, "/Contractors"),
                 make_ou_policy("drive", "external_sharing",
-                                {"warnOnExternalSharing": False}, "/Sales"),
+                                {"warnForExternalSharing": False}, "/Sales"),
             ],
         }
         result = check_drive_external_sharing_warning(full_audit_data)
@@ -393,9 +393,9 @@ class TestDriveExternalSharingExceptionOUs:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"allowPublicPublishing": False}, "/"),
+                                {"allowPublishingFiles": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"allowPublicPublishing": True}, "/Vendors"),
+                                {"allowPublishingFiles": True}, "/Vendors"),
             ],
         }
         result = check_drive_public_publishing(full_audit_data)
@@ -412,9 +412,9 @@ class TestDriveAccessCheckerOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"accessCheckerSuggestion": "RECIPIENTS_ONLY"}, "/"),
+                                {"accessCheckerSuggestions": "RECIPIENTS_ONLY"}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"accessCheckerSuggestion": "DOMAIN_ONLY"}, "/Finance"),
+                                {"accessCheckerSuggestions": "DOMAIN_ONLY"}, "/Finance"),
             ],
         }
         result = check_drive_access_checker(full_audit_data)
@@ -427,9 +427,9 @@ class TestDriveAccessCheckerOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"accessCheckerSuggestion": "RECIPIENTS_ONLY"}, "/"),
+                                {"accessCheckerSuggestions": "RECIPIENTS_ONLY"}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"accessCheckerSuggestion": "ANYONE"}, "/Contractors"),
+                                {"accessCheckerSuggestions": "ANYONE"}, "/Contractors"),
             ],
         }
         result = check_drive_access_checker(full_audit_data)
@@ -455,9 +455,9 @@ class TestDriveExternalDistributionOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"externalDistributionAllowedFor": "INTERNAL_USERS_ONLY"}, "/"),
+                                {"allowedPartiesForDistributingContent": "INTERNAL_USERS_ONLY"}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"externalDistributionAllowedFor": "INTERNAL_USERS_ONLY"}, "/Legal"),
+                                {"allowedPartiesForDistributingContent": "INTERNAL_USERS_ONLY"}, "/Legal"),
             ],
         }
         result = check_drive_external_distribution(full_audit_data)
@@ -470,9 +470,9 @@ class TestDriveExternalDistributionOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"externalDistributionAllowedFor": "INTERNAL_USERS_ONLY"}, "/"),
+                                {"allowedPartiesForDistributingContent": "INTERNAL_USERS_ONLY"}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"externalDistributionAllowedFor": "EVERYONE"}, "/Sales"),
+                                {"allowedPartiesForDistributingContent": "EVERYONE"}, "/Sales"),
             ],
         }
         result = check_drive_external_distribution(full_audit_data)
@@ -841,8 +841,8 @@ class TestDriveAiClassification:
         assert result.status == Status.MANUAL
 
 
-class TestDriveTrustRules:
-    """Tests for ADD-25 Drive trust rules."""
+class TestDriveTrustRulesInventory:
+    """Tests for ADD-25 Drive trust rules (renamed: a second TestDriveTrustRules shadowed the CIS one)."""
 
     def test_trust_rules_configured_pass(self, full_audit_data):
         from gws_auditor.checks.additional import check_drive_trust_rules
@@ -863,3 +863,189 @@ class TestDriveTrustRules:
         # No trust_rules key
         result = check_drive_trust_rules(full_audit_data)
         assert result.status == Status.MANUAL
+
+
+# -----------------------------------------------------------------------
+# Unknown-aware OU verdicts (real Policy API field names only)
+# -----------------------------------------------------------------------
+
+
+def _drive_ou(full_audit_data, key, *entries):
+    """Install ADMIN per-OU entries for one drive setting key."""
+    full_audit_data["policies"]["drive"] = {
+        "_ou_policies": [make_ou_policy("drive", key, value, ou) for value, ou in entries],
+    }
+    return full_audit_data
+
+
+class TestDriveUnknownValues:
+    """Absent fields without a documented default and *_UNSPECIFIED are MANUAL, not PASS/FAIL."""
+
+    def test_shared_drive_creation_empty_value_is_manual(self, full_audit_data):
+        # Was FAIL: allowSharedDriveCreation has no documented default.
+        from gws_auditor.checks.apps_drive import check_shared_drive_creation
+        result = check_shared_drive_creation(_drive_ou(full_audit_data, "shared_drive_creation", ({}, "/")))
+        assert result.status == Status.MANUAL
+
+    def test_viewer_restrictions_empty_value_is_manual(self, full_audit_data):
+        # Was PASS: an absent allowedPartiesForDownloadPrintCopy is unknown, not restricted.
+        from gws_auditor.checks.apps_drive import check_shared_drive_viewer_restrictions
+        result = check_shared_drive_viewer_restrictions(_drive_ou(
+            full_audit_data, "shared_drive_creation", ({"allowExternalUserAccess": True}, "/")))
+        assert result.status == Status.MANUAL
+
+    def test_unknown_plus_unsafe_is_fail(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_shared_drive_member_access
+        result = check_shared_drive_member_access(_drive_ou(
+            full_audit_data, "shared_drive_creation",
+            ({}, "/"), ({"allowNonMemberAccess": True}, "/Guests")))
+        assert result.status == Status.FAIL
+        assert "/Guests" in result.details
+        assert "Undetermined" in result.details
+
+    def test_desktop_empty_value_is_manual(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_desktop_access
+        result = check_drive_desktop_access(_drive_ou(
+            full_audit_data, "drive_for_desktop", ({"showDownloadLink": True}, "/")))
+        assert result.status == Status.MANUAL
+
+    def test_drive_sdk_documented_default_is_fail(self, full_audit_data):
+        # Google documents enableDriveSdkApiAccess=true, so absent -> FAIL.
+        from gws_auditor.checks.apps_drive import check_drive_sdk
+        result = check_drive_sdk(_drive_ou(full_audit_data, "drive_sdk", ({}, "/")))
+        assert result.status == Status.FAIL
+
+    def test_access_checker_documented_default_is_fail(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_access_checker
+        result = check_drive_access_checker(_drive_ou(full_audit_data, "external_sharing", ({}, "/")))
+        assert result.status == Status.FAIL
+        assert "RECIPIENTS_OR_AUDIENCE_OR_PUBLIC" in result.actual_value
+
+    def test_external_distribution_unspecified_is_manual(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_distribution
+        result = check_drive_external_distribution(_drive_ou(
+            full_audit_data, "external_sharing",
+            ({"allowedPartiesForDistributingContent": "ALLOWED_PARTIES_FOR_DISTRIBUTING_CONTENT_UNSPECIFIED"}, "/")))
+        assert result.status == Status.MANUAL
+
+    def test_domain_allowlist_documented_default_is_fail(self, full_audit_data):
+        # Google documents externalSharingMode=ALLOWED (no allowlist).
+        from gws_auditor.checks.apps_drive import check_drive_domain_allowlist
+        result = check_drive_domain_allowlist(_drive_ou(full_audit_data, "external_sharing", ({}, "/")))
+        assert result.status == Status.FAIL
+
+    def test_domain_allowlist_disallowed_passes(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_domain_allowlist
+        result = check_drive_domain_allowlist(_drive_ou(
+            full_audit_data, "external_sharing", ({"externalSharingMode": "DISALLOWED"}, "/")))
+        assert result.status == Status.PASS
+
+
+class TestDriveAllowlistWarningOU:
+    """OU-aware tests for CIS-3.1.2.1.1.4: warn on allowlisted-domain sharing."""
+
+    def test_warn_enabled_pass(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_allowlist_warning
+        result = check_drive_allowlist_warning(_drive_ou(
+            full_audit_data, "external_sharing",
+            ({"externalSharingMode": "ALLOWLISTED_DOMAINS", "warnForSharingOutsideAllowlistedDomains": True}, "/")))
+        assert result.status == Status.PASS
+
+    def test_warn_disabled_fail(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_allowlist_warning
+        result = check_drive_allowlist_warning(_drive_ou(
+            full_audit_data, "external_sharing",
+            ({"externalSharingMode": "ALLOWLISTED_DOMAINS", "warnForSharingOutsideAllowlistedDomains": False}, "/Sales")))
+        assert result.status == Status.FAIL
+        assert "/Sales" in result.details
+
+    def test_disallowed_mode_is_not_applicable_pass(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_allowlist_warning
+        result = check_drive_allowlist_warning(_drive_ou(
+            full_audit_data, "external_sharing",
+            ({"externalSharingMode": "DISALLOWED", "warnForSharingOutsideAllowlistedDomains": False}, "/")))
+        assert result.status == Status.PASS
+
+    def test_unknown_mode_and_no_warning_is_manual(self, full_audit_data):
+        # DISALLOWED would make the control moot, so an unspecified mode cannot FAIL.
+        from gws_auditor.checks.apps_drive import check_drive_allowlist_warning
+        result = check_drive_allowlist_warning(_drive_ou(
+            full_audit_data, "external_sharing",
+            ({"externalSharingMode": "EXTERNAL_SHARING_MODE_UNSPECIFIED",
+              "warnForSharingOutsideAllowlistedDomains": False}, "/")))
+        assert result.status == Status.MANUAL
+
+
+class TestDriveExternalSharingWarningUnknown:
+    """CIS-3.1.2.1.1.1 under unknown sharing modes and trust rules."""
+
+    def test_documented_defaults_pass(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+        result = check_drive_external_sharing_warning(_drive_ou(full_audit_data, "external_sharing", ({}, "/")))
+        assert result.status == Status.PASS
+
+    def test_disallowed_mode_passes_without_warning(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+        result = check_drive_external_sharing_warning(_drive_ou(
+            full_audit_data, "external_sharing",
+            ({"externalSharingMode": "DISALLOWED", "warnForExternalSharing": False}, "/")))
+        assert result.status == Status.PASS
+
+    def test_unknown_mode_and_no_warning_is_manual(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+        result = check_drive_external_sharing_warning(_drive_ou(
+            full_audit_data, "external_sharing",
+            ({"externalSharingMode": "EXTERNAL_SHARING_MODE_UNSPECIFIED",
+              "warnForExternalSharing": False, "warnForSharingOutsideAllowlistedDomains": False}, "/")))
+        assert result.status == Status.MANUAL
+
+    def test_allowlisted_mode_uses_allowlist_warning(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+        result = check_drive_external_sharing_warning(_drive_ou(
+            full_audit_data, "external_sharing",
+            ({"externalSharingMode": "ALLOWLISTED_DOMAINS", "warnForExternalSharing": True,
+              "warnForSharingOutsideAllowlistedDomains": False}, "/Sales")))
+        assert result.status == Status.FAIL
+        assert "/Sales" in result.details
+
+    def test_fail_still_lists_trust_rule_ous(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+        full_audit_data["org_units"] = [
+            {"name": "Sales", "orgUnitPath": "/Sales", "orgUnitId": "id:03ph8a2z1"},
+            {"name": "Ops", "orgUnitPath": "/Ops", "orgUnitId": "id:ops01"},
+        ]
+        full_audit_data["policies"]["drive"] = {
+            "_ou_policies": [
+                make_ou_policy("drive", "external_sharing", {"warnForExternalSharing": False}, "/Sales"),
+                make_ou_policy("drive", "external_sharing", {"warnForExternalSharing": False}, "/Ops"),
+            ],
+            "trust_rules": [_trust_rule("03ph8a2z1", "ALLOW_SHARE", name="Partner sharing")],
+        }
+        result = check_drive_external_sharing_warning(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "1 OU(s) do not warn" in result.details
+        assert "additional OU(s) use trust rules" in result.details
+        assert "Partner sharing" in result.actual_value
+
+    def test_unknown_ou_with_allow_rule_is_review(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_drive_external_sharing_warning
+        full_audit_data["org_units"] = [
+            {"name": "Sales", "orgUnitPath": "/Sales", "orgUnitId": "id:03ph8a2z1"},
+        ]
+        full_audit_data["policies"]["drive"] = {
+            "_ou_policies": [
+                make_ou_policy("drive", "external_sharing",
+                                {"externalSharingMode": "EXTERNAL_SHARING_MODE_UNSPECIFIED",
+                                 "warnForExternalSharing": False}, "/Sales"),
+            ],
+            "trust_rules": [_trust_rule("03ph8a2z1", "ALLOW_SHARE", name="Partner sharing")],
+        }
+        result = check_drive_external_sharing_warning(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "Partner sharing" in result.actual_value
+
+    def test_public_publishing_documented_default_is_fail(self, full_audit_data):
+        # Google documents allowPublishingFiles=true.
+        from gws_auditor.checks.apps_drive import check_drive_public_publishing
+        result = check_drive_public_publishing(_drive_ou(full_audit_data, "external_sharing", ({}, "/")))
+        assert result.status == Status.FAIL

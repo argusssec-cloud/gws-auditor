@@ -8,8 +8,17 @@ Supplements the main cisa_scuba module with deeper CommonControls coverage.
 Only checks NOT already covered by CIS/OTHER/GOOGLE or the main CISA module.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable, is_default_policy, is_admin_configured
+from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified,
+                   format_ou_values_readable, is_default_policy, is_admin_configured, field_value, ou_verdict)
 from ..models import CheckResult, Status
+
+
+def _flag_judge(*names: str, expected: bool):
+    """``judge`` for a single boolean field: compliant when it equals *expected*, unknown when absent."""
+    def judge(entry: dict):
+        value = field_value(entry, *names)
+        return None if value is None else value is expected
+    return judge
 
 
 # ===========================================================================
@@ -79,23 +88,12 @@ def check_context_aware_access(data: dict) -> CheckResult:
     ou_values = [e for e in get_ou_values(security, "login_challenges")
                  if "devicePoliciesConfigured" in e["value"] and "enableEmployeeIdChallenge" not in e["value"]]
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            configured_val = entry["value"].get("devicePoliciesConfigured", None)
-            if configured_val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": configured_val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack context-aware access policies: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return ou_verdict(
+            ou_values, _flag_judge("devicePoliciesConfigured", expected=True),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have context-aware access policies configured.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack context-aware access policies",
+            pass_text="have context-aware access policies configured",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -177,24 +175,12 @@ def check_sso_verification(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "sso")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("postSsoVerificationEnabled",
-                                      entry["value"].get("post_sso_verification_enabled", None))
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack post-SSO verification: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return ou_verdict(
+            ou_values, _flag_judge("postSsoVerificationEnabled", "post_sso_verification_enabled", expected=True),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have post-SSO verification enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack post-SSO verification",
+            pass_text="have post-SSO verification enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -269,24 +255,13 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "sso")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("thirdPartySsoVerificationEnabled",
-                                      entry["value"].get("third_party_sso_verification_enabled", None))
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack third-party SSO verification: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return ou_verdict(
+            ou_values, _flag_judge("thirdPartySsoVerificationEnabled", "third_party_sso_verification_enabled",
+                                   expected=True),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have third-party SSO verification enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack third-party SSO verification",
+            pass_text="have third-party SSO verification enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -365,42 +340,32 @@ def check_session_duration(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "session_controls")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            hours = entry["value"].get("sessionDurationHours",
-                                       entry["value"].get("duration", None))
-            # Also check webSessionDuration (e.g. "1209600s")
-            if hours is None:
-                web_dur = entry["value"].get("webSessionDuration", "")
-                if isinstance(web_dur, str) and web_dur.endswith("s"):
-                    try:
-                        hours = float(web_dur[:-1]) / 3600
-                    except (ValueError, TypeError):
-                        pass
-            if hours is not None:
+        def judge(entry: dict):
+            hours = None
+            # Real field: webSessionDuration as a seconds string, e.g. "1209600s"
+            web_dur = field_value(entry, "webSessionDuration")
+            if isinstance(web_dur, str) and web_dur.endswith("s"):
                 try:
-                    hours = float(hours)
+                    hours = float(web_dur[:-1]) / 3600
                 except (ValueError, TypeError):
                     hours = None
-            # Skip entries where the field is absent (DEFAULT/SYSTEM entries
-            # often lack non-default fields)
-            if hours is None and is_default_policy(entry):
-                continue
-            if hours is None or hours > 12:
-                shown = None if hours is None else (int(hours) if hours == int(hours) else round(hours, 2))
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": shown})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']}h)" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) exceed 12-hour session duration: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="<= 12 hours",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have session duration <= 12 hours.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="<= 12 hours",
+            if hours is None:
+                legacy = field_value(entry, "sessionDurationHours", "duration")
+                try:
+                    hours = None if legacy is None else float(legacy)
+                except (ValueError, TypeError):
+                    hours = None
+            if hours is None:
+                return None  # duration not reported: cannot judge
+            shown = int(hours) if hours == int(hours) else round(hours, 2)
+            return hours <= 12, shown
+
+        return ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="exceed 12-hour session duration",
+            pass_text="have session duration <= 12 hours",
+            expected_value="<= 12 hours", remediation=_REMED,
+            humanizer=lambda hours: f"{hours}h",
         )
 
     # Fallback: mapped root-level value
@@ -562,6 +527,21 @@ def check_recovery_info_disabled(data: dict) -> CheckResult:
 # Common Controls 9 - Advanced Protection Program
 # ===========================================================================
 
+# Policy API: security.advanced_protection_program only says whether users MAY self-enroll
+# (enableAdvancedProtectionSelfEnrollment); per-account enrollment is not exposed.
+_SELF_ENROLLMENT_REVIEW = (
+    "Advanced Protection self-enrollment is allowed, but which accounts are actually enrolled "
+    "is not exposed by the API — verify enrollment in Admin console > Users."
+)
+
+
+def _self_enrollment_judge(entry: dict):
+    """Self-enrollment off -> accounts cannot enroll (FAIL); on or unknown -> cannot judge enrollment."""
+    self_enroll = field_value(entry, "enableAdvancedProtectionSelfEnrollment")
+    if self_enroll is False:
+        return False, "self-enrollment disabled"
+    return None
+
 @check(
     check_id="GWS.COMMONCONTROLS.9.1",
     title="Ensure privileged accounts are in Advanced Protection Program",
@@ -593,48 +573,28 @@ def check_admin_advanced_protection(data: dict) -> CheckResult:
     # OU-aware path
     # Policy API: security.advanced_protection_program only says whether users MAY self-enroll
     # (enableAdvancedProtectionSelfEnrollment); per-account enrollment is not exposed.
-    app_values = [e for e in get_ou_values(security, "advanced_protection_program")
-                  if e["value"].get("enableAdvancedProtectionSelfEnrollment") is not None]
-    if app_values:
-        blocked = [{"org_unit": e["org_unit"], "value": "self-enrollment disabled"}
-                   for e in app_values if e["value"]["enableAdvancedProtectionSelfEnrollment"] is False]
-        if blocked:
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"Advanced Protection self-enrollment is disabled in {len(blocked)} OU(s), so accounts "
-                        f"there cannot enroll: {', '.join(b['org_unit'] for b in blocked)}",
-                actual_value=format_ou_values_readable(blocked), expected_value="Enrollment allowed and completed",
-                remediation=_REMED,
-            )
-        return make_review(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details="Advanced Protection self-enrollment is allowed, but which accounts are actually enrolled "
-                    "is not exposed by the API — verify enrollment in Admin console > Users.",
-            remediation=_REMED,
+    ou_values = get_ou_values(security, "advanced_protection_program")
+    legacy_values = [e for e in ou_values
+                     if "adminEnrollmentEnforced" in e["value"] or "enabled" in e["value"]]
+    real_shape = any("enableAdvancedProtectionSelfEnrollment" in e["value"] for e in ou_values)
+    if ou_values and (real_shape or not legacy_values):
+        allowed = any(field_value(e, "enableAdvancedProtectionSelfEnrollment") is True for e in ou_values)
+        return ou_verdict(
+            ou_values, _self_enrollment_judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="disable Advanced Protection self-enrollment, so accounts there cannot enroll",
+            pass_text="allow Advanced Protection self-enrollment",
+            expected_value="Enrollment allowed and completed", remediation=_REMED,
+            unknown_text=_SELF_ENROLLMENT_REVIEW if allowed else None,
         )
 
     # Legacy shape only
-    ou_values = [e for e in get_ou_values(security, "advanced_protection_program")
-                 if 'adminEnrollmentEnforced' in e["value"] or 'enabled' in e["value"]]
-    if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enforced_val = entry["value"].get("adminEnrollmentEnforced",
-                                              entry["value"].get("enabled", None))
-            if enforced_val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enforced_val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack Advanced Protection enforcement: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+    if legacy_values:
+        return ou_verdict(
+            legacy_values, _flag_judge("adminEnrollmentEnforced", "enabled", expected=True),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) enforce Advanced Protection for admins.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack Advanced Protection enforcement",
+            pass_text="enforce Advanced Protection for admins",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -711,48 +671,28 @@ def check_sensitive_user_advanced_protection(data: dict) -> CheckResult:
     # OU-aware path
     # Policy API: security.advanced_protection_program only says whether users MAY self-enroll
     # (enableAdvancedProtectionSelfEnrollment); per-account enrollment is not exposed.
-    app_values = [e for e in get_ou_values(security, "advanced_protection_program")
-                  if e["value"].get("enableAdvancedProtectionSelfEnrollment") is not None]
-    if app_values:
-        blocked = [{"org_unit": e["org_unit"], "value": "self-enrollment disabled"}
-                   for e in app_values if e["value"]["enableAdvancedProtectionSelfEnrollment"] is False]
-        if blocked:
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"Advanced Protection self-enrollment is disabled in {len(blocked)} OU(s), so accounts "
-                        f"there cannot enroll: {', '.join(b['org_unit'] for b in blocked)}",
-                actual_value=format_ou_values_readable(blocked), expected_value="Enrollment allowed and completed",
-                remediation=_REMED,
-            )
-        return make_review(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details="Advanced Protection self-enrollment is allowed, but which accounts are actually enrolled "
-                    "is not exposed by the API — verify enrollment in Admin console > Users.",
-            remediation=_REMED,
+    ou_values = get_ou_values(security, "advanced_protection_program")
+    legacy_values = [e for e in ou_values
+                     if "sensitiveUserEnrollment" in e["value"] or "sensitiveUsersEnrolled" in e["value"]]
+    real_shape = any("enableAdvancedProtectionSelfEnrollment" in e["value"] for e in ou_values)
+    if ou_values and (real_shape or not legacy_values):
+        allowed = any(field_value(e, "enableAdvancedProtectionSelfEnrollment") is True for e in ou_values)
+        return ou_verdict(
+            ou_values, _self_enrollment_judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="disable Advanced Protection self-enrollment, so accounts there cannot enroll",
+            pass_text="allow Advanced Protection self-enrollment",
+            expected_value="Enrollment allowed and completed", remediation=_REMED,
+            unknown_text=_SELF_ENROLLMENT_REVIEW if allowed else None,
         )
 
     # Legacy shape only
-    ou_values = [e for e in get_ou_values(security, "advanced_protection_program")
-                 if 'sensitiveUserEnrollment' in e["value"] or 'sensitiveUsersEnrolled' in e["value"]]
-    if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enrolled = entry["value"].get("sensitiveUserEnrollment",
-                                          entry["value"].get("sensitiveUsersEnrolled", None))
-            if enrolled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enrolled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack Advanced Protection for sensitive users: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+    if legacy_values:
+        return ou_verdict(
+            legacy_values, _flag_judge("sensitiveUserEnrollment", "sensitiveUsersEnrolled", expected=True),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) enroll sensitive users in Advanced Protection.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack Advanced Protection for sensitive users",
+            pass_text="enroll sensitive users in Advanced Protection",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -948,24 +888,12 @@ def check_user_consent_low_risk(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "app_access")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("allowUserConsentLowRisk",
-                                      entry["value"].get("allow_user_consent_low_risk", None))
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow user consent to low-risk scopes: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return ou_verdict(
+            ou_values, _flag_judge("allowUserConsentLowRisk", "allow_user_consent_low_risk", expected=False),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) prevent user consent to low-risk scopes.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="allow user consent to low-risk scopes",
+            pass_text="prevent user consent to low-risk scopes",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1045,26 +973,14 @@ def check_unconfigured_internal_apps(data: dict) -> CheckResult:
         api_controls = policies.get("api_controls", {})
         ou_values = get_ou_values(api_controls, "internal_apps")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            # Policy API field is trustInternalApps (api_controls.internal_apps)
-            val = entry["value"].get("trustInternalApps",
-                                      entry["value"].get("trustUnconfiguredInternalApps",
-                                      entry["value"].get("trust_unconfigured_internal_apps", None)))
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) trust unconfigured internal apps: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        # Policy API field is trustInternalApps (api_controls.internal_apps)
+        return ou_verdict(
+            ou_values, _flag_judge("trustInternalApps", "trustUnconfiguredInternalApps",
+                                   "trust_unconfigured_internal_apps", expected=False),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) do not trust unconfigured internal apps.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="trust unconfigured internal apps",
+            pass_text="do not trust unconfigured internal apps",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1301,24 +1217,12 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "data_regions")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("processingInRegion",
-                                      entry["value"].get("processing_in_region", None))
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not restrict data processing to region: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return ou_verdict(
+            ou_values, _flag_judge("processingInRegion", "processing_in_region", expected=True),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict data processing to selected region.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="do not restrict data processing to region",
+            pass_text="restrict data processing to selected region",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1403,45 +1307,27 @@ def check_unused_services_disabled(data: dict) -> CheckResult:
     # OU-aware path
     # Policy API: enterprise_service_restrictions.service_status.serviceState. The naming is
     # inverted: restrictions ENABLED means services without an individual control are OFF.
-    restrictions = [e for e in get_ou_values(policies.get("enterprise_service_restrictions", {}), "service_status")
-                    if e["value"].get("serviceState") is not None]
+    restrictions = get_ou_values(policies.get("enterprise_service_restrictions", {}), "service_status")
     if restrictions:
-        bad = [{"org_unit": e["org_unit"], "value": e["value"]["serviceState"]}
-               for e in restrictions if str(e["value"]["serviceState"]).upper() != "ENABLED"]
-        if bad:
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(bad)} OU(s) allow access to services without an individual control: "
-                        + ", ".join(b["org_unit"] for b in bad),
-                actual_value=format_ou_values_readable(bad), expected_value="Restricted for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(restrictions)} OU(s) restrict services without an individual control.",
-            actual_value=f"{len(restrictions)} OU(s) safe", expected_value="Restricted for all OUs",
+        def judge(entry: dict):
+            state = field_value(entry, "serviceState")
+            return None if state is None else (str(state).upper() == "ENABLED", state)
+
+        return ou_verdict(
+            restrictions, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow access to services without an individual control",
+            pass_text="restrict services without an individual control",
+            expected_value="Restricted for all OUs", remediation=_REMED,
         )
 
     ou_values = get_ou_values(security, "service_status")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("unusedServicesDisabled",
-                                      entry["value"].get("unused_services_disabled", None))
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have unused services enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return ou_verdict(
+            ou_values, _flag_judge("unusedServicesDisabled", "unused_services_disabled", expected=True),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have unused services disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="have unused services enabled",
+            pass_text="have unused services disabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1518,44 +1404,27 @@ def check_early_access_disabled(data: dict) -> CheckResult:
 
     # OU-aware path
     # Policy API: early_access_apps.service_status.serviceState
-    early = [e for e in get_ou_values(policies.get("early_access_apps", {}), "service_status")
-             if e["value"].get("serviceState") is not None]
+    early = get_ou_values(policies.get("early_access_apps", {}), "service_status")
     if early:
-        bad = [{"org_unit": e["org_unit"], "value": e["value"]["serviceState"]}
-               for e in early if str(e["value"]["serviceState"]).upper() != "DISABLED"]
-        if bad:
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(bad)} OU(s) have early access apps enabled: " + ", ".join(b["org_unit"] for b in bad),
-                actual_value=format_ou_values_readable(bad), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(early)} OU(s) have early access apps disabled.",
-            actual_value=f"{len(early)} OU(s) safe", expected_value="Disabled for all OUs",
+        def judge(entry: dict):
+            state = field_value(entry, "serviceState")
+            return None if state is None else (str(state).upper() == "DISABLED", state)
+
+        return ou_verdict(
+            early, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have early access apps enabled",
+            pass_text="have early access apps disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     ou_values = get_ou_values(security, "service_status")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("earlyAccessEnabled",
-                                      entry["value"].get("early_access_enabled", None))
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have early access enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return ou_verdict(
+            ou_values, _flag_judge("earlyAccessEnabled", "early_access_enabled", expected=False),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have early access disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have early access enabled",
+            pass_text="have early access disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1605,6 +1474,15 @@ def check_early_access_disabled(data: dict) -> CheckResult:
 # Common Controls 18 - Data Loss Prevention
 # ===========================================================================
 
+def _rule_list_judge(*names: str):
+    """``judge`` for a list-of-rules field: compliant when at least one rule exists, unknown when absent."""
+    def judge(entry: dict):
+        rules = field_value(entry, *names)
+        if rules is None:
+            return None
+        return (isinstance(rules, list) and len(rules) > 0), rules
+    return judge
+
 @check(
     check_id="GWS.COMMONCONTROLS.18.2",
     title="Ensure DLP policy is configured for Google Chat",
@@ -1637,24 +1515,12 @@ def check_dlp_chat(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "dlp")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            rules = entry["value"].get("chatDlpRules",
-                                        entry["value"].get("chat_dlp_rules", None))
-            if not (isinstance(rules, list) and len(rules) > 0):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": rules})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack DLP rules for Chat: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="At least one DLP rule for Chat",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return ou_verdict(
+            ou_values, _rule_list_judge("chatDlpRules", "chat_dlp_rules"),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have DLP rules configured for Chat.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="At least one DLP rule for Chat",
+            fail_text="lack DLP rules for Chat",
+            pass_text="have DLP rules configured for Chat",
+            expected_value="At least one DLP rule for Chat", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1735,24 +1601,12 @@ def check_dlp_gmail(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "dlp")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            rules = entry["value"].get("gmailDlpRules",
-                                        entry["value"].get("gmail_dlp_rules", None))
-            if not (isinstance(rules, list) and len(rules) > 0):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": rules})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack DLP rules for Gmail: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="At least one DLP rule for Gmail",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return ou_verdict(
+            ou_values, _rule_list_judge("gmailDlpRules", "gmail_dlp_rules"),
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have DLP rules configured for Gmail.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="At least one DLP rule for Gmail",
+            fail_text="lack DLP rules for Gmail",
+            pass_text="have DLP rules configured for Gmail",
+            expected_value="At least one DLP rule for Gmail", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1830,24 +1684,17 @@ def check_dlp_block_external(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "dlp")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("defaultAction",
-                                      entry["value"].get("default_action", None))
-            if val not in ("block", "block_external", "BLOCK", "BLOCK_EXTERNAL"):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have DLP action not set to block: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="block or block_external",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have DLP set to block external sharing.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="block or block_external",
+        def judge(entry: dict):
+            action = field_value(entry, "defaultAction", "default_action")
+            if action is None:
+                return None
+            return action in ("block", "block_external", "BLOCK", "BLOCK_EXTERNAL"), action
+
+        return ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have DLP action not set to block",
+            pass_text="have DLP set to block external sharing",
+            expected_value="block or block_external", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1923,28 +1770,19 @@ def check_user_account_recovery_disabled(data: dict) -> CheckResult:
 
     security = data.get("policies", {}).get("security", {})
     ou_values = get_ou_values(security, "user_account_recovery")
-    determined = [e for e in ou_values if e["value"].get("enableAccountRecovery") is not None]
-    if not determined:
+    if not ou_values:
         return make_review(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="User account recovery setting was not returned by the Cloud Identity Policy API — verify in Admin console.",
             remediation=_REMED,
         )
-    unsafe_ous = [{"org_unit": e["org_unit"], "value": True}
-                  for e in determined if e["value"]["enableAccountRecovery"] is True]
-    if unsafe_ous:
-        ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-        return make_fail(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=(f"{len(unsafe_ous)} OU(s) allow user account self-recovery: {ou_list}. "
-                     "(CIS-4.1.2.2 requires the opposite value.)"),
-            actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-            remediation=_REMED,
-        )
-    return make_pass(
+    return ou_verdict(
+        ou_values, _flag_judge("enableAccountRecovery", expected=False),
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-        details=f"All {len(determined)} OU(s) have user account self-recovery disabled.",
-        actual_value=f"{len(determined)} OU(s) safe", expected_value="Disabled for all OUs",
+        fail_text="allow user account self-recovery (CIS-4.1.2.2 requires the opposite value)",
+        pass_text="have user account self-recovery disabled",
+        expected_value="Disabled for all OUs", remediation=_REMED,
+        unknown_text="User account recovery setting was not returned by the Cloud Identity Policy API — verify in Admin console.",
     )
 
 

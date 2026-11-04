@@ -7,7 +7,8 @@
 CIS Google Workspace Benchmark v1.3.0 - Google Chat controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
+from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
+                   format_ou_values_readable, field_value, ou_verdict)
 from ..models import CheckResult, Status
 
 
@@ -36,27 +37,22 @@ def check_chat_external_restriction(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path — check external_chat_restriction (1:1 external chat)
-    ou_values = get_ou_values(chat, "external_chat_restriction", admin_only=True)
+    ou_values = get_ou_values(chat, "external_chat_restriction")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            restriction = entry["value"].get("externalChatRestriction", "")
-            allow_ext = entry["value"].get("allowExternalChat", True)
-            if restriction == "TRUSTED_DOMAINS" or allow_ext is False:
-                continue  # safe
-            unsafe_ous.append({"org_unit": entry["org_unit"], "value": restriction})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not restrict external chat to allowlisted domains: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="ALLOWLISTED_DOMAINS for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            restriction = field_value(entry, "externalChatRestriction")
+            allow_ext = field_value(entry, "allowExternalChat")
+            if allow_ext is False or restriction == "TRUSTED_DOMAINS":
+                return True, restriction
+            if allow_ext is None or restriction is None:
+                return None  # the other field could still make the OU compliant
+            return False, restriction
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict external chat to allowlisted domains.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="ALLOWLISTED_DOMAINS",
+            fail_text="do not restrict external chat to allowlisted domains",
+            pass_text="restrict external chat to allowlisted domains",
+            expected_value="ALLOWLISTED_DOMAINS for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -135,25 +131,19 @@ def check_chat_app_installation(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "chat_apps_access", admin_only=True)
+    ou_values = get_ou_values(chat, "chat_apps_access")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("enableApps", None)
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Chat app installation enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            val = field_value(entry, "enableApps")
+            if val is None:
+                return None  # edition-dependent default, not injected: unknown
+            return val is False
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Chat app installation disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have Chat app installation enabled",
+            pass_text="have Chat app installation disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -225,25 +215,19 @@ def check_chat_webhooks(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "chat_apps_access", admin_only=True)
+    ou_values = get_ou_values(chat, "chat_apps_access")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("enableWebhooks", None)
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have incoming webhooks enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            val = field_value(entry, "enableWebhooks")
+            if val is None:
+                return None  # edition-dependent default, not injected: unknown
+            return val is False
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have incoming webhooks disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have incoming webhooks enabled",
+            pass_text="have incoming webhooks disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic

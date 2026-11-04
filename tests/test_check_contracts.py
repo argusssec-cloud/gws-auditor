@@ -51,11 +51,7 @@ DEAD_SETTING_KEYS: dict[tuple[str, str], str] = {
 }
 
 # GOOGLE_DEFAULTS setting type -> invented field names tolerated until P0 decides the defaults policy.
-DEFAULTS_WITH_INVENTED_FIELDS: dict[str, set[str]] = {
-    "gmail.comprehensive_mail_storage": {"enableComprehensiveMailStorage"},
-    "directory.external_directory_sharing": {"sharing_option"},
-    "groups_for_business.groups_sharing": {"whoCanCreateGroups"},
-}
+DEFAULTS_WITH_INVENTED_FIELDS: dict[str, set[str]] = {}
 
 
 def _lookups():
@@ -120,3 +116,38 @@ class TestMatrixCoversRegistry:
     def test_every_row_has_the_required_cases(self, field):
         empty = [row["check_id"] for row in MATRIX if not str(row.get(field, "")).strip()]
         assert not empty, f"matrix rows with empty {field}: {empty}"
+
+
+class TestSystemPoliciesAreJudged:
+    """Decision A: a SYSTEM policy is the value in force and must be judged, so no check may
+    drop it with admin_only=True. The decorator adds the provenance note instead."""
+
+    def test_no_check_filters_out_system_policies(self):
+        offenders = []
+        for path in sorted(CHECKS_DIR.glob("*.py")):
+            if path.name == "base.py":
+                continue
+            for lineno, line in enumerate(path.read_text().splitlines(), 1):
+                if "admin_only=True" in line:
+                    offenders.append(f"{path.name}:{lineno}")
+        assert not offenders, f"checks still discard SYSTEM policies: {offenders}"
+
+    def test_injected_defaults_are_documented(self):
+        from gws_auditor.api.policy import GOOGLE_DEFAULTS
+        from gws_auditor.google_defaults import ALL_DEFAULTS
+
+        for setting_type, value in GOOGLE_DEFAULTS.items():
+            assert ALL_DEFAULTS.get(setting_type) == value, setting_type
+
+    def test_documented_defaults_use_catalogue_fields(self):
+        from gws_auditor.google_defaults import ALL_DEFAULTS
+
+        bad = {}
+        for setting_type, fields in ALL_DEFAULTS.items():
+            if setting_type not in SHAPES:
+                continue  # documented by Google, never observed live; nothing reads it yet
+            real = {f.split("[].")[-1] for f in SHAPES[setting_type]}
+            invented = sorted(set(fields) - real)
+            if invented:
+                bad[setting_type] = invented
+        assert not bad, bad

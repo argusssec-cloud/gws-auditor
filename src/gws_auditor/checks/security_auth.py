@@ -7,11 +7,25 @@
 CIS Google Workspace Benchmark v1.3.0 - Authentication and security controls.
 """
 
+from datetime import datetime, timezone
+
 from .base import (
-    check, make_pass, make_fail, make_warn, make_manual, make_partial,
-    get_ou_values, format_ou_values_readable,
+    check, make_pass, make_fail, make_warn, make_manual, make_partial, make_review,
+    get_ou_values, field_value, ou_verdict,
 )
 from ..models import CheckResult, Status
+
+
+def _enforced_from_active(enforced_from) -> bool:
+    """True when a 2SV ``enforcedFrom`` timestamp lies in the past (enforcement in force).
+
+    A value that is not a real timestamp counts as not enforced.
+    """
+    try:
+        dt = datetime.fromisoformat(str(enforced_from).replace("Z", "+00:00"))
+        return dt <= datetime.now(timezone.utc)
+    except (ValueError, AttributeError):
+        return False
 
 
 @check(
@@ -44,23 +58,20 @@ def check_2sv_admin_enforcement(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "two_step_verification_enforcement")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            # The API may use enforcedFrom (non-empty = enforced) or enableEnforcement
-            enforced_from = entry["value"].get("enforcedFrom")
+        def judge(entry):
+            # Google documents enforcedFrom as "Unset" = not enforced, so an absent field is a
+            # concrete non-compliant value, not an unknown. The timestamp must be a real date in
+            # the past; enableEnforcement is a legacy alias.
+            enforced_from = field_value(entry, "enforcedFrom")
             if enforced_from is not None:
-                # enforcedFrom is a timestamp string; non-empty means enforcement is scheduled.
-                # Parse it to verify it's a real date, not just a truthy string.
-                from datetime import datetime, timezone
-                try:
-                    dt = datetime.fromisoformat(enforced_from.replace("Z", "+00:00"))
-                    enabled = dt <= datetime.now(timezone.utc)
-                except (ValueError, AttributeError):
-                    enabled = False
-            else:
-                enabled = entry["value"].get("enableEnforcement", False)
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
+                return _enforced_from_active(enforced_from)
+            return field_value(entry, "enableEnforcement") is True
+
+        policy = ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="lack 2SV enforcement", pass_text="enforce 2SV",
+            expected_value="2SV enforced for all OUs", remediation=_REMED,
+        )
         # Also check individual admin users
         admins = [u for u in users if u.get("is_admin", False) or u.get("is_super_admin", False)]
         admins_without_2sv = [
@@ -68,11 +79,10 @@ def check_2sv_admin_enforcement(data: dict) -> CheckResult:
             for u in admins
             if not u.get("is_enrolled_in_2sv", False) and not u.get("suspended", False)
         ]
-        if unsafe_ous or admins_without_2sv:
+        if policy.status == Status.FAIL or admins_without_2sv:
             details_parts = []
-            if unsafe_ous:
-                ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-                details_parts.append(f"{len(unsafe_ous)} OU(s) lack 2SV enforcement: {ou_list}")
+            if policy.status != Status.PASS:
+                details_parts.append(policy.details)
             if admins_without_2sv:
                 details_parts.append(
                     f"{len(admins_without_2sv)} admin(s) not enrolled: "
@@ -81,10 +91,13 @@ def check_2sv_admin_enforcement(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details="; ".join(details_parts),
-                actual_value={"unsafe_ous": unsafe_ous, "admins_without_2sv": admins_without_2sv},
+                actual_value={"unsafe_ous": policy.actual_value if policy.status == Status.FAIL else "",
+                              "admins_without_2sv": admins_without_2sv},
                 expected_value="2SV enforced for all OUs and all admins enrolled",
                 remediation=_REMED,
             )
+        if policy.status != Status.PASS:
+            return policy  # enforcement undetermined in some OU: MANUAL
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) enforce 2SV and all {len(admins)} admin(s) are enrolled.",
@@ -172,24 +185,16 @@ def check_security_keys_admin(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "two_step_verification_enforcement_factor")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            method = entry["value"].get("allowedSignInFactorSet",
-                        entry["value"].get("allowedMethod", ""))
-            if method not in _SAFE:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": method})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not require security keys: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="ONLY_SECURITY_KEY for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) require hardware security keys for 2SV.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="ONLY_SECURITY_KEY",
+        def judge(entry):
+            method = field_value(entry, "allowedSignInFactorSet", "allowedMethod")
+            if method is None:
+                return None  # absent or *_UNSPECIFIED: cannot judge
+            return method in _SAFE, method
+
+        return ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="do not require security keys", pass_text="require hardware security keys for 2SV",
+            expected_value="ONLY_SECURITY_KEY for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -245,53 +250,65 @@ def check_2sv_all_users(data: dict) -> CheckResult:
     policies = data.get("policies", {})
     security = policies.get("security", {})
 
-    # OU-aware path
-    ou_values = get_ou_values(security, "two_step_verification_enrollment")
+    # OU-aware path: two_step_verification_enforcement.enforcedFrom decides whether 2SV
+    # is enforced (documented default: unset = not enforced). The enrollment setting only
+    # says whether users may enrol and is consulted when no enforcement policy exists.
+    ou_values = get_ou_values(security, "two_step_verification_enforcement")
+    from_enforcement = bool(ou_values)
+    if not ou_values:
+        ou_values = get_ou_values(security, "two_step_verification_enrollment")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            # The enrollment setting may use allowEnrollment / enableEnrollment
-            # or enforcedFrom / enableEnforcement
-            enforced_from = entry["value"].get("enforcedFrom")
+        def judge(entry):
+            # The enforcement setting carries enforcedFrom (documented: "Unset" = not
+            # enforced, so absent is a concrete non-compliant value); the enrollment setting
+            # carries allowEnrollment. The remaining names are legacy aliases.
+            enforced_from = field_value(entry, "enforcedFrom")
             if enforced_from is not None:
-                from datetime import datetime, timezone
-                try:
-                    dt = datetime.fromisoformat(enforced_from.replace("Z", "+00:00"))
-                    enforced = dt <= datetime.now(timezone.utc)
-                except (ValueError, AttributeError):
-                    enforced = False
-            else:
-                enforced = entry["value"].get("allowEnrollment",
-                                              entry["value"].get("enableEnrollment",
-                                                                 entry["value"].get("enableEnforcement",
-                                                                                    entry["value"].get("enforced", False))))
-            if enforced is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enforced})
+                return _enforced_from_active(enforced_from)
+            flag = field_value(entry, "allowEnrollment", "enableEnrollment", "enableEnforcement", "enforced")
+            if flag is None:
+                return False if from_enforcement else None
+            return flag is True
+
+        policy = ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="lack 2SV enrollment enforcement", pass_text="enforce 2SV enrollment",
+            expected_value="2SV enforced for all OUs", remediation=_REMED,
+        )
+        policy_gap = policy.status == Status.FAIL
         # Also check individual users
         users_without_2sv = [
             u.get("primary_email", "unknown")
             for u in users
             if not u.get("is_enrolled_in_2sv", False) and not u.get("suspended", False)
         ]
-        if unsafe_ous or users_without_2sv:
+        if policy_gap or users_without_2sv:
             details_parts = []
-            if unsafe_ous:
-                ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-                details_parts.append(f"{len(unsafe_ous)} OU(s) lack 2SV enrollment enforcement: {ou_list}")
+            if policy.status != Status.PASS:
+                details_parts.append(policy.details)
             if users_without_2sv:
                 details_parts.append(
                     f"{len(users_without_2sv)} user(s) not enrolled: "
                     f"{', '.join(users_without_2sv[:5])}"
                 )
+            unsafe_ous = policy.actual_value if policy_gap else ""
             # PARTIAL when policy enforces 2SV at every OU but a small slice
             # of users haven't enrolled yet (new hires in grace period,
             # service accounts, etc.). Pure user-level lag without policy
             # gaps is "compliance in some users" — credit the partial state.
             total_users = max(len(users), 1)
             user_lag_only = (
-                not unsafe_ous and users_without_2sv
+                not policy_gap and users_without_2sv
                 and len(users_without_2sv) / total_users < 0.20
             )
+            if user_lag_only and policy.status != Status.PASS:
+                # Small user lag but the policy itself is undetermined: review, not credit.
+                return make_review(
+                    check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                    details="; ".join(details_parts),
+                    expected_value="2SV enforced for all OUs and all users enrolled",
+                    remediation=_REMED,
+                )
             if user_lag_only:
                 return make_partial(
                     check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
@@ -311,6 +328,8 @@ def check_2sv_all_users(data: dict) -> CheckResult:
                 expected_value="2SV enforced for all OUs and all users enrolled",
                 remediation=_REMED,
             )
+        if policy.status != Status.PASS:
+            return policy  # enforcement undetermined in some OU: MANUAL
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) enforce 2SV enrollment and all {len(users)} user(s) are enrolled.",
@@ -399,23 +418,15 @@ def check_super_admin_recovery(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "super_admin_account_recovery")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableAccountRecovery", entry["value"].get("enabled", None))
-            if enabled is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have super admin recovery enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Recovery disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have super admin account recovery disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        def judge(entry):
+            enabled = field_value(entry, "enableAccountRecovery", "enabled")
+            return None if enabled is None else enabled is False
+
+        return ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have super admin recovery enabled",
+            pass_text="have super admin account recovery disabled",
+            expected_value="Recovery disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -475,23 +486,15 @@ def check_user_account_recovery(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "user_account_recovery")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableAccountRecovery", entry["value"].get("enabled", None))
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have user account recovery disabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Recovery enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have user account recovery enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def judge(entry):
+            enabled = field_value(entry, "enableAccountRecovery", "enabled")
+            return None if enabled is None else enabled is True
+
+        return ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have user account recovery disabled",
+            pass_text="have user account recovery enabled",
+            expected_value="Recovery enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -549,25 +552,17 @@ def check_advanced_protection(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "advanced_protection_program")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            available = entry["value"].get("enableAdvancedProtectionSelfEnrollment",
-                        entry["value"].get("enableAdvancedProtection",
-                        entry["value"].get("enabled", None)))
-            if available is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": available})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not have Advanced Protection available: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Available for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Advanced Protection Program available.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def judge(entry):
+            # No documented default for this field: absent means unknown, not disabled.
+            available = field_value(entry, "enableAdvancedProtectionSelfEnrollment",
+                                    "enableAdvancedProtection", "enabled")
+            return None if available is None else available is True
+
+        return ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="do not have Advanced Protection available",
+            pass_text="have Advanced Protection Program available",
+            expected_value="Available for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -627,25 +622,16 @@ def check_login_challenges(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "login_challenges")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableEmployeeIdChallenge",
-                        entry["value"].get("enableLoginChallenge",
-                        entry["value"].get("enabled", None)))
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not have login challenges enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Login challenges enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have login challenges enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def judge(entry):
+            # No documented default for this field: absent means unknown, not disabled.
+            enabled = field_value(entry, "enableEmployeeIdChallenge", "enableLoginChallenge", "enabled")
+            return None if enabled is None else enabled is True
+
+        return ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="do not have login challenges enabled",
+            pass_text="have login challenges enabled",
+            expected_value="Login challenges enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -707,14 +693,18 @@ def check_password_policy(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "password")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
+        def judge(entry):
+            # Three-field policy. minimumLength and enforceRequirementsAtLogin have documented
+            # defaults (8 / false), so an absent value is judged, not unknown; an unspecified
+            # allowedStrength cannot confirm compliance on its own.
+            raw_len = field_value(entry, "minimumLength")
             try:
-                min_len = int(entry["value"].get("minimumLength", 0) or 0)
+                min_len = int(8 if raw_len is None else raw_len)
             except (TypeError, ValueError):
                 min_len = 0
-            enforce = entry["value"].get("enforceRequirementsAtLogin", None)
-            strength = str(entry["value"].get("allowedStrength", "") or "").upper()
+            enforce = field_value(entry, "enforceRequirementsAtLogin")
+            raw_strength = field_value(entry, "allowedStrength")
+            strength = str(raw_strength or "").upper()
             issues = []
             if min_len < 12:
                 issues.append(f"min_length={min_len}")
@@ -723,23 +713,14 @@ def check_password_policy(data: dict) -> CheckResult:
             if enforce is not True:
                 issues.append(f"enforce_at_login={enforce}")
             if issues:
-                unsafe_ous.append({
-                    "org_unit": entry["org_unit"],
-                    "value": ", ".join(issues),
-                })
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have weak password policy: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="minimumLength >= 12, enforceRequirementsAtLogin for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have strong password policy.",
-            actual_value=f"{len(ou_values)} OU(s) safe",
-            expected_value="minimumLength >= 12, enforceRequirementsAtLogin",
+                return False, ", ".join(issues)
+            return None if raw_strength is None else True
+
+        return ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have weak password policy", pass_text="have strong password policy",
+            expected_value="minimumLength >= 12, enforceRequirementsAtLogin for all OUs",
+            remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -815,11 +796,15 @@ def check_less_secure_apps(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "less_secure_apps")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            allowed = entry["value"].get("allowLessSecureApps", None)
-            if allowed is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": allowed})
+        def judge(entry):
+            allowed = field_value(entry, "allowLessSecureApps")
+            return None if allowed is None else allowed is False
+
+        policy = ou_verdict(
+            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow less secure apps", pass_text="disable less secure app access",
+            expected_value="Disabled for all OUs", remediation=_REMED,
+        )
         # Also check individual users
         users = data.get("users", [])
         users_with_lsa = [
@@ -827,11 +812,10 @@ def check_less_secure_apps(data: dict) -> CheckResult:
             for u in users
             if u.get("less_secure_apps_enabled", False)
         ]
-        if unsafe_ous or users_with_lsa:
+        if policy.status == Status.FAIL or users_with_lsa:
             details_parts = []
-            if unsafe_ous:
-                ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-                details_parts.append(f"{len(unsafe_ous)} OU(s) allow less secure apps: {ou_list}")
+            if policy.status != Status.PASS:
+                details_parts.append(policy.details)
             if users_with_lsa:
                 details_parts.append(
                     f"{len(users_with_lsa)} user(s) have LSA enabled: "
@@ -840,10 +824,13 @@ def check_less_secure_apps(data: dict) -> CheckResult:
             return make_fail(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details="; ".join(details_parts),
-                actual_value={"unsafe_ous": unsafe_ous, "users_with_lsa_count": len(users_with_lsa)},
+                actual_value={"unsafe_ous": policy.actual_value if policy.status == Status.FAIL else "",
+                              "users_with_lsa_count": len(users_with_lsa)},
                 expected_value="Disabled for all OUs and users",
                 remediation=_REMED,
             )
+        if policy.status != Status.PASS:
+            return policy  # setting undetermined in some OU: MANUAL
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=f"All {len(ou_values)} OU(s) disable less secure app access.",

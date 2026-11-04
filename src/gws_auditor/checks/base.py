@@ -8,6 +8,7 @@ import fnmatch
 import functools
 import logging
 import re
+import threading
 from typing import Callable
 
 from ..constants import (
@@ -15,11 +16,41 @@ from ..constants import (
     CONSOLE_SECTION_LINKS,
 )
 from ..models import CheckMetadata, CheckResult, Severity, Status
+from ..google_defaults import defaults_for_setting
 
 logger = logging.getLogger(__name__)
 
 # Global list populated by the @check decorator
 _registered_checks: list[CheckMetadata] = []
+
+# Per-check bookkeeping of the OU entries a check looked at, so the decorator can
+# say when a verdict rests on Google defaults rather than admin configuration.
+_lookups = threading.local()
+
+
+def _record_lookup(entries: list[dict]) -> None:
+    store = getattr(_lookups, "entries", None)
+    if store is not None:
+        store.extend(entries)
+
+
+def _provenance_note(entries: list[dict]) -> str:
+    """One sentence naming the OUs whose values are Google defaults, or ''."""
+    system_ous: set[str] = set()
+    documented: set[str] = set()
+    for e in entries:
+        ou = e.get("org_unit", "/")
+        raw_type = str((e.get("_raw") or {}).get("type", "")).upper()
+        if raw_type in ("SYSTEM", "DEFAULT") or "/_default/" in str(e.get("name", "")):
+            system_ous.add(ou)
+        if e.get("_defaulted_fields"):
+            documented.add(ou)
+    parts = []
+    if system_ous:
+        parts.append(f"Google default in force, not admin-configured, for OU(s): {', '.join(sorted(system_ous))}")
+    if documented - system_ous:
+        parts.append(f"documented Google default used for absent field(s) in OU(s): {', '.join(sorted(documented - system_ous))}")
+    return " Note: " + "; ".join(parts) + "." if parts else ""
 
 # Matches Google official documentation URLs we surface as "Learn More".
 # Order matters: support.google.com is preferred over admin.google.com.
@@ -185,7 +216,16 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
                         console_link=resolved_console_link,
                         gam_command=gam_command,
                     )
-                result = func(data)
+                _lookups.entries = []
+                try:
+                    result = func(data)
+                    looked_at = list(_lookups.entries)
+                finally:
+                    _lookups.entries = None
+                if result.status in (Status.PASS, Status.FAIL, Status.WARN, Status.PARTIAL):
+                    note = _provenance_note(looked_at)
+                    if note and "Google default" not in (result.details or ""):
+                        result.details = (result.details or "").rstrip() + note
                 # Ensure metadata fields are populated on the result
                 result.check_id = result.check_id or check_id
                 result.title = result.title or title
@@ -430,10 +470,9 @@ def evaluate_ous(ou_values: list[dict], predicate: Callable,
         AND the OU is not an external-sharing exception.
       ``exception_ous``: list of OU paths where predicate returned False
         but the OU is an intentional exception.
-      ``default_ous``: list of OU paths where the entry is a SYSTEM/DEFAULT
-        policy (admin never configured it). These are excluded from the
-        unsafe list — checks should typically downgrade to MANUAL when
-        only DEFAULT entries are present.
+      ``default_ous``: list of OU paths whose entry is a SYSTEM/DEFAULT
+        policy (the Google default in force, never changed by an admin).
+        They are judged like admin values; the list is informational.
       ``total``: total number of OU entries evaluated.
     """
     safe: list[str] = []
@@ -443,8 +482,9 @@ def evaluate_ous(ou_values: list[dict], predicate: Callable,
     for entry in ou_values:
         ou = entry.get("org_unit", "/")
         if is_default_policy(entry):
+            # Google default in force (SYSTEM policy or documented default): judged like
+            # any other value, listed here so callers can report the provenance.
             default.append(ou)
-            continue
         try:
             ok = bool(predicate(entry))
         except Exception:
@@ -550,6 +590,7 @@ def get_ou_values(category_dict: dict, raw_setting_key: str,
     ou_policies = category_dict.get("_ou_policies", [])
     if not ou_policies:
         return []
+    synthesized = _documented_default_entry(ou_policies, raw_setting_key)
 
     # OU ID map for secondary resolution of any orgUnits/<id> values
     # that _normalize_policies could not resolve on first pass.
@@ -599,22 +640,196 @@ def get_ou_values(category_dict: dict, raw_setting_key: str,
                 "name": policy.get("name", ""),
             })
 
-    # Deduplicate per OU: when multiple entries exist for the same OU,
-    # prefer ADMIN entries over SYSTEM/DEFAULT.
-    seen_ous: dict[str, dict] = {}
-    for entry in raw_results:
-        ou = entry["org_unit"]
-        entry_is_default = is_default_policy(entry)
-        if ou not in seen_ous:
-            seen_ous[ou] = entry
-        elif entry_is_default:
-            # Current entry is SYSTEM/DEFAULT — keep existing (which may be ADMIN)
-            pass
-        else:
-            # Current entry is ADMIN — prefer it over any existing entry
-            seen_ous[ou] = entry
+    # Reduce per OU the way the API documents it: the policy with the greatest
+    # policyQuery.sortOrder wins per field (ADMIN ~201 > SYSTEM ~101 > injected
+    # DEFAULT), so an admin override beats Google's default and a SYSTEM-only
+    # setting is the value in force. Fields still absent take Google's documented
+    # default when one exists.
+    if not raw_results and synthesized is not None:
+        # The API was queried for this setting family and returned no policy for the
+        # setting: per Google, every field then takes its documented default.
+        raw_results = [synthesized]
+    reduced = _reduce_entries(raw_results, raw_setting_key)
+    if admin_only:
+        reduced = [e for e in reduced if is_admin_configured(e)]
+    _record_lookup(reduced)
+    return reduced
 
-    return list(seen_ous.values())
+
+def _documented_default_entry(ou_policies: list, raw_setting_key: str) -> dict | None:
+    """A root-OU entry built from Google's documented defaults, or None.
+
+    Only when the category really holds policies of the setting's family (for example
+    ``settings/gmail.*`` for ``gmail.mail_delegation``), which proves the API was queried
+    for it and returned nothing for this setting. A category used by a check as a first
+    guess for a setting that lives elsewhere never triggers it.
+    """
+    from ..google_defaults import ALL_DEFAULTS
+    setting_type = next((t for t in ALL_DEFAULTS if t.split(".", 1)[1].lower() == raw_setting_key.lower()), None)
+    if not setting_type or not ALL_DEFAULTS[setting_type]:
+        return None
+    family = f"settings/{setting_type.split('.', 1)[0]}."
+    if not any(isinstance(p, dict) and str(p.get("setting", {}).get("type", "")).startswith(family)
+               for p in ou_policies):
+        return None
+    return {
+        "org_unit": "/",
+        "value": {},  # _reduce_entries fills the documented defaults and records them
+        "setting_type": f"settings/{setting_type}",
+        "_raw": {"type": "DEFAULT"},
+        "name": f"policies/_default/{setting_type}",
+    }
+
+
+def _sort_order(entry: dict) -> float:
+    raw = entry.get("_raw") or {}
+    query = raw.get("policyQuery") if isinstance(raw, dict) else None
+    try:
+        return float((query or {}).get("sortOrder"))
+    except (TypeError, ValueError):
+        return -1.0  # injected DEFAULT entries carry no sortOrder
+
+
+def _reduce_entries(entries: list[dict], setting_key: str) -> list[dict]:
+    by_ou: dict[str, list[dict]] = {}
+    for entry in entries:
+        by_ou.setdefault(entry["org_unit"], []).append(entry)
+    out = []
+    for ou, group in by_ou.items():
+        group = sorted(group, key=_sort_order)  # ascending: later entries override
+        value: dict = {}
+        sources: dict[str, str] = {}
+        for e in group:
+            kind = str((e.get("_raw") or {}).get("type", "ADMIN")).upper() or "ADMIN"
+            v = e.get("value")
+            if not isinstance(v, dict):
+                continue
+            for field, fv in v.items():
+                value[field] = fv
+                sources[field] = kind
+        top = group[-1]
+        defaulted = []
+        for field, fv in defaults_for_setting(setting_key).items():
+            if field in value or _snake(field) in value:
+                continue
+            value[field] = fv
+            sources[field] = "DOCUMENTED_DEFAULT"
+            defaulted.append(field)
+        unspecified = sorted(f for f, fv in value.items()
+                             if isinstance(fv, str) and fv.upper().endswith("_UNSPECIFIED"))
+        out.append({
+            "org_unit": ou,
+            "value": value if isinstance(top.get("value"), dict) else top.get("value"),
+            "setting_type": top.get("setting_type", ""),
+            "_raw": top.get("_raw", {}),
+            "name": top.get("name", ""),
+            "_field_sources": sources,
+            "_defaulted_fields": defaulted,
+            "_unspecified_fields": unspecified,
+        })
+    return out
+
+
+def _snake(name: str) -> str:
+    s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+# ---------------------------------------------------------------------------
+# Per-OU verdict helper (plan Decision A)
+# ---------------------------------------------------------------------------
+
+def field_value(entry: dict, *names: str):
+    """Return the first present field among *names*, or ``None`` when the value is unknown.
+
+    Unknown means the field is absent from the reduced setting (and Google documents no
+    default for it, otherwise ``get_ou_values`` already filled it) or carries a
+    ``*_UNSPECIFIED`` enum member, which the API uses for "not set". Callers treat ``None``
+    as "cannot judge", never as safe or unsafe.
+    """
+    value = entry.get("value") or {}
+    if not isinstance(value, dict):
+        return None
+    for name in names:
+        if name in value:
+            v = value[name]
+            if isinstance(v, str) and v.upper().endswith("_UNSPECIFIED"):
+                return None
+            return v
+    return None
+
+
+def ou_verdict(ou_values: list[dict], judge: Callable, *, check_id: str, title: str,
+               level: str, source: str, section: str,
+               fail_text: str, pass_text: str, expected_value, remediation: str = "",
+               data: dict | None = None, humanizer: Callable | None = None,
+               unknown_text: str | None = None) -> CheckResult:
+    """Turn per-OU entries into PASS / FAIL / PARTIAL / MANUAL under the status rules.
+
+    ``judge(entry)`` returns ``True`` (compliant), ``False`` (non-compliant) or ``None``
+    (cannot be determined: field absent without a documented default, or
+    ``*_UNSPECIFIED``). ``judge`` may also return a ``(verdict, shown_value)`` tuple to
+    control the value printed for the OU.
+
+    * any non-compliant OU outside the external-sharing exception OUs -> FAIL
+    * non-compliant only in exception OUs -> PARTIAL
+    * no non-compliant OU but at least one undetermined OU -> MANUAL
+    * otherwise -> PASS
+
+    ``fail_text`` is phrased for ``"{n} OU(s) {fail_text}: {ous}"`` and ``pass_text`` for
+    ``"All {n} OU(s) {pass_text}."`` so existing wording and tests keep working.
+    """
+    unsafe: list[dict] = []
+    exception: list[dict] = []
+    unknown: list[str] = []
+    safe = 0
+    for entry in ou_values:
+        ou = entry.get("org_unit", "/")
+        try:
+            res = judge(entry)
+        except Exception:  # a malformed value is unknown, not a verdict
+            res = None
+        shown = None
+        if isinstance(res, tuple):
+            res, shown = res
+        if res is None:
+            unknown.append(ou)
+        elif res:
+            safe += 1
+        else:
+            item = {"org_unit": ou, "value": shown if shown is not None else _unsafe_display(entry)}
+            if data is not None and is_external_sharing_ou(ou, data):
+                exception.append(item)
+            else:
+                unsafe.append(item)
+    common = dict(check_id=check_id, title=title, level=level, source=source, section=section)
+    if unsafe:
+        ou_list = ", ".join(u["org_unit"] for u in unsafe)
+        details = f"{len(unsafe)} OU(s) {fail_text}: {ou_list}"
+        if unknown:
+            details += f". Undetermined (value absent or unspecified) in OU(s): {', '.join(unknown)}"
+        return make_fail(details=details, actual_value=format_ou_values_readable(unsafe, humanizer),
+                         expected_value=expected_value, remediation=remediation, **common)
+    if exception:
+        ou_list = ", ".join(u["org_unit"] for u in exception)
+        return make_partial(
+            details=f"{len(exception)} intentional external-sharing OU(s) {fail_text}: {ou_list}",
+            actual_value=format_ou_values_readable(exception, humanizer),
+            expected_value=expected_value, remediation=remediation, **common)
+    if unknown:
+        return make_review(
+            details=(unknown_text or f"Setting could not be determined (value absent or unspecified) for OU(s): "
+                     f"{', '.join(unknown)}. Verify in the Admin console."),
+            remediation=remediation, expected_value=expected_value, **common)
+    return make_pass(details=f"All {len(ou_values)} OU(s) {pass_text}.",
+                     actual_value=f"{len(ou_values)} OU(s) safe", expected_value=expected_value, **common)
+
+
+def _unsafe_display(entry: dict):
+    value = entry.get("value")
+    if isinstance(value, dict) and len(value) == 1:
+        return next(iter(value.values()))
+    return value
 
 
 def format_ou_values_readable(unsafe_ous: list[dict],

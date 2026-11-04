@@ -109,9 +109,9 @@ class TestExternalGroupsDisabledOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups_for_business", "groups_sharing",
-                                {"externalGroupsAccessEnabled": False}, "/"),
+                                {"collaborationCapability": "DOMAIN_USERS_ONLY"}, "/"),
                 make_ou_policy("groups_for_business", "groups_sharing",
-                                {"externalGroupsAccessEnabled": False}, "/Engineering"),
+                                {"collaborationCapability": "DOMAIN_USERS_ONLY"}, "/Engineering"),
             ],
         }
         result = check_external_groups_disabled(full_audit_data)
@@ -124,9 +124,9 @@ class TestExternalGroupsDisabledOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups_for_business", "groups_sharing",
-                                {"externalGroupsAccessEnabled": False}, "/"),
+                                {"collaborationCapability": "DOMAIN_USERS_ONLY"}, "/"),
                 make_ou_policy("groups_for_business", "groups_sharing",
-                                {"externalGroupsAccessEnabled": True}, "/Sales"),
+                                {"collaborationCapability": "ANYONE_CAN_ACCESS"}, "/Sales"),
             ],
         }
         result = check_external_groups_disabled(full_audit_data)
@@ -152,9 +152,9 @@ class TestMarketplaceRestrictionOU:
         full_audit_data["policies"]["marketplace"] = {
             "_ou_policies": [
                 make_ou_policy("workspace_marketplace", "apps_access_options",
-                                {"appInstallPolicy": "ALLOWLIST_ONLY"}, "/"),
+                                {"accessLevel": "ALLOW_LISTED_APPS"}, "/"),
                 make_ou_policy("workspace_marketplace", "apps_access_options",
-                                {"appInstallPolicy": "APPROVED_ONLY"}, "/Engineering"),
+                                {"accessLevel": "ALLOW_NONE"}, "/Engineering"),
             ],
         }
         result = check_marketplace_restriction(full_audit_data)
@@ -167,9 +167,9 @@ class TestMarketplaceRestrictionOU:
         full_audit_data["policies"]["marketplace"] = {
             "_ou_policies": [
                 make_ou_policy("workspace_marketplace", "apps_access_options",
-                                {"appInstallPolicy": "ALLOWLIST_ONLY"}, "/"),
+                                {"accessLevel": "ALLOW_LISTED_APPS"}, "/"),
                 make_ou_policy("workspace_marketplace", "apps_access_options",
-                                {"appInstallPolicy": "UNRESTRICTED"}, "/Dev"),
+                                {"accessLevel": "ALLOW_ALL"}, "/Dev"),
             ],
         }
         result = check_marketplace_restriction(full_audit_data)
@@ -177,19 +177,49 @@ class TestMarketplaceRestrictionOU:
         assert "/Dev" in result.details
 
     def test_child_ou_empty_policy(self, full_audit_data):
+        # An absent accessLevel is unknown (its default is edition-dependent and not injected),
+        # so the OU is undetermined -> MANUAL rather than the old FAIL.
         from gws_auditor.checks.apps_marketplace import check_marketplace_restriction
 
         full_audit_data["policies"]["marketplace"] = {
             "_ou_policies": [
                 make_ou_policy("workspace_marketplace", "apps_access_options",
-                                {"appInstallPolicy": "ALLOWLIST_ONLY"}, "/"),
+                                {"accessLevel": "ALLOW_LISTED_APPS"}, "/"),
+                make_ou_policy("workspace_marketplace", "apps_access_options",
+                                {}, "/HR"),
+            ],
+        }
+        result = check_marketplace_restriction(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "/HR" in result.details
+
+    def test_unspecified_access_level_is_unknown(self, full_audit_data):
+        # ACCESS_LEVEL_UNSPECIFIED is "not set", never a PASS or FAIL verdict.
+        from gws_auditor.checks.apps_marketplace import check_marketplace_restriction
+
+        full_audit_data["policies"]["marketplace"] = {
+            "_ou_policies": [
+                make_ou_policy("workspace_marketplace", "apps_access_options",
+                                {"accessLevel": "ACCESS_LEVEL_UNSPECIFIED"}, "/"),
+            ],
+        }
+        result = check_marketplace_restriction(full_audit_data)
+        assert result.status == Status.MANUAL
+
+    def test_unsafe_ou_wins_over_unknown_ou(self, full_audit_data):
+        from gws_auditor.checks.apps_marketplace import check_marketplace_restriction
+
+        full_audit_data["policies"]["marketplace"] = {
+            "_ou_policies": [
+                make_ou_policy("workspace_marketplace", "apps_access_options",
+                                {"accessLevel": "ALLOW_ALL"}, "/"),
                 make_ou_policy("workspace_marketplace", "apps_access_options",
                                 {}, "/HR"),
             ],
         }
         result = check_marketplace_restriction(full_audit_data)
         assert result.status == Status.FAIL
-        assert "/HR" in result.details
+        assert "/HR" in result.details  # unknown OUs are listed alongside the failure
 
     def test_fallback_when_no_ou_policies(self, full_audit_data):
         from gws_auditor.checks.apps_marketplace import check_marketplace_restriction

@@ -356,7 +356,7 @@ class TestCalOfflineAccess:
         assert result.status == Status.MANUAL
 
     def test_end_to_end_default_injection(self, full_audit_data):
-        """GOOGLE_DEFAULTS entry → MANUAL since DEFAULT values are unconfirmed."""
+        """An injected documented default is the value in force: judged, with provenance."""
         from gws_auditor.provider import normalize_data
         from gws_auditor.checks.apps_calendar import check_cal_offline_access
 
@@ -380,7 +380,8 @@ class TestCalOfflineAccess:
         }
         result = normalize_data(raw)
         check_result = check_cal_offline_access(result)
-        assert check_result.status == Status.MANUAL
+        assert check_result.status == Status.FAIL
+        assert "Google default" in check_result.details
 
     def test_end_to_end_disabled(self, full_audit_data):
         """API returns enableOfflineAccess=False → PASS via normalize_data."""
@@ -500,9 +501,9 @@ class TestCalExternalInvitationWarningOU:
         full_audit_data["policies"]["calendar"] = {
             "_ou_policies": [
                 make_ou_policy("calendar", "external_invitations",
-                                {"warnOnExternalInvitations": True}, "/"),
+                                {"warnOnInvite": True}, "/"),
                 make_ou_policy("calendar", "external_invitations",
-                                {"warnOnExternalInvitations": True}, "/Engineering"),
+                                {"warnOnInvite": True}, "/Engineering"),
             ],
         }
         result = check_cal_external_invitation_warning(full_audit_data)
@@ -514,9 +515,9 @@ class TestCalExternalInvitationWarningOU:
         full_audit_data["policies"]["calendar"] = {
             "_ou_policies": [
                 make_ou_policy("calendar", "external_invitations",
-                                {"warnOnExternalInvitations": True}, "/"),
+                                {"warnOnInvite": True}, "/"),
                 make_ou_policy("calendar", "external_invitations",
-                                {"warnOnExternalInvitations": False}, "/Marketing"),
+                                {"warnOnInvite": False}, "/Marketing"),
             ],
         }
         result = check_cal_external_invitation_warning(full_audit_data)
@@ -645,7 +646,7 @@ class TestOUIdResolution:
                 {
                     "setting": {
                         "type": "settings/calendar.external_invitations",
-                        "value": {"warnOnExternalInvitations": True},
+                        "value": {"warnOnInvite": True},
                     },
                     "orgUnit": "orgUnits/03ph8a2z1rlsact",
                 },
@@ -668,7 +669,7 @@ class TestOUIdResolution:
                 {
                     "setting": {
                         "type": "settings/calendar.external_invitations",
-                        "value": {"warnOnExternalInvitations": True},
+                        "value": {"warnOnInvite": True},
                     },
                     "orgUnit": "/",
                 },
@@ -695,7 +696,7 @@ class TestOUIdResolution:
                 {
                     "setting": {
                         "type": "settings/calendar.external_invitations",
-                        "value": {"warnOnExternalInvitations": False},
+                        "value": {"warnOnInvite": False},
                     },
                     "orgUnit": "orgUnits/03ph8a2z1rlsact",  # unresolved
                 },
@@ -714,7 +715,7 @@ class TestOUIdResolution:
                 {
                     "setting": {
                         "type": "settings/calendar.external_invitations",
-                        "value": {"warnOnExternalInvitations": False},
+                        "value": {"warnOnInvite": False},
                     },
                     "orgUnit": "orgUnits/unknown_id",
                 },
@@ -740,7 +741,7 @@ class TestOUIdResolution:
                     {
                         "setting": {
                             "type": "settings/calendar.external_invitations",
-                            "value": {"warnOnExternalInvitations": True},
+                            "value": {"warnOnInvite": True},
                         },
                         "orgUnit": "orgUnits/03ph8a2z1rlsact",
                     },
@@ -867,3 +868,57 @@ class TestCalendarACLFallback:
         assert "/" in result
         assert result["/"]["sampled_user"] == "good@example.com"
         assert mock_client.get_calendar_acl.call_count == 1
+
+
+class TestCalendarUnknownValues:
+    """Absent / *_UNSPECIFIED fields are unknown: MANUAL unless a real OU is non-compliant."""
+
+    def test_unspecified_external_sharing_is_manual(self, full_audit_data):
+        from gws_auditor.checks.apps_calendar import check_primary_cal_external_sharing
+
+        full_audit_data["policies"]["calendar"] = {"_ou_policies": [
+            make_ou_policy("calendar", "primary_calendar_max_allowed_external_sharing",
+                           {"maxAllowedExternalSharing": "MAX_ALLOWED_EXTERNAL_SHARING_UNSPECIFIED"}, "/")]}
+        result = check_primary_cal_external_sharing(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "/" in result.details
+
+    def test_unsafe_ou_wins_over_unspecified_ou(self, full_audit_data):
+        from gws_auditor.checks.apps_calendar import check_secondary_cal_external_sharing
+
+        full_audit_data["policies"]["calendar"] = {"_ou_policies": [
+            make_ou_policy("calendar", "secondary_calendar_max_allowed_external_sharing",
+                           {"maxAllowedExternalSharing": "MAX_ALLOWED_EXTERNAL_SHARING_UNSPECIFIED"}, "/"),
+            make_ou_policy("calendar", "secondary_calendar_max_allowed_external_sharing",
+                           {"maxAllowedExternalSharing": "EXTERNAL_ALL_INFO_READ_WRITE"}, "/Sales")]}
+        result = check_secondary_cal_external_sharing(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "/Sales" in result.details and "Undetermined" in result.details
+
+    def test_empty_external_sharing_uses_documented_default(self, full_audit_data):
+        # Google documents EXTERNAL_FREE_BUSY_ONLY (primary) and EXTERNAL_ALL_INFO_READ_ONLY (secondary)
+        # as the defaults for an absent field, so an empty entry is judged, not MANUAL.
+        from gws_auditor.checks.apps_calendar import (check_primary_cal_external_sharing,
+                                                      check_secondary_cal_external_sharing)
+
+        full_audit_data["policies"]["calendar"] = {"_ou_policies": [
+            make_ou_policy("calendar", "primary_calendar_max_allowed_external_sharing", {}, "/"),
+            make_ou_policy("calendar", "secondary_calendar_max_allowed_external_sharing", {}, "/")]}
+        assert check_primary_cal_external_sharing(full_audit_data).status == Status.PASS
+        assert check_secondary_cal_external_sharing(full_audit_data).status == Status.FAIL
+
+    def test_offline_access_empty_uses_admin_help_default(self, full_audit_data):
+        # Admin Help documents offline access as enabled by default, so an empty entry is FAIL.
+        from gws_auditor.checks.apps_calendar import check_cal_offline_access
+
+        full_audit_data["policies"]["calendar"] = {"_ou_policies": [
+            make_ou_policy("calendar", "calendar_offline_access", {}, "/")]}
+        assert check_cal_offline_access(full_audit_data).status == Status.FAIL
+
+    def test_internal_sharing_unknown_is_manual(self, full_audit_data):
+        # No documented default for maxAllowedInternalSharing: an empty entry was FAIL, now MANUAL.
+        from gws_auditor.checks.apps_calendar import check_primary_cal_internal_sharing
+
+        full_audit_data["policies"]["calendar"] = {"_ou_policies": [
+            make_ou_policy("calendar", "primary_calendar_max_allowed_internal_sharing", {}, "/")]}
+        assert check_primary_cal_internal_sharing(full_audit_data).status == Status.MANUAL

@@ -7,7 +7,8 @@
 CIS Google Workspace Benchmark v1.3.0 - Sites controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
+from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
+                   format_ou_values_readable, field_value, ou_verdict)
 from ..models import CheckResult, Status
 
 
@@ -35,23 +36,17 @@ def check_sites_creation_disabled(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(sites, "sites_creation_and_modification")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            allow = entry["value"].get("allowSitesCreation", None)
-            if allow is True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": allow})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Sites creation enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            allow = field_value(entry, "allowSitesCreation")
+            if allow is None:
+                return None
+            return allow is not True
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Sites creation disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have Sites creation enabled",
+            pass_text="have Sites creation disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value

@@ -631,7 +631,12 @@ class TestGmailPredeliveryScanningOU:
 
 
 class TestGmailComprehensiveStorageOU:
-    """OU-aware tests for CIS-3.1.3.7.1 comprehensive mail storage."""
+    """OU-aware tests for CIS-3.1.3.7.1 comprehensive mail storage.
+
+    The real API shape carries only ruleId (see TestGmailUnknownValues); these
+    tests exercise the legacy enableComprehensiveMailStorage alias, the only
+    way a PASS/FAIL verdict can be reached.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.apps_gmail import check_gmail_comprehensive_storage
@@ -667,9 +672,9 @@ class TestGmailOutboundGatewayOU:
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
                 make_ou_policy("gmail", "per_user_outbound_gateway",
-                                {"enablePerUserOutboundGateway": False}, "/"),
+                                {"allowUsersToUseExternalSmtpServers": False}, "/"),
                 make_ou_policy("gmail", "per_user_outbound_gateway",
-                                {"enablePerUserOutboundGateway": False}, "/Ops"),
+                                {"allowUsersToUseExternalSmtpServers": False}, "/Ops"),
             ],
         }
         result = check_gmail_outbound_gateway(full_audit_data)
@@ -680,9 +685,9 @@ class TestGmailOutboundGatewayOU:
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
                 make_ou_policy("gmail", "per_user_outbound_gateway",
-                                {"enablePerUserOutboundGateway": False}, "/"),
+                                {"allowUsersToUseExternalSmtpServers": False}, "/"),
                 make_ou_policy("gmail", "per_user_outbound_gateway",
-                                {"enablePerUserOutboundGateway": True}, "/SpecialTeam"),
+                                {"allowUsersToUseExternalSmtpServers": True}, "/SpecialTeam"),
             ],
         }
         result = check_gmail_outbound_gateway(full_audit_data)
@@ -748,3 +753,108 @@ class TestGmailLinksOU:
         result = check_gmail_shortened_urls(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Partners" in result.details
+
+
+# -----------------------------------------------------------------------
+# Unknown-aware OU verdicts (real Policy API field names only)
+# -----------------------------------------------------------------------
+
+
+def _gmail_ou(full_audit_data, key, *entries):
+    """Install ADMIN per-OU entries for one gmail setting key."""
+    full_audit_data["policies"]["gmail"] = {
+        "_ou_policies": [make_ou_policy("gmail", key, value, ou) for value, ou in entries],
+    }
+    return full_audit_data
+
+
+class TestGmailUnknownValues:
+    """Absent fields without a documented default and *_UNSPECIFIED are MANUAL, not PASS/FAIL."""
+
+    def test_attachment_empty_value_is_manual(self, full_audit_data):
+        # Was FAIL: an empty ADMIN value says nothing about the setting.
+        from gws_auditor.checks.apps_gmail import check_gmail_encrypted_attachment
+        result = check_gmail_encrypted_attachment(_gmail_ou(full_audit_data, "email_attachment_safety", ({}, "/")))
+        assert result.status == Status.MANUAL
+        assert "/" in result.details
+
+    def test_attachment_unknown_plus_unsafe_is_fail(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_script_attachment
+        result = check_gmail_script_attachment(_gmail_ou(
+            full_audit_data, "email_attachment_safety",
+            ({}, "/"), ({"enableAttachmentWithScriptsProtection": False}, "/Sales")))
+        assert result.status == Status.FAIL
+        assert "/Sales" in result.details
+        assert "Undetermined" in result.details
+
+    def test_spoofing_empty_value_is_manual(self, full_audit_data):
+        # Was FAIL: detectDomainNameSpoofing has no documented default.
+        from gws_auditor.checks.apps_gmail import check_gmail_domain_spoofing
+        result = check_gmail_domain_spoofing(_gmail_ou(
+            full_audit_data, "spoofing_and_authentication", ({"applyFutureSettingsAutomatically": True}, "/")))
+        assert result.status == Status.MANUAL
+
+    def test_shortener_empty_value_is_manual(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_shortened_urls
+        result = check_gmail_shortened_urls(_gmail_ou(full_audit_data, "links_and_external_images", ({}, "/")))
+        assert result.status == Status.MANUAL
+
+    def test_untrusted_links_documented_default_is_fail(self, full_audit_data):
+        # Google documents enableAggressiveWarningsOnUntrustedLinks=false, so absent -> FAIL.
+        from gws_auditor.checks.apps_gmail import check_gmail_untrusted_link_warning
+        result = check_gmail_untrusted_link_warning(_gmail_ou(full_audit_data, "links_and_external_images", ({}, "/")))
+        assert result.status == Status.FAIL
+
+    def test_mail_delegation_documented_default_is_pass(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_mail_delegation
+        result = check_gmail_mail_delegation(_gmail_ou(full_audit_data, "mail_delegation", ({}, "/")))
+        assert result.status == Status.PASS
+
+    def test_auto_forwarding_documented_default_is_fail(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_auto_forwarding
+        result = check_gmail_auto_forwarding(_gmail_ou(full_audit_data, "auto_forwarding", ({}, "/")))
+        assert result.status == Status.FAIL
+
+    def test_outbound_gateway_documented_default_is_pass(self, full_audit_data):
+        # Admin Help: "By default, users cannot use an outbound gateway."
+        from gws_auditor.checks.apps_gmail import check_gmail_outbound_gateway
+        result = check_gmail_outbound_gateway(_gmail_ou(full_audit_data, "per_user_outbound_gateway", ({}, "/")))
+        assert result.status == Status.PASS
+
+    def test_predelivery_empty_value_is_manual(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_predelivery_scanning
+        result = check_gmail_predelivery_scanning(_gmail_ou(
+            full_audit_data, "enhanced_pre_delivery_message_scanning", ({}, "/")))
+        assert result.status == Status.MANUAL
+
+    def test_pop_imap_one_protocol_unknown_is_manual(self, full_audit_data):
+        # Was PASS: IMAP state unknown for "/" must not be read as disabled.
+        from gws_auditor.checks.apps_gmail import check_gmail_pop_imap
+        full_audit_data["policies"]["gmail"] = {
+            "_ou_policies": [
+                make_ou_policy("gmail", "pop_access", {"enablePopAccess": False}, "/"),
+                make_ou_policy("gmail", "imap_access", {"imapAccessRestriction": "ANY_CLIENT"}, "/"),
+            ],
+        }
+        result = check_gmail_pop_imap(full_audit_data)
+        assert result.status == Status.MANUAL
+
+    def test_pop_enabled_wins_over_unknown_imap(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_pop_imap
+        full_audit_data["policies"]["gmail"] = {
+            "_ou_policies": [
+                make_ou_policy("gmail", "pop_access", {"enablePopAccess": True}, "/Legacy"),
+            ],
+        }
+        result = check_gmail_pop_imap(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "/Legacy" in result.details
+        assert "POP=True" in result.actual_value
+
+    def test_comprehensive_storage_real_shape_is_manual(self, full_audit_data):
+        # The API returns only ruleId for this setting: no enabled flag -> MANUAL with guidance.
+        from gws_auditor.checks.apps_gmail import check_gmail_comprehensive_storage
+        result = check_gmail_comprehensive_storage(_gmail_ou(
+            full_audit_data, "comprehensive_mail_storage", ({"ruleId": "rule-1"}, "/")))
+        assert result.status == Status.MANUAL
+        assert "does not expose whether it is enabled" in result.details

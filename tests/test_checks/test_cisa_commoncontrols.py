@@ -482,7 +482,11 @@ class TestThirdPartySSOVerificationOU:
 
 
 class TestSessionDurationOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.4.1 session duration."""
+    """OU-aware tests for GWS.COMMONCONTROLS.4.1 session duration.
+
+    Rewritten with the real field (security.session_controls.webSessionDuration, a seconds
+    string) instead of the invented sessionDurationHours.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_session_duration
@@ -490,9 +494,9 @@ class TestSessionDurationOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "session_controls",
-                                {"sessionDurationHours": 8}, "/"),
+                                {"webSessionDuration": "28800s"}, "/"),
                 make_ou_policy("security", "session_controls",
-                                {"sessionDurationHours": 12}, "/Engineering"),
+                                {"webSessionDuration": "43200s"}, "/Engineering"),
             ],
         }
         result = check_session_duration(full_audit_data)
@@ -505,14 +509,41 @@ class TestSessionDurationOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "session_controls",
-                                {"sessionDurationHours": 12}, "/"),
+                                {"webSessionDuration": "43200s"}, "/"),
                 make_ou_policy("security", "session_controls",
-                                {"sessionDurationHours": 24}, "/Support"),
+                                {"webSessionDuration": "86400s"}, "/Support"),
             ],
         }
         result = check_session_duration(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Support" in result.details
+        assert "/Support → 24h" in result.actual_value
+
+    def test_fractional_hours_are_compared_exactly(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_session_duration
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "session_controls", {"webSessionDuration": "43201s"})]}
+        result = check_session_duration(full_audit_data)
+        assert result.status == Status.FAIL  # 12.0003 h is over the 12-hour limit
+        assert "12.0h" in result.actual_value
+
+    def test_system_only_value_is_judged(self, full_audit_data):
+        """A SYSTEM policy is the value in force: Google's 14-day default fails the control."""
+        from gws_auditor.checks.cisa_commoncontrols import check_session_duration
+
+        entry = make_ou_policy("security", "session_controls", {"webSessionDuration": "1209600s"})
+        entry["_raw"] = {"type": "SYSTEM"}
+        full_audit_data["policies"]["security"] = {"_ou_policies": [entry]}
+        assert check_session_duration(full_audit_data).status == Status.FAIL
+
+    def test_missing_duration_is_unknown(self, full_audit_data):
+        """Was FAIL: an empty value has no documented default, so the check must not judge it."""
+        from gws_auditor.checks.cisa_commoncontrols import check_session_duration
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "session_controls", {})]}
+        assert check_session_duration(full_audit_data).status == Status.MANUAL
 
 
 class TestAdminAdvancedProtectionOU:
@@ -547,6 +578,45 @@ class TestAdminAdvancedProtectionOU:
         result = check_admin_advanced_protection(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Remote" in result.details
+
+
+class TestAdvancedProtectionRealShape:
+    """security.advanced_protection_program only exposes enableAdvancedProtectionSelfEnrollment."""
+
+    def test_self_enrollment_disabled_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import (
+            check_admin_advanced_protection, check_sensitive_user_advanced_protection)
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "advanced_protection_program",
+                           {"enableAdvancedProtectionSelfEnrollment": True}, "/"),
+            make_ou_policy("security", "advanced_protection_program",
+                           {"enableAdvancedProtectionSelfEnrollment": False}, "/Remote"),
+        ]}
+        for check in (check_admin_advanced_protection, check_sensitive_user_advanced_protection):
+            result = check(full_audit_data)
+            assert result.status == Status.FAIL, check.__name__
+            assert "/Remote" in result.details
+
+    def test_self_enrollment_allowed_is_review(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_sensitive_user_advanced_protection
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "advanced_protection_program",
+                           {"enableAdvancedProtectionSelfEnrollment": True})]}
+        result = check_sensitive_user_advanced_protection(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "which accounts are actually enrolled" in result.details
+
+    def test_empty_value_is_unknown(self, full_audit_data):
+        """Was ERROR: an entry without the field is unknown, not a data-collection failure."""
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "advanced_protection_program", {})]}
+        result = check_admin_advanced_protection(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "could not be determined" in result.details
 
 
 class TestSensitiveUserAdvancedProtectionOU:
@@ -669,7 +739,10 @@ class TestUserConsentLowRiskOU:
 
 
 class TestUnconfiguredInternalAppsOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.10.3 unconfigured internal apps."""
+    """OU-aware tests for GWS.COMMONCONTROLS.10.3 unconfigured internal apps.
+
+    Rewritten with the real field api_controls.internal_apps.trustInternalApps.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_unconfigured_internal_apps
@@ -677,9 +750,9 @@ class TestUnconfiguredInternalAppsOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "internal_apps",
-                                {"trustUnconfiguredInternalApps": False}, "/"),
+                                {"trustInternalApps": False}, "/"),
                 make_ou_policy("security", "internal_apps",
-                                {"trustUnconfiguredInternalApps": False}, "/Ops"),
+                                {"trustInternalApps": False}, "/Ops"),
             ],
         }
         result = check_unconfigured_internal_apps(full_audit_data)
@@ -692,9 +765,9 @@ class TestUnconfiguredInternalAppsOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "internal_apps",
-                                {"trustUnconfiguredInternalApps": False}, "/"),
+                                {"trustInternalApps": False}, "/"),
                 make_ou_policy("security", "internal_apps",
-                                {"trustUnconfiguredInternalApps": True}, "/DevOps"),
+                                {"trustInternalApps": True}, "/DevOps"),
             ],
         }
         result = check_unconfigured_internal_apps(full_audit_data)
@@ -709,9 +782,9 @@ class TestUnconfiguredInternalAppsOU:
         full_audit_data["policies"]["api_controls"] = {
             "_ou_policies": [
                 make_ou_policy("api_controls", "internal_apps",
-                                {"trustUnconfiguredInternalApps": False}, "/"),
+                                {"trustInternalApps": False}, "/"),
                 make_ou_policy("api_controls", "internal_apps",
-                                {"trustUnconfiguredInternalApps": True}, "/Sandbox"),
+                                {"trustInternalApps": True}, "/Sandbox"),
             ],
         }
         result = check_unconfigured_internal_apps(full_audit_data)
@@ -805,17 +878,21 @@ class TestDataProcessingInRegionOU:
 
 
 class TestUnusedServicesDisabledOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.16.1 unused services."""
+    """OU-aware tests for GWS.COMMONCONTROLS.16.1 unused services.
+
+    Rewritten with the real setting enterprise_service_restrictions.service_status.serviceState
+    (ENABLED = services without an individual control are restricted).
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_unused_services_disabled
 
-        full_audit_data["policies"]["security"] = {
+        full_audit_data["policies"]["enterprise_service_restrictions"] = {
             "_ou_policies": [
-                make_ou_policy("security", "service_status",
-                                {"unusedServicesDisabled": True}, "/"),
-                make_ou_policy("security", "service_status",
-                                {"unusedServicesDisabled": True}, "/IT"),
+                make_ou_policy("enterprise_service_restrictions", "service_status",
+                                {"serviceState": "ENABLED"}, "/"),
+                make_ou_policy("enterprise_service_restrictions", "service_status",
+                                {"serviceState": "ENABLED"}, "/IT"),
             ],
         }
         result = check_unused_services_disabled(full_audit_data)
@@ -825,31 +902,43 @@ class TestUnusedServicesDisabledOU:
     def test_child_ou_unsafe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_unused_services_disabled
 
-        full_audit_data["policies"]["security"] = {
+        full_audit_data["policies"]["enterprise_service_restrictions"] = {
             "_ou_policies": [
-                make_ou_policy("security", "service_status",
-                                {"unusedServicesDisabled": True}, "/"),
-                make_ou_policy("security", "service_status",
-                                {"unusedServicesDisabled": False}, "/Sandbox"),
+                make_ou_policy("enterprise_service_restrictions", "service_status",
+                                {"serviceState": "ENABLED"}, "/"),
+                make_ou_policy("enterprise_service_restrictions", "service_status",
+                                {"serviceState": "DISABLED"}, "/Sandbox"),
             ],
         }
         result = check_unused_services_disabled(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Sandbox" in result.details
 
+    def test_unspecified_state_is_unknown(self, full_audit_data):
+        """Was FAIL: SERVICE_STATE_UNSPECIFIED carries no state."""
+        from gws_auditor.checks.cisa_commoncontrols import check_unused_services_disabled
+
+        full_audit_data["policies"]["enterprise_service_restrictions"] = {"_ou_policies": [
+            make_ou_policy("enterprise_service_restrictions", "service_status",
+                           {"serviceState": "SERVICE_STATE_UNSPECIFIED"})]}
+        assert check_unused_services_disabled(full_audit_data).status == Status.MANUAL
+
 
 class TestEarlyAccessDisabledOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.16.2 early access apps."""
+    """OU-aware tests for GWS.COMMONCONTROLS.16.2 early access apps.
+
+    Rewritten with the real setting early_access_apps.service_status.serviceState.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_early_access_disabled
 
-        full_audit_data["policies"]["security"] = {
+        full_audit_data["policies"]["early_access_apps"] = {
             "_ou_policies": [
-                make_ou_policy("security", "service_status",
-                                {"earlyAccessEnabled": False}, "/"),
-                make_ou_policy("security", "service_status",
-                                {"earlyAccessEnabled": False}, "/Security"),
+                make_ou_policy("early_access_apps", "service_status",
+                                {"serviceState": "DISABLED"}, "/"),
+                make_ou_policy("early_access_apps", "service_status",
+                                {"serviceState": "DISABLED"}, "/Security"),
             ],
         }
         result = check_early_access_disabled(full_audit_data)
@@ -859,17 +948,26 @@ class TestEarlyAccessDisabledOU:
     def test_child_ou_unsafe(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_early_access_disabled
 
-        full_audit_data["policies"]["security"] = {
+        full_audit_data["policies"]["early_access_apps"] = {
             "_ou_policies": [
-                make_ou_policy("security", "service_status",
-                                {"earlyAccessEnabled": False}, "/"),
-                make_ou_policy("security", "service_status",
-                                {"earlyAccessEnabled": True}, "/Beta"),
+                make_ou_policy("early_access_apps", "service_status",
+                                {"serviceState": "DISABLED"}, "/"),
+                make_ou_policy("early_access_apps", "service_status",
+                                {"serviceState": "ENABLED"}, "/Beta"),
             ],
         }
         result = check_early_access_disabled(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Beta" in result.details
+
+    def test_unspecified_state_is_unknown(self, full_audit_data):
+        """Was FAIL: SERVICE_STATE_UNSPECIFIED carries no state."""
+        from gws_auditor.checks.cisa_commoncontrols import check_early_access_disabled
+
+        full_audit_data["policies"]["early_access_apps"] = {"_ou_policies": [
+            make_ou_policy("early_access_apps", "service_status",
+                           {"serviceState": "SERVICE_STATE_UNSPECIFIED"})]}
+        assert check_early_access_disabled(full_audit_data).status == Status.MANUAL
 
 
 class TestDlpChatOU:
@@ -972,3 +1070,55 @@ class TestDlpBlockExternalOU:
         result = check_dlp_block_external(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Sales" in result.details
+
+
+class TestUnknownValuesAreManual:
+    """Plan Decision A: an absent field without a documented default, or an *_UNSPECIFIED enum,
+    is unknown. No OU may PASS or FAIL because of it; a real non-compliant OU still wins."""
+
+    @pytest.mark.parametrize("setting_key, check_name", [
+        ("sso", "check_sso_verification"),
+        ("sso", "check_third_party_sso_verification"),
+        ("app_access", "check_user_consent_low_risk"),
+        ("internal_apps", "check_unconfigured_internal_apps"),
+        ("data_regions", "check_data_processing_in_region"),
+        ("dlp", "check_dlp_chat"),
+        ("dlp", "check_dlp_gmail"),
+        ("dlp", "check_dlp_block_external"),
+    ])
+    def test_empty_value_is_manual(self, full_audit_data, setting_key, check_name):
+        """Was FAIL for every one of these: an empty ADMIN value has no documented default."""
+        from gws_auditor.checks import cisa_commoncontrols
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", setting_key, {})]}
+        result = getattr(cisa_commoncontrols, check_name)(full_audit_data)
+        assert result.status == Status.MANUAL, check_name
+        assert "could not be determined" in result.details
+
+    def test_non_compliant_ou_beats_unknown_ou(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "app_access", {}, "/"),
+            make_ou_policy("security", "app_access", {"allowUserConsentLowRisk": True}, "/Marketing"),
+        ]}
+        result = check_user_consent_low_risk(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "/Marketing" in result.details
+        assert "Undetermined" in result.details and "/" in result.details
+
+    def test_unspecified_dlp_action_is_unknown(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_block_external
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "dlp", {"defaultAction": "ACTION_UNSPECIFIED"})]}
+        assert check_dlp_block_external(full_audit_data).status == Status.MANUAL
+
+    def test_account_recovery_uses_documented_default(self, full_audit_data):
+        """enableAccountRecovery has a documented default (false), so an empty value is judged."""
+        from gws_auditor.checks.cisa_commoncontrols import check_user_account_recovery_disabled
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "user_account_recovery", {})]}
+        assert check_user_account_recovery_disabled(full_audit_data).status == Status.PASS

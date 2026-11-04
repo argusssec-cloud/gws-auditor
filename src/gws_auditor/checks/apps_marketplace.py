@@ -7,7 +7,8 @@
 CIS Google Workspace Benchmark v1.3.0 - External Groups and Marketplace controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, get_ou_values, format_ou_values_readable
+from .base import (check, make_pass, make_fail, make_warn, make_manual, get_ou_values,
+                   format_ou_values_readable, field_value, ou_verdict)
 from ..models import CheckResult, Status
 
 
@@ -38,32 +39,23 @@ def check_external_groups_disabled(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(groups_policy, "groups_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
+        def _judge(entry):
             # Policy API: groups_for_business.groups_sharing.collaborationCapability;
             # anything other than DOMAIN_USERS_ONLY opens groups to people outside the org.
-            capability = entry["value"].get("collaborationCapability")
+            capability = field_value(entry, "collaborationCapability")
             if capability is not None:
-                ext_groups = True if capability != "DOMAIN_USERS_ONLY" else False
-            else:
-                ext_groups = entry["value"].get(
-                    "externalGroupsAccessEnabled",
-                    entry["value"].get("allowExternalGroupsAccess", None),
-                )
-            if ext_groups is True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": ext_groups})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have external Groups access enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+                return capability == "DOMAIN_USERS_ONLY", capability
+            # Legacy aliases (boolean "external groups access enabled").
+            ext_groups = field_value(entry, "externalGroupsAccessEnabled", "allowExternalGroupsAccess")
+            if ext_groups is None:
+                return None
+            return ext_groups is not True, ext_groups
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have external Groups access disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have external Groups access enabled",
+            pass_text="have external Groups access disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -122,35 +114,21 @@ def check_marketplace_restriction(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(marketplace, "apps_access_options")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            policy = (
-                entry["value"].get("accessLevel", "")
-                or entry["value"].get("appInstallPolicy", "")
-                or entry["value"].get("installPolicy", "")
-                or entry["value"].get("accessOption", "")
-            )
-            is_restricted = (
-                # ALLOW_NONE (block all installs) is stricter than an allowlist
-                policy.lower() in ("allowlist_only", "allowlisted_only", "approved_only",
-                                    "allow_listed_apps", "allow_none")
-            ) if policy else False
-            if not is_restricted:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": policy or "(empty)"})
-        if unsafe_ous:
-            ou_list = ", ".join(
-                f"{u['org_unit']} ({u['value']})" for u in unsafe_ous
-            )
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not restrict Marketplace apps: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="approved_only for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            # Real field first; the others are legacy aliases.
+            policy = field_value(entry, "accessLevel", "appInstallPolicy", "installPolicy", "accessOption")
+            if not policy:
+                return None  # edition-dependent default, not injected: unknown
+            # ALLOW_NONE (block all installs) is stricter than an allowlist
+            is_restricted = policy.lower() in ("allowlist_only", "allowlisted_only", "approved_only",
+                                               "allow_listed_apps", "allow_none")
+            return is_restricted, policy
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict Marketplace apps to approved only.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="approved_only",
+            fail_text="do not restrict Marketplace apps",
+            pass_text="restrict Marketplace apps to approved only",
+            expected_value="approved_only for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value

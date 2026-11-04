@@ -585,9 +585,9 @@ class TestGmailEmailUploadsOU:
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
                 make_ou_policy("gmail", "user_email_uploads",
-                                {"enableMailImport": False}, "/"),
+                                {"enableMailAndContactsImport": False}, "/"),
                 make_ou_policy("gmail", "user_email_uploads",
-                                {"enableMailImport": False}, "/Engineering"),
+                                {"enableMailAndContactsImport": False}, "/Engineering"),
             ],
         }
         result = check_gmail_email_uploads(full_audit_data)
@@ -600,9 +600,9 @@ class TestGmailEmailUploadsOU:
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
                 make_ou_policy("gmail", "user_email_uploads",
-                                {"enableMailImport": False}, "/"),
+                                {"enableMailAndContactsImport": False}, "/"),
                 make_ou_policy("gmail", "user_email_uploads",
-                                {"enableMailImport": True}, "/Sales"),
+                                {"enableMailAndContactsImport": True}, "/Sales"),
             ],
         }
         result = check_gmail_email_uploads(full_audit_data)
@@ -720,7 +720,7 @@ class TestCalendarInteropGlobal:
 
 
 class TestCalendarPaidAppointmentsOU:
-    """OU-aware tests for GWS.CALENDAR.4.1."""
+    """OU-aware tests for GWS.CALENDAR.4.1."""  # real field: enablePayments
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_calendar_paid_appointments
@@ -728,9 +728,9 @@ class TestCalendarPaidAppointmentsOU:
         full_audit_data["policies"]["calendar"] = {
             "_ou_policies": [
                 make_ou_policy("calendar", "appointment_schedules",
-                                {"paidAppointmentsEnabled": False}, "/"),
+                                {"enablePayments": False}, "/"),
                 make_ou_policy("calendar", "appointment_schedules",
-                                {"paidAppointmentsEnabled": False}, "/Support"),
+                                {"enablePayments": False}, "/Support"),
             ],
         }
         result = check_calendar_paid_appointments(full_audit_data)
@@ -743,9 +743,9 @@ class TestCalendarPaidAppointmentsOU:
         full_audit_data["policies"]["calendar"] = {
             "_ou_policies": [
                 make_ou_policy("calendar", "appointment_schedules",
-                                {"paidAppointmentsEnabled": False}, "/"),
+                                {"enablePayments": False}, "/"),
                 make_ou_policy("calendar", "appointment_schedules",
-                                {"paidAppointmentsEnabled": True}, "/Sales"),
+                                {"enablePayments": True}, "/Sales"),
             ],
         }
         result = check_calendar_paid_appointments(full_audit_data)
@@ -898,7 +898,7 @@ class TestChatContentReportingOU:
 
 
 class TestDriveReceiveNonAllowlistedOU:
-    """OU-aware tests for GWS.DRIVEDOCS.1.2."""
+    """OU-aware tests for GWS.DRIVEDOCS.1.2."""  # real fields; invented receiveFilesFromNonAllowlisted dropped
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_drive_receive_non_allowlisted
@@ -906,9 +906,9 @@ class TestDriveReceiveNonAllowlistedOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"receiveFilesFromNonAllowlisted": False}, "/"),
+                                {"externalSharingMode": "ALLOWED", "allowReceivingExternalFiles": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"receiveFilesFromNonAllowlisted": False}, "/Engineering"),
+                                {"externalSharingMode": "ALLOWED", "allowReceivingExternalFiles": False}, "/Engineering"),
             ],
         }
         result = check_drive_receive_non_allowlisted(full_audit_data)
@@ -921,9 +921,9 @@ class TestDriveReceiveNonAllowlistedOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"receiveFilesFromNonAllowlisted": False}, "/"),
+                                {"externalSharingMode": "ALLOWED", "allowReceivingExternalFiles": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"receiveFilesFromNonAllowlisted": True}, "/Partners"),
+                                {"externalSharingMode": "ALLOWED", "allowReceivingExternalFiles": True}, "/Partners"),
             ],
         }
         result = check_drive_receive_non_allowlisted(full_audit_data)
@@ -941,7 +941,7 @@ class TestDriveReceiveNonAllowlistedOU:
 
 
 class TestDriveNonGoogleSharingOU:
-    """OU-aware tests for GWS.DRIVEDOCS.1.4."""
+    """OU-aware tests for GWS.DRIVEDOCS.1.4."""  # real field: allowNonGoogleInvites
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_drive_non_google_sharing
@@ -949,9 +949,9 @@ class TestDriveNonGoogleSharingOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"allowNonGoogleAccountSharing": False}, "/"),
+                                {"externalSharingMode": "ALLOWED", "allowNonGoogleInvites": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"allowNonGoogleAccountSharing": False}, "/Engineering"),
+                                {"externalSharingMode": "ALLOWED", "allowNonGoogleInvites": False}, "/Engineering"),
             ],
         }
         result = check_drive_non_google_sharing(full_audit_data)
@@ -964,9 +964,9 @@ class TestDriveNonGoogleSharingOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"allowNonGoogleAccountSharing": False}, "/"),
+                                {"externalSharingMode": "ALLOWED", "allowNonGoogleInvites": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"allowNonGoogleAccountSharing": True}, "/Sales"),
+                                {"externalSharingMode": "ALLOWED", "allowNonGoogleInvites": True}, "/Sales"),
             ],
         }
         result = check_drive_non_google_sharing(full_audit_data)
@@ -992,9 +992,9 @@ class TestDriveAnyoneWithLinkOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"anyoneWithLinkEnabled": False}, "/"),
+                                {"allowPublishingFiles": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"anyoneWithLinkEnabled": False}, "/Engineering"),
+                                {"allowPublishingFiles": False}, "/Engineering"),
             ],
         }
         result = check_drive_anyone_with_link(full_audit_data)
@@ -1007,9 +1007,9 @@ class TestDriveAnyoneWithLinkOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"anyoneWithLinkEnabled": False}, "/"),
+                                {"allowPublishingFiles": False}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"anyoneWithLinkEnabled": True}, "/Marketing"),
+                                {"allowPublishingFiles": True}, "/Marketing"),
             ],
         }
         result = check_drive_anyone_with_link(full_audit_data)
@@ -1035,9 +1035,9 @@ class TestDriveDefaultAccessOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "general_access_default",
-                                {"defaultAccess": "PRIVATE_TO_OWNER"}, "/"),
+                                {"defaultFileAccess": "PRIVATE_TO_OWNER"}, "/"),
                 make_ou_policy("drive", "general_access_default",
-                                {"defaultAccess": "private"}, "/Engineering"),
+                                {"defaultFileAccess": "LINK_SHARING_PRIVATE"}, "/Engineering"),
             ],
         }
         result = check_drive_default_access(full_audit_data)
@@ -1076,9 +1076,9 @@ class TestDriveDefaultAccessOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "general_access_default",
-                                {"defaultAccess": "PRIVATE_TO_OWNER"}, "/"),
+                                {"defaultFileAccess": "PRIVATE_TO_OWNER"}, "/"),
                 make_ou_policy("drive", "general_access_default",
-                                {"defaultAccess": "anyone_in_domain"}, "/HR"),
+                                {"defaultFileAccess": "PRIMARY_AUDIENCE_WITH_LINK"}, "/HR"),
             ],
         }
         result = check_drive_default_access(full_audit_data)
@@ -1114,9 +1114,9 @@ class TestDriveSecurityUpdatesOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive_and_docs", "file_security_update",
-                                {"securityUpdate": "APPLY_TO_IMPACTED_FILES"}, "/"),
+                                {"securityUpdate": "APPLY_TO_IMPACTED_FILES", "allowUsersToManageUpdate": False}, "/"),
                 make_ou_policy("drive_and_docs", "file_security_update",
-                                {"securityUpdate": "APPLY_TO_IMPACTED_FILES"}, "/Engineering"),
+                                {"securityUpdate": "APPLY_TO_IMPACTED_FILES", "allowUsersToManageUpdate": False}, "/Engineering"),
             ],
         }
         result = check_drive_security_updates(full_audit_data)
@@ -1152,7 +1152,7 @@ class TestDriveSecurityUpdatesOU:
 
 
 class TestMeetExternalJoinOU:
-    """OU-aware tests for GWS.MEET.1.1."""
+    """OU-aware tests for GWS.MEET.1.1."""  # real enum: meet_joining.allowedAudience
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_meet_external_join
@@ -1160,9 +1160,9 @@ class TestMeetExternalJoinOU:
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
                 make_ou_policy("meet", "meet_joining",
-                                {"externalUsersMustAskToJoin": True}, "/"),
+                                {"allowedAudience": "TRUSTED"}, "/"),
                 make_ou_policy("meet", "meet_joining",
-                                {"externalUsersMustAskToJoin": True}, "/Engineering"),
+                                {"allowedAudience": "TRUSTED"}, "/Engineering"),
             ],
         }
         result = check_meet_external_join(full_audit_data)
@@ -1175,9 +1175,9 @@ class TestMeetExternalJoinOU:
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
                 make_ou_policy("meet", "meet_joining",
-                                {"externalUsersMustAskToJoin": True}, "/"),
+                                {"allowedAudience": "TRUSTED"}, "/"),
                 make_ou_policy("meet", "meet_joining",
-                                {"externalUsersMustAskToJoin": False}, "/Sales"),
+                                {"allowedAudience": "OPEN"}, "/Sales"),
             ],
         }
         result = check_meet_external_join(full_audit_data)
@@ -1195,17 +1195,17 @@ class TestMeetExternalJoinOU:
 
 
 class TestMeetNonGwsAccessOU:
-    """OU-aware tests for GWS.MEET.2.1."""
+    """OU-aware tests for GWS.MEET.2.1."""  # real enum: safety_access.meetingsAllowedToJoin
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_meet_non_gws_access
 
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
-                make_ou_policy("meet", "safety_domain",
-                                {"nonWorkspaceMeetingsAllowed": False}, "/"),
-                make_ou_policy("meet", "safety_domain",
-                                {"nonWorkspaceMeetingsAllowed": False}, "/Engineering"),
+                make_ou_policy("meet", "safety_access",
+                                {"meetingsAllowedToJoin": "ANY_WORKSPACE_ORGANIZATION"}, "/"),
+                make_ou_policy("meet", "safety_access",
+                                {"meetingsAllowedToJoin": "ANY_WORKSPACE_ORGANIZATION"}, "/Engineering"),
             ],
         }
         result = check_meet_non_gws_access(full_audit_data)
@@ -1217,10 +1217,10 @@ class TestMeetNonGwsAccessOU:
 
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
-                make_ou_policy("meet", "safety_domain",
-                                {"nonWorkspaceMeetingsAllowed": False}, "/"),
-                make_ou_policy("meet", "safety_domain",
-                                {"nonWorkspaceMeetingsAllowed": True}, "/Contractors"),
+                make_ou_policy("meet", "safety_access",
+                                {"meetingsAllowedToJoin": "ANY_WORKSPACE_ORGANIZATION"}, "/"),
+                make_ou_policy("meet", "safety_access",
+                                {"meetingsAllowedToJoin": "ALL"}, "/Contractors"),
             ],
         }
         result = check_meet_non_gws_access(full_audit_data)
@@ -1238,7 +1238,7 @@ class TestMeetNonGwsAccessOU:
 
 
 class TestMeetHostManagementOU:
-    """OU-aware tests for GWS.MEET.3.1."""
+    """OU-aware tests for GWS.MEET.3.1."""  # real field: enableHostManagement
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_meet_host_management
@@ -1246,9 +1246,9 @@ class TestMeetHostManagementOU:
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
                 make_ou_policy("meet", "safety_host_management",
-                                {"hostManagementEnabled": True}, "/"),
+                                {"enableHostManagement": True}, "/"),
                 make_ou_policy("meet", "safety_host_management",
-                                {"hostManagementEnabled": True}, "/Engineering"),
+                                {"enableHostManagement": True}, "/Engineering"),
             ],
         }
         result = check_meet_host_management(full_audit_data)
@@ -1261,9 +1261,9 @@ class TestMeetHostManagementOU:
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
                 make_ou_policy("meet", "safety_host_management",
-                                {"hostManagementEnabled": True}, "/"),
+                                {"enableHostManagement": True}, "/"),
                 make_ou_policy("meet", "safety_host_management",
-                                {"hostManagementEnabled": False}, "/Interns"),
+                                {"enableHostManagement": False}, "/Interns"),
             ],
         }
         result = check_meet_host_management(full_audit_data)
@@ -1281,7 +1281,7 @@ class TestMeetHostManagementOU:
 
 
 class TestMeetExternalWarningOU:
-    """OU-aware tests for GWS.MEET.4.1."""
+    """OU-aware tests for GWS.MEET.4.1."""  # real field: enableExternalLabel
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_meet_external_warning
@@ -1289,9 +1289,9 @@ class TestMeetExternalWarningOU:
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
                 make_ou_policy("meet", "safety_external_participants",
-                                {"warnForExternalParticipants": True}, "/"),
+                                {"enableExternalLabel": True}, "/"),
                 make_ou_policy("meet", "safety_external_participants",
-                                {"warnForExternalParticipants": True}, "/Engineering"),
+                                {"enableExternalLabel": True}, "/Engineering"),
             ],
         }
         result = check_meet_external_warning(full_audit_data)
@@ -1304,9 +1304,9 @@ class TestMeetExternalWarningOU:
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
                 make_ou_policy("meet", "safety_external_participants",
-                                {"warnForExternalParticipants": True}, "/"),
+                                {"enableExternalLabel": True}, "/"),
                 make_ou_policy("meet", "safety_external_participants",
-                                {"warnForExternalParticipants": False}, "/Sales"),
+                                {"enableExternalLabel": False}, "/Sales"),
             ],
         }
         result = check_meet_external_warning(full_audit_data)
@@ -1367,17 +1367,17 @@ class TestMeetIncomingCallsOU:
 
 
 class TestMeetAutoRecordingOU:
-    """OU-aware tests for GWS.MEET.6.1."""
+    """OU-aware tests for GWS.MEET.6.1."""  # real setting: automatic_recording.enabled
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_meet_auto_recording
 
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
-                make_ou_policy("meet", "video_recording",
-                                {"autoRecordingEnabled": False}, "/"),
-                make_ou_policy("meet", "video_recording",
-                                {"autoRecordingEnabled": False}, "/Engineering"),
+                make_ou_policy("meet", "automatic_recording",
+                                {"enabled": False}, "/"),
+                make_ou_policy("meet", "automatic_recording",
+                                {"enabled": False}, "/Engineering"),
             ],
         }
         result = check_meet_auto_recording(full_audit_data)
@@ -1389,10 +1389,10 @@ class TestMeetAutoRecordingOU:
 
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
-                make_ou_policy("meet", "video_recording",
-                                {"autoRecordingEnabled": False}, "/"),
-                make_ou_policy("meet", "video_recording",
-                                {"autoRecordingEnabled": True}, "/Legal"),
+                make_ou_policy("meet", "automatic_recording",
+                                {"enabled": False}, "/"),
+                make_ou_policy("meet", "automatic_recording",
+                                {"enabled": True}, "/Legal"),
             ],
         }
         result = check_meet_auto_recording(full_audit_data)
@@ -1410,17 +1410,17 @@ class TestMeetAutoRecordingOU:
 
 
 class TestMeetAutoTranscriptionOU:
-    """OU-aware tests for GWS.MEET.6.2."""
+    """OU-aware tests for GWS.MEET.6.2."""  # real setting: automatic_transcription.enabled
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_meet_auto_transcription
 
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
-                make_ou_policy("meet", "video_recording",
-                                {"autoTranscriptionEnabled": False}, "/"),
-                make_ou_policy("meet", "video_recording",
-                                {"autoTranscriptionEnabled": False}, "/Engineering"),
+                make_ou_policy("meet", "automatic_transcription",
+                                {"enabled": False}, "/"),
+                make_ou_policy("meet", "automatic_transcription",
+                                {"enabled": False}, "/Engineering"),
             ],
         }
         result = check_meet_auto_transcription(full_audit_data)
@@ -1432,10 +1432,10 @@ class TestMeetAutoTranscriptionOU:
 
         full_audit_data["policies"]["meet"] = {
             "_ou_policies": [
-                make_ou_policy("meet", "video_recording",
-                                {"autoTranscriptionEnabled": False}, "/"),
-                make_ou_policy("meet", "video_recording",
-                                {"autoTranscriptionEnabled": True}, "/Exec"),
+                make_ou_policy("meet", "automatic_transcription",
+                                {"enabled": False}, "/"),
+                make_ou_policy("meet", "automatic_transcription",
+                                {"enabled": True}, "/Exec"),
             ],
         }
         result = check_meet_auto_transcription(full_audit_data)
@@ -1456,7 +1456,7 @@ class TestMeetAutoTranscriptionOU:
 
 
 class TestGroupsExternalPostingOU:
-    """OU-aware tests for GWS.GROUPS.1.3."""
+    """OU-aware tests for GWS.GROUPS.1.3."""  # real field: ownersCanAllowIncomingMailFromPublic
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_groups_external_posting
@@ -1464,9 +1464,9 @@ class TestGroupsExternalPostingOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowExternalPosting": False}, "/"),
+                                {"ownersCanAllowIncomingMailFromPublic": False}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowExternalPosting": False}, "/Engineering"),
+                                {"ownersCanAllowIncomingMailFromPublic": False}, "/Engineering"),
             ],
         }
         result = check_groups_external_posting(full_audit_data)
@@ -1479,9 +1479,9 @@ class TestGroupsExternalPostingOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowExternalPosting": False}, "/"),
+                                {"ownersCanAllowIncomingMailFromPublic": False}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowExternalPosting": True}, "/Marketing"),
+                                {"ownersCanAllowIncomingMailFromPublic": True}, "/Marketing"),
             ],
         }
         result = check_groups_external_posting(full_audit_data)
@@ -1499,7 +1499,7 @@ class TestGroupsExternalPostingOU:
 
 
 class TestGroupsDirectoryHidingOU:
-    """OU-aware tests for GWS.GROUPS.4.1."""
+    """OU-aware tests for GWS.GROUPS.4.1."""  # real fields: ownersCanHideGroups / newGroupsAreHidden
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import check_groups_directory_hiding
@@ -1507,9 +1507,9 @@ class TestGroupsDirectoryHidingOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowHidingFromDirectory": False}, "/"),
+                                {"ownersCanHideGroups": False, "newGroupsAreHidden": False}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowHidingFromDirectory": False}, "/Engineering"),
+                                {"ownersCanHideGroups": False, "newGroupsAreHidden": False}, "/Engineering"),
             ],
         }
         result = check_groups_directory_hiding(full_audit_data)
@@ -1522,9 +1522,9 @@ class TestGroupsDirectoryHidingOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowHidingFromDirectory": False}, "/"),
+                                {"ownersCanHideGroups": False, "newGroupsAreHidden": False}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowHidingFromDirectory": True}, "/Contractors"),
+                                {"ownersCanHideGroups": True, "newGroupsAreHidden": False}, "/Contractors"),
             ],
         }
         result = check_groups_directory_hiding(full_audit_data)
@@ -1553,9 +1553,9 @@ class TestSmsMfaDisabledOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethods": "security_key_only"}, "/"),
+                                {"allowedSignInFactorSet": "PASSKEY_ONLY"}, "/"),
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethods": "security_key_only"}, "/Engineering"),
+                                {"allowedSignInFactorSet": "PASSKEY_ONLY"}, "/Engineering"),
             ],
         }
         result = check_sms_voice_mfa_disabled(full_audit_data)
@@ -1568,9 +1568,9 @@ class TestSmsMfaDisabledOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethods": "security_key_only"}, "/"),
+                                {"allowedSignInFactorSet": "PASSKEY_ONLY"}, "/"),
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethods": "any"}, "/Sales"),
+                                {"allowedSignInFactorSet": "ALL"}, "/Sales"),
             ],
         }
         result = check_sms_voice_mfa_disabled(full_audit_data)
@@ -1639,9 +1639,9 @@ class TestTrustDeviceDisabledOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "two_step_verification_device_trust",
-                                {"allowTrustDevice": False}, "/"),
+                                {"allowTrustingDevice": False}, "/"),
                 make_ou_policy("security", "two_step_verification_device_trust",
-                                {"allowTrustDevice": False}, "/Engineering"),
+                                {"allowTrustingDevice": False}, "/Engineering"),
             ],
         }
         result = check_trust_device_disabled(full_audit_data)
@@ -1654,9 +1654,9 @@ class TestTrustDeviceDisabledOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "two_step_verification_device_trust",
-                                {"allowTrustDevice": False}, "/"),
+                                {"allowTrustingDevice": False}, "/"),
                 make_ou_policy("security", "two_step_verification_device_trust",
-                                {"allowTrustDevice": True}, "/Exec"),
+                                {"allowTrustingDevice": True}, "/Exec"),
             ],
         }
         result = check_trust_device_disabled(full_audit_data)
@@ -1671,3 +1671,98 @@ class TestTrustDeviceDisabledOU:
         }
         result = check_trust_device_disabled(full_audit_data)
         assert result.status == Status.PASS
+
+
+# --- Unknown-value handling (field absent without a documented default, or *_UNSPECIFIED) ---
+
+
+class TestUnknownValuesAreManual:
+    """Unknown per-OU values are MANUAL, never PASS or FAIL; a real non-compliant OU still wins."""
+
+    def test_meet_joining_unspecified_is_manual(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_meet_external_join
+
+        full_audit_data["policies"]["meet"] = {"_ou_policies": [
+            make_ou_policy("meet", "meet_joining", {"allowedAudience": "ALLOWED_AUDIENCE_UNSPECIFIED"}, "/")]}
+        result = check_meet_external_join(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "/" in result.details
+
+    def test_incoming_calls_unspecified_is_manual(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_meet_incoming_calls
+
+        full_audit_data["policies"]["meet"] = {"_ou_policies": [
+            make_ou_policy("meet", "meet_incoming_call_restrictions",
+                           {"allowedCallers": "ALLOWED_CALLERS_UNSPECIFIED"}, "/")]}
+        assert check_meet_incoming_calls(full_audit_data).status == Status.MANUAL
+
+    def test_empty_value_without_documented_default_is_manual(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_calendar_paid_appointments
+
+        # calendar.appointment_schedules has no documented default -> cannot judge
+        full_audit_data["policies"]["calendar"] = {"_ou_policies": [
+            make_ou_policy("calendar", "appointment_schedules", {}, "/")]}
+        assert check_calendar_paid_appointments(full_audit_data).status == Status.MANUAL
+
+    def test_empty_value_with_documented_default_is_judged(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_groups_directory_hiding, check_groups_external_posting
+
+        # groups_sharing documented defaults: ownersCanHideGroups/newGroupsAreHidden False (PASS),
+        # ownersCanAllowIncomingMailFromPublic True (FAIL)
+        full_audit_data["policies"]["groups"] = {"_ou_policies": [
+            make_ou_policy("groups", "groups_sharing", {}, "/")]}
+        assert check_groups_directory_hiding(full_audit_data).status == Status.PASS
+        assert check_groups_external_posting(full_audit_data).status == Status.FAIL
+
+    def test_unknown_sharing_mode_is_manual_unless_publishing_off(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_drive_anyone_with_link
+
+        full_audit_data["policies"]["drive"] = {"_ou_policies": [
+            make_ou_policy("drive", "external_sharing",
+                           {"externalSharingMode": "EXTERNAL_SHARING_MODE_UNSPECIFIED",
+                            "allowPublishingFiles": True}, "/")]}
+        assert check_drive_anyone_with_link(full_audit_data).status == Status.MANUAL
+        full_audit_data["policies"]["drive"] = {"_ou_policies": [
+            make_ou_policy("drive", "external_sharing",
+                           {"externalSharingMode": "EXTERNAL_SHARING_MODE_UNSPECIFIED",
+                            "allowPublishingFiles": False}, "/")]}
+        assert check_drive_anyone_with_link(full_audit_data).status == Status.PASS
+
+    def test_non_compliant_ou_wins_over_unknown_ou(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_meet_non_gws_access
+
+        full_audit_data["policies"]["meet"] = {"_ou_policies": [
+            make_ou_policy("meet", "safety_access", {"meetingsAllowedToJoin": "ALL"}, "/"),
+            make_ou_policy("meet", "safety_access", {}, "/Sales")]}
+        result = check_meet_non_gws_access(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "/Sales" in result.details and "Undetermined" in result.details
+
+    def test_data_region_unspecified_is_manual(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_data_regions
+
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("data_regions", "data_at_rest_region", {"region": "REGION_UNSPECIFIED"}, "/")]}
+        assert check_data_regions(full_audit_data).status == Status.MANUAL
+
+    def test_grace_period_documented_default_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_mfa_enrollment_period
+
+        # documented default enrollmentGracePeriod "0s" is outside 1-7 days
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "two_step_verification_grace_period", {}, "/")]}
+        result = check_mfa_enrollment_period(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "0d" in str(result.actual_value)
+
+    def test_automatic_recording_unknown_but_recording_disabled_passes(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_meet_auto_recording
+
+        full_audit_data["policies"]["meet"] = {"_ou_policies": [
+            make_ou_policy("meet", "automatic_recording", {}, "/"),
+            make_ou_policy("meet", "video_recording", {"enableRecording": False}, "/")]}
+        assert check_meet_auto_recording(full_audit_data).status == Status.PASS
+        full_audit_data["policies"]["meet"] = {"_ou_policies": [
+            make_ou_policy("meet", "automatic_recording", {}, "/"),
+            make_ou_policy("meet", "video_recording", {"enableRecording": True}, "/")]}
+        assert check_meet_auto_recording(full_audit_data).status == Status.MANUAL

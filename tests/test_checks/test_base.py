@@ -160,13 +160,15 @@ class TestEvaluateOUs:
         assert result["unsafe_ous"] == ["/Contractors"]
         assert result["exception_ous"] == []
 
-    def test_default_policy_excluded(self):
+    def test_default_policy_is_judged_and_listed(self):
+        """A SYSTEM policy is the value in force: it is judged like an admin value
+        and also reported in default_ous so the caller can state the provenance."""
         ou_values = [
             {"org_unit": "/", "value": False, "_raw": {"type": "SYSTEM"}},
         ]
         result = evaluate_ous(ou_values, lambda e: e["value"] is True)
         assert result["default_ous"] == ["/"]
-        assert result["unsafe_ous"] == []
+        assert result["unsafe_ous"] == ["/"]
 
     def test_predicate_exception_treated_as_unsafe(self):
         ou_values = [self._admin_entry("/", None)]
@@ -251,3 +253,102 @@ class TestMakePartial:
         )
         assert result.details == "Some OUs compliant"
         assert result.actual_value == {"unsafe": ["/foo"]}
+
+
+class TestOuVerdictHelper:
+    def _entries(self, **ou_to_value):
+        return [{"org_unit": ou, "value": v, "_raw": {"type": "ADMIN"}} for ou, v in ou_to_value.items()]
+
+    def _run(self, entries, data=None):
+        from gws_auditor.checks.base import field_value, ou_verdict
+        return ou_verdict(entries, lambda e: (lambda v: None if v is None else v is False)(field_value(e, "enabled")),
+                          check_id="T-1", title="t", level="L1", source="CIS", section="S",
+                          fail_text="have it enabled", pass_text="have it disabled", expected_value="Disabled", data=data)
+
+    def test_all_safe_passes(self):
+        from gws_auditor.models import Status
+        r = self._run(self._entries(**{"/": {"enabled": False}, "/Eng": {"enabled": False}}))
+        assert r.status == Status.PASS and "All 2 OU(s) have it disabled." == r.details
+
+    def test_unsafe_child_fails_and_names_it(self):
+        from gws_auditor.models import Status
+        r = self._run(self._entries(**{"/": {"enabled": False}, "/Sales": {"enabled": True}}))
+        assert r.status == Status.FAIL and "/Sales" in r.details and "/Sales → Enabled" in r.actual_value
+
+    def test_unspecified_is_manual_not_fail(self):
+        from gws_auditor.models import Status
+        r = self._run(self._entries(**{"/": {"enabled": "ENABLED_STATE_UNSPECIFIED"}}))
+        assert r.status == Status.MANUAL and "/" in r.details
+
+    def test_absent_field_is_manual(self):
+        from gws_auditor.models import Status
+        r = self._run(self._entries(**{"/": {}}))
+        assert r.status == Status.MANUAL
+
+    def test_unsafe_wins_over_unknown(self):
+        from gws_auditor.models import Status
+        r = self._run(self._entries(**{"/": {}, "/Sales": {"enabled": True}}))
+        assert r.status == Status.FAIL and "Undetermined" in r.details and "/" in r.details
+
+    def test_exception_ou_only_is_partial(self):
+        from gws_auditor.models import Status
+        r = self._run(self._entries(**{"/": {"enabled": False}, "/Contractors": {"enabled": True}}), data={"_options": {}})
+        assert r.status == Status.PARTIAL and "/Contractors" in r.details
+
+    def test_exception_plus_real_violation_fails(self):
+        from gws_auditor.models import Status
+        r = self._run(self._entries(**{"/Contractors": {"enabled": True}, "/Sales": {"enabled": True}}), data={"_options": {}})
+        assert r.status == Status.FAIL and "/Sales" in r.details
+
+    def test_judge_exception_is_unknown(self):
+        from gws_auditor.checks.base import ou_verdict
+        from gws_auditor.models import Status
+        r = ou_verdict(self._entries(**{"/": {"x": 1}}), lambda e: e["value"]["missing"],
+                       check_id="T-1", title="t", level="L1", source="CIS", section="S",
+                       fail_text="f", pass_text="p", expected_value="e")
+        assert r.status == Status.MANUAL
+
+
+class TestAbsentSettingTakesDocumentedDefault:
+    """Google: a field absent from the reduced setting takes its documented default. When the API
+    was queried for a setting family and returned nothing for one setting, get_ou_values yields a
+    root entry built from the documented defaults, marked as a Google default."""
+
+    def _gmail_category(self):
+        from tests.factories import make_ou_policy
+        return {"_ou_policies": [make_ou_policy("gmail", "pop_access", {"enablePopAccess": True})]}
+
+    def test_absent_documented_setting_is_synthesised(self):
+        from gws_auditor.checks.base import get_ou_values, is_default_policy
+        entries = get_ou_values(self._gmail_category(), "mail_delegation")
+        assert len(entries) == 1
+        assert entries[0]["org_unit"] == "/"
+        assert entries[0]["value"]["enableMailDelegation"] is False
+        assert is_default_policy(entries[0])
+        assert "enableMailDelegation" in entries[0]["_defaulted_fields"]
+
+    def test_absent_undocumented_setting_stays_absent(self):
+        from gws_auditor.checks.base import get_ou_values
+        assert get_ou_values(self._gmail_category(), "comprehensive_mail_storage") == []
+
+    def test_wrong_category_never_synthesises(self):
+        """A check probing the security category for a Gmail setting must still get []."""
+        from gws_auditor.checks.base import get_ou_values
+        from tests.factories import make_ou_policy
+        security = {"_ou_policies": [make_ou_policy("security", "password", {"minimumLength": 8})]}
+        assert get_ou_values(security, "mail_delegation") == []
+
+    def test_real_entry_wins_over_synthesis(self):
+        from gws_auditor.checks.base import get_ou_values
+        from tests.factories import make_ou_policy
+        cat = {"_ou_policies": [make_ou_policy("gmail", "mail_delegation", {"enableMailDelegation": True})]}
+        entries = get_ou_values(cat, "mail_delegation")
+        assert entries[0]["value"]["enableMailDelegation"] is True and not entries[0]["_defaulted_fields"]
+
+    def test_check_reports_default_with_provenance(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_auto_forwarding
+        from gws_auditor.models import Status
+        full_audit_data["policies"]["gmail"] = self._gmail_category()
+        result = check_gmail_auto_forwarding(full_audit_data)
+        assert result.status == Status.FAIL  # documented default: auto-forwarding enabled
+        assert "Google default" in result.details

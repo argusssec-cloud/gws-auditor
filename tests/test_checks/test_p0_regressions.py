@@ -308,3 +308,21 @@ class TestThirdPartyAppAccessEnums:
         d = self._data(full_audit_data, None)
         for fn in (check_third_party_app_access, check_third_party_api_restricted, check_unconfigured_third_party_apps):
             assert fn(d).status == Status.MANUAL, fn.__name__
+
+
+class TestMeetStrictestOptionsPass:
+    """The strictest documented Meet options were judged non-compliant."""
+
+    @pytest.mark.parametrize("audience, status", [("RESTRICTED", Status.PASS), ("TRUSTED", Status.PASS), ("OPEN", Status.FAIL)])
+    def test_meet_joining_audience(self, full_audit_data, audience, status):
+        from gws_auditor.checks.cisa_scuba import check_meet_external_join
+
+        _ou(full_audit_data, "meet", "meet_joining", {"allowedAudience": audience})
+        assert check_meet_external_join(full_audit_data).status == status
+
+    @pytest.mark.parametrize("callers, status", [("NONE", Status.PASS), ("CONTACTS_AND_ORGANIZATION_ONLY", Status.PASS), ("ALL", Status.FAIL)])
+    def test_meet_incoming_callers(self, full_audit_data, callers, status):
+        from gws_auditor.checks.cisa_scuba import check_meet_incoming_calls
+
+        _ou(full_audit_data, "meet", "meet_incoming_call_restrictions", {"allowedCallers": callers})
+        assert check_meet_incoming_calls(full_audit_data).status == status

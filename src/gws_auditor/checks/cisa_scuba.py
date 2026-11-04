@@ -14,7 +14,8 @@ Check IDs use the GWS.* format from ScubaGoggles.
 Reference: https://github.com/cisagov/ScubaGoggles
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy, result_from_setting_changes, latest_setting_changes
+from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
+                   field_value, ou_verdict, result_from_setting_changes, latest_setting_changes)
 from ..models import CheckResult, Status
 
 
@@ -178,33 +179,18 @@ def check_gmail_email_uploads(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "user_email_uploads", admin_only=True)
+    ou_values = get_ou_values(gmail, "user_email_uploads")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"]
-            enabled = val.get(
-                "enableMailAndContactsImport",
-                val.get("enableMailImport",
-                         val.get("enabled", None)),
-            )
-            # Skip OUs where the value could not be determined
+        def _judge(entry):
+            enabled = field_value(entry, "enableMailAndContactsImport", "enableMailImport", "enabled")
             if enabled is None:
-                continue
-            if enabled is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have email uploads enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have email uploads disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+                return None
+            return (enabled is False, enabled)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have email uploads enabled", pass_text="have email uploads disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -275,26 +261,18 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
 
     # OU-aware path
-    ou_values = get_ou_values(gmail, "workspace_sync_for_outlook", admin_only=True)
+    ou_values = get_ou_values(gmail, "workspace_sync_for_outlook")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableGoogleWorkspaceSyncForMicrosoftOutlook",
-                                         entry["value"].get("enableWorkspaceSync", None))
-            if enabled is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Workspace Sync enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Workspace Sync disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge(entry):
+            enabled = field_value(entry, "enableGoogleWorkspaceSyncForMicrosoftOutlook", "enableWorkspaceSync")
+            if enabled is None:
+                return None
+            return (enabled is False, enabled)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have Workspace Sync enabled", pass_text="have Workspace Sync disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -365,26 +343,20 @@ def check_gmail_email_allowlist(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(gmail, "email_spam_filter_ip_allowlist")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            allowlist_val = entry["value"].get("allowedIpAddresses",
-                                               entry["value"].get("allowlist", []))
-            if isinstance(allowlist_val, list) and len(allowlist_val) > 0:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": len(allowlist_val)})
-            elif isinstance(allowlist_val, str) and allowlist_val:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": allowlist_val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have email allowlist entries: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="No allowlisted addresses",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have no email allowlist entries.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="No allowlisted addresses",
+        def _judge(entry):
+            allowlist_val = field_value(entry, "allowedIpAddresses", "allowlist")
+            if allowlist_val is None:
+                return None
+            if isinstance(allowlist_val, list):
+                return (len(allowlist_val) == 0, len(allowlist_val))
+            if isinstance(allowlist_val, str):
+                return (not allowlist_val, allowlist_val)
+            return None
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have email allowlist entries", pass_text="have no email allowlist entries",
+            expected_value="No allowlisted addresses", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -510,27 +482,18 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(cal, "appointment_schedules", admin_only=True)
+    ou_values = get_ou_values(cal, "appointment_schedules")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enablePayments",
-                                         entry["value"].get("paidAppointmentsEnabled",
-                                         entry["value"].get("enabled", None)))
-            if enabled is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have paid appointments enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have paid appointments disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge(entry):
+            enabled = field_value(entry, "enablePayments", "paidAppointmentsEnabled", "enabled")
+            if enabled is None:
+                return None
+            return (enabled is False, enabled)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have paid appointments enabled", pass_text="have paid appointments disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -605,35 +568,22 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
     # OU-aware path
     # chat.chat_history carries historyOnByDefault; chat.space_history (historyState)
     # is the separate spaces setting evaluated by GWS.CHAT.3.1.
-    ou_values = get_ou_values(chat, "chat_history", admin_only=True)
+    ou_values = get_ou_values(chat, "chat_history")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"]
-            # historyState kept for old caches that only had space_history
-            history_state = val.get("historyState", "")
-            if history_state:
-                enabled = history_state in ("DEFAULT_HISTORY_ON", "HISTORY_ALWAYS_ON", "ALWAYS_ON")
-            else:
-                enabled = val.get("historyEnabled",
-                                  val.get("historyOnByDefault", None))
-            # Skip OUs where the value could not be determined
+        def _judge(entry):
+            enabled = field_value(entry, "historyOnByDefault", "historyEnabled")
             if enabled is None:
-                continue
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Chat history disabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Chat history enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+                # historyState kept for old caches that only had space_history
+                history_state = field_value(entry, "historyState")
+                if not history_state:
+                    return None
+                enabled = history_state in ("DEFAULT_HISTORY_ON", "HISTORY_ALWAYS_ON", "ALWAYS_ON")
+            return (enabled is True, enabled)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have Chat history disabled", pass_text="have Chat history enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -704,26 +654,18 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
 
     # OU-aware path
     # allowUserModification lives on chat.chat_history, not chat.space_history
-    ou_values = get_ou_values(chat, "chat_history", admin_only=True)
+    ou_values = get_ou_values(chat, "chat_history")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            user_mod = entry["value"].get("allowUserModification",
-                                          entry["value"].get("allow_user_modification", None))
-            if user_mod is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": user_mod})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow users to change Chat history: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) prevent user Chat history modification.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge(entry):
+            user_mod = field_value(entry, "allowUserModification", "allow_user_modification")
+            if user_mod is None:
+                return None
+            return (user_mod is False, user_mod)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow users to change Chat history", pass_text="prevent user Chat history modification",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -792,26 +734,18 @@ def check_chat_content_reporting(data: dict) -> CheckResult:
     chat = policies.get("chat", {})
 
     # OU-aware path
-    ou_values = get_ou_values(chat, "chat_reporting", admin_only=True)
+    ou_values = get_ou_values(chat, "chat_reporting")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("contentReportingEnabled",
-                                         entry["value"].get("enabled", None))
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Chat content reporting disabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Chat content reporting enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def _judge(entry):
+            enabled = field_value(entry, "contentReportingEnabled", "enabled")
+            if enabled is None:
+                return None
+            return (enabled is True, enabled)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have Chat content reporting disabled", pass_text="have Chat content reporting enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -884,33 +818,33 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
+    ou_values = get_ou_values(drive, "external_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            value = entry["value"]
-            if value.get("externalSharingMode") == "ALLOWLISTED_DOMAINS":
+        def _judge(entry):
+            mode = field_value(entry, "externalSharingMode")
+            outside_allowlist = field_value(entry, "allowReceivingFilesOutsideAllowlistedDomains",
+                                            "receiveFilesFromNonAllowlisted")
+            external = field_value(entry, "allowReceivingExternalFiles", "receiveFilesFromNonAllowlisted")
+            if mode == "ALLOWLISTED_DOMAINS":
                 # Receiving from allowlisted domains is the point of allowlist mode;
                 # the control is about files from OUTSIDE the allowlist.
-                receive = value.get("allowReceivingFilesOutsideAllowlistedDomains",
-                                    value.get("receiveFilesFromNonAllowlisted", None))
+                receive = outside_allowlist
+            elif mode is None:
+                # Mode unknown: only "both off" is a verdict, anything else depends on the mode.
+                if external is False and outside_allowlist is False:
+                    return (True, False)
+                return None
             else:
-                receive = value.get("receiveFilesFromNonAllowlisted",
-                                    value.get("allowReceivingExternalFiles", None))
-            if receive is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": receive})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow receiving from non-allowlisted domains: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) block receiving from non-allowlisted domains.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+                receive = external
+            if receive is None:
+                return None
+            return (receive is False, receive)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow receiving from non-allowlisted domains",
+            pass_text="block receiving from non-allowlisted domains",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -979,33 +913,33 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
+    ou_values = get_ou_values(drive, "external_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            mode = entry["value"].get("externalSharingMode")
+        def _judge(entry):
+            mode = field_value(entry, "externalSharingMode")
             if mode == "DISALLOWED":
-                continue  # no external sharing at all
+                return True  # no external sharing at all
+            in_allowlist = field_value(entry, "allowNonGoogleInvitesInAllowlistedDomains")
+            anywhere = field_value(entry, "allowNonGoogleInvites", "sharingWithNonGoogleUsers",
+                                   "allowNonGoogleAccountSharing")
             if mode == "ALLOWLISTED_DOMAINS":
-                non_google_val = entry["value"].get("allowNonGoogleInvitesInAllowlistedDomains", None)
+                non_google_val = in_allowlist
+            elif mode is None:
+                # Mode unknown: only "both off" is a verdict, anything else depends on the mode.
+                if anywhere is False and in_allowlist is False:
+                    return (True, False)
+                return None
             else:
-                non_google_val = entry["value"].get("sharingWithNonGoogleUsers",
-                                                    entry["value"].get("allowNonGoogleAccountSharing",
-                                                    entry["value"].get("allowNonGoogleInvites", None)))
-            if non_google_val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": non_google_val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow sharing with non-Google accounts: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) disable sharing with non-Google accounts.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+                non_google_val = anywhere
+            if non_google_val is None:
+                return None
+            return (non_google_val is False, non_google_val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow sharing with non-Google accounts",
+            pass_text="disable sharing with non-Google accounts",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1076,31 +1010,27 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
+    ou_values = get_ou_values(drive, "external_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
+        def _judge(entry):
+            mode = field_value(entry, "externalSharingMode")
             # External sharing fully off -> nothing can be published
-            if entry["value"].get("externalSharingMode") == "DISALLOWED":
-                continue
+            if mode == "DISALLOWED":
+                return True
             # Policy API field is allowPublishingFiles (drive_and_docs.external_sharing)
-            anyone_link_val = entry["value"].get("allowPublishingFiles",
-                                                  entry["value"].get("anyoneWithLinkEnabled",
-                                                  entry["value"].get("publishToWeb", None)))
-            if anyone_link_val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": anyone_link_val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow 'anyone with the link' sharing: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) disable 'anyone with the link' sharing.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            anyone_link_val = field_value(entry, "allowPublishingFiles", "anyoneWithLinkEnabled", "publishToWeb")
+            if anyone_link_val is None:
+                return None
+            if anyone_link_val is False:
+                return (True, anyone_link_val)
+            # Publishing allowed: unsafe unless the (unknown) mode turns out to be DISALLOWED
+            return None if mode is None else (False, anyone_link_val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow 'anyone with the link' sharing",
+            pass_text="disable 'anyone with the link' sharing",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1177,27 +1107,18 @@ def check_drive_default_access(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "general_access_default", admin_only=True)
+    ou_values = get_ou_values(drive, "general_access_default")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            access = entry["value"].get("defaultFileAccess",
-                                        entry["value"].get("defaultAccess",
-                                        entry["value"].get("generalAccessDefault", "")))
-            if str(access).lower() not in ("private", "private_to_owner", "link_sharing_private", ""):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": access})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have non-private default access: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="private_to_owner",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have default access set to private.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="private_to_owner",
+        def _judge(entry):
+            access = field_value(entry, "defaultFileAccess", "defaultAccess", "generalAccessDefault")
+            if access is None or access == "":
+                return None
+            return (str(access).lower() in ("private", "private_to_owner", "link_sharing_private"), access)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have non-private default access", pass_text="have default access set to private",
+            expected_value="private_to_owner", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1266,30 +1187,28 @@ def check_drive_security_updates(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "file_security_update", admin_only=True)
+    ou_values = get_ou_values(drive, "file_security_update")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            raw = entry["value"].get("securityUpdate",
-                                     entry["value"].get("security_update", None))
+        def _judge(entry):
+            raw = field_value(entry, "securityUpdate", "security_update")
+            if raw is None:
+                return None
             updates = raw == "APPLY_TO_IMPACTED_FILES" if isinstance(raw, str) else raw
             if updates is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": updates})
-            elif entry["value"].get("allowUsersToManageUpdate") is True:
+                return (False, updates)
+            manage = field_value(entry, "allowUsersToManageUpdate")
+            if manage is True:
                 # Update applied, but users may remove it from their files
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": "allowUsersToManageUpdate=True"})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not have file security updates applied: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have file security updates applied.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+                return (False, "allowUsersToManageUpdate=True")
+            if manage is None:
+                return None
+            return (True, updates)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="do not have file security updates applied",
+            pass_text="have file security updates applied",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1364,32 +1283,25 @@ def check_meet_external_join(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "meet_joining", admin_only=True)
+    ou_values = get_ou_values(meet, "meet_joining")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            audience = entry["value"].get("allowedAudience",
-                                         entry["value"].get("externalUsersMustAskToJoin",
-                                         entry["value"].get("knockToJoinRequired", None)))
-            # allowedAudience: "TRUSTED" or "SAME_DOMAIN" means restricted
+        def _judge(entry):
+            audience = field_value(entry, "allowedAudience", "externalUsersMustAskToJoin", "knockToJoinRequired")
+            if audience is None:
+                return None
+            # Documented members: OPEN, TRUSTED, RESTRICTED (invited participants only).
+            # TRUSTED and the stricter RESTRICTED satisfy the control; SAME_DOMAIN* are legacy aliases.
             if isinstance(audience, str):
-                ask = audience in ("TRUSTED", "SAME_DOMAIN", "SAME_DOMAIN_ONLY")
+                ask = audience in ("TRUSTED", "RESTRICTED", "SAME_DOMAIN", "SAME_DOMAIN_ONLY")
             else:
                 ask = audience is True
-            if not ask:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": ask})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow external users to join without asking: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) require external users to ask to join.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            return (ask, audience)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow external users to join without asking",
+            pass_text="require external users to ask to join",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1465,32 +1377,24 @@ def check_meet_non_gws_access(data: dict) -> CheckResult:
     # OU-aware path
     # SCuBA 2.1 is meet.safety_access.meetingsAllowedToJoin (which meetings users may
     # join); meet.safety_domain.usersAllowedToJoin is the separate 1.1 setting.
-    ou_values = (get_ou_values(meet, "safety_access", admin_only=True)
-                 or get_ou_values(meet, "safety_domain", admin_only=True))
+    ou_values = (get_ou_values(meet, "safety_access")
+                 or get_ou_values(meet, "safety_domain"))
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            users = entry["value"].get("meetingsAllowedToJoin", entry["value"].get("usersAllowedToJoin",
-                                       entry["value"].get("nonWorkspaceMeetingsAllowed",
-                                       entry["value"].get("enabled", None))))
-            # "ALL" means anyone can join (insecure); safe values restrict to org
-            _SAFE_DOMAIN = ("SAME_ORGANIZATION_ONLY", "ANY_WORKSPACE_ORGANIZATION",
-                            "SAME_DOMAIN_ONLY", "TRUSTED_DOMAINS", False)
-            allowed = users not in _SAFE_DOMAIN
-            if allowed:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": allowed})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow non-GWS meeting access: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) disable non-GWS meeting access.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        # "ALL" means anyone can join (insecure); safe values restrict to org
+        _SAFE_DOMAIN = ("SAME_ORGANIZATION_ONLY", "ANY_WORKSPACE_ORGANIZATION",
+                        "SAME_DOMAIN_ONLY", "TRUSTED_DOMAINS", False)
+
+        def _judge(entry):
+            users = field_value(entry, "meetingsAllowedToJoin", "usersAllowedToJoin",
+                                "nonWorkspaceMeetingsAllowed", "enabled")
+            if users is None:
+                return None
+            return (users in _SAFE_DOMAIN, users)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow non-GWS meeting access", pass_text="disable non-GWS meeting access",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1562,27 +1466,18 @@ def check_meet_host_management(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "safety_host_management", admin_only=True)
+    ou_values = get_ou_values(meet, "safety_host_management")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableHostManagement",
-                                         entry["value"].get("hostManagementEnabled",
-                                         entry["value"].get("enabled", None)))
-            if enabled is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have host management disabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have host management enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def _judge(entry):
+            enabled = field_value(entry, "enableHostManagement", "hostManagementEnabled", "enabled")
+            if enabled is None:
+                return None
+            return (enabled is True, enabled)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have host management disabled", pass_text="have host management enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1653,27 +1548,19 @@ def check_meet_external_warning(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "safety_external_participants", admin_only=True)
+    ou_values = get_ou_values(meet, "safety_external_participants")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            warn = entry["value"].get("enableExternalLabel",
-                                      entry["value"].get("warnForExternalParticipants",
-                                      entry["value"].get("enabled", None)))
-            if warn is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": warn})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack external participant warning: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have external participant warning enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def _judge(entry):
+            warn = field_value(entry, "enableExternalLabel", "warnForExternalParticipants", "enabled")
+            if warn is None:
+                return None
+            return (warn is True, warn)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="lack external participant warning",
+            pass_text="have external participant warning enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1744,29 +1631,22 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
     meet = policies.get("meet", {})
 
     # OU-aware path
-    ou_values = get_ou_values(meet, "meet_incoming_call_restrictions", admin_only=True)
+    ou_values = get_ou_values(meet, "meet_incoming_call_restrictions")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            callers = entry["value"].get("allowedCallers",
-                                          entry["value"].get("incomingCallsRestricted", None))
-            # Safe values: restricted to contacts/org only
-            restricted = callers in ("CONTACTS_AND_ORGANIZATION_ONLY", "CONTACTS_ONLY",
-                                      "ORGANIZATION_ONLY", True)
-            if not restricted:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": restricted})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not restrict incoming calls: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict incoming calls.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def _judge(entry):
+            callers = field_value(entry, "allowedCallers", "incomingCallsRestricted")
+            if callers is None:
+                return None
+            # Documented members: ALL, CONTACTS_AND_ORGANIZATION_ONLY, NONE (nobody may call).
+            # Anything stricter than "all callers" satisfies the control; the rest are legacy aliases.
+            restricted = callers in ("CONTACTS_AND_ORGANIZATION_ONLY", "NONE", "CONTACTS_ONLY",
+                                     "ORGANIZATION_ONLY", True)
+            return (restricted, callers)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="do not restrict incoming calls", pass_text="restrict incoming calls",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1840,53 +1720,38 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
 
     # OU-aware path
     # Policy API (editions with the feature): meet.automatic_recording.enabled. Google defaults
-    # are real state here, so SYSTEM entries count too.
-    auto_entries = [e for e in get_ou_values(meet, "automatic_recording") if e["value"].get("enabled") is not None]
+    # are real state here, so SYSTEM entries count too. meet.video_recording only says whether
+    # recording is *allowed*: enableRecording=false disables recording entirely (safe), but an
+    # absent automatic-recording flag is unknown, not "disabled".
+    video_entries = get_ou_values(meet, "video_recording")
+    recording_off = {e["org_unit"] for e in video_entries if field_value(e, "enableRecording") is False}
+    auto_entries = get_ou_values(meet, "automatic_recording")
     if auto_entries:
-        on = [{"org_unit": e["org_unit"], "value": True} for e in auto_entries if e["value"]["enabled"] is True]
-        if on:
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(on)} OU(s) have automatic recording enabled: " + ", ".join(o["org_unit"] for o in on),
-                actual_value=format_ou_values_readable(on), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(auto_entries)} OU(s) have automatic recording disabled.",
-            actual_value=f"{len(auto_entries)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge_auto(entry):
+            enabled = field_value(entry, "enabled")
+            if enabled is None:
+                return (True, False) if entry["org_unit"] in recording_off else None
+            return (enabled is False, enabled)
+
+        return ou_verdict(
+            auto_entries, _judge_auto, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have automatic recording enabled", pass_text="have automatic recording disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
-    # meet.video_recording only says whether recording is *allowed*; the automatic-recording
-    # default is not exposed there. Only entries that carry a determinable value are judged.
-    ou_values = [
-        e for e in get_ou_values(meet, "video_recording", admin_only=True)
-        if e["value"].get("enableRecording") is False
-        or e["value"].get("autoRecordingEnabled", e["value"].get("autoRecording")) is not None
-    ]
-    if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            # enableRecording=false disables recording entirely (safe)
-            recording_enabled = entry["value"].get("enableRecording", None)
-            auto = entry["value"].get("autoRecordingEnabled",
-                                      entry["value"].get("autoRecording", None))
-            if recording_enabled is False:
-                auto = False  # Recording disabled entirely = safe
-            if auto is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": auto})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have automatic recording enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have automatic recording disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+    if video_entries:
+        def _judge_video(entry):
+            if field_value(entry, "enableRecording") is False:
+                return (True, False)  # Recording disabled entirely = safe
+            auto = field_value(entry, "autoRecordingEnabled", "autoRecording")
+            if auto is None:
+                return None
+            return (auto is False, auto)
+
+        return ou_verdict(
+            video_entries, _judge_video, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have automatic recording enabled", pass_text="have automatic recording disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -1959,48 +1824,34 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
 
     # OU-aware path
     # Policy API (editions with the feature): meet.automatic_transcription.enabled. Google defaults
-    # are real state here, so SYSTEM entries count too.
-    auto_entries = [e for e in get_ou_values(meet, "automatic_transcription") if e["value"].get("enabled") is not None]
+    # are real state here, so SYSTEM entries count too. The automatic-transcription default is not
+    # part of meet.video_recording; an absent field is unknown (not "disabled").
+    auto_entries = get_ou_values(meet, "automatic_transcription")
     if auto_entries:
-        on = [{"org_unit": e["org_unit"], "value": True} for e in auto_entries if e["value"]["enabled"] is True]
-        if on:
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(on)} OU(s) have automatic transcription enabled: " + ", ".join(o["org_unit"] for o in on),
-                actual_value=format_ou_values_readable(on), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(auto_entries)} OU(s) have automatic transcription disabled.",
-            actual_value=f"{len(auto_entries)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge_auto(entry):
+            enabled = field_value(entry, "enabled")
+            if enabled is None:
+                return None
+            return (enabled is False, enabled)
+
+        return ou_verdict(
+            auto_entries, _judge_auto, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have automatic transcription enabled", pass_text="have automatic transcription disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
-    # The automatic-transcription default is not part of meet.video_recording; an absent
-    # field is unknown (not "disabled"), so only entries that carry the field are judged.
-    ou_values = [
-        e for e in get_ou_values(meet, "video_recording", admin_only=True)
-        if e["value"].get("autoTranscriptionEnabled", e["value"].get("autoTranscription")) is not None
-    ]
-    if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            auto = entry["value"].get("autoTranscriptionEnabled",
-                                      entry["value"].get("autoTranscription", None))
-            if auto is True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": auto})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have automatic transcription enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have automatic transcription disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+    video_entries = get_ou_values(meet, "video_recording")
+    if video_entries:
+        def _judge_video(entry):
+            auto = field_value(entry, "autoTranscriptionEnabled", "autoTranscription")
+            if auto is None:
+                return None
+            return (auto is not True, auto)
+
+        return ou_verdict(
+            video_entries, _judge_video, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have automatic transcription enabled", pass_text="have automatic transcription disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -2078,34 +1929,21 @@ def check_groups_external_posting(data: dict) -> CheckResult:
     groups_policy = policies.get("groups", {})
 
     # OU-aware path
-    ou_values = get_ou_values(groups_policy, "groups_sharing", admin_only=True)
+    ou_values = get_ou_values(groups_policy, "groups_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            posting = entry["value"].get("allowExternalPosting",
-                                         entry["value"].get("allowExternalMail", None))
-            # Real API exposes ownersCanAllowIncomingMailFromPublic (the
-            # admin-console toggle); fall back to it if explicit posting flag
-            # is absent.
+        def _judge(entry):
+            # Real API exposes ownersCanAllowIncomingMailFromPublic (the admin-console
+            # toggle); legacy explicit posting flags are read after it.
+            posting = field_value(entry, "ownersCanAllowIncomingMailFromPublic", "allowExternalPosting",
+                                  "allowExternalMail", "ownersCanAllowIncomingMail")
             if posting is None:
-                posting = entry["value"].get(
-                    "ownersCanAllowIncomingMailFromPublic",
-                    entry["value"].get("ownersCanAllowIncomingMail"),
-                )
-            if posting is True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": posting})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow external posting to groups: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) disable external posting to groups.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+                return None
+            return (posting is not True, posting)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow external posting to groups", pass_text="disable external posting to groups",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -2178,35 +2016,26 @@ def check_groups_directory_hiding(data: dict) -> CheckResult:
     groups_policy = policies.get("groups", {})
 
     # OU-aware path
-    ou_values = get_ou_values(groups_policy, "groups_sharing", admin_only=True)
+    ou_values = get_ou_values(groups_policy, "groups_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            hide = entry["value"].get("allowHidingFromDirectory",
-                                      entry["value"].get("hideFromDirectory", None))
+        def _judge(entry):
             # Real API exposes ownersCanHideGroups + newGroupsAreHidden;
             # either being True means groups can be hidden from directory.
+            owner_hide = field_value(entry, "ownersCanHideGroups")
+            new_hidden = field_value(entry, "newGroupsAreHidden")
+            if owner_hide is True or new_hidden is True:
+                return (False, True)
+            if owner_hide is False and new_hidden is False:
+                return (True, False)
+            hide = field_value(entry, "allowHidingFromDirectory", "hideFromDirectory")
             if hide is None:
-                owner_hide = entry["value"].get("ownersCanHideGroups")
-                new_hidden = entry["value"].get("newGroupsAreHidden")
-                if owner_hide is True or new_hidden is True:
-                    hide = True
-                elif owner_hide is False and new_hidden is False:
-                    hide = False
-            if hide is True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": hide})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow hiding groups from directory: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) prevent hiding groups from directory.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+                return None
+            return (hide is not True, hide)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow hiding groups from directory", pass_text="prevent hiding groups from directory",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -2284,12 +2113,11 @@ def check_sms_voice_mfa_disabled(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "two_step_verification_enforcement_factor")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            methods = str(entry["value"].get("allowedSignInFactorSet",
-                                             entry["value"].get("allowedMethods",
-                                             entry["value"].get("allowedMethod", ""))))
-            ml = methods.lower()
+        def _judge(entry):
+            methods = field_value(entry, "allowedSignInFactorSet", "allowedMethods", "allowedMethod")
+            if methods is None:
+                return None
+            ml = str(methods).lower()
             sms_blocked = (
                 "security_key_only" in ml
                 or "passkey" in ml  # PASSKEY_ONLY / PASSKEY_PLUS_* exclude SMS and voice
@@ -2297,20 +2125,12 @@ def check_sms_voice_mfa_disabled(data: dict) -> CheckResult:
                 or "no_sms" in ml
                 or "no_phone" in ml
             )
-            if not sms_blocked:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": methods})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) may allow SMS/Voice MFA: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="No SMS/Voice MFA",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have SMS/Voice MFA disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="No SMS/Voice MFA",
+            return (sms_blocked, str(methods))
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="may allow SMS/Voice MFA", pass_text="have SMS/Voice MFA disabled",
+            expected_value="No SMS/Voice MFA", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -2391,11 +2211,9 @@ def check_mfa_enrollment_period(data: dict) -> CheckResult:
     # OU-aware path — enrollment grace period is in two_step_verification_grace_period
     ou_values = get_ou_values(security, "two_step_verification_grace_period")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
+        def _judge(entry):
             # The API returns a protobuf duration string like "604800s"
-            raw = entry["value"].get("enrollmentGracePeriod",
-                                      entry["value"].get("enrollment_grace_period", ""))
+            raw = field_value(entry, "enrollmentGracePeriod", "enrollment_grace_period")
             days = None
             if raw:
                 secs_str = str(raw).strip().rstrip("s")
@@ -2405,31 +2223,22 @@ def check_mfa_enrollment_period(data: dict) -> CheckResult:
                     pass
             # Also check legacy field names
             if days is None:
-                legacy = entry["value"].get("newUserEnrollmentPeriodDays",
-                                             entry["value"].get("enrollmentPeriod", None))
+                legacy = field_value(entry, "newUserEnrollmentPeriodDays", "enrollmentPeriod")
                 if legacy is not None:
                     try:
                         days = int(legacy)
                     except (ValueError, TypeError):
                         pass
-            # Skip entries where the field is absent (DEFAULT/SYSTEM entries
-            # often lack non-default fields)
-            if days is None and is_default_policy(entry):
-                continue
-            if days is None or not (1 <= days <= 7):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": days})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']}d)" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have improper MFA enrollment period: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="1-7 days",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have MFA enrollment period within 1-7 days.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="1-7 days",
+            if days is None:
+                return None
+            return (1 <= days <= 7, days)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have improper MFA enrollment period",
+            pass_text="have MFA enrollment period within 1-7 days",
+            expected_value="1-7 days", remediation=_REMED,
+            humanizer=lambda v: f"{v}d" if isinstance(v, int) else str(v),
         )
 
     # Fallback: mapped root-level value
@@ -2502,25 +2311,16 @@ def check_trust_device_disabled(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "two_step_verification_device_trust")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            trust = entry["value"].get("allowTrustingDevice",
-                                       entry["value"].get("allowTrustDevice",
-                                       entry["value"].get("enableDeviceTrust", None)))
-            if trust is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": trust})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow 'trust this device': {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have 'trust this device' disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge(entry):
+            trust = field_value(entry, "allowTrustingDevice", "allowTrustDevice", "enableDeviceTrust")
+            if trust is None:
+                return None
+            return (trust is False, trust)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow 'trust this device'", pass_text="have 'trust this device' disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -2591,24 +2391,17 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "account_management")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("conflictingAccountsManaged",
-                                      entry["value"].get("conflicting_accounts_managed", None))
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack conflicting account management: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have conflicting account management configured.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def _judge(entry):
+            val = field_value(entry, "conflictingAccountsManaged", "conflicting_accounts_managed")
+            if val is None:
+                return None
+            return (val is True, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="lack conflicting account management",
+            pass_text="have conflicting account management configured",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -2735,30 +2528,21 @@ def check_data_regions(data: dict) -> CheckResult:
     ou_values = (get_ou_values(security, "data_at_rest_region")
                  or get_ou_values(security, "data_regions"))
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            region = entry["value"].get("region")
+        def _judge(entry):
+            # Policy API: data_regions.data_at_rest_region.region (US / EUROPE / ANY_REGION)
+            region = field_value(entry, "region")
             if region is not None:
-                # Policy API: data_regions.data_at_rest_region.region (US / EUROPE / ANY_REGION)
                 r = str(region).upper()
-                val = True if (r and r not in ("ANY_REGION", "NO_PREFERENCE") and "UNSPECIFIED" not in r) else region
-            else:
-                val = entry["value"].get("configured",
-                                          entry["value"].get("dataRegionsConfigured", None))
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack data region configuration: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have data regions configured.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+                return (bool(r) and r not in ("ANY_REGION", "NO_PREFERENCE"), region)
+            val = field_value(entry, "configured", "dataRegionsConfigured")
+            if val is None:
+                return None
+            return (val is True, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="lack data region configuration", pass_text="have data regions configured",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -2832,43 +2616,32 @@ def check_multi_party_approval(data: dict) -> CheckResult:
 
     # OU-aware path
     # Policy API: multi_party_approval.require_approvals.multiPartyApprovalState
-    mpa_entries = [e for e in get_ou_values(policies.get("multi_party_approval", {}), "require_approvals")
-                   if e["value"].get("multiPartyApprovalState") is not None]
+    mpa_entries = get_ou_values(policies.get("multi_party_approval", {}), "require_approvals")
     if mpa_entries:
-        off = [{"org_unit": e["org_unit"], "value": e["value"]["multiPartyApprovalState"]}
-               for e in mpa_entries if str(e["value"]["multiPartyApprovalState"]).upper() != "ENABLED"]
-        if off:
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"Multi-party approval is not required in {len(off)} OU(s): " + ", ".join(o["org_unit"] for o in off),
-                actual_value=format_ou_values_readable(off), expected_value="ENABLED", remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"Multi-party approval is required in all {len(mpa_entries)} OU(s).",
-            actual_value=f"{len(mpa_entries)} OU(s) safe", expected_value="ENABLED",
+        def _judge_state(entry):
+            state = field_value(entry, "multiPartyApprovalState")
+            if state is None:
+                return None
+            return (str(state).upper() == "ENABLED", state)
+
+        return ou_verdict(
+            mpa_entries, _judge_state, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="do not require multi-party approval", pass_text="require multi-party approval",
+            expected_value="ENABLED", remediation=_REMED,
         )
 
     ou_values = get_ou_values(security, "multi_party_approval")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("enabled",
-                                      entry["value"].get("multiPartyApprovalEnabled", None))
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack multi-party approval: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have multi-party approval enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def _judge(entry):
+            val = field_value(entry, "enabled", "multiPartyApprovalEnabled")
+            if val is None:
+                return None
+            return (val is True, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="lack multi-party approval", pass_text="have multi-party approval enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Not exposed by the Policy API: infer from the latest admin audit-log change
@@ -2970,24 +2743,16 @@ def check_class_membership_restricted(data: dict) -> CheckResult:
     ou_values = (get_ou_values(classroom, "class_membership")
                  or get_ou_values(classroom, "sharing"))
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("whoCanJoinClasses", entry["value"].get("classMembership",
-                                      entry["value"].get("class_membership", None)))
-            if val not in _SAFE:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow external class membership: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="ANYONE_IN_DOMAIN",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict class membership to domain.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="ANYONE_IN_DOMAIN",
+        def _judge(entry):
+            val = field_value(entry, "whoCanJoinClasses", "classMembership", "class_membership")
+            if val is None:
+                return None
+            return (val in _SAFE, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow external class membership", pass_text="restrict class membership to domain",
+            expected_value="ANYONE_IN_DOMAIN", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -3060,24 +2825,16 @@ def check_classes_to_join_restricted(data: dict) -> CheckResult:
     ou_values = (get_ou_values(classroom, "class_membership")
                  or get_ou_values(classroom, "sharing"))
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("whichClassesCanUsersJoin", entry["value"].get("classesToJoin",
-                                      entry["value"].get("classes_to_join", None)))
-            if val not in _SAFE:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow joining external classes: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="CLASSES_IN_DOMAIN",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict classes to join to domain.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="CLASSES_IN_DOMAIN",
+        def _judge(entry):
+            val = field_value(entry, "whichClassesCanUsersJoin", "classesToJoin", "classes_to_join")
+            if val is None:
+                return None
+            return (val in _SAFE, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow joining external classes", pass_text="restrict classes to join to domain",
+            expected_value="CLASSES_IN_DOMAIN", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -3138,24 +2895,16 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
     ou_values = (get_ou_values(classroom, "api_data_access")
                  or get_ou_values(classroom, "api_access"))
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("enableApiAccess", entry["value"].get("enabled",
-                                      entry["value"].get("apiAccessEnabled", None)))
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Classroom API access enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Classroom API access disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge(entry):
+            val = field_value(entry, "enableApiAccess", "enabled", "apiAccessEnabled")
+            if val is None:
+                return None
+            return (val is False, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have Classroom API access enabled", pass_text="have Classroom API access disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -3228,28 +2977,19 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(classroom, "roster_import")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            option = entry["value"].get("rosterImportOption", None)
+        def _judge(entry):
+            option = field_value(entry, "rosterImportOption")
             if option is not None:
-                val = str(option).upper() != "OFF"
-            else:
-                val = entry["value"].get("cleverEnabled",
-                                          entry["value"].get("clever_enabled", None))
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Clever roster import enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Clever roster import disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+                return (str(option).upper() == "OFF", option)
+            val = field_value(entry, "cleverEnabled", "clever_enabled")
+            if val is None:
+                return None
+            return (val is False, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have Clever roster import enabled", pass_text="have Clever roster import disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -3323,24 +3063,17 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
     ou_values = (get_ou_values(classroom, "student_unenrollment")
                  or get_ou_values(classroom, "class_settings"))
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("whoCanUnenrollStudents",
-                                      entry["value"].get("who_can_unenroll_students", None))
-            if str(val).lower() not in ("teachers_only", "teachers"):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow non-teacher student unenrollment: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="teachers_only",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict unenrollment to teachers only.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="teachers_only",
+        def _judge(entry):
+            val = field_value(entry, "whoCanUnenrollStudents", "who_can_unenroll_students")
+            if val is None:
+                return None
+            return (str(val).lower() in ("teachers_only", "teachers"), val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow non-teacher student unenrollment",
+            pass_text="restrict unenrollment to teachers only",
+            expected_value="teachers_only", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -3415,24 +3148,17 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
     ou_values = (get_ou_values(classroom, "teacher_permissions")
                  or get_ou_values(classroom, "class_settings"))
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("whoCanCreateClasses",
-                                      entry["value"].get("who_can_create_classes", None))
-            if str(val).lower() not in ("verified_teachers", "verified_teachers_only"):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow non-verified-teacher class creation: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="verified_teachers",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict class creation to verified teachers.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="verified_teachers",
+        def _judge(entry):
+            val = field_value(entry, "whoCanCreateClasses", "who_can_create_classes")
+            if val is None:
+                return None
+            return (str(val).lower() in ("verified_teachers", "verified_teachers_only"), val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow non-verified-teacher class creation",
+            pass_text="restrict class creation to verified teachers",
+            expected_value="verified_teachers", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -3510,24 +3236,16 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(gemini, "access")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("unlicensedAccessEnabled",
-                                      entry["value"].get("unlicensed_access_enabled", None))
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow unlicensed Gemini access: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict Gemini to licensed users.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge(entry):
+            val = field_value(entry, "unlicensedAccessEnabled", "unlicensed_access_enabled")
+            if val is None:
+                return None
+            return (val is False, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow unlicensed Gemini access", pass_text="restrict Gemini to licensed users",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Not exposed by the Policy API: infer from the latest admin audit-log change
@@ -3613,24 +3331,16 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(gemini, "features")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("alphaFeaturesEnabled",
-                                      entry["value"].get("alpha_features_enabled", None))
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have alpha Gemini features enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have alpha Gemini features disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge(entry):
+            val = field_value(entry, "alphaFeaturesEnabled", "alpha_features_enabled")
+            if val is None:
+                return None
+            return (val is False, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have alpha Gemini features enabled", pass_text="have alpha Gemini features disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Not exposed by the Policy API: infer from the latest admin audit-log change
@@ -3721,24 +3431,16 @@ def check_access_approvals_enabled(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "assured_controls")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("accessApprovalsEnabled",
-                                      entry["value"].get("access_approvals_enabled", None))
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack access approvals: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have access approvals enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+        def _judge(entry):
+            val = field_value(entry, "accessApprovalsEnabled", "access_approvals_enabled")
+            if val is None:
+                return None
+            return (val is True, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="lack access approvals", pass_text="have access approvals enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Not exposed by the Policy API: infer from the latest "Access Approvals enabled"
@@ -3824,45 +3526,34 @@ def check_support_access_region(data: dict) -> CheckResult:
     # OU-aware path
     # Policy API: access_management.user_scoping.accessManagementRegime
     regimes = get_ou_values(policies.get("access_management", {}), "user_scoping")
-    regimes = [e for e in regimes if e["value"].get("accessManagementRegime") is not None]
     if regimes:
         _US_REGIMES = ("US_GOOGLE_STAFF", "CJIS_IRS_1075_GOOGLE_STAFF")
-        bad = [{"org_unit": e["org_unit"], "value": e["value"]["accessManagementRegime"]}
-               for e in regimes if e["value"]["accessManagementRegime"] not in _US_REGIMES]
-        if bad:
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(bad)} OU(s) do not restrict Google support access to US staff: "
-                        + ", ".join(f"{b['org_unit']} ({b['value']})" for b in bad),
-                actual_value=format_ou_values_readable(bad), expected_value="US_GOOGLE_STAFF for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(regimes)} OU(s) restrict Google support access to US staff.",
-            actual_value=f"{len(regimes)} OU(s) safe", expected_value="US_GOOGLE_STAFF for all OUs",
+
+        def _judge_regime(entry):
+            regime = field_value(entry, "accessManagementRegime")
+            if regime is None:
+                return None
+            return (regime in _US_REGIMES, regime)
+
+        return ou_verdict(
+            regimes, _judge_regime, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="do not restrict Google support access to US staff",
+            pass_text="restrict Google support access to US staff",
+            expected_value="US_GOOGLE_STAFF for all OUs", remediation=_REMED,
         )
 
     ou_values = get_ou_values(security, "assured_controls")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("supportAccessRegion",
-                                      entry["value"].get("support_access_region", None))
-            if val not in ("us", "us_only", "US", "US_ONLY"):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack US-only support access: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="us",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict support access to US personnel.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="us",
+        def _judge(entry):
+            val = field_value(entry, "supportAccessRegion", "support_access_region")
+            if val is None:
+                return None
+            return (val in ("us", "us_only", "US", "US_ONLY"), val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="lack US-only support access", pass_text="restrict support access to US personnel",
+            expected_value="us", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -3938,24 +3629,16 @@ def check_multi_region_processing_disabled(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "assured_controls")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("multiRegionProcessingEnabled",
-                                      entry["value"].get("multi_region_processing_enabled", None))
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have multi-region processing enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have multi-region processing disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+        def _judge(entry):
+            val = field_value(entry, "multiRegionProcessingEnabled", "multi_region_processing_enabled")
+            if val is None:
+                return None
+            return (val is False, val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have multi-region processing enabled", pass_text="have multi-region processing disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Not exposed by the Policy API: each app logs a "<App>NonRegionalizedFunctionality..."
@@ -4056,25 +3739,16 @@ def check_sites_service_disabled(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(sites, "service_status")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("serviceState",
-                                      entry["value"].get("serviceStatus",
-                                      entry["value"].get("service_status", None)))
-            if val not in ("disabled", "off", "DISABLED", "OFF"):
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Sites service enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="disabled",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Sites service disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="disabled",
+        def _judge(entry):
+            val = field_value(entry, "serviceState", "serviceStatus", "service_status")
+            if val is None:
+                return None
+            return (val in ("disabled", "off", "DISABLED", "OFF"), val)
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have Sites service enabled", pass_text="have Sites service disabled",
+            expected_value="disabled", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value

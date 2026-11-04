@@ -281,3 +281,35 @@ class TestChatWebhooksOU:
         }
         result = check_chat_webhooks(full_audit_data)
         assert result.status == Status.PASS
+
+
+class TestChatUnknownValues:
+    """Absent / *_UNSPECIFIED fields are unknown: MANUAL unless a real OU is non-compliant."""
+
+    def test_external_chat_allowed_with_unspecified_restriction_is_manual(self, full_audit_data):
+        from gws_auditor.checks.apps_chat import check_chat_external_restriction
+
+        full_audit_data["policies"]["chat"] = {"_ou_policies": [
+            make_ou_policy("chat", "external_chat_restriction",
+                           {"allowExternalChat": True,
+                            "externalChatRestriction": "EXTERNAL_CHAT_RESTRICTION_UNSPECIFIED"}, "/")]}
+        assert check_chat_external_restriction(full_audit_data).status == Status.MANUAL
+
+    def test_external_chat_disabled_by_documented_default_passes(self, full_audit_data):
+        # Google documents allowExternalChat=false as the default, so an empty entry passes.
+        from gws_auditor.checks.apps_chat import check_chat_external_restriction
+
+        full_audit_data["policies"]["chat"] = {"_ou_policies": [
+            make_ou_policy("chat", "external_chat_restriction", {}, "/")]}
+        assert check_chat_external_restriction(full_audit_data).status == Status.PASS
+
+    def test_chat_apps_absent_is_manual(self, full_audit_data):
+        # enableApps / enableWebhooks defaults depend on the edition and are not injected: unknown.
+        from gws_auditor.checks.apps_chat import check_chat_app_installation, check_chat_webhooks
+
+        full_audit_data["policies"]["chat"] = {"_ou_policies": [
+            make_ou_policy("chat", "chat_apps_access", {"enableApps": False}, "/"),
+            make_ou_policy("chat", "chat_apps_access", {}, "/HR")]}
+        result = check_chat_app_installation(full_audit_data)
+        assert result.status == Status.MANUAL and "/HR" in result.details
+        assert check_chat_webhooks(full_audit_data).status == Status.MANUAL

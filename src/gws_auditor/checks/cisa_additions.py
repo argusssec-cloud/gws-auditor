@@ -12,7 +12,7 @@ the result is MANUAL, never a guessed PASS or FAIL.
 
 from collections.abc import Callable
 
-from .base import check, make_pass, make_fail, make_review, get_ou_values, format_ou_values_readable
+from .base import check, make_review, get_ou_values, field_value, ou_verdict
 from ..models import CheckResult
 
 
@@ -20,32 +20,34 @@ def _evaluate_setting(data: dict, category: str, setting_key: str, fields: tuple
                       unsafe_value: Callable[[dict], object | None], *,
                       check_id: str, title: str, level: str, section: str,
                       ok: str, bad: str, expected: str, remediation: str) -> CheckResult:
-    """Judge one Policy API setting per OU.
+    """Judge one Policy API setting per OU under the unknown-aware status rules.
 
-    *unsafe_value* gets the setting's value dict and returns the offending value (shown in
-    the report) or ``None`` when that OU is compliant. OUs where none of *fields* is present
-    are undetermined; if that is every OU the result is MANUAL.
+    *unsafe_value* gets a dict of the OU's known *fields* (present on the reduced setting,
+    including documented Google defaults, and not ``*_UNSPECIFIED``) and returns the offending
+    value (shown in the report) or ``None`` when those values are compliant. A field that is
+    absent without a documented default or is ``*_UNSPECIFIED`` is unknown: such an OU can be
+    non-compliant on its known fields but never compliant, so the result is MANUAL unless
+    another OU fails. When the API returned no entry at all the result is MANUAL.
     """
     common = dict(check_id=check_id, title=title, level=level, source="CISA", section=section)
-    entries = [e for e in get_ou_values(data.get("policies", {}).get(category, {}), setting_key)
-               if any(f in e["value"] for f in fields)]
+    entries = get_ou_values(data.get("policies", {}).get(category, {}), setting_key)
     if not entries:
         return make_review(
             **common, remediation=remediation,
             details=f"'{category}.{setting_key}' was not returned by the Cloud Identity Policy API — verify in Admin console.",
         )
-    unsafe = [{"org_unit": e["org_unit"], "value": v}
-              for e in entries if (v := unsafe_value(e["value"])) is not None]
-    if unsafe:
-        return make_fail(
-            **common, remediation=remediation,
-            details=f"{len(unsafe)} OU(s) {bad}: " + ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe),
-            actual_value=format_ou_values_readable(unsafe), expected_value=expected,
-        )
-    return make_pass(
-        **common, details=f"All {len(entries)} OU(s) {ok}.",
-        actual_value=f"{len(entries)} OU(s) safe", expected_value=expected,
-    )
+
+    def judge(entry):
+        known = {f: v for f in fields if (v := field_value(entry, f)) is not None}
+        if not known:
+            return None
+        offending = unsafe_value(known)
+        if offending is not None:
+            return False, offending
+        return True if len(known) == len(fields) else None
+
+    return ou_verdict(entries, judge, **common, fail_text=bad, pass_text=ok,
+                      expected_value=expected, remediation=remediation)
 
 
 # ── Chat ─────────────────────────────────────────────────────────────────
@@ -177,29 +179,31 @@ def check_phishing_resistant_mfa(data: dict) -> CheckResult:
     common = dict(check_id="GWS.COMMONCONTROLS.1.1", title="Ensure phishing-resistant MFA is required for all users",
                   level="L2", source="CISA", section="Security")
     security = data.get("policies", {}).get("security", {})
-    factors = {e["org_unit"]: e["value"].get("allowedSignInFactorSet")
-               for e in get_ou_values(security, "two_step_verification_enforcement_factor")
-               if e["value"].get("allowedSignInFactorSet") is not None}
-    enforced = {e["org_unit"]: bool(e["value"].get("enforcedFrom"))
-                for e in get_ou_values(security, "two_step_verification_enforcement")}
-    if not factors:
+    factor_entries = get_ou_values(security, "two_step_verification_enforcement_factor")
+    if not factor_entries:
         return make_review(**common, remediation=_MFA_REMED,
                            details="2-step verification method policy was not returned by the Policy API — verify in Admin console.")
-    unsafe = []
-    for ou, factor in factors.items():
+    # enforcedFrom is documented as "Unset" = not enforced, so an absent value is a concrete "no".
+    enforced = {e["org_unit"]: bool(field_value(e, "enforcedFrom"))
+                for e in get_ou_values(security, "two_step_verification_enforcement")}
+
+    def judge(entry):
+        factor = field_value(entry, "allowedSignInFactorSet")
+        if factor is None:
+            return None  # absent or *_UNSPECIFIED: cannot judge
         if factor != "PASSKEY_ONLY":
-            unsafe.append({"org_unit": ou, "value": factor})
-        elif not enforced.get(ou, enforced.get("/", False)):
-            unsafe.append({"org_unit": ou, "value": "PASSKEY_ONLY but 2SV not enforced"})
-    if unsafe:
-        return make_fail(
-            **common, remediation=_MFA_REMED,
-            details=f"{len(unsafe)} OU(s) do not require phishing-resistant MFA: "
-                    + ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe),
-            actual_value=format_ou_values_readable(unsafe), expected_value="PASSKEY_ONLY with 2SV enforced",
-        )
-    return make_pass(**common, details=f"All {len(factors)} OU(s) enforce 2SV with security keys/passkeys only.",
-                     actual_value=f"{len(factors)} OU(s) safe", expected_value="PASSKEY_ONLY with 2SV enforced")
+            return False, factor
+        ou = entry.get("org_unit", "/")
+        if not enforced.get(ou, enforced.get("/", False)):
+            return False, "PASSKEY_ONLY but 2SV not enforced"
+        return True
+
+    return ou_verdict(
+        factor_entries, judge, **common, remediation=_MFA_REMED,
+        fail_text="do not require phishing-resistant MFA",
+        pass_text="enforce 2SV with security keys/passkeys only",
+        expected_value="PASSKEY_ONLY with 2SV enforced",
+    )
 
 
 _SA_RECOVERY_REMED = (

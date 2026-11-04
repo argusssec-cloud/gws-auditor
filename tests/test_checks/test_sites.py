@@ -83,3 +83,21 @@ class TestSitesCreationDisabledOU:
         }
         result = check_sites_creation_disabled(full_audit_data)
         assert result.status == Status.PASS
+
+
+class TestSitesCreationUnknownValues:
+    def test_empty_uses_admin_help_default(self, full_audit_data):
+        # Admin Help documents site creation as enabled by default, so an empty entry fails.
+        from gws_auditor.checks.apps_sites import check_sites_creation_disabled
+
+        full_audit_data["policies"]["sites"] = {"_ou_policies": [
+            make_ou_policy("sites", "sites_creation_and_modification", {}, "/")]}
+        assert check_sites_creation_disabled(full_audit_data).status == Status.FAIL
+
+    def test_creation_disabled_passes_regardless_of_modification(self, full_audit_data):
+        from gws_auditor.checks.apps_sites import check_sites_creation_disabled
+
+        full_audit_data["policies"]["sites"] = {"_ou_policies": [
+            make_ou_policy("sites", "sites_creation_and_modification",
+                           {"allowSitesCreation": False, "allowSitesModification": True}, "/")]}
+        assert check_sites_creation_disabled(full_audit_data).status == Status.PASS

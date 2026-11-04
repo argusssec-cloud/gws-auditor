@@ -7,7 +7,8 @@
 CIS Google Workspace Benchmark v1.3.0 - Calendar controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable, is_default_policy
+from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
+                   format_ou_values_readable, field_value, ou_verdict)
 from ..models import CheckResult, Status
 
 
@@ -66,26 +67,20 @@ def check_primary_cal_external_sharing(data: dict) -> CheckResult:
 
     # OU-aware path
     ou_values = get_ou_values(
-        cal, "primary_calendar_max_allowed_external_sharing", admin_only=True,
+        cal, "primary_calendar_max_allowed_external_sharing",
     )
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            sharing = entry["value"].get("maxAllowedExternalSharing", "")
-            if sharing not in _SAFE:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": sharing})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have unsafe external sharing: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Free/busy information only for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            sharing = field_value(entry, "maxAllowedExternalSharing")
+            if sharing is None:
+                return None  # absent or *_UNSPECIFIED: cannot judge
+            return sharing in _SAFE, sharing
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) limit primary calendar external sharing to free/busy.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="FREE_BUSY_ONLY",
+            fail_text="have unsafe external sharing",
+            pass_text="limit primary calendar external sharing to free/busy",
+            expected_value="Free/busy information only for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value (backward compat / cached data)
@@ -142,26 +137,20 @@ def check_primary_cal_internal_sharing(data: dict) -> CheckResult:
 
     # OU-aware path
     ou_values = get_ou_values(
-        cal, "primary_calendar_max_allowed_internal_sharing", admin_only=True,
+        cal, "primary_calendar_max_allowed_internal_sharing",
     )
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            sharing = entry["value"].get("maxAllowedInternalSharing", "")
-            if sharing not in _SAFE:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": sharing})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have unsafe internal sharing: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Free/busy information only for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            sharing = field_value(entry, "maxAllowedInternalSharing")
+            if sharing is None:
+                return None  # absent or *_UNSPECIFIED: cannot judge
+            return sharing in _SAFE, sharing
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) limit primary calendar internal sharing to free/busy.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="FREE_BUSY_ONLY",
+            fail_text="have unsafe internal sharing",
+            pass_text="limit primary calendar internal sharing to free/busy",
+            expected_value="Free/busy information only for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -241,26 +230,20 @@ def check_cal_external_invitation_warning(data: dict) -> CheckResult:
     cal = policies.get("calendar", {})
 
     # OU-aware path
-    ou_values = get_ou_values(cal, "external_invitations", admin_only=True)
+    ou_values = get_ou_values(cal, "external_invitations")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            warn = entry["value"].get("warnOnInvite",
-                        entry["value"].get("warnOnExternalInvitations", None))
-            if warn is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": warn})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) lack external invitation warning: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            # Real field first; warnOnExternalInvitations is a legacy alias.
+            warn = field_value(entry, "warnOnInvite", "warnOnExternalInvitations")
+            if warn is None:
+                return None
+            return warn is True
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have external invitation warnings enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="lack external invitation warning",
+            pass_text="have external invitation warnings enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback
@@ -318,26 +301,20 @@ def check_secondary_cal_external_sharing(data: dict) -> CheckResult:
 
     # OU-aware path
     ou_values = get_ou_values(
-        cal, "secondary_calendar_max_allowed_external_sharing", admin_only=True,
+        cal, "secondary_calendar_max_allowed_external_sharing",
     )
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            sharing = entry["value"].get("maxAllowedExternalSharing", "")
-            if sharing not in _SAFE:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": sharing})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have unsafe secondary calendar external sharing: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Free/busy information only for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            sharing = field_value(entry, "maxAllowedExternalSharing")
+            if sharing is None:
+                return None  # absent or *_UNSPECIFIED: cannot judge
+            return sharing in _SAFE, sharing
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) limit secondary calendar external sharing to free/busy.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="FREE_BUSY_ONLY",
+            fail_text="have unsafe secondary calendar external sharing",
+            pass_text="limit secondary calendar external sharing to free/busy",
+            expected_value="Free/busy information only for all OUs", remediation=_REMED,
         )
 
     # Fallback
@@ -394,26 +371,20 @@ def check_secondary_cal_internal_sharing(data: dict) -> CheckResult:
 
     # OU-aware path
     ou_values = get_ou_values(
-        cal, "secondary_calendar_max_allowed_internal_sharing", admin_only=True,
+        cal, "secondary_calendar_max_allowed_internal_sharing",
     )
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            sharing = entry["value"].get("maxAllowedInternalSharing", "")
-            if sharing not in _SAFE:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": sharing})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have unsafe secondary calendar internal sharing: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Free/busy information only for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry):
+            sharing = field_value(entry, "maxAllowedInternalSharing")
+            if sharing is None:
+                return None  # absent or *_UNSPECIFIED: cannot judge
+            return sharing in _SAFE, sharing
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) limit secondary calendar internal sharing to free/busy.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="FREE_BUSY_ONLY",
+            fail_text="have unsafe secondary calendar internal sharing",
+            pass_text="limit secondary calendar internal sharing to free/busy",
+            expected_value="Free/busy information only for all OUs", remediation=_REMED,
         )
 
     # Fallback
@@ -477,42 +448,21 @@ def check_cal_offline_access(data: dict) -> CheckResult:
 
     # OU-aware path
     ou_values = get_ou_values(cal, "calendar_offline_access")
-    # Filter out DEFAULT (Google system default) entries — the Policy API
-    # may not reflect admin overrides for this setting.
-    admin_values = [e for e in ou_values if not is_default_policy(e)]
-    if admin_values:
-        unsafe_ous = []
-        for entry in admin_values:
-            enabled = entry["value"].get("enableOfflineAccess", entry["value"].get("enabled", None))
-            if enabled is True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Calendar offline access enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+    # SYSTEM and documented-default entries are the value in force and are judged;
+    # the decorator notes the provenance in the details.
+    if ou_values:
+        def _judge(entry):
+            # Real field first; "enabled" is a legacy alias.
+            enabled = field_value(entry, "enableOfflineAccess", "enabled")
+            if enabled is None:
+                return None
+            return enabled is not True
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(admin_values)} OU(s) have Calendar offline access disabled.",
-            actual_value=f"{len(admin_values)} OU(s) safe", expected_value="Disabled for all OUs",
-        )
-
-    # If we had OU entries but they were all DEFAULT (Google system
-    # defaults), the Policy API may not reflect the admin's actual
-    # setting.  Return MANUAL so we don't false-positive.
-    if ou_values and not admin_values:
-        return make_review(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=(
-                "Policy API returned only Google default values for "
-                "Calendar offline access. Verify manually in Admin "
-                "console > Apps > Google Workspace > Calendar > "
-                "Advanced settings."
-            ),
-            remediation=_REMED,
+            fail_text="have Calendar offline access enabled",
+            pass_text="have Calendar offline access disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback

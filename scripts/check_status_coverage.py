@@ -25,11 +25,9 @@ NEGATIVE = {"FAIL", "WARN", "PARTIAL"}
 
 # check_id -> reason the gap is tolerated for now (plan phases P1/P3).
 KNOWN_GAPS: dict[str, str] = {
-    "CIS-3.1.2.1.1.4": "P1: no tests at all",
     "CIS-3.1.3.6.2": "P1: no tests at all",
     "GWS.COMMONCONTROLS.7.1": "P3: dead setting key, no tests",
     "CIS-1.1.3": "P1: WARN path now covered; PASS is MANUAL by design",
-    "CIS-3.1.2.2.3": "P1: FAIL untested",
     "CIS-3.1.3.7.2": "P1: FAIL untested",
     "CIS-4.2.1.2": "P1: PASS untested",
     "CIS-4.2.1.4": "P1: PASS untested (MANUAL/WARN only today)",

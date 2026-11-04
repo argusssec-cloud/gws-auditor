@@ -463,18 +463,27 @@ class TestCisaServicesGroups:
 # -- Gmail OU-aware tests --
 
 
+_ATTACHMENT_SAFE = {
+    "anomalousAttachmentProtectionConsequence": "SPAM_FOLDER",
+    "encryptedAttachmentProtectionConsequence": "SPAM_FOLDER",
+    "attachmentWithScriptsProtectionConsequence": "QUARANTINE",
+}
+
+
 class TestFlaggedEmailActionOU:
-    """OU-aware tests for GWS.GMAIL.5.5: check_flagged_email_action."""
+    """OU-aware tests for GWS.GMAIL.5.5: check_flagged_email_action.
+
+    Rewritten with the real shape (gmail.email_attachment_safety *Consequence enums) instead of
+    the invented flaggedEmailAction field.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_flagged_email_action
 
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"flaggedEmailAction": "quarantine"}, "/"),
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"flaggedEmailAction": "spam"}, "/Engineering"),
+                make_ou_policy("gmail", "email_attachment_safety", dict(_ATTACHMENT_SAFE), "/"),
+                make_ou_policy("gmail", "email_attachment_safety", dict(_ATTACHMENT_SAFE), "/Engineering"),
             ],
         }
         result = check_flagged_email_action(full_audit_data)
@@ -486,29 +495,55 @@ class TestFlaggedEmailActionOU:
 
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"flaggedEmailAction": "quarantine"}, "/"),
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"flaggedEmailAction": "inbox"}, "/Sales"),
+                make_ou_policy("gmail", "email_attachment_safety", dict(_ATTACHMENT_SAFE), "/"),
+                make_ou_policy("gmail", "email_attachment_safety",
+                                {**_ATTACHMENT_SAFE, "anomalousAttachmentProtectionConsequence": "WARNING"},
+                                "/Sales"),
             ],
         }
         result = check_flagged_email_action(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Sales" in result.details
+        assert "anomalousAttachmentProtectionConsequence=WARNING" in result.actual_value
+
+    def test_entry_without_consequences_is_unknown(self, full_audit_data):
+        """Was ERROR: an entry that says nothing about this control is unknown, not a failure."""
+        from gws_auditor.checks.cisa_services import check_flagged_email_action
+
+        full_audit_data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "email_attachment_safety", {"enableAnomalousAttachmentProtection": True})]}
+        assert check_flagged_email_action(full_audit_data).status == Status.MANUAL
+
+    def test_unspecified_consequence_is_unknown(self, full_audit_data):
+        """Was FAIL: *_UNSPECIFIED carries no state; the other two safe consequences cannot PASS the OU."""
+        from gws_auditor.checks.cisa_services import check_flagged_email_action
+
+        full_audit_data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "email_attachment_safety",
+                           {**_ATTACHMENT_SAFE, "encryptedAttachmentProtectionConsequence": "CONSEQUENCE_UNSPECIFIED"})]}
+        assert check_flagged_email_action(full_audit_data).status == Status.MANUAL
+
+
+def _override(**rule):
+    """A gmail.spam_override_lists value with one spamOverride[] rule (real shape)."""
+    base = {"bypassInternalSenders": False, "bypassSelectedSenders": False,
+            "hideWarningBannerFromSelectedSenders": False}
+    return {"spamOverride": [{**base, **rule}]}
 
 
 class TestSpamApprovedSendersDomainsOU:
-    """OU-aware tests for GWS.GMAIL.18.1: check_spam_approved_senders_domains."""
+    """OU-aware tests for GWS.GMAIL.18.1: check_spam_approved_senders_domains.
+
+    Rewritten with the real spamOverride[] rules instead of the invented approvedSendersDomains.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_approved_senders_domains
 
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"approvedSendersDomains": []}, "/"),
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"approvedSendersDomains": []}, "/Engineering"),
+                make_ou_policy("gmail", "spam_override_lists", {"spamOverride": []}, "/"),
+                make_ou_policy("gmail", "spam_override_lists", _override(), "/Engineering"),
             ],
         }
         result = check_spam_approved_senders_domains(full_audit_data)
@@ -520,29 +555,42 @@ class TestSpamApprovedSendersDomainsOU:
 
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
+                make_ou_policy("gmail", "spam_override_lists", {"spamOverride": []}, "/"),
                 make_ou_policy("gmail", "spam_override_lists",
-                                {"approvedSendersDomains": []}, "/"),
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"approvedSendersDomains": ["spammer.com"]}, "/Marketing"),
+                                _override(bypassSelectedSenders=True), "/Marketing"),
             ],
         }
         result = check_spam_approved_senders_domains(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Marketing" in result.details
 
+    def test_absent_rule_list_is_the_documented_default(self, full_audit_data):
+        """spamOverride[] absent means the documented default [] (no override rules): PASS, not unknown."""
+        from gws_auditor.checks.cisa_services import (
+            check_spam_approved_senders_domains, check_spam_bypass_internal,
+            check_spam_domains_bypass_hide_warnings)
+
+        full_audit_data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "spam_override_lists", {})]}
+        for check in (check_spam_approved_senders_domains, check_spam_domains_bypass_hide_warnings,
+                      check_spam_bypass_internal):
+            assert check(full_audit_data).status == Status.PASS, check.__name__
+
 
 class TestSpamDomainsBypassHideWarningsOU:
-    """OU-aware tests for GWS.GMAIL.18.2: check_spam_domains_bypass_hide_warnings."""
+    """OU-aware tests for GWS.GMAIL.18.2: check_spam_domains_bypass_hide_warnings.
+
+    Rewritten with the real spamOverride[] rules instead of the invented domainsBypassAndHideWarnings.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_domains_bypass_hide_warnings
 
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
+                make_ou_policy("gmail", "spam_override_lists", {"spamOverride": []}, "/"),
                 make_ou_policy("gmail", "spam_override_lists",
-                                {"domainsBypassAndHideWarnings": []}, "/"),
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"domainsBypassAndHideWarnings": []}, "/Engineering"),
+                                _override(bypassSelectedSenders=True), "/Engineering"),
             ],
         }
         result = check_spam_domains_bypass_hide_warnings(full_audit_data)
@@ -554,10 +602,10 @@ class TestSpamDomainsBypassHideWarningsOU:
 
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
+                make_ou_policy("gmail", "spam_override_lists", {"spamOverride": []}, "/"),
                 make_ou_policy("gmail", "spam_override_lists",
-                                {"domainsBypassAndHideWarnings": []}, "/"),
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"domainsBypassAndHideWarnings": ["bad.com"]}, "/Support"),
+                                _override(bypassSelectedSenders=True, hideWarningBannerFromSelectedSenders=True),
+                                "/Support"),
             ],
         }
         result = check_spam_domains_bypass_hide_warnings(full_audit_data)
@@ -566,17 +614,20 @@ class TestSpamDomainsBypassHideWarningsOU:
 
 
 class TestSpamBypassInternalOU:
-    """OU-aware tests for GWS.GMAIL.18.3: check_spam_bypass_internal."""
+    """OU-aware tests for GWS.GMAIL.18.3: check_spam_bypass_internal.
+
+    Rewritten with the real spamOverride[].bypassInternalSenders instead of the invented
+    bypassSpamFiltersForInternal.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_bypass_internal
 
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
+                make_ou_policy("gmail", "spam_override_lists", {"spamOverride": []}, "/"),
                 make_ou_policy("gmail", "spam_override_lists",
-                                {"bypassSpamFiltersForInternal": False}, "/"),
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"bypassSpamFiltersForInternal": False}, "/Engineering"),
+                                _override(bypassSelectedSenders=True), "/Engineering"),
             ],
         }
         result = check_spam_bypass_internal(full_audit_data)
@@ -588,10 +639,9 @@ class TestSpamBypassInternalOU:
 
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
+                make_ou_policy("gmail", "spam_override_lists", {"spamOverride": []}, "/"),
                 make_ou_policy("gmail", "spam_override_lists",
-                                {"bypassSpamFiltersForInternal": False}, "/"),
-                make_ou_policy("gmail", "spam_override_lists",
-                                {"bypassSpamFiltersForInternal": True}, "/Finance"),
+                                _override(bypassInternalSenders=True), "/Finance"),
             ],
         }
         result = check_spam_bypass_internal(full_audit_data)
@@ -705,9 +755,9 @@ class TestDriveExternalUploadOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"allowUploadToExternalDrives": False}, "/"),
+                                {"allowedPartiesForDistributingContent": "NONE"}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"allowUploadToExternalDrives": False}, "/Engineering"),
+                                {"allowedPartiesForDistributingContent": "NONE"}, "/Engineering"),
             ],
         }
         result = check_drive_external_upload(full_audit_data)
@@ -720,9 +770,9 @@ class TestDriveExternalUploadOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "external_sharing",
-                                {"allowUploadToExternalDrives": False}, "/"),
+                                {"allowedPartiesForDistributingContent": "NONE"}, "/"),
                 make_ou_policy("drive", "external_sharing",
-                                {"allowUploadToExternalDrives": True}, "/Contractors"),
+                                {"allowedPartiesForDistributingContent": "ALL_ELIGIBLE_USERS"}, "/Contractors"),
             ],
         }
         result = check_drive_external_upload(full_audit_data)
@@ -765,7 +815,10 @@ class TestDriveOodWarningOU:
 
 
 class TestDriveManagerOverrideOU:
-    """OU-aware tests for GWS.DRIVEDOCS.2.1: check_drive_manager_override."""
+    """OU-aware tests for GWS.DRIVEDOCS.2.1: check_drive_manager_override.
+
+    Rewritten with the real field shared_drive_creation.allowManagersToOverrideSettings.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_drive_manager_override
@@ -773,9 +826,9 @@ class TestDriveManagerOverrideOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "shared_drive_creation",
-                                {"allowManagerOverride": False}, "/"),
+                                {"allowManagersToOverrideSettings": False}, "/"),
                 make_ou_policy("drive", "shared_drive_creation",
-                                {"allowManagerOverride": False}, "/Engineering"),
+                                {"allowManagersToOverrideSettings": False}, "/Engineering"),
             ],
         }
         result = check_drive_manager_override(full_audit_data)
@@ -788,9 +841,9 @@ class TestDriveManagerOverrideOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "shared_drive_creation",
-                                {"allowManagerOverride": False}, "/"),
+                                {"allowManagersToOverrideSettings": False}, "/"),
                 make_ou_policy("drive", "shared_drive_creation",
-                                {"allowManagerOverride": True}, "/Sales"),
+                                {"allowManagersToOverrideSettings": True}, "/Sales"),
             ],
         }
         result = check_drive_manager_override(full_audit_data)
@@ -867,7 +920,11 @@ class TestDriveAddOnsDisabledOU:
 
 
 class TestDriveDesktopRestrictedOU:
-    """OU-aware tests for GWS.DRIVEDOCS.6.1: check_drive_desktop_restricted."""
+    """OU-aware tests for GWS.DRIVEDOCS.6.1: check_drive_desktop_restricted.
+
+    Rewritten with the real fields drive_for_desktop.restrictToAuthorizedDevices /
+    allowDriveForDesktop instead of the invented desktopAuthorizedOnly / desktopAllowed.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_drive_desktop_restricted
@@ -875,9 +932,9 @@ class TestDriveDesktopRestrictedOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "drive_for_desktop",
-                                {"desktopAuthorizedOnly": True, "desktopAllowed": True}, "/"),
+                                {"restrictToAuthorizedDevices": True, "allowDriveForDesktop": True}, "/"),
                 make_ou_policy("drive", "drive_for_desktop",
-                                {"desktopAllowed": False, "desktopAuthorizedOnly": False}, "/Engineering"),
+                                {"allowDriveForDesktop": False, "restrictToAuthorizedDevices": False}, "/Engineering"),
             ],
         }
         result = check_drive_desktop_restricted(full_audit_data)
@@ -890,21 +947,32 @@ class TestDriveDesktopRestrictedOU:
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "drive_for_desktop",
-                                {"desktopAuthorizedOnly": True, "desktopAllowed": True}, "/"),
+                                {"restrictToAuthorizedDevices": True, "allowDriveForDesktop": True}, "/"),
                 make_ou_policy("drive", "drive_for_desktop",
-                                {"desktopAuthorizedOnly": False, "desktopAllowed": True}, "/Contractors"),
+                                {"restrictToAuthorizedDevices": False, "allowDriveForDesktop": True}, "/Contractors"),
             ],
         }
         result = check_drive_desktop_restricted(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Contractors" in result.details
 
+    def test_missing_restriction_flag_is_unknown(self, full_audit_data):
+        """Was FAIL: with only allowDriveForDesktop=true the OU may still restrict to authorized devices."""
+        from gws_auditor.checks.cisa_services import check_drive_desktop_restricted
+
+        full_audit_data["policies"]["drive"] = {"_ou_policies": [
+            make_ou_policy("drive", "drive_for_desktop", {"allowDriveForDesktop": True})]}
+        assert check_drive_desktop_restricted(full_audit_data).status == Status.MANUAL
+
 
 # -- Chat OU-aware tests --
 
 
 class TestChatSpaceHistoryOU:
-    """OU-aware tests for GWS.CHAT.3.1: check_chat_space_history."""
+    """OU-aware tests for GWS.CHAT.3.1: check_chat_space_history.
+
+    Rewritten with the real field chat.space_history.historyState.
+    """
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_chat_space_history
@@ -912,9 +980,9 @@ class TestChatSpaceHistoryOU:
         full_audit_data["policies"]["chat"] = {
             "_ou_policies": [
                 make_ou_policy("chat", "space_history",
-                                {"spaceHistoryEnabled": True}, "/"),
+                                {"historyState": "DEFAULT_HISTORY_ON"}, "/"),
                 make_ou_policy("chat", "space_history",
-                                {"spaceHistoryEnabled": True}, "/Engineering"),
+                                {"historyState": "DEFAULT_HISTORY_ON"}, "/Engineering"),
             ],
         }
         result = check_chat_space_history(full_audit_data)
@@ -927,9 +995,9 @@ class TestChatSpaceHistoryOU:
         full_audit_data["policies"]["chat"] = {
             "_ou_policies": [
                 make_ou_policy("chat", "space_history",
-                                {"spaceHistoryEnabled": True}, "/"),
+                                {"historyState": "DEFAULT_HISTORY_ON"}, "/"),
                 make_ou_policy("chat", "space_history",
-                                {"spaceHistoryEnabled": False}, "/Support"),
+                                {"historyState": "HISTORY_ALWAYS_OFF"}, "/Support"),
             ],
         }
         result = check_chat_space_history(full_audit_data)
@@ -1017,9 +1085,9 @@ class TestGroupsExternalAccessDefaultOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"externalAccessDefault": "disabled"}, "/"),
+                                {"collaborationCapability": "DOMAIN_USERS_ONLY", "ownersCanAllowExternalMembers": False}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"externalAccessDefault": "disabled"}, "/Engineering"),
+                                {"collaborationCapability": "DOMAIN_USERS_ONLY", "ownersCanAllowExternalMembers": False}, "/Engineering"),
             ],
         }
         result = check_groups_external_access_default(full_audit_data)
@@ -1032,9 +1100,9 @@ class TestGroupsExternalAccessDefaultOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"externalAccessDefault": "disabled"}, "/"),
+                                {"collaborationCapability": "DOMAIN_USERS_ONLY", "ownersCanAllowExternalMembers": False}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"externalAccessDefault": "enabled"}, "/Marketing"),
+                                {"collaborationCapability": "ANYONE_CAN_ACCESS"}, "/Marketing"),
             ],
         }
         result = check_groups_external_access_default(full_audit_data)
@@ -1051,9 +1119,9 @@ class TestGroupsExternalMembersOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowExternalMembers": False}, "/"),
+                                {"ownersCanAllowExternalMembers": False}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowExternalMembers": False}, "/Engineering"),
+                                {"ownersCanAllowExternalMembers": False}, "/Engineering"),
             ],
         }
         result = check_groups_external_members(full_audit_data)
@@ -1066,9 +1134,9 @@ class TestGroupsExternalMembersOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowExternalMembers": False}, "/"),
+                                {"ownersCanAllowExternalMembers": False}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"allowExternalMembers": True}, "/Sales"),
+                                {"ownersCanAllowExternalMembers": True}, "/Sales"),
             ],
         }
         result = check_groups_external_members(full_audit_data)
@@ -1085,9 +1153,9 @@ class TestGroupsConversationVisibilityOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"defaultConversationVisibility": "members_only"}, "/"),
+                                {"viewTopicsDefaultAccessLevel": "GROUP_MEMBERS"}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"defaultConversationVisibility": "MEMBERS_ONLY"}, "/Engineering"),
+                                {"viewTopicsDefaultAccessLevel": "GROUP_MEMBERS"}, "/Engineering"),
             ],
         }
         result = check_groups_conversation_visibility(full_audit_data)
@@ -1100,11 +1168,115 @@ class TestGroupsConversationVisibilityOU:
         full_audit_data["policies"]["groups"] = {
             "_ou_policies": [
                 make_ou_policy("groups", "groups_sharing",
-                                {"defaultConversationVisibility": "members_only"}, "/"),
+                                {"viewTopicsDefaultAccessLevel": "GROUP_MEMBERS"}, "/"),
                 make_ou_policy("groups", "groups_sharing",
-                                {"defaultConversationVisibility": "anyone_can_view"}, "/Support"),
+                                {"viewTopicsDefaultAccessLevel": "ANYONE_CAN_VIEW_TOPICS"}, "/Support"),
             ],
         }
         result = check_groups_conversation_visibility(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Support" in result.details
+
+
+class TestUnknownValuesAreManual:
+    """Plan Decision A: an absent field without a documented default, or an *_UNSPECIFIED enum,
+    is unknown; a documented default is judged; a real non-compliant OU still wins."""
+
+    def test_unspecified_sharing_mode_is_unknown(self, full_audit_data):
+        """Was PASS (1.3) / FAIL (1.7): the mode decides which fields apply, so it cannot be guessed."""
+        from gws_auditor.checks.cisa_services import (
+            check_drive_external_sharing_warning, check_drive_external_upload)
+
+        full_audit_data["policies"]["drive"] = {"_ou_policies": [
+            make_ou_policy("drive", "external_sharing",
+                           {"externalSharingMode": "EXTERNAL_SHARING_MODE_UNSPECIFIED",
+                            "allowedPartiesForDistributingContent": "ALL_ELIGIBLE_USERS"})]}
+        assert check_drive_external_sharing_warning(full_audit_data).status == Status.MANUAL
+        assert check_drive_external_upload(full_audit_data).status == Status.MANUAL
+
+    def test_documented_drive_defaults_are_judged(self, full_audit_data):
+        """An empty value takes Google's documented defaults: warnings on (PASS), access checker
+        RECIPIENTS_OR_AUDIENCE_OR_PUBLIC (FAIL), distribution ALL_ELIGIBLE_USERS (FAIL)."""
+        from gws_auditor.checks.cisa_services import (
+            check_drive_access_checker, check_drive_external_sharing_warning, check_drive_external_upload)
+
+        full_audit_data["policies"]["drive"] = {"_ou_policies": [
+            make_ou_policy("drive", "external_sharing", {})]}
+        assert check_drive_external_sharing_warning(full_audit_data).status == Status.PASS
+        assert check_drive_access_checker(full_audit_data).status == Status.FAIL
+        assert check_drive_external_upload(full_audit_data).status == Status.FAIL
+
+    @pytest.mark.parametrize("category, setting_key, check_name", [
+        ("drive", "external_file_warning", "check_drive_ood_warning"),
+        ("drive", "shared_drive_creation", "check_drive_manager_override"),
+        ("drive", "shared_drive_creation", "check_drive_non_member_access"),
+        ("drive", "drive_for_desktop", "check_drive_desktop_restricted"),
+        ("chat", "space_history", "check_chat_space_history"),
+        ("chat", "chat_reporting", "check_chat_reporting_categories"),
+    ])
+    def test_empty_value_without_documented_default_is_manual(self, full_audit_data, category, setting_key, check_name):
+        """Was FAIL for every one of these."""
+        from gws_auditor.checks import cisa_services
+
+        full_audit_data["policies"][category] = {"_ou_policies": [
+            make_ou_policy(category, setting_key, {})]}
+        result = getattr(cisa_services, check_name)(full_audit_data)
+        assert result.status == Status.MANUAL, check_name
+        assert "could not be determined" in result.details
+
+    def test_unspecified_history_state_is_unknown(self, full_audit_data):
+        from gws_auditor.checks.cisa_services import check_chat_space_history
+
+        full_audit_data["policies"]["chat"] = {"_ou_policies": [
+            make_ou_policy("chat", "space_history", {"historyState": "HISTORY_STATE_UNSPECIFIED"})]}
+        assert check_chat_space_history(full_audit_data).status == Status.MANUAL
+
+    def test_non_compliant_ou_beats_unknown_ou(self, full_audit_data):
+        from gws_auditor.checks.cisa_services import check_drive_non_member_access
+
+        full_audit_data["policies"]["drive"] = {"_ou_policies": [
+            make_ou_policy("drive", "shared_drive_creation", {}, "/"),
+            make_ou_policy("drive", "shared_drive_creation", {"allowNonMemberAccess": False}, "/Finance"),
+        ]}
+        result = check_drive_non_member_access(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "/Finance" in result.details and "Undetermined" in result.details
+
+    def test_system_only_shared_drive_value_is_judged(self, full_audit_data):
+        """A SYSTEM policy is the value in force, not "unconfigured"."""
+        from gws_auditor.checks.cisa_services import check_drive_manager_override
+
+        entry = make_ou_policy("drive", "shared_drive_creation", {"allowManagersToOverrideSettings": True})
+        entry["_raw"] = {"type": "SYSTEM"}
+        full_audit_data["policies"]["drive"] = {"_ou_policies": [entry]}
+        assert check_drive_manager_override(full_audit_data).status == Status.FAIL
+
+    def test_unspecified_collaboration_capability_is_unknown(self, full_audit_data):
+        """Was FAIL: GROUPS.1.1 is decided by collaborationCapability, which carries no state here."""
+        from gws_auditor.checks.cisa_services import check_groups_external_access_default
+
+        full_audit_data["policies"]["groups"] = {"_ou_policies": [
+            make_ou_policy("groups", "groups_sharing",
+                           {"collaborationCapability": "COLLABORATION_CAPABILITY_UNSPECIFIED"})]}
+        assert check_groups_external_access_default(full_audit_data).status == Status.MANUAL
+
+    def test_groups_documented_defaults_are_judged(self, full_audit_data):
+        """Empty groups_sharing takes the documented defaults: DOMAIN_USERS_ONLY /
+        ownersCanAllowExternalMembers=false (PASS) and viewTopicsDefaultAccessLevel=DOMAIN_USERS (FAIL)."""
+        from gws_auditor.checks.cisa_services import (
+            check_groups_conversation_visibility, check_groups_external_access_default,
+            check_groups_external_members)
+
+        full_audit_data["policies"]["groups"] = {"_ou_policies": [
+            make_ou_policy("groups", "groups_sharing", {})]}
+        assert check_groups_external_access_default(full_audit_data).status == Status.PASS
+        assert check_groups_external_members(full_audit_data).status == Status.PASS
+        assert check_groups_conversation_visibility(full_audit_data).status == Status.FAIL
+
+    def test_unspecified_visibility_is_unknown(self, full_audit_data):
+        from gws_auditor.checks.cisa_services import check_groups_conversation_visibility
+
+        full_audit_data["policies"]["groups"] = {"_ou_policies": [
+            make_ou_policy("groups", "groups_sharing",
+                           {"viewTopicsDefaultAccessLevel": "VIEW_TOPICS_DEFAULT_ACCESS_LEVEL_UNSPECIFIED"})]}
+        assert check_groups_conversation_visibility(full_audit_data).status == Status.MANUAL

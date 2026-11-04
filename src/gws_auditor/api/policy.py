@@ -19,6 +19,7 @@ from typing import Any
 
 from .base import BaseAPIClient
 from ..constants import POLICY_API_RATE_LIMIT_QPS
+from ..google_defaults import ALL_DEFAULTS, SOURCE_URL as DEFAULTS_SOURCE_URL
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,8 @@ REQUIRED_SETTINGS: dict[str, list[str]] = {
         "chat.chat_apps_access",
         "chat.space_history",
         "chat.chat_reporting",
+        "chat.chat_history",
+        "chat.external_chat_restriction",
     ],
     "meet": [
         "meet.meet_joining",
@@ -128,6 +131,7 @@ REQUIRED_SETTINGS: dict[str, list[str]] = {
         "security.two_step_verification_enforcement",
         "security.two_step_verification_enforcement_factor",
         "security.two_step_verification_device_trust",
+        "security.two_step_verification_grace_period",
     ],
     "groups": [
         "groups_for_business.groups_sharing",
@@ -149,112 +153,16 @@ REQUIRED_SETTINGS: dict[str, list[str]] = {
 }
 
 
-# Factory-default values for settings that the Cloud Identity Policy API
-# does not expose.  When a required setting is absent from both the broad
-# regex query *and* the narrow per-setting backfill call, these values are
-# injected as synthetic "DEFAULT" policies so that downstream checks can
-# evaluate them instead of falling back to ERROR / MANUAL.
-#
-# Values are sourced from Google Workspace admin-console defaults for new
-# tenants (as of 2026-02) and the official GWS admin help documentation.
+# Google's documented default values (see gws_auditor.google_defaults). When a
+# required setting is absent from both the broad regex query *and* the narrow
+# per-setting backfill call, no ADMIN or SYSTEM policy exists for it and the
+# documented default is injected as a synthetic "DEFAULT" policy carrying its
+# source, so checks can judge the value in force and say where it came from.
+_ALL_REQUIRED = {t for types in REQUIRED_SETTINGS.values() for t in types}
 GOOGLE_DEFAULTS: dict[str, dict] = {
-    # ── Gmail ──────────────────────────────────────────────────────────
-    "gmail.mail_delegation": {
-        "enableMailDelegation": False,
-    },
-    "gmail.pop_access": {
-        "enablePopAccess": False,
-    },
-    "gmail.imap_access": {
-        "enableImapAccess": True,
-    },
-    "gmail.auto_forwarding": {
-        "enableAutoForwarding": True,
-    },
-    "gmail.per_user_outbound_gateway": {
-        "allowUsersToUseExternalSmtpServers": False,
-    },
-    "gmail.comprehensive_mail_storage": {
-        "enableComprehensiveMailStorage": False,
-    },
-    "gmail.workspace_sync_for_outlook": {
-        "enableGoogleWorkspaceSyncForMicrosoftOutlook": True,
-    },
-    "gmail.spam_override_lists": {},
-    "gmail.email_spam_filter_ip_allowlist": {
-        "allowedIpAddresses": [],
-    },
-    # ── Calendar ───────────────────────────────────────────────────────
-    "calendar.primary_calendar_max_allowed_external_sharing": {
-        "maxAllowedExternalSharing": "EXTERNAL_FREE_BUSY_ONLY",
-    },
-    "calendar.secondary_calendar_max_allowed_external_sharing": {
-        "maxAllowedExternalSharing": "EXTERNAL_ALL_INFO_READ_ONLY",
-    },
-    "calendar.external_invitations": {
-        "warnOnInvite": True,
-    },
-    "calendar.interoperability": {
-        "enableInteroperability": False,
-    },
-    "calendar.calendar_offline_access": {
-        "enableOfflineAccess": True,
-    },
-    # ── Drive & Docs ───────────────────────────────────────────────────
-    # The external_sharing setting is not reliably returned by the Policy
-    # API for all tenants.  The default below reflects the factory state
-    # for new Google Workspace tenants (warning enabled).
-    "drive_and_docs.external_sharing": {
-        "warnForExternalSharing": True,
-    },
-    "drive_and_docs.general_access_default": {
-        "defaultFileAccess": "LINK_SHARING_PRIVATE",
-    },
-    "drive_and_docs.drive_sdk": {
-        "enableDriveSdkApiAccess": True,
-    },
-    "drive_and_docs.file_security_update": {
-        "securityUpdate": "APPLY_TO_IMPACTED_FILES",
-    },
-    # ── Security ───────────────────────────────────────────────────────
-    "security.two_step_verification_enrollment": {
-        "allowEnrollment": True,
-    },
-    "security.two_step_verification_enforcement": {
-        "enforcedFrom": "",
-    },
-    "security.two_step_verification_enforcement_factor": {
-        "allowedSignInFactorSet": "ANY_VERIFICATION_METHOD",
-    },
-    "security.two_step_verification_device_trust": {
-        "allowTrustingDevice": True,
-    },
-    "security.user_account_recovery": {
-        "enableAccountRecovery": False,
-    },
-    "security.less_secure_apps": {
-        "allowLessSecureApps": False,
-    },
-    # ── Directory ──────────────────────────────────────────────────────
-    # Default: external directory sharing restricted to basic profile only.
-    # Google Workspace admin help: "Authenticated user basic profile fields"
-    # is the default for new tenants.
-    "directory.external_directory_sharing": {
-        "sharing_option": "REQUESTER_BASIC_PROFILE_ONLY",
-    },
-    # ── Sites ─────────────────────────────────────────────────────────
-    "sites.sites_creation_and_modification": {
-        "allowSitesCreation": True,
-    },
-    # ── Groups for Business ────────────────────────────────────────────
-    "groups_for_business.groups_sharing": {
-        "collaborationCapability": "FULL_COLLABORATION",
-        "whoCanCreateGroups": "ALL_USERS_CAN_CREATE",
-    },
-    # ── Workspace Marketplace ──────────────────────────────────────────
-    "workspace_marketplace.apps_access_options": {
-        "accessLevel": "ALLOW_ALL",
-    },
+    setting_type: dict(fields)
+    for setting_type, fields in ALL_DEFAULTS.items()
+    if setting_type in _ALL_REQUIRED and fields
 }
 
 
@@ -402,9 +310,10 @@ class PolicyClient(BaseAPIClient):
                                 "name": f"policies/_default/{setting_type}",
                                 "setting": {
                                     "type": full_type,
-                                    "value": GOOGLE_DEFAULTS[setting_type],
+                                    "value": dict(GOOGLE_DEFAULTS[setting_type]),
                                 },
                                 "type": "DEFAULT",
+                                "source": DEFAULTS_SOURCE_URL,
                             })
                             logger.debug(
                                 "Applied Google default for %s in %s",

@@ -60,10 +60,11 @@ class TestTwoSvAdminEnforcementOU:
             u["is_enrolled_in_2sv"] = True
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
+                # Real Policy API field is enforcedFrom (a past timestamp = enforced), not enableEnforcement.
                 make_ou_policy("security", "two_step_verification_enforcement",
-                                {"enableEnforcement": True}, "/"),
+                                {"enforcedFrom": "2024-01-01T00:00:00Z"}, "/"),
                 make_ou_policy("security", "two_step_verification_enforcement",
-                                {"enableEnforcement": True}, "/Engineering"),
+                                {"enforcedFrom": "2024-01-01T00:00:00Z"}, "/Engineering"),
             ],
         }
         result = check_2sv_admin_enforcement(full_audit_data)
@@ -76,10 +77,11 @@ class TestTwoSvAdminEnforcementOU:
             u["is_enrolled_in_2sv"] = True
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
+                # Real field is enforcedFrom; absent means "Unset" = not enforced (documented default).
                 make_ou_policy("security", "two_step_verification_enforcement",
-                                {"enableEnforcement": True}, "/"),
+                                {"enforcedFrom": "2024-01-01T00:00:00Z"}, "/"),
                 make_ou_policy("security", "two_step_verification_enforcement",
-                                {"enableEnforcement": False}, "/Sales"),
+                                {}, "/Sales"),
             ],
         }
         result = check_2sv_admin_enforcement(full_audit_data)
@@ -149,9 +151,9 @@ class TestSecurityKeysAdminOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethod": "ONLY_SECURITY_KEY"}, "/"),
+                                {"allowedSignInFactorSet": "PASSKEY_ONLY"}, "/"),
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethod": "SECURITY_KEY_ONLY"}, "/Admins"),
+                                {"allowedSignInFactorSet": "PASSKEY_ONLY"}, "/Admins"),
             ],
         }
         result = check_security_keys_admin(full_audit_data)
@@ -163,9 +165,9 @@ class TestSecurityKeysAdminOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethod": "ONLY_SECURITY_KEY"}, "/"),
+                                {"allowedSignInFactorSet": "PASSKEY_ONLY"}, "/"),
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethod": "ANY_METHOD"}, "/Contractors"),
+                                {"allowedSignInFactorSet": "ALL"}, "/Contractors"),
             ],
         }
         result = check_security_keys_admin(full_audit_data)
@@ -197,7 +199,7 @@ class TestSecurityKeysAdminOU:
                 None,
                 "junk",
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethod": "ONLY_SECURITY_KEY"}, "/"),
+                                {"allowedSignInFactorSet": "PASSKEY_ONLY"}, "/"),
             ],
         }
         result = check_security_keys_admin(full_audit_data)
@@ -210,7 +212,7 @@ class TestSecurityKeysAdminOU:
             "_ou_policies": [
                 {"setting": {}, "orgUnit": "/Orphan"},
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethod": "SECURITY_KEY_ONLY"}, "/"),
+                                {"allowedSignInFactorSet": "PASSKEY_ONLY"}, "/"),
             ],
         }
         result = check_security_keys_admin(full_audit_data)
@@ -222,12 +224,41 @@ class TestSecurityKeysAdminOU:
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
                 make_ou_policy("security", "two_step_verification_enforcement_factor",
-                                {"allowedMethod": "PHONE_VERIFICATION"}, "/"),
+                                {"allowedSignInFactorSet": "PHONE_VERIFICATION"}, "/"),
             ],
         }
         result = check_security_keys_admin(full_audit_data)
         assert result.status == Status.FAIL
-        assert "PHONE_VERIFICATION" in result.details
+        # ou_verdict lists OUs in details and the offending value in actual_value.
+        assert "PHONE_VERIFICATION" in result.actual_value
+
+    def test_unspecified_method_is_manual(self, full_audit_data):
+        """*_UNSPECIFIED carries no state (AIP-126): the OU is undetermined, so MANUAL."""
+        from gws_auditor.checks.security_auth import check_security_keys_admin
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [
+                make_ou_policy("security", "two_step_verification_enforcement_factor",
+                                {"allowedSignInFactorSet": "ALLOWED_SIGN_IN_FACTOR_SET_UNSPECIFIED"}, "/"),
+            ],
+        }
+        result = check_security_keys_admin(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "/" in result.details
+
+    def test_unspecified_ou_does_not_hide_a_failing_ou(self, full_audit_data):
+        """A real non-compliant OU still wins; the undetermined OU is listed."""
+        from gws_auditor.checks.security_auth import check_security_keys_admin
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [
+                make_ou_policy("security", "two_step_verification_enforcement_factor",
+                                {"allowedSignInFactorSet": "ALLOWED_SIGN_IN_FACTOR_SET_UNSPECIFIED"}, "/"),
+                make_ou_policy("security", "two_step_verification_enforcement_factor",
+                                {"allowedSignInFactorSet": "ALL"}, "/Sales"),
+            ],
+        }
+        result = check_security_keys_admin(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "/Sales" in result.details and "Undetermined" in result.details
 
 
 # -----------------------------------------------------------------------
@@ -264,10 +295,10 @@ class TestTwoSvAllUsersOU:
             u["is_enrolled_in_2sv"] = True
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
-                make_ou_policy("security", "two_step_verification_enrollment",
-                                {"enableEnforcement": True}, "/"),
-                make_ou_policy("security", "two_step_verification_enrollment",
-                                {"enableEnforcement": True}, "/Engineering"),
+                make_ou_policy("security", "two_step_verification_enforcement",
+                                {"enforcedFrom": "2024-01-01T00:00:00Z"}, "/"),
+                make_ou_policy("security", "two_step_verification_enforcement",
+                                {"enforcedFrom": "2024-01-01T00:00:00Z"}, "/Engineering"),
             ],
         }
         result = check_2sv_all_users(full_audit_data)
@@ -280,10 +311,10 @@ class TestTwoSvAllUsersOU:
             u["is_enrolled_in_2sv"] = True
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
-                make_ou_policy("security", "two_step_verification_enrollment",
-                                {"enableEnforcement": True}, "/"),
-                make_ou_policy("security", "two_step_verification_enrollment",
-                                {"enableEnforcement": False}, "/Interns"),
+                make_ou_policy("security", "two_step_verification_enforcement",
+                                {"enforcedFrom": "2024-01-01T00:00:00Z"}, "/"),
+                make_ou_policy("security", "two_step_verification_enforcement",
+                                {}, "/Interns"),
             ],
         }
         result = check_2sv_all_users(full_audit_data)
@@ -472,10 +503,11 @@ class TestAdvancedProtectionOU:
         from gws_auditor.checks.security_auth import check_advanced_protection
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
+                # Real Policy API field is enableAdvancedProtectionSelfEnrollment.
                 make_ou_policy("security", "advanced_protection_program",
-                                {"enableAdvancedProtection": True}, "/"),
+                                {"enableAdvancedProtectionSelfEnrollment": True}, "/"),
                 make_ou_policy("security", "advanced_protection_program",
-                                {"enableAdvancedProtection": True}, "/Executives"),
+                                {"enableAdvancedProtectionSelfEnrollment": True}, "/Executives"),
             ],
         }
         result = check_advanced_protection(full_audit_data)
@@ -486,15 +518,27 @@ class TestAdvancedProtectionOU:
         from gws_auditor.checks.security_auth import check_advanced_protection
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
+                # Real Policy API field is enableAdvancedProtectionSelfEnrollment.
                 make_ou_policy("security", "advanced_protection_program",
-                                {"enableAdvancedProtection": True}, "/"),
+                                {"enableAdvancedProtectionSelfEnrollment": True}, "/"),
                 make_ou_policy("security", "advanced_protection_program",
-                                {"enableAdvancedProtection": False}, "/Temps"),
+                                {"enableAdvancedProtectionSelfEnrollment": False}, "/Temps"),
             ],
         }
         result = check_advanced_protection(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Temps" in result.details
+
+    def test_absent_field_is_manual(self, full_audit_data):
+        """No documented default for enableAdvancedProtectionSelfEnrollment: an empty value is unknown, not FAIL."""
+        from gws_auditor.checks.security_auth import check_advanced_protection
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [
+                make_ou_policy("security", "advanced_protection_program",
+                                {"securityCodeOption": "ALLOWED_WITH_REMOTE_ACCESS"}, "/"),
+            ],
+        }
+        assert check_advanced_protection(full_audit_data).status == Status.MANUAL
 
     def test_fallback_when_no_ou_policies(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_advanced_protection
@@ -540,10 +584,11 @@ class TestLoginChallengesOU:
         from gws_auditor.checks.security_auth import check_login_challenges
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
+                # Real Policy API field is enableEmployeeIdChallenge.
                 make_ou_policy("security", "login_challenges",
-                                {"enableLoginChallenge": True}, "/"),
+                                {"enableEmployeeIdChallenge": True}, "/"),
                 make_ou_policy("security", "login_challenges",
-                                {"enableLoginChallenge": True}, "/Engineering"),
+                                {"enableEmployeeIdChallenge": True}, "/Engineering"),
             ],
         }
         result = check_login_challenges(full_audit_data)
@@ -554,15 +599,24 @@ class TestLoginChallengesOU:
         from gws_auditor.checks.security_auth import check_login_challenges
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
+                # Real Policy API field is enableEmployeeIdChallenge.
                 make_ou_policy("security", "login_challenges",
-                                {"enableLoginChallenge": True}, "/"),
+                                {"enableEmployeeIdChallenge": True}, "/"),
                 make_ou_policy("security", "login_challenges",
-                                {"enableLoginChallenge": False}, "/Marketing"),
+                                {"enableEmployeeIdChallenge": False}, "/Marketing"),
             ],
         }
         result = check_login_challenges(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Marketing" in result.details
+
+    def test_absent_field_is_manual(self, full_audit_data):
+        """No documented default for enableEmployeeIdChallenge: an empty value is unknown, not FAIL."""
+        from gws_auditor.checks.security_auth import check_login_challenges
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [make_ou_policy("security", "login_challenges", {}, "/")],
+        }
+        assert check_login_challenges(full_audit_data).status == Status.MANUAL
 
     def test_fallback_when_no_ou_policies(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_login_challenges
@@ -650,6 +704,26 @@ class TestPasswordPolicyOU:
         result = check_password_policy(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Legacy" in result.details
+
+    def test_empty_value_fails_on_documented_defaults(self, full_audit_data):
+        """Google documents minimumLength=8 and enforceRequirementsAtLogin=false: an empty value is a FAIL, not unknown."""
+        from gws_auditor.checks.security_auth import check_password_policy
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [make_ou_policy("security", "password", {}, "/")],
+        }
+        result = check_password_policy(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "min_length=8" in result.actual_value and "enforce_at_login=False" in result.actual_value
+
+    def test_unspecified_strength_alone_is_manual(self, full_audit_data):
+        """Length and login enforcement compliant but allowedStrength unspecified: cannot confirm, so MANUAL."""
+        from gws_auditor.checks.security_auth import check_password_policy
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [make_ou_policy("security", "password",
+                                            {"minimumLength": 14, "enforceRequirementsAtLogin": True,
+                                             "allowedStrength": "ALLOWED_STRENGTH_UNSPECIFIED"}, "/")],
+        }
+        assert check_password_policy(full_audit_data).status == Status.MANUAL
 
     def test_fallback_when_no_ou_policies(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_password_policy

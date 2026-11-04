@@ -8,9 +8,9 @@ CIS Google Workspace Benchmark v1.3.0 - Drive and Docs controls.
 """
 
 from .base import (
-    check, make_pass, make_fail, make_warn, make_manual, make_review,
-    make_partial, get_ou_values, format_ou_values_readable, evaluate_ous,
-    is_external_sharing_ou,
+    check, make_pass, make_fail, make_manual, make_review,
+    get_ou_values, format_ou_values_readable, is_external_sharing_ou,
+    field_value, ou_verdict,
 )
 from ..models import CheckResult, Status
 
@@ -57,52 +57,75 @@ def _has_blocking_trust_rule(trust_rules: list[dict]) -> bool:
     return False
 
 
-def _triage_external_sharing_ous(ou_values: list[dict], predicate, value_getter,
-                                  data: dict, trust_rules: list,
-                                  ou_id_map: dict[str, str]) -> dict:
-    """Split OUs failing ``predicate`` into trust-rule / exception / unsafe.
+def _external_sharing_verdict(ou_values: list[dict], judge, data: dict,
+                              trust_rules: list, ou_id_map: dict[str, str], *,
+                              review_text: str, review_expected: str,
+                              review_remediation: str, **verdict_kwargs) -> CheckResult:
+    """Per-OU verdict for the external-sharing controls, trust-rule aware.
 
-    Precedence: an explicit trust rule wins over the external-sharing OU
-    convention, because a rule is a deliberate control while the OU name
-    is only a naming heuristic. A ``BLOCK_SHARE`` rule clears the OU
-    entirely.
-
-    Returns a dict of ``unsafe_ous`` / ``trust_rule_ous`` / ``exception_ous``,
-    each a list of ``{"org_unit", "value"}`` dicts ready for
-    :func:`format_ou_values_readable`.
+    ``judge(entry)`` follows the :func:`ou_verdict` contract (True / False /
+    None or a ``(verdict, shown_value)`` tuple). Precedence for an OU that is
+    not compliant (or undetermined): an explicit trust rule wins over the
+    external-sharing OU convention, because a rule is a deliberate control
+    while the OU name is only a naming heuristic. A ``BLOCK_SHARE`` rule
+    clears the OU entirely; any other active rule sends the check to manual
+    review. Exception OUs are handled by :func:`ou_verdict` (PARTIAL) and are
+    listed alongside a real FAIL so they stay visible.
     """
-    # data=None: classify safe/unsafe only, so trust rules get first refusal
-    # on each unsafe OU before the exception-OU convention applies.
-    buckets = evaluate_ous(ou_values, predicate)
-    values_by_ou = {e.get("org_unit", "/"): value_getter(e) for e in ou_values}
-
-    unsafe_ous: list[dict] = []
     trust_rule_ous: list[dict] = []
     exception_ous: list[dict] = []
-    for ou_path in buckets["unsafe_ous"]:
+
+    def _judge(entry: dict):
+        res = judge(entry)
+        verdict, shown = res if isinstance(res, tuple) else (res, None)
+        if verdict is True:
+            return res
+        ou_path = entry.get("org_unit", "/")
         applicable_rules = _get_active_trust_rules_for_ou(
             trust_rules, ou_path, "DRIVE_SHARE_TRUST", ou_id_map,
         )
         if applicable_rules:
-            if _has_blocking_trust_rule(applicable_rules):
-                continue
-            trust_rule_ous.append({
-                "org_unit": ou_path,
-                "value": _describe_trust_rule_override(applicable_rules),
-            })
-        elif is_external_sharing_ou(ou_path, data):
+            if not _has_blocking_trust_rule(applicable_rules):
+                trust_rule_ous.append({
+                    "org_unit": ou_path,
+                    "value": _describe_trust_rule_override(applicable_rules),
+                })
+            return True
+        if verdict is False and is_external_sharing_ou(ou_path, data):
             exception_ous.append({
-                "org_unit": ou_path, "value": values_by_ou.get(ou_path),
+                "org_unit": ou_path,
+                "value": shown if shown is not None else entry.get("value"),
             })
-        else:
-            unsafe_ous.append({
-                "org_unit": ou_path, "value": values_by_ou.get(ou_path),
-            })
-    return {
-        "unsafe_ous": unsafe_ous,
-        "trust_rule_ous": trust_rule_ous,
-        "exception_ous": exception_ous,
-    }
+        return res
+
+    result = ou_verdict(ou_values, _judge, data=data, **verdict_kwargs)
+    common = {k: verdict_kwargs[k] for k in ("check_id", "title", "level", "source", "section")}
+    if result.status == Status.FAIL:
+        if not (trust_rule_ous or exception_ous):
+            return result
+        details = result.details
+        if trust_rule_ous:
+            details += (f"; {len(trust_rule_ous)} additional OU(s) use trust rules: "
+                        f"{', '.join(u['org_unit'] for u in trust_rule_ous)}")
+        if exception_ous:
+            details += (f"; {len(exception_ous)} external-sharing OU(s) exempt: "
+                        f"{', '.join(u['org_unit'] for u in exception_ous)}")
+        return make_fail(
+            details=details,
+            actual_value="\n".join(filter(None, [
+                result.actual_value,
+                format_ou_values_readable(trust_rule_ous + exception_ous),
+            ])),
+            expected_value=verdict_kwargs["expected_value"],
+            remediation=verdict_kwargs.get("remediation", ""), **common,
+        )
+    if trust_rule_ous:
+        return make_review(
+            details=f"{len(trust_rule_ous)} OU(s) {review_text}",
+            actual_value=format_ou_values_readable(trust_rule_ous),
+            expected_value=review_expected, remediation=review_remediation, **common,
+        )
+    return result
 
 
 def _describe_trust_rule_override(trust_rules: list[dict]) -> str:
@@ -154,64 +177,33 @@ def check_drive_external_sharing_warning(data: dict) -> CheckResult:
     ou_id_map = _build_reverse_ou_map(data) if trust_rules else {}
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
+    ou_values = get_ou_values(drive, "external_sharing")
     if ou_values:
-        def _warn_value(entry: dict):
-            value = entry.get("value", {})
-            mode = value.get("externalSharingMode")
+        def _judge(entry: dict):
+            mode = field_value(entry, "externalSharingMode")
             if mode == "DISALLOWED":
                 return True  # no external sharing, nothing to warn about
-            if mode == "ALLOWLISTED_DOMAINS" and "warnForSharingOutsideAllowlistedDomains" in value:
-                return value["warnForSharingOutsideAllowlistedDomains"]
-            return value.get("warnForExternalSharing", value.get("warnOnExternalSharing", None))
+            warn_outside = field_value(entry, "warnForSharingOutsideAllowlistedDomains")
+            warn_external = field_value(entry, "warnForExternalSharing", "warnOnExternalSharing")
+            if mode == "ALLOWLISTED_DOMAINS" and warn_outside is not None:
+                return warn_outside is True, warn_outside
+            if mode is None:
+                # Sharing mode unknown: the verdict is only determinable when the
+                # answer is the same under every mode (both warnings on).
+                if warn_outside is True and warn_external is True:
+                    return True
+                return None
+            return None if warn_external is None else (warn_external is True, warn_external)
 
-        triage = _triage_external_sharing_ous(
-            ou_values, lambda e: _warn_value(e) is True, _warn_value,
-            data, trust_rules, ou_id_map,
-        )
-        unsafe_ous = triage["unsafe_ous"]
-        trust_rule_ous = triage["trust_rule_ous"]
-        exception_ous = triage["exception_ous"]
-
-        if unsafe_ous:
-            all_issue_ous = unsafe_ous + trust_rule_ous + exception_ous
-            details = f"{len(unsafe_ous)} OU(s) do not warn on external sharing"
-            if trust_rule_ous:
-                details += f", {len(trust_rule_ous)} additional OU(s) use trust rules"
-            if exception_ous:
-                details += f", {len(exception_ous)} external-sharing OU(s) exempt"
-            details += f": {', '.join(u['org_unit'] for u in all_issue_ous)}"
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=details,
-                actual_value=format_ou_values_readable(all_issue_ous),
-                expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        if trust_rule_ous:
-            return make_review(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(trust_rule_ous)} OU(s) use trust rules for external sharing control. Manual review required.",
-                actual_value=format_ou_values_readable(trust_rule_ous),
-                expected_value="Warning enabled or trust rules block sharing",
-                remediation=f"Review trust rules. {_REMED}",
-            )
-        if exception_ous:
-            return make_partial(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=(
-                    f"All OUs warn on external sharing except "
-                    f"{len(exception_ous)} designated external-sharing OU(s): "
-                    f"{', '.join(u['org_unit'] for u in exception_ous)}"
-                ),
-                actual_value=format_ou_values_readable(exception_ous),
-                expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return _external_sharing_verdict(
+            ou_values, _judge, data, trust_rules, ou_id_map,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) warn on external sharing.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="do not warn on external sharing",
+            pass_text="warn on external sharing",
+            expected_value="Enabled for all OUs", remediation=_REMED,
+            review_text="use trust rules for external sharing control. Manual review required.",
+            review_expected="Warning enabled or trust rules block sharing",
+            review_remediation=f"Review trust rules. {_REMED}",
         )
 
     # Fallback: existing mapped value logic
@@ -271,62 +263,21 @@ def check_drive_public_publishing(data: dict) -> CheckResult:
     ou_id_map = _build_reverse_ou_map(data) if trust_rules else {}
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
+    ou_values = get_ou_values(drive, "external_sharing")
     if ou_values:
-        def _publish_value(entry: dict):
-            return entry.get("value", {}).get(
-                "allowPublishingFiles",
-                entry.get("value", {}).get("allowPublicPublishing", None),
-            )
+        def _judge(entry: dict):
+            value = field_value(entry, "allowPublishingFiles", "allowPublicPublishing")
+            return None if value is None else (value is False, value)
 
-        triage = _triage_external_sharing_ous(
-            ou_values, lambda e: _publish_value(e) is False, _publish_value,
-            data, trust_rules, ou_id_map,
-        )
-        unsafe_ous = triage["unsafe_ous"]
-        trust_rule_ous = triage["trust_rule_ous"]
-        exception_ous = triage["exception_ous"]
-
-        if unsafe_ous:
-            all_issue_ous = unsafe_ous + trust_rule_ous + exception_ous
-            details = f"{len(unsafe_ous)} OU(s) allow public publishing"
-            if trust_rule_ous:
-                details += f", {len(trust_rule_ous)} additional OU(s) use trust rules"
-            if exception_ous:
-                details += f", {len(exception_ous)} external-sharing OU(s) exempt"
-            details += f": {', '.join(u['org_unit'] for u in all_issue_ous)}"
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=details,
-                actual_value=format_ou_values_readable(all_issue_ous),
-                expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        if trust_rule_ous:
-            return make_review(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(trust_rule_ous)} OU(s) use trust rules to control public publishing. Manual review required.",
-                actual_value=format_ou_values_readable(trust_rule_ous),
-                expected_value="Public publishing disabled or blocked by trust rules",
-                remediation=f"Review trust rules for adequacy. {_REMED}",
-            )
-        if exception_ous:
-            return make_partial(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=(
-                    f"All OUs disallow public publishing except "
-                    f"{len(exception_ous)} designated external-sharing OU(s): "
-                    f"{', '.join(u['org_unit'] for u in exception_ous)}"
-                ),
-                actual_value=format_ou_values_readable(exception_ous),
-                expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        return _external_sharing_verdict(
+            ou_values, _judge, data, trust_rules, ou_id_map,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) disallow public publishing.",
-            actual_value=f"All {len(ou_values)} OU(s): Public publishing disabled",
-            expected_value="Disabled for all OUs",
+            fail_text="allow public publishing",
+            pass_text="disallow public publishing",
+            expected_value="Disabled for all OUs", remediation=_REMED,
+            review_text="use trust rules to control public publishing. Manual review required.",
+            review_expected="Public publishing disabled or blocked by trust rules",
+            review_remediation=f"Review trust rules for adequacy. {_REMED}",
         )
 
     # Fallback: existing mapped value logic
@@ -382,31 +333,22 @@ def check_drive_domain_allowlist(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
+    ou_values = get_ou_values(drive, "external_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
+        def _judge(entry: dict):
             # Policy API field is externalSharingMode; DISALLOWED is stricter than an allowlist
-            mode = entry["value"].get("externalSharingMode", None)
+            mode = field_value(entry, "externalSharingMode")
             if mode is not None:
-                if mode not in ("ALLOWLISTED_DOMAINS", "DISALLOWED"):
-                    unsafe_ous.append({"org_unit": entry["org_unit"], "value": mode})
-                continue
-            val = entry["value"].get("allowlistedDomainsEnabled", None)
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not have domain allowlist enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+                return mode in ("ALLOWLISTED_DOMAINS", "DISALLOWED"), mode
+            val = field_value(entry, "allowlistedDomainsEnabled")
+            return None if val is None else (val is True, val)
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have domain allowlist enabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="do not have domain allowlist enabled",
+            pass_text="have domain allowlist enabled",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic (includes domain count check)
@@ -475,28 +417,28 @@ def check_drive_allowlist_warning(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
+    ou_values = get_ou_values(drive, "external_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            if entry["value"].get("externalSharingMode") == "DISALLOWED":
-                continue  # no external sharing, nothing to warn about
-            val = entry["value"].get("warnForSharingOutsideAllowlistedDomains",
-                        entry["value"].get("warnOnAllowlistedDomainSharing", None))
-            if val is not True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not warn on allowlisted domain sharing: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            mode = field_value(entry, "externalSharingMode")
+            if mode == "DISALLOWED":
+                return True  # no external sharing, nothing to warn about
+            val = field_value(entry, "warnForSharingOutsideAllowlistedDomains",
+                              "warnOnAllowlistedDomainSharing")
+            if val is None:
+                return None
+            if val is True:
+                return True  # warned under every sharing mode
+            # Not warned: only a verdict when the sharing mode is known (DISALLOWED
+            # would make the control moot).
+            return None if mode is None else (False, val)
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) warn on allowlisted domain sharing.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
+            fail_text="do not warn on allowlisted domain sharing",
+            pass_text="warn on allowlisted domain sharing",
+            expected_value="Enabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -555,26 +497,18 @@ def check_drive_access_checker(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
+    ou_values = get_ou_values(drive, "external_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("accessCheckerSuggestions",
-                        entry["value"].get("accessCheckerSuggestion", ""))
-            if val.upper() not in _SAFE_OU:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have unsafe Access Checker setting: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="RECIPIENTS_ONLY or DOMAIN_ONLY",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            val = field_value(entry, "accessCheckerSuggestions", "accessCheckerSuggestion")
+            return None if val is None else (str(val).upper() in _SAFE_OU, val)
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Access Checker properly configured.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="RECIPIENTS_ONLY or DOMAIN_ONLY",
+            fail_text="have unsafe Access Checker setting",
+            pass_text="have Access Checker properly configured",
+            expected_value="RECIPIENTS_ONLY or DOMAIN_ONLY", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -633,27 +567,23 @@ def check_drive_external_distribution(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "external_sharing", admin_only=True)
+    ou_values = get_ou_values(drive, "external_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("allowedPartiesForDistributingContent",
-                        entry["value"].get("externalDistributionAllowedFor", ""))
+        def _judge(entry: dict):
+            val = field_value(entry, "allowedPartiesForDistributingContent",
+                              "externalDistributionAllowedFor")
+            if val is None:
+                return None
             # NONE ("No one") is stricter than internal-only
-            if "internal" not in val.lower() and val.upper() != "NONE":
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow non-internal external distribution: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="INTERNAL_USERS_ONLY",
-                remediation=_REMED,
-            )
-        return make_pass(
+            text = str(val)
+            return ("internal" in text.lower() or text.upper() == "NONE"), val
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict external distribution to internal users.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="INTERNAL_USERS_ONLY",
+            fail_text="allow non-internal external distribution",
+            pass_text="restrict external distribution to internal users",
+            expected_value="INTERNAL_USERS_ONLY", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -713,25 +643,18 @@ def check_shared_drive_creation(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
+    ou_values = get_ou_values(drive, "shared_drive_creation")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("allowSharedDriveCreation", None)
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow unrestricted shared drive creation: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "allowSharedDriveCreation")
+            return None if value is None else value is False
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict shared drive creation.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="allow unrestricted shared drive creation",
+            pass_text="restrict shared drive creation",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -790,25 +713,18 @@ def check_shared_drive_manager_override(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
+    ou_values = get_ou_values(drive, "shared_drive_creation")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("allowManagersToOverrideSettings", None)
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow managers to override settings: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "allowManagersToOverrideSettings")
+            return None if value is None else value is False
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) prevent manager overrides.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="allow managers to override settings",
+            pass_text="prevent manager overrides",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -867,25 +783,18 @@ def check_shared_drive_member_access(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
+    ou_values = get_ou_values(drive, "shared_drive_creation")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("allowNonMemberAccess", None)
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow non-member access to shared drives: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "allowNonMemberAccess")
+            return None if value is None else value is False
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict shared drive access to members.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="allow non-member access to shared drives",
+            pass_text="restrict shared drive access to members",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -945,25 +854,18 @@ def check_shared_drive_viewer_restrictions(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "shared_drive_creation", admin_only=True)
+    ou_values = get_ou_values(drive, "shared_drive_creation")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("allowedPartiesForDownloadPrintCopy", "")
-            if val.upper() in _UNSAFE:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(f"{u['org_unit']} ({u['value']})" for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow viewers to download/print/copy: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Not ALL or EDITORS_AND_ABOVE",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            val = field_value(entry, "allowedPartiesForDownloadPrintCopy")
+            return None if val is None else (str(val).upper() not in _UNSAFE, val)
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict viewer download/print/copy.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Not ALL or EDITORS_AND_ABOVE",
+            fail_text="allow viewers to download/print/copy",
+            pass_text="restrict viewer download/print/copy",
+            expected_value="Not ALL or EDITORS_AND_ABOVE", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1022,23 +924,16 @@ def check_drive_offline_access(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(drive, "drive_offline")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("enableOfflineAccess", entry["value"].get("enabled", None))
-            if val is True:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Drive offline access enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            val = field_value(entry, "enableOfflineAccess", "enabled")
+            return None if val is None else val is False
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Drive offline access disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have Drive offline access enabled",
+            pass_text="have Drive offline access disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1099,25 +994,18 @@ def check_drive_desktop_access(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "drive_for_desktop", admin_only=True)
+    ou_values = get_ou_values(drive, "drive_for_desktop")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            val = entry["value"].get("allowDriveForDesktop", None)
-            if val is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": val})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Drive for Desktop enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            value = field_value(entry, "allowDriveForDesktop")
+            return None if value is None else value is False
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Drive for Desktop disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have Drive for Desktop enabled",
+            pass_text="have Drive for Desktop disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -1175,27 +1063,18 @@ def check_drive_sdk(data: dict) -> CheckResult:
     drive = policies.get("drive", {})
 
     # OU-aware path
-    ou_values = get_ou_values(drive, "drive_sdk", admin_only=True)
+    ou_values = get_ou_values(drive, "drive_sdk")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            enabled = entry["value"].get("enableDriveSdkApiAccess",
-                                         entry["value"].get("driveSdkEnabled",
-                                         entry["value"].get("enabled", None)))
-            if enabled is not False:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": enabled})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) have Drive SDK enabled: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Disabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        def _judge(entry: dict):
+            enabled = field_value(entry, "enableDriveSdkApiAccess", "driveSdkEnabled", "enabled")
+            return None if enabled is None else enabled is False
+
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) have Drive SDK disabled.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Disabled for all OUs",
+            fail_text="have Drive SDK enabled",
+            pass_text="have Drive SDK disabled",
+            expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value from Policy API normalization

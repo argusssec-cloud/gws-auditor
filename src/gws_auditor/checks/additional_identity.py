@@ -12,7 +12,8 @@ never a PASS.
 import re
 from datetime import datetime, timedelta, timezone
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values
+from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
+                   field_value, ou_verdict)
 from ..models import CheckResult
 
 _NEVER = datetime(1971, 1, 1, tzinfo=timezone.utc)  # Directory API reports "never" as 1970-01-01
@@ -183,18 +184,30 @@ def check_chat_external_spaces(data: dict) -> CheckResult:
     """Users should not be able to create or join spaces with people from any outside domain."""
     common = dict(check_id="ADD-45", title="Ensure Chat spaces with external members are restricted",
                   level="L2", source="OTHER", section="Google Chat")
-    entries = [e for e in get_ou_values(data.get("policies", {}).get("chat", {}), "chat_external_spaces")
-               if e["value"].get("enabled") is not None]
-    if not entries:
+    ou_values = get_ou_values(data.get("policies", {}).get("chat", {}), "chat_external_spaces")
+    if not ou_values:
         return make_review(**common, details="'chat.chat_external_spaces' was not returned by the Policy API — verify in Admin console.")
-    open_ous = sorted(e["org_unit"] for e in entries
-                      if e["value"]["enabled"] is True and e["value"].get("domainAllowlistMode", "ALL_DOMAINS") == "ALL_DOMAINS")
-    if open_ous:
-        return make_fail(**common, details=f"{len(open_ous)} OU(s) allow Chat spaces with members from any domain: {', '.join(open_ous)}",
-                         actual_value=", ".join(f"{ou} → enabled, ALL_DOMAINS" for ou in open_ous),
-                         expected_value="External spaces off or limited to allowlisted domains")
-    return make_pass(**common, details=f"All {len(entries)} OU(s) disable external spaces or limit them to allowlisted domains.",
-                     actual_value=f"{len(entries)} OU(s) safe", expected_value="External spaces off or limited to allowlisted domains")
+
+    def _judge(entry):
+        enabled = field_value(entry, "enabled")
+        if enabled is None:
+            return None
+        if enabled is not True:
+            return True, "disabled"
+        mode = field_value(entry, "domainAllowlistMode")
+        if mode is None:
+            return None  # no documented default: cannot tell ALL_DOMAINS from an allowlist
+        return mode != "ALL_DOMAINS", f"enabled, {mode}"
+    return ou_verdict(
+        ou_values, _judge, **common,
+        fail_text="allow Chat spaces with members from any domain",
+        pass_text="disable external spaces or limit them to allowlisted domains",
+        expected_value="External spaces off or limited to allowlisted domains",
+        remediation=(
+            "Admin console > Apps > Google Workspace > Google Chat > External Spaces. Turn external spaces off, or "
+            "limit them to allowlisted domains. https://knowledge.workspace.google.com/admin/chat/chat-with-external-users"
+        ),
+    )
 
 
 @check(

@@ -7,7 +7,8 @@
 CIS Google Workspace Benchmark v1.3.0 - Groups controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, format_ou_values_readable
+from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
+                   format_ou_values_readable, field_value, ou_verdict)
 from ..models import CheckResult, Status
 
 
@@ -128,40 +129,29 @@ def check_groups_creation_restriction(data: dict) -> CheckResult:
     groups_policy = policies.get("groups", {})
 
     # OU-aware path
-    ou_values = get_ou_values(groups_policy, "groups_sharing", admin_only=True)
+    ou_values = get_ou_values(groups_policy, "groups_sharing")
     if ou_values:
-        unsafe_ous = []
-        for entry in ou_values:
-            creator = (
-                entry["value"].get("createGroupsAccessLevel", "")
-                or entry["value"].get("whoCanCreateGroups", "")
-                or entry["value"].get("groupCreation", "")
-                or entry["value"].get("whoCanCreate", "")
-            )
-            # Normalize API enum: ADMIN_ONLY → admins_only, etc.
-            _CREATOR_MAP = {
-                "ALL_USERS_CAN_CREATE": "all_users_in_domain",
-                "ADMINS_CAN_CREATE": "admins_only",
-                "ADMIN_ONLY": "admins_only",
-            }
-            if creator:
-                creator = _CREATOR_MAP.get(creator, creator)
-            if not creator or creator.lower() not in _ACCEPTABLE:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": creator})
-        if unsafe_ous:
-            ou_list = ", ".join(
-                f"{u['org_unit']} ({u['value']})" for u in unsafe_ous
-            )
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) allow non-admin group creation: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="admins_only for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
+        # Normalize API enum: ADMIN_ONLY → admins_only, etc.
+        _CREATOR_MAP = {
+            "ALL_USERS_CAN_CREATE": "all_users_in_domain",
+            "ADMINS_CAN_CREATE": "admins_only",
+            "ADMIN_ONLY": "admins_only",
+        }
+
+        def _judge(entry):
+            # Real field first; the others are legacy aliases.
+            creator = field_value(entry, "createGroupsAccessLevel", "whoCanCreateGroups",
+                                  "groupCreation", "whoCanCreate")
+            if not creator:
+                return None
+            creator = _CREATOR_MAP.get(creator, creator)
+            return creator.lower() in _ACCEPTABLE, creator
+        return ou_verdict(
+            ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict group creation to admins.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="admins_only",
+            fail_text="allow non-admin group creation",
+            pass_text="restrict group creation to admins",
+            expected_value="admins_only for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value

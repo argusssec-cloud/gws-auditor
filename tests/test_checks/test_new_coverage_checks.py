@@ -45,7 +45,18 @@ class TestScubaAdditions:
         _set(full_audit_data, "gmail", "spoofing_and_authentication",
              {**{f: "SPAM_FOLDER" for f in fields}, "groupsSpoofingConsequence": "WARNING"})
         result = check_gmail_spoofing_consequence(full_audit_data)
-        assert result.status == Status.FAIL and "groupsSpoofingConsequence=WARNING" in result.details
+        # ou_verdict lists OUs in details and the offending value in actual_value.
+        assert result.status == Status.FAIL and "groupsSpoofingConsequence=WARNING" in result.actual_value
+
+    def test_spoofing_consequence_partially_unknown_is_manual(self, full_audit_data):
+        """A consequence that is absent (no documented default) or *_UNSPECIFIED leaves the OU undetermined."""
+        from gws_auditor.checks.cisa_additions import check_gmail_spoofing_consequence
+
+        _set(full_audit_data, "gmail", "spoofing_and_authentication",
+             {"domainSpoofingConsequence": "QUARANTINE", "domainNameSpoofingConsequence": "SPAM_FOLDER",
+              "employeeNameSpoofingConsequence": "EMPLOYEE_NAME_SPOOFING_CONSEQUENCE_UNSPECIFIED"})
+        result = check_gmail_spoofing_consequence(full_audit_data)
+        assert result.status == Status.MANUAL and "/" in result.details
 
     def test_auto_apply_future_settings(self, full_audit_data):
         from gws_auditor.checks import cisa_additions as m
@@ -69,6 +80,8 @@ class TestScubaAdditions:
         assert policies("PASSKEY_ONLY", "2026-01-01T00:00:00Z") == Status.PASS
         assert policies("NO_TELEPHONY", "2026-01-01T00:00:00Z") == Status.FAIL
         assert policies("PASSKEY_ONLY", "") == Status.FAIL  # right method, but 2SV not enforced
+        # *_UNSPECIFIED carries no state: undetermined -> MANUAL, not FAIL.
+        assert policies("ALLOWED_SIGN_IN_FACTOR_SET_UNSPECIFIED", "2026-01-01T00:00:00Z") == Status.MANUAL
 
     def test_password_controls(self, full_audit_data):
         from gws_auditor.checks import cisa_additions as m
@@ -133,7 +146,11 @@ class TestAccounts:
 class TestChatGroupsDevices:
     @pytest.mark.parametrize("value, status", [({"enabled": False}, Status.PASS),
                                                ({"enabled": True, "domainAllowlistMode": "ALL_DOMAINS"}, Status.FAIL),
-                                               ({"enabled": True, "domainAllowlistMode": "TRUSTED_DOMAINS"}, Status.PASS)])
+                                               ({"enabled": True, "domainAllowlistMode": "TRUSTED_DOMAINS"}, Status.PASS),
+                                               # absent / unspecified mode has no documented default: unknown -> MANUAL
+                                               ({"enabled": True}, Status.MANUAL),
+                                               ({"enabled": True, "domainAllowlistMode": "DOMAIN_ALLOWLIST_MODE_UNSPECIFIED"}, Status.MANUAL),
+                                               ({}, Status.MANUAL)])
     def test_chat_external_spaces(self, full_audit_data, value, status):
         from gws_auditor.checks.additional_identity import check_chat_external_spaces
 
