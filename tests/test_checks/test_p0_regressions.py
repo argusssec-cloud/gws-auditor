@@ -1,7 +1,7 @@
 """Regression tests for wrong-status bugs reproduced during the check-correctness review.
 
-Each test pins a verdict that was wrong before the fix. See docs/check-correctness-test-plan.md
-section 1 and docs/check-test-matrix.md for the per-check context.
+Each test pins a verdict that was wrong before the fix. See the check-correctness test plan (kept outside the repo, in ~/workspace_security)
+section 1 and the per-check test matrix (~/workspace_security/check-test-matrix.md) for the per-check context.
 """
 
 import pytest

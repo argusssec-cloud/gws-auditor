@@ -23,21 +23,22 @@ sys.path.insert(0, str(ROOT / "src"))
 
 NEGATIVE = {"FAIL", "WARN", "PARTIAL"}
 
-# check_id -> reason the gap is tolerated for now (plan phases P1/P3).
+# Checks whose design makes one side unreachable: they are not gaps to close. A check that
+# can never PASS only ever warns or asks for review; a check that can never FAIL rewards
+# evidence and otherwise asks for review. Each entry names the side and the reason.
+BY_DESIGN: dict[str, str] = {
+    "CIS-1.1.3": "never PASS: login-count heuristic, WARN or MANUAL review only",
+    "CIS-4.2.1.2": "never PASS: third-party app review always ends in MANUAL or FAIL",
+    "CIS-4.2.1.4": "never PASS: domain-wide delegation grants are always listed for review (WARN/MANUAL)",
+    "ADD-20": "never FAIL: evidence-only (CAA denial events) -> PASS, else MANUAL",
+    "ADD-40": "never FAIL: evidence-only (CAA denial events) -> PASS, else MANUAL",
+    "GWS.COMMONCONTROLS.14.1": "never FAIL: audit log presence -> PASS, else MANUAL",
+}
+
+# check_id -> reason the gap is tolerated for now (plan phase P3: dead setting keys).
 KNOWN_GAPS: dict[str, str] = {
-    "CIS-3.1.3.6.2": "P1: no tests at all",
     "GWS.COMMONCONTROLS.7.1": "P3: dead setting key, no tests",
-    "CIS-1.1.3": "P1: WARN path now covered; PASS is MANUAL by design",
-    "CIS-3.1.3.7.2": "P1: FAIL untested",
-    "CIS-4.2.1.2": "P1: PASS untested",
-    "CIS-4.2.1.4": "P1: PASS untested (MANUAL/WARN only today)",
     "CIS-4.2.3.1": "P3: reads never-populated keys; FAIL unreachable",
-    "ADD-08": "P1: FAIL untested",
-    "ADD-20": "P1: FAIL untested",
-    "ADD-40": "P1: FAIL untested",
-    "ADD-44": "P1: PASS untested",
-    "ADD-52": "P1: PASS untested",
-    "GWS.COMMONCONTROLS.14.1": "P1: FAIL untested",
 }
 
 
@@ -68,6 +69,8 @@ def main() -> int:
             missing.append("PASS")
         if not statuses & NEGATIVE:
             missing.append("FAIL/WARN/PARTIAL")
+        if missing and meta.check_id in BY_DESIGN:
+            continue
         if missing and meta.check_id not in KNOWN_GAPS:
             gaps.append(f"{meta.check_id}: missing {', '.join(missing)} (has {', '.join(sorted(statuses)) or 'nothing'})")
 
@@ -79,7 +82,7 @@ def main() -> int:
         print("Scored checks without both a PASS and a negative test:")
         print("\n".join("  " + g for g in gaps))
         return 1
-    print(f"status coverage gate passed ({len(KNOWN_GAPS)} known gaps tolerated)")
+    print(f"status coverage gate passed ({len(KNOWN_GAPS)} known gaps tolerated, {len(BY_DESIGN)} one-sided by design)")
     return 0
 
 

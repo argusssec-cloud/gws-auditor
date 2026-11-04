@@ -1,4 +1,4 @@
-"""Layer 0 contract gates from docs/check-correctness-test-plan.md.
+"""Layer 0 contract gates from the check-correctness test plan (kept outside the repo, in ~/workspace_security).
 
 These guard the two defect classes the field-name test cannot see:
 
