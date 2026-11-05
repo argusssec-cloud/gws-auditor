@@ -1075,7 +1075,8 @@
    "status": "PASS"
   },
   "ADD-47": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "flip test 2026-11-05: installing the Endpoint Verification extension on one Linux VM made two device records (one per signed-in account) report encryptionState NOT_ENCRYPTED; check MANUAL->FAIL, console shows Managed by Endpoint Verification, Encryption status Not Encrypted, Password status On. The API record carries no screen-lock field for endpoint devices, so only encryption and compromised state are judged there",
    "status": "MANUAL"
   },
   "ADD-48": {
