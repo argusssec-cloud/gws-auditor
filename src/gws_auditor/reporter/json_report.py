@@ -50,6 +50,7 @@ class JSONReporter:
                 "passed": report.summary.passed,
                 "failed": report.summary.failed,
                 "warnings": report.summary.warnings,
+                "partial": report.summary.partial,
                 "errors": report.summary.errors,
                 "manual": report.summary.manual,
                 "not_applicable": report.summary.not_applicable,

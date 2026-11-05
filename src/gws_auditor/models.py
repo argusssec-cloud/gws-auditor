@@ -105,7 +105,10 @@ class AuditSummary:
                 summary.passed += 1
             elif r.status == Status.FAIL:
                 summary.failed += 1
-                if r.severity == Severity.CRITICAL:
+                # Only scored checks count as critical failures, matching the
+                # posture score and the HTML banner; unscored inventory checks
+                # (e.g. ADD-33) must not trip --fail-on-critical.
+                if r.severity == Severity.CRITICAL and r.scored:
                     summary.critical_failed += 1
             elif r.status == Status.WARN:
                 summary.warnings += 1

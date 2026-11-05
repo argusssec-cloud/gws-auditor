@@ -6,7 +6,7 @@
 |------|---------|
 | 0 | All checks passed (or only non-critical failures) |
 | 1 | Non-critical failures exist |
-| 2 | Critical failures exist (with `--fail-on-critical`) |
+| 2 | Critical failures exist (with `--fail-on-critical`); only scored checks count, unscored inventory checks never set it |
 
 ## Pipeline Example
 

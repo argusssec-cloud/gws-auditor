@@ -63,6 +63,8 @@ gws-auditor --fail-on-critical
 # Exit code 2: critical failures exist (pipeline should fail)
 ```
 
+Only scored checks count: an unscored inventory check such as ADD-33 is still listed in the report but does not set exit code 2, the critical banner or `critical_failed`, matching the posture score.
+
 ## Customization
 
 Override severity for your environment in config.yaml (future feature):

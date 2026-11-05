@@ -423,7 +423,7 @@ class Orchestrator:
         from .models import Severity
         critical = [
             r for r in self.report.results
-            if r.status == Status.FAIL and r.severity == Severity.CRITICAL
+            if r.status == Status.FAIL and r.severity == Severity.CRITICAL and r.scored
         ]
         if not critical:
             return
@@ -466,6 +466,7 @@ class Orchestrator:
                 f"[bold red]{s.critical_failed}[/bold red]",
             )
         table.add_row("[yellow]Warnings[/yellow]", str(s.warnings))
+        table.add_row("[dark_orange]Partial[/dark_orange]", str(s.partial))
         table.add_row("[red]Errors[/red]", str(s.errors))
         table.add_row("[blue]Manual Review[/blue]", str(s.manual))
         table.add_row("[dim]Not Applicable[/dim]", str(s.not_applicable))
