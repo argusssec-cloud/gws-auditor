@@ -481,6 +481,74 @@
    "BLOCK_ALL",
    "UNSPECIFIED_UBER_BLOCK (SYSTEM, undocumented)"
   ],
-  "_note": "Members observed on a live tenant during P6 flip tests (2026-11-01 and 2026-11-04)."
+  "_note": "Members observed on a live tenant during P6 flip tests (2026-11-01, 2026-11-04 and 2026-11-05).",
+  "drive_and_docs.shared_drive_creation.allowedPartiesForDownloadPrintCopy": [
+   "ALL",
+   "MANAGERS_ONLY"
+  ],
+  "drive_and_docs.shared_drive_creation.orgUnitForNewSharedDrives": [
+   "CUSTOM_ORG_UNIT"
+  ],
+  "gmail.spoofing_and_authentication.*Consequence": [
+   "(console also offers Quarantine and, for unauthenticated email, No action)",
+   "SPAM_FOLDER",
+   "WARNING"
+  ],
+  "gmail.spoofing_and_authentication.groupsSpoofingVisibilityType": [
+   "PRIVATE_GROUPS_ONLY"
+  ],
+  "security.session_controls.webSessionDuration": [
+   "1209600s",
+   "43200s"
+  ],
+  "chat.chat_file_sharing.externalFileSharing": [
+   "(console also offers Images only)",
+   "ALL_FILES",
+   "NO_FILES"
+  ],
+  "chat.chat_file_sharing.internalFileSharing": [
+   "ALL_FILES"
+  ],
+  "security.password.allowedStrength": [
+   "STRONG",
+   "WEAK"
+  ],
+  "takeout.service_status.serviceState": [
+   "DISABLED",
+   "ENABLED"
+  ],
+  "gmail.email_attachment_safety.*Consequence": [
+   "(console also offers Quarantine)",
+   "SPAM_FOLDER",
+   "WARNING"
+  ],
+  "drive_and_docs.external_sharing.allowedPartiesForDistributingContent": [
+   "(console also offers Anyone)",
+   "ELIGIBLE_INTERNAL_USERS",
+   "NONE"
+  ],
+  "drive_and_docs.external_sharing.externalSharingMode": [
+   "ALLOWLISTED_DOMAINS"
+  ],
+  "drive_and_docs.file_security_update.securityUpdate": [
+   "APPLY_TO_IMPACTED_FILES"
+  ],
+  "classroom.api_data_access.enableApiAccess": [
+   "false",
+   "true"
+  ],
+  "classroom.student_unenrollment.whoCanUnenrollStudents": [
+   "STUDENTS_AND_TEACHERS",
+   "TEACHERS_ONLY"
+  ],
+  "classroom.teacher_permissions.whoCanCreateClasses": [
+   "(console also offers Anyone in this domain)",
+   "ALL_PENDING_AND_VERIFIED_TEACHERS",
+   "VERIFIED_TEACHERS_ONLY"
+  ],
+  "rule.system_defined_alerts.state": [
+   "ACTIVE",
+   "INACTIVE"
+  ]
  }
 }

@@ -932,7 +932,8 @@
    "status": "MANUAL"
   },
   "ADD-09": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "partial flip 2026-11-04: takeout.service_status ENABLED->DISABLED alone keeps FAIL because nine <service>.user_takeout policies stay ENABLED (correct)",
    "status": "FAIL"
   },
   "ADD-11": {
@@ -1172,22 +1173,22 @@
   },
   "CIS-3.1.2.1.2.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-04",
+   "note": "flip test 2026-11-04: allowSharedDriveCreation true->false->true, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "CIS-3.1.2.1.2.2": {
    "confirmed": true,
-   "note": "Admin console 2026-11-04",
+   "note": "flip test 2026-11-04: allowManagersToOverrideSettings true->false->true, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "CIS-3.1.2.1.2.3": {
    "confirmed": true,
-   "note": "Admin console 2026-11-04",
+   "note": "flip test 2026-11-04: allowExternalUserAccess/allowNonMemberAccess true->false->true, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "CIS-3.1.2.1.2.4": {
    "confirmed": true,
-   "note": "Admin console 2026-11-04",
+   "note": "flip test 2026-11-04: allowedPartiesForDownloadPrintCopy ALL->MANAGERS_ONLY->ALL, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "CIS-3.1.2.2.1": {
@@ -1326,12 +1327,12 @@
   },
   "CIS-3.1.4.4.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-01",
+   "note": "flip test 2026-11-04: enableApps true->false->true, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "CIS-3.1.4.4.2": {
    "confirmed": true,
-   "note": "Admin console 2026-11-01",
+   "note": "flip test 2026-11-04: enableWebhooks true->false->true, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "CIS-3.1.6.1": {
@@ -1394,12 +1395,12 @@
   },
   "CIS-4.1.4.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-01",
+   "note": "flip test 2026-11-04: enableEmployeeIdChallenge false->true->false, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "CIS-4.1.5.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-01",
+   "note": "flip test 2026-11-04: allowedStrength WEAK->STRONG->WEAK + minimumLength 8->15->8, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "CIS-4.2.1.1": {
@@ -1526,7 +1527,7 @@
   },
   "GWS.CHAT.2.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-01",
+   "note": "flip test 2026-11-04: externalFileSharing unset(ALL_FILES)->NO_FILES->ALL_FILES, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.CHAT.3.1": {
@@ -1550,7 +1551,8 @@
    "status": "PASS"
   },
   "GWS.CLASSROOM.2.1": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "flip test 2026-11-04: enableApiAccess SYSTEM true->ADMIN false->true, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.CLASSROOM.3.1": {
@@ -1558,11 +1560,13 @@
    "status": "PASS"
   },
   "GWS.CLASSROOM.4.1": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "flip test 2026-11-04: whoCanUnenrollStudents SYSTEM STUDENTS_AND_TEACHERS->ADMIN TEACHERS_ONLY->STUDENTS_AND_TEACHERS, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.CLASSROOM.5.1": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "flip test 2026-11-04: whoCanCreateClasses SYSTEM ALL_PENDING_AND_VERIFIED_TEACHERS->ADMIN VERIFIED_TEACHERS_ONLY->ALL_PENDING_AND_VERIFIED_TEACHERS, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.COMMONCONTROLS.1.1": {
@@ -1604,7 +1608,7 @@
   },
   "GWS.COMMONCONTROLS.13.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-04",
+   "note": "partial flip 2026-11-04: enabling Alert center on \"Email settings changed\" moved its rule.system_defined_alerts state INACTIVE->ACTIVE and the inactive required count 5->4; reverted. Full PASS needs all five rules on",
    "status": "FAIL"
   },
   "GWS.COMMONCONTROLS.14.1": {
@@ -1664,17 +1668,17 @@
   },
   "GWS.COMMONCONTROLS.4.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-01",
+   "note": "flip test 2026-11-04: webSessionDuration unset(14d)->43200s->1209600s, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.COMMONCONTROLS.5.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-01",
+   "note": "flip test 2026-11-04: allowedStrength WEAK->STRONG->WEAK, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.COMMONCONTROLS.5.3": {
    "confirmed": true,
-   "note": "Admin console 2026-11-01",
+   "note": "flip test 2026-11-04: minimumLength 8->15->8, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.COMMONCONTROLS.5.5": {
@@ -1747,7 +1751,8 @@
    "status": "PASS"
   },
   "GWS.DRIVEDOCS.1.7": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowedPartiesForDistributingContent ELIGIBLE_INTERNAL_USERS->NONE->ELIGIBLE_INTERNAL_USERS, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.DRIVEDOCS.1.8": {
@@ -1762,16 +1767,17 @@
   },
   "GWS.DRIVEDOCS.2.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-04",
+   "note": "flip test 2026-11-04: allowManagersToOverrideSettings true->false->true, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.DRIVEDOCS.2.2": {
    "confirmed": true,
-   "note": "Admin console 2026-11-04",
+   "note": "flip test 2026-11-04: allowNonMemberAccess true->false->true, check PASS->FAIL->PASS (SCuBA wants it allowed; CIS-3.1.2.1.2.3 wants it off)",
    "status": "PASS"
   },
   "GWS.DRIVEDOCS.3.1": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowUsersToManageUpdate SYSTEM true->ADMIN false->true, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.DRIVEDOCS.5.1": {
@@ -1802,7 +1808,7 @@
   },
   "GWS.GMAIL.18.1": {
    "confirmed": true,
-   "note": "Admin console 2026-11-04",
+   "note": "flip test 2026-11-04: bypassSelectedSenders true->false->true, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.GMAIL.18.2": {
@@ -1837,7 +1843,8 @@
    "status": "PASS"
   },
   "GWS.GMAIL.5.5": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "flip test 2026-11-04: three attachment *Consequence WARNING->SPAM_FOLDER->WARNING, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.GMAIL.6.4": {
@@ -1846,7 +1853,8 @@
    "status": "PASS"
   },
   "GWS.GMAIL.7.6": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "flip test 2026-11-04: five *Consequence WARNING->SPAM_FOLDER->WARNING, check FAIL->PASS->FAIL",
    "status": "FAIL"
   },
   "GWS.GMAIL.7.7": {
