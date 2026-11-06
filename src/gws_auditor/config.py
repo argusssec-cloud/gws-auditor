@@ -65,6 +65,13 @@ DEFAULT_CONFIG = {
         # intentional. Empty list = use the built-in pattern set in
         # checks/base.py (_DEFAULT_EXTERNAL_SHARING_PATTERNS).
         "external_sharing_ous": [],
+        # Context-Aware Access level inventory from Access Context Manager, read as the service
+        # account itself (cloud-platform scope, roles/accesscontextmanager.policyReader on the
+        # organisation). Blank IDs are discovered: the organisation by primary domain (needs
+        # roles/resourcemanager.organizationViewer), the policy from the organisation.
+        "collect_access_context": True,
+        "cloud_organization_id": "",
+        "access_policy_id": "",
     },
     "ai": {
         "provider": "openai",

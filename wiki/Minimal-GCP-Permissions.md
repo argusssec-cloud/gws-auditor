@@ -62,7 +62,7 @@ When using [keyless authentication](Keyless-Authentication), the SA does not nee
 
 ## Required GCP APIs
 
-The auditor requires these 10 APIs enabled on the project:
+The auditor requires these 10 APIs enabled on the project, plus two optional ones for the Context-Aware Access level inventory:
 
 ```
 admin.googleapis.com              # Admin SDK (Directory + Reports)
@@ -75,6 +75,8 @@ chromepolicy.googleapis.com       # Chrome Policy API
 chat.googleapis.com               # Chat API
 alertcenter.googleapis.com        # Alert Center API
 licensing.googleapis.com          # License Manager API
+accesscontextmanager.googleapis.com  # Access Context Manager (optional: Context-Aware Access levels)
+cloudresourcemanager.googleapis.com  # Cloud Resource Manager (optional: organisation discovery)
 ```
 
 Enable all at once:
@@ -93,6 +95,6 @@ See the [Setup Guide](Setup-Guide) for the full list of 21 OAuth scopes that mus
 
 ## Service Account Runtime Permissions
 
-The service account itself does **not** need any GCP IAM roles to run the auditor. All Workspace API access is granted through Domain-Wide Delegation, not GCP IAM. The SA only needs:
+The service account itself does **not** need any GCP IAM roles to run the core auditor. All Workspace API access is granted through Domain-Wide Delegation, not GCP IAM. One optional organisation-level role adds the Context-Aware Access level inventory (see [Configuration](Configuration#context-aware-access-levels-from-access-context-manager)): `roles/accesscontextmanager.policyReader`, plus `roles/resourcemanager.organizationViewer` if the organisation ID is not configured. Otherwise the SA only needs:
 - DWD authorization in Admin Console (scopes)
 - The `subject` user to be a super admin (or delegated admin with sufficient privileges)

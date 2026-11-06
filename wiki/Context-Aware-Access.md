@@ -1,17 +1,21 @@
 # Context-Aware Access Checks
 
-GWS Security Auditor ships two checks that audit your Context-Aware Access (CAA) coverage:
+GWS Security Auditor ships six checks that audit your Context-Aware Access (CAA) coverage:
 
 - **ADD-20** -- Ensure Context-Aware Access is applied to OIDC apps
 - **ADD-40** -- Ensure default Context-Aware Access policy is enabled for SAML applications *(new in v1.2.0)*
+- **ADD-53** -- Ensure the Admin console is protected by a Context-Aware Access level
+- **ADD-54** -- Ensure a device-based Context-Aware Access level is enforced
+- **ADD-55** -- Review Context-Aware Access levels that are not assigned to any app *(unscored)*
+- **ADD-56** -- Review Context-Aware Access denials *(unscored)*
 
-Both checks require **Enterprise Standard or higher** (`requires_license="enterprise_standard"`) and live under the **Security** section.
+All six require **Enterprise Standard or higher** (`requires_license="enterprise_standard"`) and live under the **Security** section. GWS.COMMONCONTROLS.2.1 (CAA implemented) and CIS-4.2.2.1 (geo-blocking) use the same evidence. This page describes ADD-20 and ADD-40 in detail; the four posture checks are summarised in [Posture checks](#posture-checks-add-53-to-add-56).
 
 ## Background
 
 Context-Aware Access lets Workspace admins gate access to apps by device posture, location, IP, and other contextual signals. SAML and OIDC apps require an explicit per-app assignment to be covered by a CAA policy. Google's [May 2026 update](https://workspaceupdates.googleblog.com/2026/05/default-CAA-for-SAML.html) added a global default CAA policy for *all* SAML apps -- a single org-wide switch that catches any SAML app without a specific assignment. The toggle ships **off** by default.
 
-Neither the SAML default toggle nor the OIDC per-app coverage is exposed by any public Workspace policy API. We verified this against a live tenant: 10 plausible prefixes on the Cloud Identity Policy API (`v1` and `v1beta1`) all return zero results, and Access Context Manager only manages CAA primitives, not the toggles.
+Neither the SAML default toggle nor the OIDC per-app coverage is exposed by any public Workspace policy API. We verified this against a live tenant: 10 plausible prefixes on the Cloud Identity Policy API (`v1` and `v1beta1`) all return zero results, and Access Context Manager holds the access levels themselves (which the auditor reads when granted) but not the per-app Workspace assignments.
 
 ## How the checks work
 
@@ -30,16 +34,20 @@ If the count is zero, the check returns `NOT_APPLICABLE` -- the toggle has nothi
 
 ### Step 2 -- Enforcement evidence
 
-Look for proof that CAA is actively blocking traffic for the relevant app class.
+Look for proof that CAA is actively enforced for the relevant apps.
 
-- Data source: `data["caa_events"]` (`applicationName=context_aware_access`, `eventName=ACCESS_DENY_EVENT`)
-- Filter: `parameters.application_type` matching `"OAUTH"`/`"OIDC"` for ADD-20, `"SAML"` for ADD-40. Events lacking the parameter are counted for both classes (conservative).
+- Data source: `data["caa_events"]` (`applicationName=context_aware_access`). The Reports API appendix documents only `ACCESS_DENY_EVENT`; live tenants also log `ACCESS_LEVELS_EVALUATED` for every **allowed** access ("Access Evaluated" in the Admin console). Both carry `CAA_ACCESS_LEVEL_APPLIED` / `_SATISFIED` / `_UNSATISFIED` (level titles) and `CAA_APPLICATION`.
+- Filter: an active-mode evaluation (allowed or denied) whose `CAA_APPLICATION` names one of the detected apps. An evaluation for Gmail or Drive says nothing about a third-party app, and event names containing `MONITOR` are monitor mode and never count.
 
-If any matching denial exists, the check returns `PASS`. Even a single denial is hard evidence that CAA is configured and enforcing.
+If any matching evaluation exists, the check returns `PASS`.
+
+### Step 2b -- Configuration evidence
+
+Without an evaluation, the admin audit log decides where it can: `TOGGLE_CAA_ENABLEMENT` off, or `CHANGE_CAA_APP_ASSIGNMENTS` (one event per app and mode: `MODE` BLOCK / WARN / ACTIVE enforce, MONITOR does not; `CAA_ACCESS_ASSIGNMENTS_NEW` lists the levels, `_OLD` alone means removed) give `FAIL` or `PASS`. When the [Access Context Manager inventory](Configuration#context-aware-access-levels-from-access-context-manager) is collected and the organisation has **no access level at all**, both checks `FAIL`: nothing can be assigned.
 
 ### Step 3 -- Inconclusive
 
-Apps exist, but no denial events were found in the window. The check returns `MANUAL` (REVIEW) with the actual app inventory in the details, plus the explicit note: **"absence of denials does not prove CAA is disabled."** Monitor-mode policies and strict-enforce policies that simply weren't violated produce no denial events.
+Apps exist, but no evaluation names them and the admin log holds no decisive change. The check returns `MANUAL` (REVIEW) with the app inventory in the details. Assignments made before the 180-day window are invisible to the auditor, and no API exposes per-app Workspace assignments.
 
 ## Decision tree
 
@@ -114,9 +122,22 @@ These caveats are documented inside each check's own output so a reviewer sees t
 | `MANUAL` | Confirm the policy is assigned. For OIDC: **Admin console > Security > Access and data control > Context-Aware Access** -- assign access levels to OAuth/OIDC third-party apps. For SAML: **Admin console > Security > Context-Aware Access > General settings** -- enable the default CAA policy for all SAML apps (this is the new toggle that ADD-40 audits). |
 | `PASS` | CAA is enforcing. Review the denial events themselves in the Admin console's CAA log to confirm the denied attempts match your policy intent. |
 
+## Posture checks (ADD-53 to ADD-56)
+
+These four checks combine three sources: the access-level inventory from Access Context Manager (`data["access_context"]`, see [Configuration](Configuration#context-aware-access-levels-from-access-context-manager)), the per-app assignment events in the admin audit log (`CHANGE_CAA_APP_ASSIGNMENTS`), and the evaluations in the CAA user log (`ACCESS_LEVELS_EVALUATED`, `ACCESS_DENY_EVENT`). The inventory alone never produces a PASS, because no API exposes which Workspace apps a level is assigned to; it does produce a FAIL when it shows that the required kind of level does not exist.
+
+| Check | PASS when | FAIL when | MANUAL when |
+|---|---|---|---|
+| ADD-53 Admin console | An active-mode evaluation names the Admin console app, or the latest assignment for it is in Block/Warn mode | CAA switched off; the Admin console assignment was removed or left in monitor mode; Access Context Manager lists no level at all | Levels exist but no Admin console assignment or evaluation is in the log window |
+| ADD-54 device-based level | A level with device conditions (screen lock, encryption, OS, company-owned, admin approval) is applied in an evaluation or assigned in an active mode | CAA switched off; Access Context Manager shows that no level requires device posture | A device-based level exists but is unassigned or monitor-only; or the inventory is not readable |
+| ADD-55 unassigned levels (unscored) | Every known level appears in an assignment or an evaluation | never | Some level never appears, or a level has no condition at all (always satisfied) |
+| ADD-56 denials (unscored) | Evaluations exist and none was denied | never | Denials exist: counts per app, user, region and unsatisfied level, with denied super admins called out |
+
+ADD-54 also reports how many evaluations carried device signals (`CAA_DEVICE_STATE`). A device-based level whose evaluations all say "No Device Signals" means Endpoint Verification or device management is not deployed, so the level cannot be satisfied. ADD-55 and ADD-56 return NOT_APPLICABLE when there is nothing to review (no level known, or no evaluation in the window).
+
 ## Required scopes
 
-Both checks rely on data already collected by the default DWD scopes:
+The checks rely on data already collected by the default DWD scopes:
 
 - `https://www.googleapis.com/auth/admin.reports.audit.readonly` -- powers `applicationName=token`, `applicationName=login`, **and** the new `applicationName=context_aware_access` stream
 
@@ -129,5 +150,5 @@ If Google later publishes a Policy API surface for either CAA toggle, both check
 ## Related
 
 - [Posture Score](Posture-Score) -- how `NOT_APPLICABLE` results are excluded from the score
-- [Check Reference](Check-Reference) -- complete list of all 227 checks
+- [Check Reference](Check-Reference) -- complete list of all 231 checks
 - [Critical Checks](Critical-Checks) -- the 24 critical-severity checks (ADD-20 and ADD-40 are MEDIUM)

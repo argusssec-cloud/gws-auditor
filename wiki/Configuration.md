@@ -45,6 +45,9 @@ options:
   sensitive_users: []              # GWS.COMMONCONTROLS.9.2: emails or groups expected in Advanced Protection
   dwd_allowlist: []                # CIS-4.2.1.4: vetted domain-wide delegation client IDs
   external_sharing_ous: []         # OUs whose external sharing is deliberate
+  collect_access_context: true     # Context-Aware Access levels from Access Context Manager (see below)
+  cloud_organization_id: ""        # Google Cloud organisation ID; blank = discover by primary domain
+  access_policy_id: ""             # Access Context Manager policy ID; blank = first policy of the organisation
 
 ai:
   provider: anthropic              # openai, anthropic, or bedrock
@@ -121,3 +124,27 @@ Four controls that used to end in MANUAL now read evidence the standard scopes a
 - The per-user usage report (`admin.reports.usage.readonly`) supplies the columns of the Admin console Security report: 2-Step Verification, security keys, passkeys, password strength and length compliance, less secure app access and authorized apps. **CIS-5.1.1.2** judges the administrator rows, the benchmark's minimum. The report lags two to three days, so a brand-new admin has no row yet and the check says so.
 - The `user_accounts` audit log (`admin.reports.audit.readonly`, 180 days) records `titanium_enroll` and `titanium_unenroll`, Google's names for joining and leaving the Advanced Protection Program. **GWS.COMMONCONTROLS.9.1** passes when every administrator's latest event is an enrollment, fails on an unenrollment or on an account with no security key and no passkey (which cannot be enrolled), and stays MANUAL for accounts that enrolled before the log window. **GWS.COMMONCONTROLS.9.2** applies the same logic to `sensitive_users` and is NOT_APPLICABLE until that list is set.
 - Domain-wide delegation grants and revocations, and Context-Aware Access toggles and app assignments, are fetched by event name over the full 180-day retention. **CIS-4.2.1.4** warns when an observed grant carries org-wide write scopes (`dwd_allowlist` marks vetted clients) and otherwise reports the observed clients for review; it never passes, because grants older than the retention are invisible and the Admin console remains the only full inventory. **ADD-20** fails when CAA was turned off or access levels were removed from, or only monitored for, a detected OIDC app, and passes when every detected app has levels assigned in active mode; an assignment logged with an unrecognised mode stays MANUAL.
+
+## Context-Aware Access levels from Access Context Manager
+
+Access levels created in the Admin console are Access Context Manager resources of the Google Cloud organisation
+that every Workspace customer owns. The admin audit log only shows levels created or changed in its 180-day
+window, so the auditor also reads the full inventory from the API, as the service account **itself** (the
+`cloud-platform` scope, no domain-wide delegation). This needs, in the auditor's project, the Access Context
+Manager API and the Cloud Resource Manager API enabled, and on the organisation the role
+`roles/accesscontextmanager.policyReader` granted to the service account:
+
+```bash
+gcloud services enable accesscontextmanager.googleapis.com cloudresourcemanager.googleapis.com --project PROJECT_ID
+gcloud organizations add-iam-policy-binding ORG_ID \
+    --member serviceAccount:SA_EMAIL --role roles/accesscontextmanager.policyReader
+```
+
+`cloud_organization_id` can be left blank only when the service account also holds
+`roles/resourcemanager.organizationViewer` (used for `organizations.search` by primary domain); otherwise set it
+(`gcloud organizations list`). `access_policy_id` is normally discovered from the organisation. With the OAuth
+(user consent) auth method the inventory is skipped. When it is collected, `data["access_context"]` is
+authoritative: **GWS.COMMONCONTROLS.2.1**, **ADD-20** and **ADD-40** fail when the organisation has no access
+level at all, and **CIS-4.2.2.1** fails when no level restricts regions; otherwise the checks still need an
+assignment or an evaluation in the audit logs to pass. When it is not collected (`reason` says why), the checks
+fall back to the admin-log inference.

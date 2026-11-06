@@ -70,7 +70,7 @@ def check_context_aware_access(data: dict) -> CheckResult:
     # The toggle is necessary, not sufficient: a tenant can be ON with no access level at all
     # (seen live 2026-11-05). PASS needs an access-level assignment in active mode, or a denial
     # event proving enforcement; ON without an assignment event is a review item.
-    from .additional import _caa_app_assignment_evidence, _caa_enforcement_events
+    from .additional import _caa_app_assignment_evidence, _caa_enforcement_events, caa_access_levels
     assignments = [log for log in data.get("admin_logs", [])
                    if log.get("event_name") == "CHANGE_CAA_APP_ASSIGNMENTS" and isinstance(log.get("parameters"), dict)]
     apps = sorted({str(log["parameters"].get("APPLICATION_NAME", "")).strip() for log in assignments
@@ -109,10 +109,25 @@ def check_context_aware_access(data: dict) -> CheckResult:
                      f"{len(evidence['covered'])} app(s) per the latest admin-log changes: {', '.join(evidence['covered'][:8])}."),
             actual_value=actual, expected_value=expected,
         )
+    inventory, inventory_source = caa_access_levels(data)
+    actual["access_levels"] = sorted(l["title"] for l in inventory.values() if not l["deleted"])
+    actual["inventory_source"] = inventory_source
+    if inventory_source == "access_context_manager" and not inventory:
+        # Authoritative: the organisation's access policy holds no level, so nothing can be assigned.
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=("Access Context Manager lists no access level for the organisation, so Context-Aware "
+                     "Access is not implemented" + (" even though it is switched on" if state == "ENABLED" else "") + "."),
+            actual_value=actual, expected_value=expected, remediation=_REMED,
+        )
     if state == "ENABLED":
-        why = ("access levels were removed from or only monitored for the assigned apps"
-               if evidence["removed"] or evidence["monitor"] else
-               "no access-level assignment to an app appears in the audit window, so there may be no access level at all")
+        if evidence["removed"] or evidence["monitor"]:
+            why = "access levels were removed from or only monitored for the assigned apps"
+        elif inventory_source == "access_context_manager":
+            why = (f"access level(s) {', '.join(actual['access_levels'][:5])} exist (Access Context Manager) but "
+                   "no assignment to an app in active mode appears in the audit window")
+        else:
+            why = "no access-level assignment to an app appears in the audit window, so there may be no access level at all"
         return make_review(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=(f"Context-Aware Access is enabled (latest admin-log change) but {why}. Verify that access levels "

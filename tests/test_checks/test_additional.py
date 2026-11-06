@@ -370,13 +370,24 @@ class TestCaaOidc:
         assert result.status == Status.PASS
         assert "(0 denied)" in result.details
 
+    def test_caa_oidc_fails_when_access_context_manager_has_no_levels(self, full_audit_data):
+        from gws_auditor.checks.additional import check_caa_oidc
+        from tests.test_checks.test_security_access import TestGeoBlocking as G
+        self._oidc(full_audit_data, "Notion")
+        full_audit_data["access_context"] = G._acm()
+        result = check_caa_oidc(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "no access level" in result.details
+        full_audit_data["access_context"] = G._acm(G._DEVICE)  # levels exist, assignment unknown -> MANUAL
+        assert check_caa_oidc(full_audit_data).status == Status.MANUAL
+
     def test_caa_oidc_evaluation_for_workspace_app_or_monitor_mode_is_not_evidence(self, full_audit_data):
         """A Gmail evaluation says nothing about OIDC coverage; monitor-mode names never count."""
         from gws_auditor.checks.additional import check_caa_oidc
         self._oidc(full_audit_data, "Notion")
         full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL"),
                                          _caa_event("ACCESS_DENY_EVENT", "DRIVE", unsatisfied=["Geo restriction"]),
-                                         _caa_event("ACCESS_DENY_EVENT_MONITOR_MODE", "Notion", unsatisfied=["Geo restriction"])]
+                                         _caa_event("MONITOR_MODE_ACCESS_DENY_EVENT", "Notion", unsatisfied=["Geo restriction"])]
         assert check_caa_oidc(full_audit_data).status == Status.MANUAL
 
     def test_caa_oidc_apps_without_denials_review(self, full_audit_data):
@@ -545,6 +556,16 @@ class TestCaaSamlDefault:
         full_audit_data["caa_events"] = [_caa_event("ACCESS_DENY_EVENT", "Workday", unsatisfied=["Corp devices"])]
         result = check_caa_saml_default(full_audit_data)
         assert result.status == Status.PASS
+
+    def test_caa_saml_fails_when_access_context_manager_has_no_levels(self, full_audit_data):
+        from gws_auditor.checks.additional import check_caa_saml_default
+        from tests.test_checks.test_security_access import TestGeoBlocking as G
+        full_audit_data["login_logs"] = [{"event_name": "login_success",
+                                          "parameters": {"login_type": "saml", "application_name": "Workday"}}]
+        full_audit_data["access_context"] = G._acm()
+        assert check_caa_saml_default(full_audit_data).status == Status.FAIL
+        full_audit_data["access_context"] = G._acm(G._DEVICE)
+        assert check_caa_saml_default(full_audit_data).status == Status.MANUAL
 
     def test_caa_saml_evaluation_for_other_app_is_not_evidence(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_saml_default
@@ -1538,3 +1559,329 @@ class TestActiveOAuthTokens:
         result = check_active_oauth_tokens(full_audit_data)
         assert result.status == Status.PASS
         assert result.actual_value["anonymous_apps"] == 1
+
+
+# ---------------------------------------------------------------------------
+# ADD-53 .. ADD-56: Context-Aware Access posture from the access-level inventory
+# ---------------------------------------------------------------------------
+
+_LEVEL_NAME = "accessPolicies/134654395911/accessLevels/geo_restriction_fttlt6s2"
+_GEO_LEVEL = {"name": _LEVEL_NAME, "title": "Geo restriction",
+              "basic": {"conditions": [{"negate": True, "regions": ["AQ"]}]}}  # live ACM shape 2026-11-06
+# Live ACM shape 2026-11-06 23:30Z (flip: level with the "Screen password protected" device condition):
+# {"name": ".../accessLevels/device_posture_test_b6fwshm4", "title": "Device posture test", "description": ...,
+#  "basic": {"conditions": [{"devicePolicy": {"requireScreenlock": true}}]}}
+_DEVICE_LEVEL = {"name": "accessPolicies/134654395911/accessLevels/managed_device",
+                 "title": "Managed device",
+                 "basic": {"conditions": [{"devicePolicy": {"requireScreenlock": True,
+                                                             "allowedEncryptionStatuses": ["ENCRYPTED"]}}]}}
+# Admin log 2026-11-06 23:31Z, UPDATE_ACCESS_LEVEL_V2 after editing the description: CURR_STATE drops the
+# description, PREV_STATE keeps it; both carry basic.conditions. Exact live text.
+_UPDATE_CURR_STATE = ('{\n  "basic": {\n    "conditions": [{\n      "devicePolicy": {\n        "requireScreenlock": true\n      }\n    }]\n  },\n'
+                      '  "name": "accessPolicies/134654395911/accessLevels/device_posture_test_b6fwshm4",\n  "title": "Device posture test"\n}')
+_UPDATE_PREV_STATE = ('{\n  "name": "accessPolicies/134654395911/accessLevels/device_posture_test_b6fwshm4",\n  "title": "Device posture test",\n'
+                      '  "description": "GWS auditor flip test: screen lock required (temporary)",\n  "basic": {\n    "conditions": [{\n'
+                      '      "devicePolicy": {\n        "requireScreenlock": true\n      }\n    }]\n  }\n}')
+# Admin console app code observed live 2026-11-06 23:23Z (flip: geo level assigned to the Admin console in
+# Block mode): CHANGE_CAA_APP_ASSIGNMENTS APPLICATION_NAME and ACCESS_LEVELS_EVALUATED CAA_APPLICATION both
+# "ADMIN_CONSOLE" (PROTECTED_API_ACCESS ["ADMIN_CONSOLE"], CAA_DEVICE_ID = the Endpoint Verification device id).
+_ADMIN_APP = "ADMIN_CONSOLE"
+
+
+def _acm(*levels):
+    return {"collected": True, "source": "access_context_manager", "organization": "organizations/18479643020",
+            "access_policy": "accessPolicies/134654395911", "access_levels": list(levels), "bindings": [],
+            "bindings_collected": False, "reason": ""}
+
+
+def _assign(app, mode, levels, time="2026-11-06T18:26:28.786Z", removed=False):
+    from tests.factories import make_admin_event
+    key = "CAA_ACCESS_ASSIGNMENTS_OLD" if removed else "CAA_ACCESS_ASSIGNMENTS_NEW"
+    return make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {
+        "APPLICATION_NAME": app, "CAA_ENFORCEMENT_ENDPOINTS_OLD": "CAA_WEB_VERSION",
+        "CAA_ENFORCEMENT_ENDPOINTS_NEW": "CAA_WEB_VERSION_AND_1P_OAUTH_CLIENTS",
+        "TARGET_ENTITY_TYPE": "ORG_UNIT", "TARGET_ENTITY_NAME": "example.com", "MODE": mode, key: list(levels)}, time)
+
+
+def _toggle(value, time="2026-11-06T18:00:00.000Z"):
+    from tests.factories import make_admin_event
+    return make_admin_event("TOGGLE_CAA_ENABLEMENT", {"NEW_VALUE": value, "OLD_VALUE": "ENABLED" if value == "DISABLED" else "DISABLED"}, time)
+
+
+class TestCaaAdminConsole:
+    """ADD-53."""
+
+    def _run(self, data):
+        from gws_auditor.checks.additional import check_caa_admin_console
+        return check_caa_admin_console(data)
+
+    def test_evaluation_for_admin_console_passes(self, full_audit_data):
+        full_audit_data["admin_logs"] = []
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", _ADMIN_APP),
+                                         _caa_event("ACCESS_DENY_EVENT", _ADMIN_APP, satisfied=(), unsatisfied=("Geo restriction",))]
+        result = self._run(full_audit_data)
+        assert result.status == Status.PASS
+        assert "2 Admin console access(es) (1 denied)" in result.details
+        assert result.actual_value["access_levels"] == ["Geo restriction"]
+
+    def test_evaluation_for_other_apps_is_not_admin_console_evidence(self, full_audit_data):
+        full_audit_data["admin_logs"] = []
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL"), _caa_event("ACCESS_LEVELS_EVALUATED", "DRIVE")]
+        full_audit_data["access_context"] = _acm(_GEO_LEVEL)
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "Geo restriction" in result.details and "no Admin console assignment change" in result.details
+        assert result.actual_value["evaluated_apps"] == ["DRIVE", "GMAIL"]
+
+    def test_active_assignment_passes_monitor_or_removal_fails(self, full_audit_data):
+        full_audit_data["caa_events"] = []
+        full_audit_data["admin_logs"] = [_assign(_ADMIN_APP, "BLOCK", ["Geo restriction"])]
+        assert self._run(full_audit_data).status == Status.PASS
+        full_audit_data["admin_logs"] = [_assign(_ADMIN_APP, "MONITOR", ["Geo restriction"])]
+        result = self._run(full_audit_data)
+        assert result.status == Status.FAIL and "monitor mode only" in result.details
+        full_audit_data["admin_logs"] = [_assign(_ADMIN_APP, "BLOCK", ["Geo restriction"]),
+                                         _assign(_ADMIN_APP, "BLOCK", ["Geo restriction"], time="2026-11-06T19:00:00.000Z", removed=True)]
+        result = self._run(full_audit_data)
+        assert result.status == Status.FAIL and "removed" in result.details
+
+    def test_caa_disabled_fails_unless_newer_evaluation(self, full_audit_data):
+        full_audit_data["caa_events"] = []
+        full_audit_data["admin_logs"] = [_assign(_ADMIN_APP, "BLOCK", ["Geo restriction"]), _toggle("DISABLED", "2026-11-06T19:00:00.000Z")]
+        result = self._run(full_audit_data)
+        assert result.status == Status.FAIL and "turned off" in result.details
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", _ADMIN_APP, time="2026-11-06T20:00:00.000Z")]
+        assert self._run(full_audit_data).status == Status.PASS
+
+    def test_acm_without_levels_fails(self, full_audit_data):
+        full_audit_data["caa_events"], full_audit_data["admin_logs"] = [], []
+        full_audit_data["access_context"] = _acm()
+        result = self._run(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "lists no access level" in result.details
+
+    def test_unrecognised_mode_and_no_evidence_are_review(self, full_audit_data):
+        full_audit_data["caa_events"], full_audit_data["admin_logs"] = [], []
+        assert self._run(full_audit_data).status == Status.MANUAL
+        full_audit_data["admin_logs"] = [_assign(_ADMIN_APP, "ENFORCE", ["Geo restriction"])]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL and "unrecognised mode" in result.details
+
+    def test_lower_edition_not_applicable(self, full_audit_data):
+        full_audit_data["subscription_type"] = "business_starter"
+        assert self._run(full_audit_data).status == Status.NOT_APPLICABLE
+
+
+class TestCaaDeviceLevel:
+    """ADD-54."""
+
+    def _run(self, data):
+        from gws_auditor.checks.additional import check_caa_device_level
+        return check_caa_device_level(data)
+
+    def test_device_level_evaluated_passes_with_signal_count(self, full_audit_data):
+        full_audit_data["admin_logs"] = []
+        full_audit_data["access_context"] = _acm(_GEO_LEVEL, _DEVICE_LEVEL)
+        allowed = _caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL", applied=("Managed device", "Geo restriction"))
+        allowed["parameters"]["CAA_DEVICE_STATE"] = "Managed"
+        full_audit_data["caa_events"] = [allowed, _caa_event("ACCESS_LEVELS_EVALUATED", "DRIVE")]
+        result = self._run(full_audit_data)
+        assert result.status == Status.PASS
+        assert "Managed device" in result.details and "applied on GMAIL" in result.details
+        assert result.actual_value["device_signals"] == {"evaluations": 2, "with_device_signals": 1}
+
+    def test_device_level_assigned_in_block_mode_passes(self, full_audit_data):
+        full_audit_data["caa_events"] = []
+        full_audit_data["access_context"] = _acm(_DEVICE_LEVEL)
+        full_audit_data["admin_logs"] = [_assign("GMAIL", "BLOCK", ["Managed device"])]
+        result = self._run(full_audit_data)
+        assert result.status == Status.PASS and "active mode" in result.details
+
+    def test_device_level_unassigned_or_monitor_is_review(self, full_audit_data):
+        full_audit_data["caa_events"] = []
+        full_audit_data["access_context"] = _acm(_DEVICE_LEVEL)
+        full_audit_data["admin_logs"] = []
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL and "no active-mode assignment" in result.details
+        full_audit_data["admin_logs"] = [_assign("GMAIL", "MONITOR", ["Managed device"])]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL and "monitor mode only" in result.details
+
+    def test_acm_with_only_geo_level_fails(self, full_audit_data):
+        """Live tenant 2026-11-06: one geographic level, seven evaluations without device signals."""
+        full_audit_data["admin_logs"] = [_assign("GMAIL", "BLOCK", ["Geo restriction"])]
+        full_audit_data["access_context"] = _acm(_GEO_LEVEL)
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL")] * 3
+        result = self._run(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "none of which requires device posture" in result.details
+        assert "0 of 3 evaluation(s) carried device signals; deploy Endpoint Verification" in result.details
+        full_audit_data["access_context"] = _acm()
+        assert "no access level for the organisation" in self._run(full_audit_data).details
+
+    def test_device_policy_without_requirements_is_not_device_based(self, full_audit_data):
+        from gws_auditor.checks.additional import _access_level_requires_device
+        assert not _access_level_requires_device({"basic": {"conditions": [{"devicePolicy": {}}]}})
+        assert not _access_level_requires_device({"basic": {"conditions": [{"devicePolicy": {"requireScreenlock": False}}]}})
+        assert _access_level_requires_device({"basic": {"conditions": [{"devicePolicy": {"requireCorpOwned": True}}]}})
+        assert _access_level_requires_device({"basic": {"conditions": [{"devicePolicy": {"osConstraints": [{"osType": "DESKTOP_MAC"}]}}]}})
+        assert _access_level_requires_device({"custom": {"expr": "device.encryption_status == DeviceEncryptionStatus.ENCRYPTED"}})
+        assert not _access_level_requires_device({"custom": {"expr": "origin.region_code in ['AQ']"}})
+
+    def test_nested_required_level_counts_as_device_based(self, full_audit_data):
+        full_audit_data["caa_events"], full_audit_data["admin_logs"] = [], []
+        wrapper = {"name": "accessPolicies/134654395911/accessLevels/wrapper", "title": "Wrapper",
+                   "basic": {"conditions": [{"requiredAccessLevels": [_DEVICE_LEVEL["name"]]}]}}
+        full_audit_data["access_context"] = _acm(_DEVICE_LEVEL, wrapper)
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert result.actual_value["device_access_levels"] == ["Managed device", "Wrapper"]
+
+    def test_live_update_event_feeds_the_admin_log_inventory(self, full_audit_data):
+        """UPDATE_ACCESS_LEVEL_V2 as logged live 2026-11-06 23:31Z, with a MONITOR assignment -> MANUAL (monitor only)."""
+        from tests.factories import make_admin_event
+        full_audit_data["caa_events"] = []
+        full_audit_data["admin_logs"] = [
+            make_admin_event("UPDATE_ACCESS_LEVEL_V2", {
+                "ACCESS_LEVEL_TITLE": "Device posture test",
+                "ACCESS_LEVEL_NAME": "accessPolicies/134654395911/accessLevels/device_posture_test_b6fwshm4",
+                "ACCESS_LEVEL_CURR_STATE": _UPDATE_CURR_STATE, "ACCESS_LEVEL_PREV_STATE": _UPDATE_PREV_STATE,
+                "AUTH_PRINCIPLE_EMAIL": "admin@example.com"}, "2026-11-06T23:31:11.676Z"),
+            _assign("TASKS", "MONITOR", ["Device posture test"], time="2026-11-06T23:32:54.501Z"),
+        ]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert result.actual_value["device_access_levels"] == ["Device posture test"]
+        assert result.actual_value["inventory_source"] == "admin_log"
+        assert "monitor mode only" in result.details
+        full_audit_data["admin_logs"].append(_assign("TASKS", "BLOCK", ["Device posture test"], time="2026-11-06T23:40:00.000Z"))
+        assert self._run(full_audit_data).status == Status.PASS
+
+    def test_live_ou_scoped_sequence_and_monitor_evaluations(self, full_audit_data):
+        """Flip 2026-11-06 23:32-23:35Z: device level MONITOR on the root OU, then WARN (geo level) + MONITOR
+        (device level) on the Workspace Guests sub-OU; Tasks loads wrote MONITOR_MODE_ACCESS_EVALUATED_EVENT
+        for the device level (CAA_DEVICE_STATE 'Normal') and ACCESS_LEVELS_EVALUATED for the geo level."""
+        from tests.factories import make_admin_event
+        full_audit_data["access_context"] = _acm(_GEO_LEVEL, {**_DEVICE_LEVEL, "title": "Device posture test"})
+        guests = {"TARGET_ENTITY_TYPE": "ORG_UNIT", "TARGET_ENTITY_NAME": "Workspace Guests"}
+        root_monitor = _assign("TASKS", "MONITOR", ["Device posture test"], time="2026-11-06T23:32:54.501Z")
+        guests_warn = _assign("TASKS", "WARN", ["Geo restriction"], time="2026-11-06T23:35:26.577Z"); guests_warn["parameters"].update(guests)
+        guests_monitor = _assign("TASKS", "MONITOR", ["Device posture test"], time="2026-11-06T23:35:26.577Z"); guests_monitor["parameters"].update(guests)
+        full_audit_data["admin_logs"] = [root_monitor, guests_warn, guests_monitor]
+        monitor_eval = _caa_event("MONITOR_MODE_ACCESS_EVALUATED_EVENT", "TASKS", applied=("Device posture test",), time="2026-11-06T23:33:12.328Z")
+        monitor_eval["parameters"]["CAA_DEVICE_STATE"] = "Normal"
+        full_audit_data["caa_events"] = [monitor_eval, _caa_event("ACCESS_LEVELS_EVALUATED", "TASKS", time="2026-11-06T23:33:12.328Z")]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "monitor mode only" in result.details
+        # the monitor-mode evaluation is not an evaluation of the device level, and its device signal is not counted
+        assert result.actual_value["device_signals"] == {"evaluations": 1, "with_device_signals": 0}
+
+    def test_sub_ou_removal_does_not_mask_root_assignment(self, full_audit_data):
+        full_audit_data["caa_events"] = []
+        full_audit_data["access_context"] = _acm(_DEVICE_LEVEL)
+        guests_block = _assign("GMAIL", "BLOCK", ["Managed device"], time="2026-11-06T23:35:00.000Z")
+        guests_block["parameters"]["TARGET_ENTITY_NAME"] = "Workspace Guests"
+        guests_removed = _assign("GMAIL", "BLOCK", ["Managed device"], time="2026-11-06T23:40:00.000Z", removed=True)
+        guests_removed["parameters"]["TARGET_ENTITY_NAME"] = "Workspace Guests"
+        full_audit_data["admin_logs"] = [_assign("GMAIL", "BLOCK", ["Managed device"]), guests_block, guests_removed]
+        assert self._run(full_audit_data).status == Status.PASS
+        # the root removal, even if older than a sub-OU assignment, leaves only the sub-OU covered
+        full_audit_data["admin_logs"] = [_assign("GMAIL", "BLOCK", ["Managed device"]),
+                                         _assign("GMAIL", "BLOCK", ["Managed device"], time="2026-11-06T23:30:00.000Z", removed=True), guests_block]
+        assert self._run(full_audit_data).status == Status.PASS
+
+    def test_caa_disabled_fails(self, full_audit_data):
+        full_audit_data["caa_events"] = []
+        full_audit_data["access_context"] = _acm(_DEVICE_LEVEL)
+        full_audit_data["admin_logs"] = [_assign("GMAIL", "BLOCK", ["Managed device"]), _toggle("DISABLED", "2026-11-06T19:00:00.000Z")]
+        result = self._run(full_audit_data)
+        assert result.status == Status.FAIL and "turned off" in result.details
+
+    def test_without_acm_evaluations_of_unknown_levels_or_nothing_are_review(self, full_audit_data):
+        full_audit_data["admin_logs"] = []
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL", applied=("Old level",))]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL and "Old level" in result.details
+        full_audit_data["caa_events"] = []
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL and "not readable" in result.details
+
+
+class TestCaaUnassignedLevels:
+    """ADD-55 (unscored review)."""
+
+    def _run(self, data):
+        from gws_auditor.checks.additional import check_caa_unassigned_levels
+        return check_caa_unassigned_levels(data)
+
+    def test_all_levels_seen_passes(self, full_audit_data):
+        full_audit_data["access_context"] = _acm(_GEO_LEVEL, _DEVICE_LEVEL)
+        full_audit_data["admin_logs"] = [_assign("GMAIL", "MONITOR", ["Managed device"])]
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL")]
+        result = self._run(full_audit_data)
+        assert result.status == Status.PASS and "All 2 access level(s)" in result.details
+
+    def test_unseen_and_empty_levels_are_listed(self, full_audit_data):
+        empty = {"name": "accessPolicies/134654395911/accessLevels/empty", "title": "Empty", "basic": {"conditions": []}}
+        full_audit_data["access_context"] = _acm(_GEO_LEVEL, _DEVICE_LEVEL, empty)
+        full_audit_data["admin_logs"] = [_assign("GMAIL", "BLOCK", ["Geo restriction"])]
+        full_audit_data["caa_events"] = []
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert result.actual_value["unassigned"] == ["Empty", "Managed device"]
+        assert result.actual_value["without_condition"] == ["Empty"]
+        assert "2 of 3 access level(s)" in result.details and "always satisfied" in result.details
+
+    def test_admin_log_inventory_is_used_when_acm_not_collected(self, full_audit_data):
+        from tests.factories import make_admin_event
+        full_audit_data["caa_events"] = []
+        full_audit_data["admin_logs"] = [make_admin_event("CREATE_ACCESS_LEVEL_V2", {
+            "ACCESS_LEVEL_TITLE": "Geo restriction", "ACCESS_LEVEL_NAME": _LEVEL_NAME,
+            "ACCESS_LEVEL_CURR_STATE": '{"basic": {"conditions": [{"regions": ["AQ"], "negate": true}]}, "title": "Geo restriction"}'},
+            "2026-11-06T18:23:52.947Z")]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL and "admin-log window" in result.details
+        assert result.actual_value["inventory_source"] == "admin_log"
+
+    def test_no_level_known_is_not_applicable(self, full_audit_data):
+        full_audit_data["caa_events"], full_audit_data["admin_logs"] = [], []
+        assert self._run(full_audit_data).status == Status.NOT_APPLICABLE
+        full_audit_data["access_context"] = _acm()
+        result = self._run(full_audit_data)
+        assert result.status == Status.NOT_APPLICABLE and "GWS.COMMONCONTROLS.2.1" in result.details
+
+
+class TestCaaDenials:
+    """ADD-56 (unscored review)."""
+
+    def _run(self, data):
+        from gws_auditor.checks.additional import check_caa_denials
+        return check_caa_denials(data)
+
+    def test_no_events_not_applicable_no_denials_pass(self, full_audit_data):
+        full_audit_data["caa_events"] = []
+        assert self._run(full_audit_data).status == Status.NOT_APPLICABLE
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL")] * 2
+        result = self._run(full_audit_data)
+        assert result.status == Status.PASS and "No denial among 2" in result.details
+
+    def test_denials_summarised_per_app_actor_region_and_level(self, full_audit_data):
+        from tests.factories import make_user
+        full_audit_data["users"] = [make_user("admin@example.com", is_admin=True), make_user("user@example.com")]
+        denied = _caa_event("ACCESS_DENY_EVENT", "GMAIL", satisfied=(), unsatisfied=("Geo restriction",))
+        denied["region_code"] = "AQ"
+        admin_denied = _caa_event("ACCESS_DENY_EVENT", "DRIVE", satisfied=(), unsatisfied=("Geo restriction",))
+        admin_denied["actor_email"], admin_denied["region_code"] = "admin@example.com", "BV"
+        full_audit_data["caa_events"] = [denied, denied, admin_denied, _caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL")]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert result.actual_value["by_app"] == {"GMAIL": 2, "DRIVE": 1}
+        assert result.actual_value["by_region"] == {"AQ": 2, "BV": 1}
+        assert result.actual_value["by_unsatisfied_level"] == {"Geo restriction": 3}
+        assert result.actual_value["super_admins_denied"] == ["admin@example.com"]
+        assert "3 of 4" in result.details and "Super admin(s) denied: admin@example.com" in result.details
+
+    def test_monitor_mode_events_are_ignored(self, full_audit_data):
+        full_audit_data["caa_events"] = [_caa_event("MONITOR_MODE_ACCESS_DENY_EVENT", "GMAIL", satisfied=(), unsatisfied=("Geo restriction",))]
+        assert self._run(full_audit_data).status == Status.NOT_APPLICABLE

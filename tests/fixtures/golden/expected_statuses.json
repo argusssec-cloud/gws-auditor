@@ -184,6 +184,26 @@
    "confirmed": false,
    "status": "MANUAL"
   },
+  "ADD-53": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition."
+  },
+  "ADD-54": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition."
+  },
+  "ADD-55": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition."
+  },
+  "ADD-56": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition."
+  },
   "CIS-1.1.1": {
    "confirmed": false,
    "status": "FAIL"
@@ -966,8 +986,8 @@
   },
   "ADD-20": {
    "confirmed": true,
-   "status": "MANUAL",
-   "note": "same flip as GWS.COMMONCONTROLS.2.1 (2026-11-06): MODE vocabulary is MONITOR and BLOCK (WARN assumed for the Warn action), not ACTIVE; assignment list parameter is CAA_ACCESS_ASSIGNMENTS_NEW. Tasks is not an OIDC app so the live status is unchanged. Evening 2026-11-06 (Geo restriction assigned to all 19 Workspace apps): live result still MANUAL, correct, because the 8 detected third-party OIDC apps are not Workspace apps and no assignment covers them. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement."
+   "note": "same flip as GWS.COMMONCONTROLS.2.1 (2026-11-06): MODE vocabulary is MONITOR and BLOCK (WARN assumed for the Warn action), not ACTIVE; assignment list parameter is CAA_ACCESS_ASSIGNMENTS_NEW. Tasks is not an OIDC app so the live status is unchanged. Evening 2026-11-06 (Geo restriction assigned to all 19 Workspace apps): live result still MANUAL, correct, because the 8 detected third-party OIDC apps are not Workspace apps and no assignment covers them. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live MANUAL (levels exist, OIDC apps unassigned), correct. Flip 2026-11-06 23:35Z: an assignment with the Warn action on the Workspace Guests sub-OU logged MODE 'WARN' with TARGET_ENTITY_NAME 'Workspace Guests'; WARN confirmed as an active mode, and assignment state is now kept per app, OU target and mode.",
+   "status": "MANUAL"
   },
   "ADD-21": {
    "confirmed": false,
@@ -1048,8 +1068,8 @@
   },
   "ADD-40": {
    "confirmed": true,
-   "status": "NOT_APPLICABLE",
-   "note": "2026-11-06: CAA evidence now requires an active-mode evaluation (allowed or denied) whose CAA_APPLICATION names a detected SAML app; the old parser matched invented parameter names and counted any denial. Status unchanged."
+   "note": "2026-11-06: CAA evidence now requires an active-mode evaluation (allowed or denied) whose CAA_APPLICATION names a detected SAML app; the old parser matched invented parameter names and counted any denial. Status unchanged. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live NOT_APPLICABLE (no SAML logins).",
+   "status": "NOT_APPLICABLE"
   },
   "ADD-41": {
    "confirmed": false,
@@ -1100,6 +1120,26 @@
   "ADD-52": {
    "confirmed": false,
    "status": "PASS"
+  },
+  "ADD-53": {
+   "confirmed": false,
+   "status": "MANUAL",
+   "note": "new 2026-11-06. Golden snapshot predates the CAA events and has no access_context, so MANUAL (no Admin console assignment or evaluation in the window). Flip test 2026-11-06 23:23Z: assigned the geo level to the Admin Console row (separate row above the app list, 'Continuous' evaluation point) in Block mode; admin log wrote CHANGE_CAA_APP_ASSIGNMENTS APPLICATION_NAME 'ADMIN_CONSOLE', MODE 'BLOCK', CAA_ACCESS_ASSIGNMENTS_NEW [level title], TARGET_ENTITY_TYPE ORG_UNIT, within 30 seconds; the console then shows '1 active applied' for Admin Console. Live result after the flip: PASS via the assignment. CAA user log 23:24Z (about a minute after the first console load): ACCESS_LEVELS_EVALUATED with CAA_APPLICATION 'ADMIN_CONSOLE', PROTECTED_API_ACCESS ['ADMIN_CONSOLE'], CAA_ACCESS_LEVEL_APPLIED/SATISFIED [level title], CAA_DEVICE_ID = the Endpoint Verification device id, CAA_DEVICE_STATE 'No Device Signals'. Both codes confirmed; _CAA_ADMIN_CONSOLE_APPS reduced to ('ADMIN_CONSOLE',)."
+  },
+  "ADD-54": {
+   "confirmed": false,
+   "status": "MANUAL",
+   "note": "new 2026-11-06. Snapshot: MANUAL (no access-level event in the window, ACM not collected). Live 2026-11-06 with the ACM inventory: FAIL ('1 access level(s) (Geo restriction), none of which requires device posture'; 0 of 7 evaluations carried device signals, CAA_DEVICE_STATE 'No Device Signals'), correct for this tenant. Flip 2026-11-06 23:30Z: created level 'Device posture test' (Device > Screen password protected); ACM returned it at once as basic.conditions[{devicePolicy:{requireScreenlock:true}}]; UPDATE_ACCESS_LEVEL_V2 (description edit) carried TITLE/NAME/CURR_STATE plus ACCESS_LEVEL_PREV_STATE; assigned it to Tasks in monitor mode (CHANGE_CAA_APP_ASSIGNMENTS MODE MONITOR) and Tasks loads wrote MONITOR_MODE_ACCESS_EVALUATED_EVENT with CAA_DEVICE_STATE 'Normal' (ignored as monitor mode), so the check stays FAIL/MANUAL as designed until an active assignment exists."
+  },
+  "ADD-55": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06. Snapshot: NOT_APPLICABLE (no level known). Live 2026-11-06: PASS, the one level is assigned (19 CHANGE_CAA_APP_ASSIGNMENTS) and applied (7 ACCESS_LEVELS_EVALUATED)."
+  },
+  "ADD-56": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06. Snapshot: NOT_APPLICABLE (no context_aware_access events). Live 2026-11-06: PASS (7 allowed evaluations, 0 ACCESS_DENY_EVENT). A real denial has not been captured live yet. Monitor-mode evaluations are named MONITOR_MODE_ACCESS_EVALUATED_EVENT (observed 23:33Z) and are excluded; a monitor-mode denial name is still assumed."
   },
   "CIS-1.1.1": {
    "confirmed": false,
@@ -1425,8 +1465,8 @@
   },
   "CIS-4.2.2.1": {
    "confirmed": true,
-   "status": "MANUAL",
-   "note": "flip test 2026-11-06 (evening): created access level 'Geo restriction' (basic condition regions ['AQ'], negate true) and assigned it in BLOCK mode to all 19 apps. Admin log: CREATE_ACCESS_LEVEL_V2 with ACCESS_LEVEL_TITLE, ACCESS_LEVEL_NAME and ACCESS_LEVEL_CURR_STATE (JSON text of the level), then 19 CHANGE_CAA_APP_ASSIGNMENTS MODE BLOCK CAA_ACCESS_ASSIGNMENTS_NEW ['Geo restriction']; this morning's DELETE_ACCESS_LEVEL_V2 (ACCESS_LEVEL_NAME only) appeared late. Check now reads this inventory; live result PASS ('Geographic access level(s) assigned to apps in active mode per the admin log: Geo restriction'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement."
+   "note": "flip test 2026-11-06 (evening): created access level 'Geo restriction' (basic condition regions ['AQ'], negate true) and assigned it in BLOCK mode to all 19 apps. Admin log: CREATE_ACCESS_LEVEL_V2 with ACCESS_LEVEL_TITLE, ACCESS_LEVEL_NAME and ACCESS_LEVEL_CURR_STATE (JSON text of the level), then 19 CHANGE_CAA_APP_ASSIGNMENTS MODE BLOCK CAA_ACCESS_ASSIGNMENTS_NEW ['Geo restriction']; this morning's DELETE_ACCESS_LEVEL_V2 (ACCESS_LEVEL_NAME only) appeared late. Check now reads this inventory; live result PASS ('Geographic access level(s) assigned to apps in active mode per the admin log: Geo restriction'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live PASS from the CAA-log evaluations applying the geographic level. Flip 2026-11-06 23:35Z: an assignment with the Warn action on the Workspace Guests sub-OU logged MODE 'WARN' with TARGET_ENTITY_NAME 'Workspace Guests'; WARN confirmed as an active mode, and assignment state is now kept per app, OU target and mode.",
+   "status": "MANUAL"
   },
   "CIS-4.2.3.1": {
    "confirmed": true,
@@ -1660,8 +1700,8 @@
   },
   "GWS.COMMONCONTROLS.2.1": {
    "confirmed": true,
-   "status": "MANUAL",
-   "note": "flip test 2026-11-06: created a catch-all access level, assigned it to Tasks in monitor mode, switched to active/Block, removed it, deleted the level (tenant back to CAA ON with no levels). CHANGE_CAA_APP_ASSIGNMENTS is written per app and mode with APPLICATION_NAME=TASKS, MODE=MONITOR|BLOCK, CAA_ACCESS_ASSIGNMENTS_NEW=[level names] (or CAA_ACCESS_ASSIGNMENTS_OLD alone on removal), CAA_ENFORCEMENT_ENDPOINTS_OLD/NEW, TARGET_ENTITY_TYPE/NAME. Level creation and deletion ARE logged (CREATE/DELETE_ACCESS_LEVEL_V2, event type ACCESS_LEVEL, delivered minutes late; the morning read-back missed them). Check updated to that shape; live result stays MANUAL (ON, latest assignment removed), console agrees. Evening 2026-11-06: access level 'Geo restriction' (regions AQ, negate) assigned in BLOCK mode to all 19 apps and left in place; live result PASS ('assigned in active mode to 19 app(s)'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement."
+   "note": "flip test 2026-11-06: created a catch-all access level, assigned it to Tasks in monitor mode, switched to active/Block, removed it, deleted the level (tenant back to CAA ON with no levels). CHANGE_CAA_APP_ASSIGNMENTS is written per app and mode with APPLICATION_NAME=TASKS, MODE=MONITOR|BLOCK, CAA_ACCESS_ASSIGNMENTS_NEW=[level names] (or CAA_ACCESS_ASSIGNMENTS_OLD alone on removal), CAA_ENFORCEMENT_ENDPOINTS_OLD/NEW, TARGET_ENTITY_TYPE/NAME. Level creation and deletion ARE logged (CREATE/DELETE_ACCESS_LEVEL_V2, event type ACCESS_LEVEL, delivered minutes late; the morning read-back missed them). Check updated to that shape; live result stays MANUAL (ON, latest assignment removed), console agrees. Evening 2026-11-06: access level 'Geo restriction' (regions AQ, negate) assigned in BLOCK mode to all 19 apps and left in place; live result PASS ('assigned in active mode to 19 app(s)'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live PASS from 7 allowed evaluations across CALENDAR, DRIVE, GMAIL, HANGOUTS_CHAT. Flip 2026-11-06 23:35Z: an assignment with the Warn action on the Workspace Guests sub-OU logged MODE 'WARN' with TARGET_ENTITY_NAME 'Workspace Guests'; WARN confirmed as an active mode, and assignment state is now kept per app, OU target and mode.",
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.3.1": {
    "confirmed": false,
@@ -1795,13 +1835,13 @@
   },
   "GWS.GEMINI.1.1": {
    "confirmed": true,
-   "status": "MANUAL",
-   "note": "flip test 2026-11-06: ticking and unticking 'Allow all users to access the Gemini app, regardless of license' logged CHANGE_APPLICATION_SETTING with APPLICATION_NAME 'Gemini app', SETTING_NAME 'BardNonDuetEnablementProto enable_bard_non_duet_access', NEW_VALUE 'true' then 'false' (two events per change, one with APPLICATION_EDITION). String and value vocabulary match the check; check FAIL on true, PASS on false. Golden snapshot predates the events so stays MANUAL."
+   "note": "flip test 2026-11-06: ticking and unticking 'Allow all users to access the Gemini app, regardless of license' logged CHANGE_APPLICATION_SETTING with APPLICATION_NAME 'Gemini app', SETTING_NAME 'BardNonDuetEnablementProto enable_bard_non_duet_access', NEW_VALUE 'true' then 'false' (two events per change, one with APPLICATION_EDITION). String and value vocabulary match the check; check FAIL on true, PASS on false. Golden snapshot predates the events so stays MANUAL.",
+   "status": "MANUAL"
   },
   "GWS.GEMINI.2.1": {
    "confirmed": true,
-   "status": "MANUAL",
-   "note": "flip test 2026-11-06 (after approval): turning 'Beta Gemini features' On then Off logged APPLICATION_NAME 'Gemini in Workspace', SETTING_NAME 'Beta Gemini Features Beta Features enabled', NEW_VALUE 'true' (first save = CREATE_APPLICATION_SETTING, no OLD_VALUE, plus a sibling 'Beta UXR outreach enabled' false event) then 'false' (CHANGE_APPLICATION_SETTING). ScubaGoggles' 'GenAiAlphaSettingsProto alpha_enabled' did not appear; check now reads the live name first. Golden snapshot predates the events so stays MANUAL."
+   "note": "flip test 2026-11-06 (after approval): turning 'Beta Gemini features' On then Off logged APPLICATION_NAME 'Gemini in Workspace', SETTING_NAME 'Beta Gemini Features Beta Features enabled', NEW_VALUE 'true' (first save = CREATE_APPLICATION_SETTING, no OLD_VALUE, plus a sibling 'Beta UXR outreach enabled' false event) then 'false' (CHANGE_APPLICATION_SETTING). ScubaGoggles' 'GenAiAlphaSettingsProto alpha_enabled' did not appear; check now reads the live name first. Golden snapshot predates the events so stays MANUAL.",
+   "status": "MANUAL"
   },
   "GWS.GMAIL.10.1": {
    "confirmed": true,
@@ -2120,6 +2160,26 @@
   "ADD-52": {
    "confirmed": false,
    "status": "MANUAL"
+  },
+  "ADD-53": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition."
+  },
+  "ADD-54": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition."
+  },
+  "ADD-55": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition."
+  },
+  "ADD-56": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE",
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition."
   },
   "CIS-1.1.1": {
    "confirmed": false,

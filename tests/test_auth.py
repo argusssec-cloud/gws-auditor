@@ -543,3 +543,26 @@ class TestValidateAccessScopeReporting:
             and r["api"] != "DWD Scope Authorization"
         ]
         assert per_api_unauth == []
+
+
+class TestCloudCredentials:
+    """AuthManager.cloud_credentials: the service account as itself with the cloud-platform scope."""
+
+    @patch("gws_auditor.auth.service_account.Credentials.from_service_account_file")
+    @patch("gws_auditor.auth.os.path.exists", return_value=True)
+    def test_service_account_without_subject(self, _exists, from_file):
+        auth = AuthManager({"auth": {"method": "service_account", "credentials_file": "sa.json",
+                                     "subject": "admin@example.com"}})
+        creds = auth.cloud_credentials()
+        from_file.assert_called_once_with("sa.json", scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        assert creds is from_file.return_value
+        from_file.return_value.with_subject.assert_not_called()
+
+    @patch("gws_auditor.auth.os.path.exists", return_value=False)
+    def test_missing_key_file_returns_none(self, _exists):
+        auth = AuthManager({"auth": {"method": "service_account", "credentials_file": "missing.json"}})
+        assert auth.cloud_credentials() is None
+
+    def test_oauth_has_no_cloud_identity(self):
+        auth = AuthManager({"auth": {"method": "oauth"}})
+        assert auth.cloud_credentials() is None

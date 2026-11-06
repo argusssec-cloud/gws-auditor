@@ -452,11 +452,12 @@ def check_geo_blocking(data: dict) -> CheckResult:
     # is assigned in an active mode is geo-blocking in force. Levels created before the window are
     # invisible, so the absence of events is unknown (MANUAL), never FAIL.
     from .additional import (
-        _CAA_ACTIVE_MODES, _access_level_restricts_region, _caa_access_level_inventory,
-        _caa_app_assignment_evidence, _caa_assigned_level_titles, _caa_enforcement_events,
+        _CAA_ACTIVE_MODES, _access_level_restricts_region, _caa_app_assignment_evidence,
+        _caa_assigned_level_titles, _caa_enforcement_events, caa_access_levels,
     )
     admin_logs = data.get("admin_logs", [])
-    inventory = _caa_access_level_inventory(admin_logs)
+    inventory, inventory_source = caa_access_levels(data)
+    authoritative = inventory_source == "access_context_manager"
     evidence = _caa_app_assignment_evidence(admin_logs, [])
     toggle = evidence["toggle"]
     geo_levels = {name: lvl for name, lvl in inventory.items()
@@ -490,9 +491,10 @@ def check_geo_blocking(data: dict) -> CheckResult:
         if enforced:
             return make_pass(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=(f"Geographic access level(s) assigned to apps in active mode per the admin log: "
-                         f"{', '.join(enforced)}."),
-                actual_value={"geo_access_levels": enforced, "assigned_modes": sorted(assigned)},
+                details=(f"Geographic access level(s) ({inventory_source.replace('_', ' ')}) assigned to apps in "
+                         f"active mode per the admin log: {', '.join(enforced)}."),
+                actual_value={"geo_access_levels": enforced, "assigned_modes": sorted(assigned),
+                              "inventory_source": inventory_source},
                 expected_value=_EXPECTED,
             )
         all_assigned = set().union(*assigned.values()) if assigned else set()
@@ -508,6 +510,17 @@ def check_geo_blocking(data: dict) -> CheckResult:
             expected_value=_EXPECTED, remediation=_REMED,
         )
 
+    if authoritative:
+        # Every level of the organisation is known and none restricts regions: geo-blocking is not
+        # configured, whatever the assignments.
+        titles = sorted(l["title"] for l in inventory.values())
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=("Access Context Manager lists " + (f"{len(titles)} access level(s) ({', '.join(titles[:5])}), none of which "
+                     "restricts regions" if titles else "no access level for the organisation") + ", so geo-blocking is not configured."),
+            actual_value={"access_levels": titles, "geo_access_levels": [], "inventory_source": inventory_source},
+            expected_value=_EXPECTED, remediation=_REMED,
+        )
     if evaluations:
         # Levels are enforced but none of them is known to restrict regions (created before the
         # admin-log window, so their conditions are invisible). A human must look at the level.

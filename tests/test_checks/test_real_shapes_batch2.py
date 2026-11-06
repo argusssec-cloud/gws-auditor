@@ -178,7 +178,7 @@ class TestAdminLogInference:
         assert "1 active-mode evaluation(s) (0 denied)" in result.details
         assert "GMAIL" in result.details and "Geo restriction" in result.details
         # Monitor-mode names and evaluations without an applied level are not enforcement.
-        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED_MONITOR_MODE", "GMAIL"),
+        full_audit_data["caa_events"] = [_caa_event("MONITOR_MODE_ACCESS_EVALUATED_EVENT", "GMAIL"),
                                          _caa_event("ACCESS_LEVELS_EVALUATED", "DRIVE", applied=())]
         assert check_context_aware_access(full_audit_data).status == Status.MANUAL
         # An evaluation newer than a DISABLED toggle beats the toggle; an older one does not.
@@ -188,6 +188,34 @@ class TestAdminLogInference:
         assert check_context_aware_access(full_audit_data).status == Status.PASS
         full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL", time="2026-10-01T00:00:00Z")]
         assert check_context_aware_access(full_audit_data).status == Status.FAIL
+
+    def test_context_aware_access_with_access_context_manager_inventory(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_context_aware_access
+        from tests.test_checks.test_security_access import TestGeoBlocking as G
+
+        on = [{"event_name": "TOGGLE_CAA_ENABLEMENT", "time": "2026-04-01T00:00:00Z", "parameters": {"NEW_VALUE": "ENABLED"}}]
+        full_audit_data["caa_events"] = []
+        # ON but the organisation has no access level at all -> FAIL (authoritative inventory)
+        full_audit_data["admin_logs"] = on
+        full_audit_data["access_context"] = G._acm()
+        result = check_context_aware_access(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "no access level" in result.details and "switched on" in result.details
+        # No toggle event either: still FAIL, nothing can be assigned
+        full_audit_data["admin_logs"] = []
+        assert check_context_aware_access(full_audit_data).status == Status.FAIL
+        # ON, levels exist, no assignment in the window -> MANUAL naming the levels
+        full_audit_data["admin_logs"] = on
+        full_audit_data["access_context"] = G._acm(G._GEO, G._DEVICE)
+        result = check_context_aware_access(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "Geo restriction" in result.details and "Access Context Manager" in result.details
+        assert result.actual_value["access_levels"] == ["Corp devices", "Geo restriction"]
+        # Active assignment in the window -> PASS as before
+        full_audit_data["admin_logs"] = on + [{"event_name": "CHANGE_CAA_APP_ASSIGNMENTS", "time": "2026-05-01T00:00:00Z",
+                                               "parameters": {"APPLICATION_NAME": "GMAIL", "MODE": "BLOCK",
+                                                              "CAA_ACCESS_ASSIGNMENTS_NEW": ["Geo restriction"]}}]
+        assert check_context_aware_access(full_audit_data).status == Status.PASS
 
     def test_context_aware_access_event(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_context_aware_access
@@ -208,7 +236,8 @@ class TestAdminLogInference:
         assert check_context_aware_access(full_audit_data).status == Status.MANUAL
         full_audit_data["admin_logs"][-1]["parameters"]["MODE"] = "BLOCK"
         full_audit_data["admin_logs"].append({"event_name": "CHANGE_CAA_APP_ASSIGNMENTS", "time": "2026-04-03T00:00:00Z",
-            "parameters": {"APPLICATION_NAME": "GMAIL", "CAA_ACCESS_ASSIGNMENTS_OLD": ["Corp devices"], "MODE": "BLOCK"}})
+            "parameters": {"APPLICATION_NAME": "GMAIL", "CAA_ACCESS_ASSIGNMENTS_OLD": ["Corp devices"], "MODE": "BLOCK",
+                           "TARGET_ENTITY_TYPE": "ORG_UNIT", "TARGET_ENTITY_NAME": "example.com"}})
         result = check_context_aware_access(full_audit_data)
         assert result.status == Status.MANUAL and "removed" in result.details
         full_audit_data["admin_logs"] = toggle("DISABLED")

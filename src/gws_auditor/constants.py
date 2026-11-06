@@ -43,6 +43,10 @@ CUSTOMER_DISCOVERY_SCOPE = (
 # Scopes that only work with service-account domain-wide delegation
 # (rejected by OAuth consent flow).  Added to SCOPES automatically
 # when auth method is ``service_account``.
+# Scope the service account uses as itself (no delegation) for Google Cloud APIs such as
+# Access Context Manager. Never part of the domain-wide delegation grant.
+CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
+
 SERVICE_ACCOUNT_SCOPES = [
     # Chat Admin API – spaces listing + member/owner resolution
     "https://www.googleapis.com/auth/chat.admin.spaces.readonly",
@@ -68,6 +72,10 @@ REQUIRED_GCP_APIS = [
     "chat.googleapis.com",              # Chat API
     "alertcenter.googleapis.com",       # Alert Center API
     "licensing.googleapis.com",         # Enterprise License Manager API (license detection)
+    # Optional: Context-Aware Access level inventory (Access Context Manager, read as the
+    # service account itself; needs roles/accesscontextmanager.policyReader on the organisation).
+    "accesscontextmanager.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
 ]
 
 # Cloud Identity Policy API quota: 30 read requests per minute per project.
@@ -287,6 +295,8 @@ HIGH_CHECKS: frozenset[str] = frozenset({
     # Context-aware access & geo-blocking
     "CIS-4.2.2.1",        # Ensure geo-blocking is configured
     "GWS.COMMONCONTROLS.2.1",  # Ensure context-aware access policies are implemented
+    "ADD-53",             # Ensure the Admin console is protected by a Context-Aware Access level
+    "ADD-54",             # Ensure a device-based Context-Aware Access level is enforced
     # MFA and SSO
     "GWS.COMMONCONTROLS.1.4",  # Ensure MFA enrollment period is configured
     "GWS.COMMONCONTROLS.1.5",  # Ensure 'trust this device' is disabled
@@ -585,6 +595,7 @@ REMEDIATION_THEMES = {
         "GWS.COMMONCONTROLS.2.1", "GWS.COMMONCONTROLS.4.1",
         "ADD-20",
         "ADD-47",
+        "ADD-53", "ADD-54", "ADD-55", "ADD-56",
     ],
     "Calendar Security": [
         "CIS-3.1.1.1.1", "CIS-3.1.1.1.2", "CIS-3.1.1.1.3",
@@ -648,6 +659,7 @@ EFFORT_ESTIMATES = {
     "GWS.GMAIL.4.1": "High", "GWS.GMAIL.4.2": "High",
     "CIS-4.1.1.3": "High", "CIS-4.2.2.1": "High",
     "GWS.COMMONCONTROLS.2.1": "High",
+    "ADD-54": "High",  # needs Endpoint Verification / device management rolled out first
     "ADD-11": "High", "ADD-26": "High",
     "ADD-18": "High", "ADD-12": "High",
 }

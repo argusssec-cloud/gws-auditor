@@ -229,6 +229,29 @@ class AuthManager:
             self.authenticate()
         return self._credentials
 
+    def cloud_credentials(self):
+        """Credentials for the service account acting as *itself* with the cloud-platform scope.
+
+        Used for Google Cloud APIs (Access Context Manager, Resource Manager) that authorise
+        through IAM on the organisation rather than through domain-wide delegation, so no
+        ``subject`` is applied. Returns ``None`` for the OAuth (user consent) method, whose
+        token does not carry the scope.
+        """
+        from .constants import CLOUD_PLATFORM_SCOPE
+        scopes = [CLOUD_PLATFORM_SCOPE]
+        if self.method == "service_account":
+            if not os.path.exists(self.credentials_file):
+                return None
+            return service_account.Credentials.from_service_account_file(self.credentials_file, scopes=scopes)
+        if self.method == "gce":
+            from google.auth import compute_engine
+            return compute_engine.Credentials(scopes=scopes)
+        if self.method == "workload_identity":
+            import google.auth
+            creds, _ = google.auth.default(scopes=scopes)
+            return creds
+        return None
+
     def _build_http(self) -> httplib2.Http:
         """Build an httplib2.Http, optionally configured with a proxy and CA."""
         kwargs = {}

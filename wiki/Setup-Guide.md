@@ -73,6 +73,11 @@ Enable these 10 APIs in **APIs & Services > Library**:
 | Google Workspace Alert Center API | `alertcenter.googleapis.com` |
 | Enterprise License Manager API | `licensing.googleapis.com` |
 
+Optional, for the Context-Aware Access level inventory: also enable `accesscontextmanager.googleapis.com` and
+`cloudresourcemanager.googleapis.com`, and after Phase 3 grant the service account
+`roles/accesscontextmanager.policyReader` on the Google Cloud organisation (details in
+[Configuration](Configuration#context-aware-access-levels-from-access-context-manager)).
+
 ### Phase 3: Service Account
 
 1. Go to **IAM & Admin > Service Accounts**

@@ -984,11 +984,13 @@ def _count_saml_apps(login_logs: list) -> tuple[int, list[str]]:
 # documents only ACCESS_DENY_EVENT; the live tenant (2026-11-06) also writes ACCESS_LEVELS_EVALUATED for
 # every allowed access ("Access Evaluated" in the Workspace help), with CAA_ACCESS_LEVEL_APPLIED /
 # _SATISFIED / _UNSATISFIED (multi-value level titles), CAA_APPLICATION (upper-case app code such as
-# GMAIL, DRIVE, CALENDAR), CAA_DEVICE_ID, CAA_DEVICE_STATE and PROTECTED_API_ACCESS or
-# BLOCKED_API_ACCESS. Monitor-mode results ("Access Denied (Monitor mode)", "Access Evaluated (Monitor
-# mode)") were not observed; any event name containing MONITOR is treated as monitor mode and is never
-# proof of enforcement.
+# GMAIL, DRIVE, CALENDAR, ADMIN_CONSOLE), CAA_DEVICE_ID, CAA_DEVICE_STATE ("No Device Signals", or
+# "Normal" when Endpoint Verification reported for a device-based level) and PROTECTED_API_ACCESS or
+# BLOCKED_API_ACCESS. A monitor-mode assignment writes MONITOR_MODE_ACCESS_EVALUATED_EVENT with the same
+# parameters (observed 2026-11-06 23:33Z); the denied variant is assumed to follow the same naming. Any
+# event name containing MONITOR is monitor mode and is never proof of enforcement.
 _CAA_ACTIVE_EVENTS = ("ACCESS_DENY_EVENT", "ACCESS_LEVELS_EVALUATED")
+_CAA_MONITOR_EVENTS = ("MONITOR_MODE_ACCESS_EVALUATED_EVENT", "MONITOR_MODE_ACCESS_DENY_EVENT")
 
 
 def _as_title_list(value) -> list[str]:
@@ -1005,7 +1007,8 @@ def _as_title_list(value) -> list[str]:
 def _caa_enforcement_events(caa_events: list) -> list[dict]:
     """Active-mode Context-Aware Access evaluations (allowed or denied) from ``data["caa_events"]``.
 
-    Each item: ``{"event", "denied", "app", "applied", "satisfied", "unsatisfied", "time"}``. An
+    Each item: ``{"event", "denied", "app", "applied", "satisfied", "unsatisfied", "time", "actor",
+    "region", "device_state"}``. An
     evaluation with a non-empty ``applied`` list proves that an access level was enforced on that app
     at that time, whatever the outcome. Monitor-mode and unknown event names are skipped.
     """
@@ -1026,6 +1029,10 @@ def _caa_enforcement_events(caa_events: list) -> list[dict]:
             "satisfied": _as_title_list(params.get("CAA_ACCESS_LEVEL_SATISFIED")),
             "unsatisfied": _as_title_list(params.get("CAA_ACCESS_LEVEL_UNSATISFIED")),
             "time": str(entry.get("time", "")),
+            "actor": str(entry.get("actor_email", "") or ""),
+            "region": str(entry.get("region_code", "") or ""),
+            # "No Device Signals" when no Endpoint Verification / managed-device signal reached CAA.
+            "device_state": str(params.get("CAA_DEVICE_STATE", "") or ""),
         })
     return out
 
@@ -1047,12 +1054,11 @@ def _caa_enforcement_for_apps(caa_events: list, app_names: list[str]) -> tuple[i
     return count, sorted(matched), denials
 
 
-# CHANGE_CAA_APP_ASSIGNMENTS MODE values seen live (2026-11-06 flip test on argussec.io): MONITOR for
-# monitor mode, BLOCK for active mode with the Block action. WARN is the console's other active action
-# ("access levels enforced and users get a warning") and is assumed to log the same way; any other
-# value is treated as unknown rather than as enforcement.
-# Live events (2026-11-06) carry MODE BLOCK; the Reports API appendix documents ACTIVE | MONITOR; WARN is
-# assumed for the console's Warn action. Anything else is "unclear" (MANUAL), never PASS.
+# CHANGE_CAA_APP_ASSIGNMENTS MODE values seen live on argussec.io (2026-11-06): MONITOR for monitor
+# mode, BLOCK for the Block action and WARN for the Warn action (23:35Z flip, assignment scoped to a
+# sub-OU). The Reports API appendix also documents ACTIVE. Anything else is "unclear" (MANUAL), never
+# PASS. Each event is scoped by TARGET_ENTITY_TYPE / TARGET_ENTITY_NAME (ORG_UNIT "argussec.io" for the
+# root, "Workspace Guests" for a sub-OU), so state is kept per app, target and mode.
 _CAA_ACTIVE_MODES = ("BLOCK", "WARN", "ACTIVE")
 _CAA_MONITOR_MODES = ("MONITOR",)
 
@@ -1076,14 +1082,17 @@ def _caa_app_assignment_evidence(admin_logs: list, app_names: list[str]) -> dict
     per app *and* mode (observed live): ``APPLICATION_NAME`` (upper-case, e.g. ``TASKS``), ``MODE``
     (``MONITOR`` or ``BLOCK``), ``CAA_ACCESS_ASSIGNMENTS_NEW`` (multi-value list of access-level names
     now assigned in that mode) or ``CAA_ACCESS_ASSIGNMENTS_OLD`` alone when the assignment in that mode
-    was removed. The latest event per app and mode gives that mode's current assignment. Returns
+    was removed. Events are scoped to an OU or group (``TARGET_ENTITY_TYPE`` / ``TARGET_ENTITY_NAME``,
+    observed live for the root OU and a sub-OU), so the latest event per app, target and mode gives that
+    target's current assignment in that mode and a sub-OU change never masks the root's. Returns
     ``{"toggle": state|None, "covered": [...], "monitor": [...], "removed": [...], "unknown": [...],
     "unclear": [...]}`` over *app_names* (matched case-insensitively): covered = an active-mode
-    assignment with levels; monitor = levels only in monitor mode; removed = events exist but no mode
-    keeps levels; unknown = no event; unclear = levels only under an unrecognised mode.
+    assignment with levels on any target; monitor = levels only in monitor mode; removed = events exist
+    but no target keeps levels in any mode; unknown = no event; unclear = levels only under an
+    unrecognised mode.
     """
     toggle: tuple[str, str] | None = None
-    state: dict[str, dict[str, tuple[str, bool]]] = {}
+    state: dict[str, dict[tuple[str, str], tuple[str, bool]]] = {}
     for log in admin_logs or []:
         if not isinstance(log, dict):
             continue
@@ -1098,18 +1107,20 @@ def _caa_app_assignment_evidence(admin_logs: list, app_names: list[str]) -> dict
             if not app:
                 continue
             mode = str(params.get("MODE", "")).strip().upper()
+            target = str(params.get("TARGET_ENTITY_NAME", "")).strip()
             new = _caa_new_assignment_value(params)
             has_levels = bool(new) and str(new).strip() not in ("[]", "{}", "none", "None")
-            per_mode = state.setdefault(app, {})
-            if mode not in per_mode or when >= per_mode[mode][0]:
-                per_mode[mode] = (when, has_levels)
+            per_key = state.setdefault(app, {})
+            key = (target, mode)
+            if key not in per_key or when >= per_key[key][0]:
+                per_key[key] = (when, has_levels)
     covered, monitor, removed, unknown, unclear = [], [], [], [], []
     for name in app_names:
-        per_mode = state.get(str(name).strip().lower())
-        if per_mode is None:
+        per_key = state.get(str(name).strip().lower())
+        if per_key is None:
             unknown.append(name)
             continue
-        live = [mode for mode, (_, has_levels) in per_mode.items() if has_levels]
+        live = [mode for (_, mode), (_, has_levels) in per_key.items() if has_levels]
         if any(mode in _CAA_ACTIVE_MODES for mode in live):
             covered.append(name)
         elif any(mode not in _CAA_MONITOR_MODES for mode in live):
@@ -1136,7 +1147,9 @@ def _caa_access_level_inventory(admin_logs: list) -> dict[str, dict]:
     (``accessPolicies/<id>/accessLevels/<id>``) and ``ACCESS_LEVEL_CURR_STATE`` (JSON text of the
     level: ``basic.conditions[]`` with ``regions``, ``ipSubnetworks``, ``devicePolicy`` ... and
     ``negate``, or ``custom.expr``); ``DELETE_ACCESS_LEVEL_V2`` with ``ACCESS_LEVEL_NAME`` only.
-    ``UPDATE_ACCESS_LEVEL_V2`` is assumed to carry the same fields as create. The latest event per
+    ``UPDATE_ACCESS_LEVEL_V2`` (observed 2026-11-06 23:31Z after editing a level's description) carries
+    the same three fields plus ``ACCESS_LEVEL_PREV_STATE``; its ``ACCESS_LEVEL_CURR_STATE`` omits the
+    description but keeps ``basic``/``custom``, which is all that is read. The latest event per
     name wins. Each value: ``{"title", "state" (parsed dict or None), "deleted", "time"}``. Levels
     created before the log window never appear, so an empty result means unknown, not none.
     """
@@ -1174,6 +1187,31 @@ def _caa_access_level_inventory(admin_logs: list) -> dict[str, dict]:
     return inventory
 
 
+def caa_access_levels(data: dict) -> tuple[dict[str, dict], str]:
+    """Context-Aware Access level inventory and its source: ``"access_context_manager"`` or ``"admin_log"``.
+
+    ``data["access_context"]`` (provider ``_get_access_context``) is authoritative when collected: every
+    level of the organisation's access policy, whatever its age, as ``{name: {"title", "state", "deleted":
+    False, "time": ""}}`` with ``state`` the AccessLevel resource (``basic`` / ``custom``), the same shape
+    the admin log writes in ``ACCESS_LEVEL_CURR_STATE``. Otherwise the inventory is rebuilt from the
+    admin log (180-day window, so an empty result means unknown, not none).
+    """
+    ctx = data.get("access_context") or {}
+    if isinstance(ctx, dict) and ctx.get("collected"):
+        inventory: dict[str, dict] = {}
+        for level in ctx.get("access_levels") or []:
+            if not isinstance(level, dict):
+                continue
+            name = str(level.get("name", "")).strip()
+            if not name:
+                continue
+            state = {k: level[k] for k in ("basic", "custom") if k in level}
+            inventory[name] = {"title": str(level.get("title", "")).strip(), "state": state or None,
+                               "deleted": False, "time": ""}
+        return inventory, "access_context_manager"
+    return _caa_access_level_inventory(data.get("admin_logs", [])), "admin_log"
+
+
 def _access_level_restricts_region(state: dict | None) -> bool:
     """True when an access level's state carries a geographic condition (allow-list or negated)."""
     if not isinstance(state, dict):
@@ -1188,11 +1226,11 @@ def _access_level_restricts_region(state: dict | None) -> bool:
 def _caa_assigned_level_titles(admin_logs: list) -> dict[str, set[str]]:
     """Access-level titles currently assigned to at least one app, keyed by ``MODE``.
 
-    Same per-app, per-mode reading of ``CHANGE_CAA_APP_ASSIGNMENTS`` as
-    ``_caa_app_assignment_evidence``: the latest event per app and mode gives that mode's
-    current list; ``CAA_ACCESS_ASSIGNMENTS_OLD`` alone (removal) clears it.
+    Same per-app, per-target, per-mode reading of ``CHANGE_CAA_APP_ASSIGNMENTS`` as
+    ``_caa_app_assignment_evidence``: the latest event per app, target and mode gives that
+    target's current list in that mode; ``CAA_ACCESS_ASSIGNMENTS_OLD`` alone (removal) clears it.
     """
-    latest: dict[tuple[str, str], tuple[str, list[str]]] = {}
+    latest: dict[tuple[str, str, str], tuple[str, list[str]]] = {}
     for log in admin_logs or []:
         if not isinstance(log, dict) or log.get("event_name") != "CHANGE_CAA_APP_ASSIGNMENTS":
             continue
@@ -1201,16 +1239,17 @@ def _caa_assigned_level_titles(admin_logs: list) -> dict[str, set[str]]:
         if not app:
             continue
         mode = str(params.get("MODE", "")).strip().upper()
+        target = str(params.get("TARGET_ENTITY_NAME", "")).strip()
         new = _caa_new_assignment_value(params)
         if isinstance(new, str):
             new = [t.strip() for t in new.strip("[]").split(",") if t.strip()]
         titles = [str(t).strip() for t in (new or []) if str(t).strip()]
         when = str(log.get("time", ""))
-        key = (app, mode)
+        key = (app, target, mode)
         if key not in latest or when >= latest[key][0]:
             latest[key] = (when, titles)
     assigned: dict[str, set[str]] = {}
-    for (_, mode), (_, titles) in latest.items():
+    for (_, _, mode), (_, titles) in latest.items():
         if titles:
             assigned.setdefault(mode, set()).update(titles)
     return assigned
@@ -1238,7 +1277,7 @@ def check_caa_oidc(data: dict) -> CheckResult:
       Step 1 — Inventory: count distinct third-party OIDC clients in
         ``data["token_logs"]``.  If zero, return NOT_APPLICABLE — the toggle
         has nothing to apply to.
-      Step 2 — Enforcement evidence: count ACCESS_DENY_EVENT entries in
+      Step 2 — Enforcement evidence: count active-mode CAA evaluations (allowed or denied) in
         ``data["caa_events"]`` that match the OIDC app class.  Any match
         means CAA is actively blocking OIDC access attempts → PASS.
       Step 3 — Inconclusive: OIDC apps exist but no denial events in the
@@ -1298,6 +1337,15 @@ def check_caa_oidc(data: dict) -> CheckResult:
             actual_value=actual, expected_value="CAA enabled with access levels assigned to OIDC apps",
             remediation=_REMEDIATION,
         )
+    inventory, inventory_source = caa_access_levels(data)
+    if inventory_source == "access_context_manager" and not inventory:
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Access Context Manager lists no access level for the organisation, so Context-Aware "
+                     f"Access cannot cover the {oidc_count} third-party OIDC app(s)."),
+            actual_value=dict(actual, access_levels=0, inventory_source=inventory_source),
+            expected_value="CAA enabled with access levels assigned to OIDC apps", remediation=_REMEDIATION,
+        )
     if evidence["removed"] or evidence["monitor"]:
         parts = []
         if evidence["removed"]:
@@ -1328,8 +1376,8 @@ def check_caa_oidc(data: dict) -> CheckResult:
         details=(
             f"{oidc_count} third-party OIDC app(s) detected "
             f"({', '.join(oidc_apps[:5])}{'...' if len(oidc_apps) > 5 else ''}) "
-            "but no CAA ACCESS_DENY_EVENT and no access-level assignment change for them "
-            "was logged in the window. Absence of denials does not prove CAA is disabled — verify the "
+            "but no active-mode CAA evaluation names them and no access-level assignment change for them "
+            "was logged in the window. Absence of evaluations does not prove CAA is disabled — verify the "
             "policy assignment in Admin console > Security > "
             "Context-Aware Access." + covered_note
         ),
@@ -1361,7 +1409,7 @@ def check_caa_saml_default(data: dict) -> CheckResult:
         ``data["login_logs"]`` (events where ``parameters.login_type ==
         "saml"``).  If zero, return NOT_APPLICABLE — the default-SAML-CAA
         toggle has nothing to apply to.
-      Step 2 — Enforcement evidence: count ACCESS_DENY_EVENT entries in
+      Step 2 — Enforcement evidence: count active-mode CAA evaluations (allowed or denied) in
         ``data["caa_events"]`` that match the SAML app class.  Any match
         means CAA is actively blocking SAML access attempts → PASS.
       Step 3 — Inconclusive: SAML apps exist but no denial events in the
@@ -1406,6 +1454,17 @@ def check_caa_saml_default(data: dict) -> CheckResult:
             expected_value="CAA evaluations present for SAML apps",
         )
 
+    inventory, inventory_source = caa_access_levels(data)
+    if inventory_source == "access_context_manager" and not inventory:
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Access Context Manager lists no access level for the organisation, so no default "
+                     f"Context-Aware Access policy can apply to the {saml_count} SAML app(s)."),
+            actual_value={"saml_apps": saml_count, "evaluations": 0, "access_levels": 0,
+                          "inventory_source": inventory_source},
+            expected_value="A default CAA access level for SAML apps", remediation=_REMEDIATION,
+        )
+
     return make_review(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details=(
@@ -1418,6 +1477,411 @@ def check_caa_saml_default(data: dict) -> CheckResult:
         ),
         remediation=_REMEDIATION,
         actual_value={"saml_apps": saml_count, "denials": 0},
+    )
+
+
+# ---------------------------------------------------------------------------
+# ADD-53 .. ADD-56: Context-Aware Access posture from the access-level inventory
+# ---------------------------------------------------------------------------
+# The Access Context Manager inventory (data["access_context"], authoritative when collected) says
+# what levels exist and what they require; the admin log says which apps they were assigned to in
+# the window; the CAA user log says which levels were really applied. PASS always needs an
+# assignment or an evaluation; the inventory alone only ever proves the negative.
+
+# Admin console app identifier. CHANGE_CAA_APP_ASSIGNMENTS.APPLICATION_NAME and the CAA user-log
+# CAA_APPLICATION use the same upper-case codes (GMAIL, DRIVE, CALENDAR, HANGOUTS_CHAT ...). Flip test
+# 2026-11-06 23:23Z: assigning a level to the Admin console logged APPLICATION_NAME "ADMIN_CONSOLE",
+# MODE BLOCK, and the next console loads wrote ACCESS_LEVELS_EVALUATED with CAA_APPLICATION
+# "ADMIN_CONSOLE" and PROTECTED_API_ACCESS ["ADMIN_CONSOLE"] about a minute later.
+_CAA_ADMIN_CONSOLE_APPS = ("ADMIN_CONSOLE",)
+_CAA_ASSIGN_REMED = ("Admin console > Security > Access and data control > Context-Aware Access > "
+                     "Assign access levels. https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps")
+_CAA_NO_SIGNAL_STATES = ("", "NO DEVICE SIGNALS", "UNKNOWN")
+
+# Access level devicePolicy fields that make a level depend on device posture (ACM AccessLevel
+# resource, also written verbatim in ACCESS_LEVEL_CURR_STATE). An empty devicePolicy requires nothing.
+_DEVICE_POLICY_FIELDS = ("requireScreenlock", "allowedEncryptionStatuses", "osConstraints", "requireCorpOwned",
+                         "requireAdminApproval", "allowedDeviceManagementLevels")
+
+
+def _caa_switched_off(evidence: dict, evaluations: list[dict]) -> bool:
+    """True when the latest TOGGLE_CAA_ENABLEMENT says DISABLED and no evaluation is newer than it."""
+    newest = max((e["time"] for e in evaluations), default="")
+    return evidence.get("toggle") == "DISABLED" and not (evaluations and newest > evidence.get("toggle_time", ""))
+
+
+def _access_level_requires_device(state: dict | None, inventory: dict | None = None, _depth: int = 0) -> bool:
+    """True when an access level depends on device posture.
+
+    ``basic.conditions[].devicePolicy`` with any requirement set, a ``custom.expr`` reading ``device.``
+    attributes, or (through ``requiredAccessLevels``) another level of *inventory* that does.
+    """
+    if not isinstance(state, dict) or _depth > 3:
+        return False
+    for cond in (state.get("basic") or {}).get("conditions") or []:
+        if not isinstance(cond, dict):
+            continue
+        policy = cond.get("devicePolicy")
+        if isinstance(policy, dict) and any(policy.get(f) for f in _DEVICE_POLICY_FIELDS):
+            return True
+        for required in cond.get("requiredAccessLevels") or []:
+            nested = (inventory or {}).get(str(required))
+            if nested and not nested.get("deleted") and _access_level_requires_device(nested.get("state"), inventory, _depth + 1):
+                return True
+    expr = str((state.get("custom") or {}).get("expr") or "")
+    return "device." in expr
+
+
+def _access_level_has_no_condition(state: dict | None) -> bool:
+    """True when a level has neither a basic condition nor a custom expression (always satisfied)."""
+    if not isinstance(state, dict):
+        return False
+    conditions = [c for c in (state.get("basic") or {}).get("conditions") or [] if isinstance(c, dict) and c]
+    expr = str((state.get("custom") or {}).get("expr") or "").strip()
+    return not conditions and not expr
+
+
+def _caa_level_enforcement(data: dict, predicate) -> dict:
+    """Shared evidence for 'a level with property *predicate* is enforced'.
+
+    Returns ``{"inventory_source", "authoritative", "evidence", "evaluations", "matching"(titles),
+    "evaluated"(matching titles applied in the CAA log), "evaluated_apps", "assigned"(mode -> titles),
+    "enforced"(matching titles assigned in an active mode), "monitored"(matching titles assigned at all),
+    "all_titles"}``.
+    """
+    admin_logs = data.get("admin_logs", [])
+    inventory, source = caa_access_levels(data)
+    evidence = _caa_app_assignment_evidence(admin_logs, [])
+    evaluations = [e for e in _caa_enforcement_events(data.get("caa_events", [])) if e["applied"]]
+    matching = sorted({lvl["title"] for lvl in inventory.values()
+                       if not lvl["deleted"] and lvl["title"] and predicate(lvl["state"], inventory)})
+    evaluated = sorted({t for e in evaluations for t in e["applied"] if t in matching})
+    evaluated_apps = sorted({e["app"] for e in evaluations if e["app"] and set(e["applied"]) & set(matching)})
+    assigned = _caa_assigned_level_titles(admin_logs)
+    active_titles = set().union(*(assigned.get(mode, set()) for mode in _CAA_ACTIVE_MODES)) if assigned else set()
+    all_assigned = set().union(*assigned.values()) if assigned else set()
+    return {
+        "inventory_source": source, "authoritative": source == "access_context_manager",
+        "evidence": evidence, "evaluations": evaluations, "matching": matching, "evaluated": evaluated,
+        "evaluated_apps": evaluated_apps, "assigned": assigned,
+        "enforced": sorted(t for t in matching if t in active_titles),
+        "monitored": sorted(t for t in matching if t in all_assigned),
+        "all_titles": sorted(lvl["title"] for lvl in inventory.values() if not lvl["deleted"]),
+    }
+
+
+@check(
+    check_id="ADD-53",
+    title="Ensure the Admin console is protected by a Context-Aware Access level",
+    level="L1",
+    source="GOOGLE",
+    section="Security",
+    severity="HIGH",
+    remediation=(
+        "Admin console > Security > Access and data control > Context-Aware Access > Assign access levels. "
+        "Select the Admin console app and assign an access level (ideally device-based) in Block mode. "
+        "https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps"
+    ),
+    requires_license="enterprise_standard",
+)
+def check_caa_admin_console(data: dict) -> CheckResult:
+    """The Admin console is the highest-value target in the tenant; Google's hardening guidance
+    puts it behind Context-Aware Access first.
+
+    PASS needs an active-mode evaluation for the Admin console app in the CAA user log or an
+    active-mode assignment in the admin log. FAIL when CAA is switched off, when the assignment was
+    removed or left in monitor mode in the window, or when Access Context Manager shows that the
+    organisation has no access level at all. Otherwise MANUAL naming the levels that exist.
+    """
+    _ID = "ADD-53"
+    _TITLE = "Ensure the Admin console is protected by a Context-Aware Access level"
+    _L, _S, _SEC = "L1", "GOOGLE", "Security"
+    _REMED = (
+        "Admin console > Security > Access and data control > Context-Aware Access > Assign access levels. "
+        "Select the Admin console app and assign an access level (ideally device-based) in Block mode. "
+        "https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps"
+    )
+    _EXPECTED = "An access level assigned to the Admin console in an active (Block or Warn) mode"
+    admin_logs = data.get("admin_logs", [])
+    evidence = _caa_app_assignment_evidence(admin_logs, list(_CAA_ADMIN_CONSOLE_APPS))
+    evaluations = [e for e in _caa_enforcement_events(data.get("caa_events", [])) if e["applied"]]
+    console_evals = [e for e in evaluations if e["app"].upper() in _CAA_ADMIN_CONSOLE_APPS]
+    inventory, source = caa_access_levels(data)
+    titles = sorted(lvl["title"] for lvl in inventory.values() if not lvl["deleted"])
+
+    if _caa_switched_off(evidence, evaluations):
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Context-Aware Access was turned off (latest admin-log change), so the Admin console is not protected by any access level.",
+            actual_value={"caa_enabled": "DISABLED", "access_levels": titles}, expected_value=_EXPECTED, remediation=_REMED,
+        )
+    if console_evals:
+        applied = sorted({t for e in console_evals for t in e["applied"]})
+        denied = sum(e["denied"] for e in console_evals)
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Context-Aware Access evaluated {len(console_evals)} Admin console access(es) ({denied} denied) "
+                     f"in active mode, applying access level(s) {', '.join(applied)}."),
+            actual_value={"evaluations": len(console_evals), "denials": denied, "access_levels": applied},
+            expected_value=_EXPECTED,
+        )
+    if evidence["covered"]:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="An access level is assigned to the Admin console in an active mode (latest CHANGE_CAA_APP_ASSIGNMENTS in the admin log).",
+            actual_value={"assigned_apps": evidence["covered"], "access_levels": titles}, expected_value=_EXPECTED,
+        )
+    if evidence["monitor"] or evidence["removed"]:
+        why = ("left in monitor mode only, which logs but never blocks" if evidence["monitor"]
+               else "removed (latest CHANGE_CAA_APP_ASSIGNMENTS carries only the old assignment)")
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"The Admin console access-level assignment was {why}.",
+            actual_value={"monitor_only": evidence["monitor"], "removed": evidence["removed"], "access_levels": titles},
+            expected_value=_EXPECTED, remediation=_REMED,
+        )
+    if source == "access_context_manager" and not inventory:
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Access Context Manager lists no access level for the organisation, so nothing can be assigned to the Admin console.",
+            actual_value={"access_levels": [], "inventory_source": source}, expected_value=_EXPECTED, remediation=_REMED,
+        )
+    if evidence["unclear"]:
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"Admin console assignment logged under an unrecognised mode: {', '.join(evidence['unclear'])}. Verify in the console.",
+            actual_value={"unclear": evidence["unclear"], "access_levels": titles}, expected_value=_EXPECTED, remediation=_REMED,
+        )
+    return make_review(
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        details=(("Access level(s) " + ", ".join(titles[:5]) + " exist " + ("(Access Context Manager)" if source == "access_context_manager" else "(admin log)")
+                  if titles else "No access level is known from the admin-log window")
+                 + ", but no Admin console assignment change and no Admin console evaluation appear in the log window. "
+                 "Verify the Admin console row under Assign access levels; assignments older than the log window are not visible to the auditor."),
+        actual_value={"access_levels": titles, "inventory_source": source, "evaluated_apps": sorted({e["app"] for e in evaluations if e["app"]})},
+        expected_value=_EXPECTED, remediation=_REMED,
+    )
+
+
+@check(
+    check_id="ADD-54",
+    title="Ensure a device-based Context-Aware Access level is enforced",
+    level="L2",
+    source="GOOGLE",
+    section="Security",
+    severity="HIGH",
+    remediation=(
+        "Admin console > Security > Access and data control > Context-Aware Access > Access levels. Create a level with "
+        "device conditions (screen lock, encryption, OS version, company-owned or admin-approved) and assign it to apps in "
+        "Block mode; deploy Endpoint Verification so devices report their posture. "
+        "https://knowledge.workspace.google.com/admin/security/about-context-aware-access"
+    ),
+    requires_license="enterprise_standard",
+)
+def check_caa_device_level(data: dict) -> CheckResult:
+    """Geographic and IP conditions are defeated by any VPN; only device conditions make Context-Aware
+    Access a real control. Access Context Manager exposes each level's devicePolicy, so the strict
+    verdict (no device-based level exists) is provable; PASS still needs an assignment or evaluation.
+    """
+    _ID = "ADD-54"
+    _TITLE = "Ensure a device-based Context-Aware Access level is enforced"
+    _L, _S, _SEC = "L2", "GOOGLE", "Security"
+    _REMED = (
+        "Admin console > Security > Access and data control > Context-Aware Access > Access levels. Create a level with "
+        "device conditions (screen lock, encryption, OS version, company-owned or admin-approved) and assign it to apps in "
+        "Block mode; deploy Endpoint Verification so devices report their posture. "
+        "https://knowledge.workspace.google.com/admin/security/about-context-aware-access"
+    )
+    _EXPECTED = "An access level with device conditions assigned to apps in active mode"
+    ev = _caa_level_enforcement(data, _access_level_requires_device)
+    evaluations = ev["evaluations"]
+    with_signals = sum(1 for e in evaluations if e["device_state"].strip().upper() not in _CAA_NO_SIGNAL_STATES)
+    signals = {"evaluations": len(evaluations), "with_device_signals": with_signals}
+    base = {"device_access_levels": ev["matching"], "inventory_source": ev["inventory_source"], "device_signals": signals}
+
+    if _caa_switched_off(ev["evidence"], evaluations):
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Context-Aware Access was turned off (latest admin-log change), so no device-based access level is enforced.",
+            actual_value={"caa_enabled": "DISABLED", **base}, expected_value=_EXPECTED, remediation=_REMED,
+        )
+    signal_note = (f" {with_signals} of {len(evaluations)} evaluation(s) carried device signals"
+                   + ("; deploy Endpoint Verification or device management so the level can be satisfied." if evaluations and not with_signals else ".")
+                   if evaluations else "")
+    if ev["evaluated"]:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Device-based access level(s) enforced per the Context-Aware Access log: {', '.join(ev['evaluated'])} applied on "
+                     f"{', '.join(ev['evaluated_apps'][:8])}." + signal_note),
+            actual_value={**base, "evaluated_apps": ev["evaluated_apps"]}, expected_value=_EXPECTED,
+        )
+    if ev["enforced"]:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Device-based access level(s) ({ev['inventory_source'].replace('_', ' ')}) assigned to apps in active mode per the "
+                     f"admin log: {', '.join(ev['enforced'])}." + signal_note),
+            actual_value={**base, "assigned_modes": sorted(ev["assigned"])}, expected_value=_EXPECTED,
+        )
+    if ev["matching"]:
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Device-based access level(s) exist ({', '.join(ev['matching'])}) "
+                     + ("but are assigned in monitor mode only" if ev["monitored"] else
+                        "but no active-mode assignment to an app appears in the log window")
+                     + ". Verify the assignment in Admin console > Security > Context-Aware Access."),
+            actual_value={**base, "assigned_modes": sorted(ev["assigned"])}, expected_value=_EXPECTED, remediation=_REMED,
+        )
+    if ev["authoritative"]:
+        titles = ev["all_titles"]
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=("Access Context Manager lists " + (f"{len(titles)} access level(s) ({', '.join(titles[:5])}), none of which "
+                     "requires device posture" if titles else "no access level for the organisation")
+                     + ", so access does not depend on the device's security state." + signal_note),
+            actual_value={**base, "access_levels": titles}, expected_value=_EXPECTED, remediation=_REMED,
+        )
+    if evaluations:
+        levels = sorted({t for e in evaluations for t in e["applied"]})
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Context-Aware Access is enforcing access level(s) {', '.join(levels[:5])} (CAA log), but their conditions are not "
+                     "in the admin-log window, so whether any requires device posture is unknown. Check the level in Admin console > "
+                     "Security > Context-Aware Access > Access levels." + signal_note),
+            actual_value={**base, "enforced_access_levels": levels}, expected_value=_EXPECTED, remediation=_REMED,
+        )
+    return make_review(
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        details=("Access levels are not readable (Access Context Manager not collected) and no access-level event or evaluation "
+                 "appears in the log window. Verify in Admin console > Security > Context-Aware Access > Access levels."),
+        actual_value=base, expected_value=_EXPECTED, remediation=_REMED,
+    )
+
+
+@check(
+    check_id="ADD-55",
+    scored=False,  # hygiene review: assignments older than the admin-log window are invisible
+    title="Review Context-Aware Access levels that are not assigned to any app",
+    level="L2",
+    source="OTHER",
+    section="Security",
+    remediation=(
+        "Admin console > Security > Access and data control > Context-Aware Access. Assign each listed level to the apps it "
+        "is meant to protect (Assign access levels), or delete it. A level with no condition is always satisfied and protects nothing."
+    ),
+    requires_license="enterprise_standard",
+)
+def check_caa_unassigned_levels(data: dict) -> CheckResult:
+    """Dangling access levels: defined (Access Context Manager or admin log) but never seen assigned
+    (CHANGE_CAA_APP_ASSIGNMENTS) or applied (CAA log) in the window. Levels with no condition at all
+    are flagged in the same list. Unscored because an assignment made before the window is invisible.
+    """
+    _ID = "ADD-55"
+    _TITLE = "Review Context-Aware Access levels that are not assigned to any app"
+    _L, _S, _SEC = "L2", "OTHER", "Security"
+    _REMED = (
+        "Admin console > Security > Access and data control > Context-Aware Access. Assign each listed level to the apps it "
+        "is meant to protect (Assign access levels), or delete it. A level with no condition is always satisfied and protects nothing."
+    )
+    admin_logs = data.get("admin_logs", [])
+    inventory, source = caa_access_levels(data)
+    live = {name: lvl for name, lvl in inventory.items() if not lvl["deleted"]}
+    source_text = "Access Context Manager" if source == "access_context_manager" else "the admin-log window"
+    if not live:
+        return make_not_applicable(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"No access level is known from {source_text}; nothing to review"
+                    + (" (see GWS.COMMONCONTROLS.2.1 for the missing configuration)." if source == "access_context_manager" else
+                       " (levels created before the window are not visible)."),
+            actual_value={"access_levels": [], "inventory_source": source},
+        )
+    assigned = _caa_assigned_level_titles(admin_logs)
+    seen = set().union(*assigned.values()) if assigned else set()
+    seen |= {t for e in _caa_enforcement_events(data.get("caa_events", [])) for t in e["applied"]}
+    unseen = sorted(lvl["title"] or name for name, lvl in live.items() if lvl["title"] not in seen)
+    empty = sorted(lvl["title"] or name for name, lvl in live.items() if _access_level_has_no_condition(lvl["state"]))
+    actual = {"access_levels": sorted(l["title"] for l in live.values()), "unassigned": unseen, "without_condition": empty,
+              "inventory_source": source}
+    if not unseen and not empty:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"All {len(live)} access level(s) from {source_text} were assigned to an app or applied in the log window.",
+            actual_value=actual, expected_value="Every access level assigned to at least one app",
+        )
+    parts = []
+    if unseen:
+        parts.append(f"{len(unseen)} of {len(live)} access level(s) from {source_text} never appear in an assignment or evaluation "
+                     f"in the log window: {', '.join(unseen[:10])}")
+    if empty:
+        parts.append(f"level(s) with no condition (always satisfied): {', '.join(empty[:10])}")
+    return make_review(
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        details="; ".join(parts) + ". Confirm each is assigned under Assign access levels or remove it.",
+        actual_value=actual, expected_value="Every access level assigned to at least one app", remediation=_REMED,
+    )
+
+
+@check(
+    check_id="ADD-56",
+    scored=False,  # review of enforcement outcomes, not a configuration verdict
+    title="Review Context-Aware Access denials",
+    level="L2",
+    source="OTHER",
+    section="Security",
+    remediation=(
+        "Admin console > Reporting > Audit and investigation > Context-Aware Access log events. Confirm each denial is "
+        "legitimate (user, app, region, unsatisfied level); tune the level rather than removing it when real users are blocked."
+    ),
+    requires_license="enterprise_standard",
+)
+def check_caa_denials(data: dict) -> CheckResult:
+    """ACCESS_DENY_EVENT entries of the Context-Aware Access log, summarised per app, actor, region and
+    unsatisfied level. No evaluation at all in the window means there is nothing to review.
+    """
+    _ID = "ADD-56"
+    _TITLE = "Review Context-Aware Access denials"
+    _L, _S, _SEC = "L2", "OTHER", "Security"
+    _REMED = (
+        "Admin console > Reporting > Audit and investigation > Context-Aware Access log events. Confirm each denial is "
+        "legitimate (user, app, region, unsatisfied level); tune the level rather than removing it when real users are blocked."
+    )
+    events = _caa_enforcement_events(data.get("caa_events", []))
+    denials = [e for e in events if e["denied"]]
+    if not events:
+        return make_not_applicable(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="No Context-Aware Access evaluation in the log window; nothing to review (see GWS.COMMONCONTROLS.2.1 for enablement).",
+            actual_value={"evaluations": 0, "denials": 0},
+        )
+    if not denials:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"No denial among {len(events)} Context-Aware Access evaluation(s) in the log window.",
+            actual_value={"evaluations": len(events), "denials": 0}, expected_value="Denials reviewed",
+        )
+
+    def _count(key):
+        counts: dict[str, int] = {}
+        for e in denials:
+            for value in (e[key] if isinstance(e[key], list) else [e[key]]):
+                value = value or "(unknown)"
+                counts[value] = counts.get(value, 0) + 1
+        return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
+
+    by_app, by_actor, by_region, by_level = _count("app"), _count("actor"), _count("region"), _count("unsatisfied")
+    admins = {str(u.get("primary_email", "")).lower() for u in data.get("users", []) if isinstance(u, dict) and u.get("is_super_admin")}
+    admin_denied = sorted(a for a in by_actor if a.lower() in admins)
+    summary = (f"{len(denials)} of {len(events)} Context-Aware Access evaluation(s) were denied: "
+               f"{len(by_actor)} user(s), apps {', '.join(f'{a} ({n})' for a, n in list(by_app.items())[:5])}; "
+               f"regions {', '.join(f'{r} ({n})' for r, n in list(by_region.items())[:5])}; "
+               f"unsatisfied level(s) {', '.join(f'{l} ({n})' for l, n in list(by_level.items())[:5])}.")
+    if admin_denied:
+        summary += f" Super admin(s) denied: {', '.join(admin_denied[:5])}."
+    return make_review(
+        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        details=summary + " Confirm the denials are expected.",
+        actual_value={"evaluations": len(events), "denials": len(denials), "by_app": by_app, "by_actor": by_actor,
+                      "by_region": by_region, "by_unsatisfied_level": by_level, "super_admins_denied": admin_denied},
+        expected_value="Denials reviewed", remediation=_REMED,
     )
 
 

@@ -14,6 +14,8 @@ from collections import Counter
 
 from .auth import AuthManager
 from .constants import (
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_RATE_LIMIT_QPS,
     DEFAULT_ADMIN_LOG_EXTENDED_LOOKBACK_DAYS,
     DEFAULT_ADMIN_LOG_LOOKBACK_DAYS,
     DEFAULT_LOGIN_LOG_LOOKBACK_DAYS,
@@ -95,6 +97,7 @@ class Provider:
         ("login_logs", "_get_login_logs"),
         ("token_logs", "_get_token_logs"),
         ("caa_events", "_get_caa_events"),
+        ("access_context", "_get_access_context"),
         ("user_account_logs", "_get_user_account_logs"),
         ("usage_reports", "_get_usage_reports"),
         ("user_usage", "_get_user_usage"),
@@ -138,6 +141,7 @@ class Provider:
             "login_logs": self._get_login_logs(),
             "token_logs": self._get_token_logs(),
             "caa_events": self._get_caa_events(),
+            "access_context": self._get_access_context(),
             "user_account_logs": self._get_user_account_logs(),
             "usage_reports": self._get_usage_reports(),
             "user_usage": self._get_user_usage(),
@@ -563,6 +567,73 @@ class Provider:
         except Exception as e:
             self._record_error("get_caa_activities", e)
             return []
+
+    def _get_access_context(self) -> dict:
+        """Context-Aware Access level inventory from Access Context Manager.
+
+        Returns ``{"collected", "source", "organization", "access_policy", "access_levels",
+        "bindings", "bindings_collected", "reason"}``. ``collected`` is False (with ``reason``)
+        when the option is off, the auth method has no cloud identity, no policy can be found,
+        or the API answers 403; checks then fall back to the admin-log inference.
+        """
+        result = {"collected": False, "source": "access_context_manager", "organization": "",
+                  "access_policy": "", "access_levels": [], "bindings": [], "bindings_collected": False,
+                  "reason": ""}
+        if not self.options.get("collect_access_context", True):
+            result["reason"] = "disabled by options.collect_access_context"
+            return result
+        try:
+            from googleapiclient.errors import HttpError
+            from .api.access_context_manager import AccessContextManagerClient
+            client = AccessContextManagerClient(
+                self.auth, max_retries=self.options.get("max_retries", DEFAULT_MAX_RETRIES),
+                rate_limit_qps=self.options.get("rate_limit_qps", DEFAULT_RATE_LIMIT_QPS))
+            org = client.organization_name(self.options.get("cloud_organization_id", ""))
+            policy = client.policy_name(self.options.get("access_policy_id", ""))
+            if not policy:
+                if not org:
+                    domains = self._get_domains()
+                    primary = next((d.get("domainName", "") for d in domains if d.get("isPrimary")), "")
+                    org = client.search_organization(domain=primary, customer_id=self.customer_id)
+                if not org:
+                    result["reason"] = ("organisation not found: set options.cloud_organization_id or "
+                                        "options.access_policy_id, or grant "
+                                        "roles/resourcemanager.organizationViewer to the service account")
+                    return result
+                policies = client.list_access_policies(org)
+                policy = policies[0].get("name", "") if policies else ""
+                if not policy:
+                    result["organization"] = org
+                    result["reason"] = f"no access policy under {org}"
+                    return result
+            result["organization"] = org
+            result["access_policy"] = policy
+            result["access_levels"] = client.list_access_levels(policy)
+            result["collected"] = True
+            logger.info("Collected %d Context-Aware Access level(s) from Access Context Manager",
+                        len(result["access_levels"]))
+            if org:
+                try:
+                    result["bindings"] = client.list_user_access_bindings(org)
+                    result["bindings_collected"] = True
+                except HttpError as e:
+                    logger.info("Cloud access bindings not readable (%s); optional", e.resp.status)
+            self._propagate_client_errors(client)
+            return result
+        except Exception as e:
+            status = getattr(getattr(e, "resp", None), "status", None)
+            if status == 403:
+                result["reason"] = ("permission denied: enable the Access Context Manager API in the "
+                                    "auditor project and grant roles/accesscontextmanager.policyReader "
+                                    "on the organisation to the service account")
+                logger.warning("Access Context Manager: %s", result["reason"])
+            elif isinstance(e, RuntimeError):
+                result["reason"] = str(e)
+                logger.info("Access Context Manager skipped: %s", e)
+            else:
+                result["reason"] = f"{type(e).__name__}: {e}"
+                self._record_error("get_access_context", e)
+            return result
 
     def _get_usage_reports(self) -> list:
         """Fetch usage reports."""
@@ -3035,6 +3106,9 @@ def _normalize_activity_logs(logs: list) -> list:
                 "event_type": event.get("type", ""),
                 "time": log.get("id", {}).get("time", "") if isinstance(log.get("id"), dict) else "",
                 "ip_address": log.get("ipAddress", ""),
+                # networkInfo.regionCode / subdivisionCode (ISO 3166) are set on login and
+                # context_aware_access entries (observed live 2026-11-06).
+                "region_code": str((log.get("networkInfo") or {}).get("regionCode", "") or ""),
             }
             # Convert parameters list to dict for easy access
             params = {}

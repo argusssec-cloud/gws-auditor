@@ -328,7 +328,44 @@ class TestGeoBlocking:
         assert "Geo restriction" in result.details
         # Monitor-mode evaluation is not enforcement.
         full_audit_data["admin_logs"] = [self._create()]
-        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED_MONITOR_MODE", "GMAIL")]
+        full_audit_data["caa_events"] = [_caa_event("MONITOR_MODE_ACCESS_EVALUATED_EVENT", "GMAIL")]
+        assert check_geo_blocking(full_audit_data).status == Status.MANUAL
+
+    @staticmethod
+    def _acm(*levels):
+        """data['access_context'] as the provider returns it (live field names, 2026-11-06)."""
+        return {"collected": True, "source": "access_context_manager", "organization": "organizations/18479643020",
+                "access_policy": "accessPolicies/134654395911", "bindings": [], "bindings_collected": False,
+                "reason": "", "access_levels": list(levels)}
+
+    _GEO = {"name": "accessPolicies/134654395911/accessLevels/geo_restriction_fttlt6s2", "title": "Geo restriction",
+            "description": "geo", "basic": {"conditions": [{"negate": True, "regions": ["AQ"]}]}}
+    _DEVICE = {"name": "accessPolicies/134654395911/accessLevels/corp", "title": "Corp devices",
+               "basic": {"conditions": [{"devicePolicy": {"requireScreenlock": True}}]}}
+
+    def test_access_context_manager_inventory_is_authoritative(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_geo_blocking
+        full_audit_data["policies"]["security"].pop("context_aware_access", None)
+        full_audit_data["admin_logs"] = [self._assign("GMAIL", "BLOCK", ["Geo restriction"])]
+        # Geo level from ACM (no create event in the log window) + active assignment -> PASS
+        full_audit_data["access_context"] = self._acm(self._GEO, self._DEVICE)
+        result = check_geo_blocking(full_audit_data)
+        assert result.status == Status.PASS
+        assert "access context manager" in result.details
+        # ACM lists only non-geographic levels -> FAIL, whatever is assigned
+        full_audit_data["access_context"] = self._acm(self._DEVICE)
+        result = check_geo_blocking(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "Corp devices" in result.details
+        # ACM lists no level at all -> FAIL
+        full_audit_data["access_context"] = self._acm()
+        assert check_geo_blocking(full_audit_data).status == Status.FAIL
+        # Geo level exists but never assigned -> MANUAL
+        full_audit_data["access_context"] = self._acm(self._GEO)
+        full_audit_data["admin_logs"] = []
+        assert check_geo_blocking(full_audit_data).status == Status.MANUAL
+        # Not collected -> log inference only (no events -> MANUAL)
+        full_audit_data["access_context"] = {"collected": False, "access_levels": [self._GEO], "reason": "403"}
         assert check_geo_blocking(full_audit_data).status == Status.MANUAL
 
     def test_custom_cel_region_expression_counts(self, full_audit_data):
