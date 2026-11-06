@@ -3,7 +3,7 @@
 import pytest
 
 from gws_auditor.models import Status
-from tests.factories import make_ou_policy
+from tests.factories import make_user_account_event, make_user_usage_row, make_ou_policy
 
 
 class TestContextAwareAccess:
@@ -129,44 +129,6 @@ class TestAccountRecovery:
         assert result.status == Status.MANUAL
 
 
-class TestAdvancedProtection:
-    """Tests for GWS.COMMONCONTROLS.9.x Advanced Protection Program checks."""
-
-    def test_admin_advanced_protection_pass(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
-
-        full_audit_data["policies"]["security"] = {
-            "advanced_protection": {"admin_enrollment_enforced": True},
-        }
-        result = check_admin_advanced_protection(full_audit_data)
-        assert result.status == Status.PASS
-
-    def test_admin_advanced_protection_fail(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
-
-        full_audit_data["policies"]["security"] = {
-            "advanced_protection": {"admin_enrollment_enforced": False},
-        }
-        result = check_admin_advanced_protection(full_audit_data)
-        assert result.status == Status.FAIL
-
-    def test_sensitive_user_advanced_protection_pass(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_sensitive_user_advanced_protection
-
-        full_audit_data["policies"]["security"] = {
-            "advanced_protection": {"sensitive_user_enrollment": True},
-        }
-        result = check_sensitive_user_advanced_protection(full_audit_data)
-        assert result.status == Status.PASS
-
-    def test_sensitive_user_advanced_protection_fail(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_sensitive_user_advanced_protection
-
-        full_audit_data["policies"]["security"] = {
-            "advanced_protection": {"sensitive_user_enrollment": False},
-        }
-        result = check_sensitive_user_advanced_protection(full_audit_data)
-        assert result.status == Status.FAIL
 
 
 class TestAppAccessControl:
@@ -493,111 +455,10 @@ class TestSessionDurationOU:
         assert check_session_duration(full_audit_data).status == Status.MANUAL
 
 
-class TestAdminAdvancedProtectionOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.9.1 admin Advanced Protection."""
-
-    def test_all_ous_safe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "advanced_protection_program",
-                                {"adminEnrollmentEnforced": True}, "/"),
-                make_ou_policy("security", "advanced_protection_program",
-                                {"adminEnrollmentEnforced": True}, "/IT"),
-            ],
-        }
-        result = check_admin_advanced_protection(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
-
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "advanced_protection_program",
-                                {"adminEnrollmentEnforced": True}, "/"),
-                make_ou_policy("security", "advanced_protection_program",
-                                {"adminEnrollmentEnforced": False}, "/Remote"),
-            ],
-        }
-        result = check_admin_advanced_protection(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Remote" in result.details
 
 
-class TestAdvancedProtectionRealShape:
-    """security.advanced_protection_program only exposes enableAdvancedProtectionSelfEnrollment."""
-
-    def test_self_enrollment_disabled_fails(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import (
-            check_admin_advanced_protection, check_sensitive_user_advanced_protection)
-
-        full_audit_data["policies"]["security"] = {"_ou_policies": [
-            make_ou_policy("security", "advanced_protection_program",
-                           {"enableAdvancedProtectionSelfEnrollment": True}, "/"),
-            make_ou_policy("security", "advanced_protection_program",
-                           {"enableAdvancedProtectionSelfEnrollment": False}, "/Remote"),
-        ]}
-        for check in (check_admin_advanced_protection, check_sensitive_user_advanced_protection):
-            result = check(full_audit_data)
-            assert result.status == Status.FAIL, check.__name__
-            assert "/Remote" in result.details
-
-    def test_self_enrollment_allowed_is_review(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_sensitive_user_advanced_protection
-
-        full_audit_data["policies"]["security"] = {"_ou_policies": [
-            make_ou_policy("security", "advanced_protection_program",
-                           {"enableAdvancedProtectionSelfEnrollment": True})]}
-        result = check_sensitive_user_advanced_protection(full_audit_data)
-        assert result.status == Status.MANUAL
-        assert "which accounts are actually enrolled" in result.details
-
-    def test_empty_value_is_unknown(self, full_audit_data):
-        """Was ERROR: an entry without the field is unknown, not a data-collection failure."""
-        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
-
-        full_audit_data["policies"]["security"] = {"_ou_policies": [
-            make_ou_policy("security", "advanced_protection_program", {})]}
-        result = check_admin_advanced_protection(full_audit_data)
-        assert result.status == Status.MANUAL
-        assert "could not be determined" in result.details
 
 
-class TestSensitiveUserAdvancedProtectionOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.9.2 sensitive user Advanced Protection."""
-
-    def test_all_ous_safe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_sensitive_user_advanced_protection
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "advanced_protection_program",
-                                {"sensitiveUserEnrollment": True}, "/"),
-                make_ou_policy("security", "advanced_protection_program",
-                                {"sensitiveUserEnrollment": True}, "/Executives"),
-            ],
-        }
-        result = check_sensitive_user_advanced_protection(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
-
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_sensitive_user_advanced_protection
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "advanced_protection_program",
-                                {"sensitiveUserEnrollment": True}, "/"),
-                make_ou_policy("security", "advanced_protection_program",
-                                {"sensitiveUserEnrollment": False}, "/Vendors"),
-            ],
-        }
-        result = check_sensitive_user_advanced_protection(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Vendors" in result.details
 
 
 class TestThirdPartyApiRestrictedOU:
@@ -1062,3 +923,111 @@ class TestUnknownValuesAreManual:
         full_audit_data["policies"]["security"] = {"_ou_policies": [
             make_ou_policy("security", "user_account_recovery", {})]}
         assert check_user_account_recovery_disabled(full_audit_data).status == Status.PASS
+
+
+class TestAdvancedProtection:
+    """GWS.COMMONCONTROLS.9.1 / 9.2: three-state verdict from the Policy API self-enrollment flag,
+    titanium_enroll / titanium_unenroll events in the user_accounts audit log and the security-key
+    and passkey counts of the user usage report."""
+
+    def _allow(self, data, allowed=True, ou="/"):
+        data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "advanced_protection_program",
+                           {"enableAdvancedProtectionSelfEnrollment": allowed}, ou)]}
+
+    def test_self_enrollment_disabled_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import (
+            check_admin_advanced_protection, check_sensitive_user_advanced_protection)
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "advanced_protection_program", {"enableAdvancedProtectionSelfEnrollment": True}, "/"),
+            make_ou_policy("security", "advanced_protection_program", {"enableAdvancedProtectionSelfEnrollment": False}, "/Remote")]}
+        full_audit_data["_options"] = {"sensitive_users": ["user1@example.com"]}
+        for check in (check_admin_advanced_protection, check_sensitive_user_advanced_protection):
+            result = check(full_audit_data)
+            assert result.status == Status.FAIL, check.__name__
+            assert "/Remote" in result.details
+
+    def test_all_admins_enrolled_pass(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
+        self._allow(full_audit_data)
+        full_audit_data["user_account_logs"] = [
+            make_user_account_event("admin1@example.com", "titanium_enroll", "2026-09-01T10:00:00.000Z"),
+            make_user_account_event("admin2@example.com", "titanium_enroll", "2026-09-02T10:00:00.000Z")]
+        full_audit_data["user_usage"] = [make_user_usage_row("admin1@example.com", num_security_keys=2),
+                                         make_user_usage_row("admin2@example.com", num_passkeys_enrolled=2, num_security_keys=0)]
+        result = check_admin_advanced_protection(full_audit_data)
+        assert result.status == Status.PASS
+        assert result.actual_value["enrolled"] == ["admin1@example.com", "admin2@example.com"]
+
+    def test_unenroll_is_latest_event_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
+        self._allow(full_audit_data)
+        full_audit_data["user_account_logs"] = [
+            make_user_account_event("admin1@example.com", "titanium_enroll", "2026-09-01T10:00:00.000Z"),
+            make_user_account_event("admin1@example.com", "titanium_unenroll", "2026-10-01T10:00:00.000Z"),
+            make_user_account_event("admin2@example.com", "titanium_enroll", "2026-09-02T10:00:00.000Z")]
+        result = check_admin_advanced_protection(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "admin1@example.com [left Advanced Protection on 2026-10-01]" in result.details
+
+    def test_admin_without_key_or_passkey_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
+        self._allow(full_audit_data)
+        full_audit_data["user_usage"] = [make_user_usage_row("admin1@example.com", num_security_keys=0, num_passkeys_enrolled=0),
+                                         make_user_usage_row("admin2@example.com", num_security_keys=1)]
+        result = check_admin_advanced_protection(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "admin1@example.com [no security key or passkey" in result.details
+        assert "admin2" not in result.details
+
+    def test_no_evidence_is_review(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
+        self._allow(full_audit_data)
+        result = check_admin_advanced_protection(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "no enrollment event" in result.details and "user_accounts audit log was not collected" in result.details
+        assert set(result.actual_value["unknown"]) == {"admin1@example.com", "admin2@example.com"}
+
+    def test_partial_evidence_is_review_not_pass(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
+        self._allow(full_audit_data)
+        full_audit_data["user_account_logs"] = [make_user_account_event("admin1@example.com", "titanium_enroll")]
+        full_audit_data["user_usage"] = [make_user_usage_row("admin2@example.com", num_security_keys=1)]
+        result = check_admin_advanced_protection(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "1 of 2 administrator" in result.details and "admin2@example.com" in result.details
+
+    def test_empty_policy_value_still_assesses_accounts(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
+        full_audit_data["policies"]["security"] = {"_ou_policies": [
+            make_ou_policy("security", "advanced_protection_program", {})]}
+        full_audit_data["user_account_logs"] = [make_user_account_event(e, "titanium_enroll")
+                                                for e in ("admin1@example.com", "admin2@example.com")]
+        assert check_admin_advanced_protection(full_audit_data).status == Status.PASS
+
+    def test_no_admins_collected_is_error(self, full_audit_data):
+        """No users means the directory was not collected: ERROR (make_manual), never a verdict."""
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_advanced_protection
+        full_audit_data["users"] = []
+        assert check_admin_advanced_protection(full_audit_data).status == Status.ERROR
+
+    def test_sensitive_users_unconfigured_not_applicable(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_sensitive_user_advanced_protection
+        self._allow(full_audit_data)
+        result = check_sensitive_user_advanced_protection(full_audit_data)
+        assert result.status == Status.NOT_APPLICABLE
+        assert "options.sensitive_users" in result.details
+
+    def test_sensitive_users_from_emails_and_group(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_sensitive_user_advanced_protection
+        self._allow(full_audit_data)
+        full_audit_data["_options"] = {"sensitive_users": ["User1@example.com", "execs@example.com"]}
+        full_audit_data["group_members"] = {"execs@example.com": [{"email": "ceo@example.com"}, {"email": "cfo@example.com"}]}
+        full_audit_data["user_account_logs"] = [make_user_account_event(e, "titanium_enroll")
+                                                for e in ("user1@example.com", "ceo@example.com", "cfo@example.com")]
+        result = check_sensitive_user_advanced_protection(full_audit_data)
+        assert result.status == Status.PASS
+        assert result.actual_value["enrolled"] == ["ceo@example.com", "cfo@example.com", "user1@example.com"]
+        full_audit_data["user_usage"] = [make_user_usage_row("cfo@example.com", num_security_keys=0, num_passkeys_enrolled=0)]
+        result = check_sensitive_user_advanced_protection(full_audit_data)
+        assert result.status == Status.FAIL and "cfo@example.com" in result.details

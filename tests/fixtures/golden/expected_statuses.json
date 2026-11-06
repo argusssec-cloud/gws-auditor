@@ -486,7 +486,7 @@
   },
   "CIS-5.1.1.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-6.1": {
    "confirmed": false,
@@ -726,7 +726,7 @@
   },
   "GWS.COMMONCONTROLS.9.2": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.DRIVEDOCS.1.10": {
    "confirmed": false,
@@ -1719,7 +1719,7 @@
   },
   "GWS.COMMONCONTROLS.9.2": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.DRIVEDOCS.1.10": {
    "confirmed": false,
@@ -2417,7 +2417,7 @@
   },
   "CIS-5.1.1.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-6.1": {
    "confirmed": false,
@@ -2657,7 +2657,7 @@
   },
   "GWS.COMMONCONTROLS.9.2": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.DRIVEDOCS.1.10": {
    "confirmed": false,

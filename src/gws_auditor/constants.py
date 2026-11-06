@@ -81,7 +81,32 @@ DEFAULT_REPORTS_DIR = "./reports"
 # NOTE: Checks that infer current state from admin activity logs
 # (e.g. third-party app access reviews) will miss actions taken
 # before this window and may return incomplete results.
-DEFAULT_ADMIN_LOG_LOOKBACK_DAYS = 90
+# The Reports API keeps 180 days; checks that infer a setting from its latest change event
+# see nothing older, so the admin log is read over the whole retention.
+DEFAULT_ADMIN_LOG_LOOKBACK_DAYS = 180
+# Admin events that give a setting's state and are rare: fetched by name over the full
+# Reports API retention so a change older than the general window is still seen.
+DEFAULT_ADMIN_LOG_EXTENDED_LOOKBACK_DAYS = 180
+EXTENDED_ADMIN_LOG_EVENTS = (
+    "AUTHORIZE_API_CLIENT_ACCESS",   # domain-wide delegation grant (CIS-4.2.1.4)
+    "REMOVE_API_CLIENT_ACCESS",      # domain-wide delegation revocation
+    "TOGGLE_CAA_ENABLEMENT",         # Context-Aware Access on/off (GWS.COMMONCONTROLS.2.1, ADD-20)
+    "CHANGE_CAA_APP_ASSIGNMENTS",    # access levels assigned to an app (ADD-20)
+)
+# user_accounts audit log (Advanced Protection enrolment events) and the per-user
+# usage report parameters that mirror the Admin console Security report.
+DEFAULT_USER_ACCOUNTS_LOG_LOOKBACK_DAYS = 180
+USER_USAGE_ACCOUNT_PARAMETERS = (
+    "accounts:is_2sv_enrolled",
+    "accounts:is_2sv_enforced",
+    "accounts:num_security_keys",
+    "accounts:num_passkeys_enrolled",
+    "accounts:password_strength",
+    "accounts:password_length_compliance",
+    "accounts:is_less_secure_apps_access_allowed",
+    "accounts:num_authorized_apps",
+    "accounts:is_suspended",
+)
 DEFAULT_TOKEN_LOG_LOOKBACK_DAYS = 90
 DEFAULT_LOGIN_LOG_LOOKBACK_DAYS = 30
 DEFAULT_USAGE_REPORT_LOOKBACK_DAYS = 180
@@ -306,7 +331,7 @@ LOW_CHECKS: frozenset[str] = frozenset({
     "GWS.CLASSROOM.5.1",  # Ensure class creation is restricted to verified teachers
     # Review/monitoring checks (manual review items)
     "CIS-5.1.1.1",        # Ensure App Usage Activity Report is reviewed
-    "CIS-5.1.1.2",        # Ensure Security Investigation Tool is used
+    "CIS-5.1.1.2",        # Ensure the Security Report is reviewed regularly for anomalies
     "CIS-1.1.3",          # Ensure Super Admin accounts are only used for admin tasks
     # Inventory checks
     "ADD-28",              # Ensure groups have active members

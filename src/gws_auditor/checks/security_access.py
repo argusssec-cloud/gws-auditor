@@ -317,6 +317,7 @@ def check_internal_api_access(data: dict) -> CheckResult:
     )
 
 
+
 @check(
     check_id="CIS-4.2.1.4",
     title="Ensure domain-wide delegation is reviewed",
@@ -330,7 +331,14 @@ def check_internal_api_access(data: dict) -> CheckResult:
     ),
 )
 def check_domain_wide_delegation(data: dict) -> CheckResult:
-    """Domain-wide delegation grants should be reviewed regularly."""
+    """Domain-wide delegation grants should be reviewed regularly and follow least privilege.
+
+    No API lists the authorized clients; the admin audit log records each grant
+    (``AUTHORIZE_API_CLIENT_ACCESS``, whose ``API_CLIENT_NAME`` may hold several comma-separated
+    client IDs) and revocation (``REMOVE_API_CLIENT_ACCESS``). Grants older than the log
+    retention are invisible, so the check can establish WARN (a risky grant observed) but never
+    PASS: a clean window is reported for review together with its start date.
+    """
     _ID = "CIS-4.2.1.4"
     _TITLE = "Ensure domain-wide delegation is reviewed"
     _L, _S, _SEC = "L2", "CIS", "Access Control"
@@ -339,86 +347,76 @@ def check_domain_wide_delegation(data: dict) -> CheckResult:
         "Domain-wide delegation. Review each service account and its authorized "
         "scopes. Remove unnecessary delegations and restrict scopes to minimum required. https://knowledge.workspace.google.com/admin/apps/control-api-access-with-domain-wide-delegation"
     )
-
-    # Primary: check policy data
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-    api_access = security.get("api_access", {})
-    dwd_clients = api_access.get("domain_wide_delegation_clients", [])
-
-    if isinstance(dwd_clients, list) and len(dwd_clients) > 0:
-        return make_review(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=(
-                f"Found {len(dwd_clients)} service account(s) with domain-wide delegation. "
-                "Manual review is required to ensure each delegation is necessary "
-                "and scoped appropriately."
-            ),
-            remediation=_REMED,
-        )
-
-    # Fallback: detect DWD clients from AUTHORIZE_API_CLIENT_ACCESS admin log events.
-    # The latest event per client wins; a later REMOVE_API_CLIENT_ACCESS revokes the grant.
     from .additional import _classify_scope_risk
 
     admin_logs = data.get("admin_logs", [])
     latest: dict[str, tuple[str, str, str]] = {}
+    earliest = ""
     for log in admin_logs:
+        when = str(log.get("time", ""))
+        if when and (not earliest or when < earliest):
+            earliest = when
         event = log.get("event_name")
         if event not in ("AUTHORIZE_API_CLIENT_ACCESS", "REMOVE_API_CLIENT_ACCESS"):
             continue
-        params = log.get("parameters", {})
-        client_id = params.get("API_CLIENT_NAME", "")
-        when = log.get("time", "")
-        if client_id and (client_id not in latest or when >= latest[client_id][0]):
-            latest[client_id] = (when, event, str(params.get("API_SCOPES", "")))
-    grants = {c: scopes for c, (_, event, scopes) in latest.items()
-              if event == "AUTHORIZE_API_CLIENT_ACCESS"}
-    dwd_client_ids = set(grants)
+        params = log.get("parameters", {}) or {}
+        for client_id in (c.strip() for c in str(params.get("API_CLIENT_NAME", "")).split(",") if c.strip()):
+            if client_id not in latest or when >= latest[client_id][0]:
+                latest[client_id] = (when, event, str(params.get("API_SCOPES", "")))
+    window = f"since {earliest[:10]}" if earliest else "in the audit-log window"
+
+    if not latest:
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(
+                f"No domain-wide delegation grant or revocation appears in the admin audit log {window}. "
+                "No API lists the authorized clients, so verify the inventory in Admin console > Security > "
+                "Access and data control > API controls > Domain-wide delegation."
+            ),
+            remediation=_REMED,
+        )
+
+    grants = {c: scopes for c, (_, event, scopes) in latest.items() if event == "AUTHORIZE_API_CLIENT_ACCESS"}
+    allowlist = {str(c).strip() for c in (data.get("_options", {}) or {}).get("dwd_allowlist", []) or [] if str(c).strip()}
 
     # Delegated scopes apply to every user in the domain, so write access to mail, Drive
     # or the directory is org-wide impersonation. Read-only scopes are reported, not flagged.
     risky: dict[str, list[str]] = {}
+    vetted: dict[str, list[str]] = {}
     for client_id, scopes in grants.items():
         for scope in (s.strip() for s in scopes.replace(" ", ",").split(",") if s.strip()):
             if scope.endswith(".readonly"):
                 continue
             if _classify_scope_risk(scope) in ("CRITICAL", "HIGH"):
-                risky.setdefault(client_id, []).append(scope.rsplit("/", 1)[-1])
+                (vetted if client_id in allowlist else risky).setdefault(client_id, []).append(scope.rsplit("/", 1)[-1])
 
+    actual = {"delegation_count": len(grants), "high_risk_clients": len(risky),
+              "allowlisted_clients": len(vetted), "window_start": earliest[:10]}
     if risky:
         summary = "; ".join(f"{c}: {', '.join(sorted(set(s))[:6])}" for c, s in sorted(risky.items()))
         return make_warn(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=(
-                f"{len(risky)} of {len(grants)} domain-wide delegation client(s) hold high-risk write "
-                f"scopes that allow org-wide impersonation: {summary}"
+                f"{len(risky)} of {len(grants)} domain-wide delegation client(s) authorized {window} hold high-risk "
+                f"write scopes that allow org-wide impersonation: {summary}. Vetted clients can be listed in "
+                "options.dwd_allowlist."
             ),
-            actual_value={"delegation_count": len(grants), "high_risk_clients": len(risky)},
+            actual_value=actual,
             expected_value="Delegations limited to least-privilege scopes",
             remediation=_REMED,
         )
-
-    if dwd_client_ids:
-        return make_review(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=(
-                f"Found {len(dwd_client_ids)} service account(s) with domain-wide delegation "
-                f"(detected from admin logs). Manual review is required to ensure each "
-                f"delegation is necessary and scoped appropriately."
-            ),
-            actual_value={"delegation_count": len(dwd_client_ids)},
-            expected_value="All delegations reviewed",
-            remediation=_REMED,
-        )
-
+    vetted_note = (f"; {len(vetted)} client(s) with such scopes are vetted in options.dwd_allowlist" if vetted else "")
+    # The audit log only shows grants changed inside its retention, so the inventory is never
+    # known to be complete: "nothing risky observed" is a review item, not a PASS.
     return make_review(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details=(
-            "Could not determine domain-wide delegation status. "
-            "Verify manually in Admin console > Security > Access and data control > "
-            "API controls > Domain-wide delegation."
+            f"{len(grants)} domain-wide delegation client(s) authorized {window} carry no org-wide write "
+            f"scopes{vetted_note}. Grants older than the audit-log retention are not visible, so confirm the "
+            "full list in Admin console > Security > Access and data control > API controls > Domain-wide delegation."
         ),
+        actual_value=actual,
+        expected_value="Delegations limited to least-privilege scopes",
         remediation=_REMED,
     )
 

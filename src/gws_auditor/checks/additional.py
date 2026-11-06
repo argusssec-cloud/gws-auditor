@@ -1016,6 +1016,50 @@ def _caa_denials(caa_events: list, app_class: str) -> tuple[int, list[str]]:
     return len(matched), sorted(set(matched))
 
 
+def _caa_app_assignment_evidence(admin_logs: list, app_names: list[str]) -> dict:
+    """Admin-log evidence for Context-Aware Access on the given apps.
+
+    ``TOGGLE_CAA_ENABLEMENT`` gives the global state; ``CHANGE_CAA_APP_ASSIGNMENTS`` (parameters
+    ``APPLICATION_NAME``, ``CAA_ACCESS_LEVELS_NEW``, ``MODE``) gives the latest access-level
+    assignment per app. Returns ``{"toggle": state|None, "covered": [...], "monitor": [...],
+    "removed": [...], "unknown": [...]}`` over *app_names* (matched case-insensitively).
+    """
+    toggle: tuple[str, str] | None = None
+    latest: dict[str, tuple[str, object, str]] = {}
+    for log in admin_logs or []:
+        if not isinstance(log, dict):
+            continue
+        params = log.get("parameters", {}) or {}
+        when = str(log.get("time", ""))
+        event = log.get("event_name")
+        if event == "TOGGLE_CAA_ENABLEMENT" and "NEW_VALUE" in params:
+            if toggle is None or when >= toggle[0]:
+                toggle = (when, str(params["NEW_VALUE"]).upper())
+        elif event == "CHANGE_CAA_APP_ASSIGNMENTS":
+            app = str(params.get("APPLICATION_NAME", "")).strip().lower()
+            if app and (app not in latest or when >= latest[app][0]):
+                latest[app] = (when, params.get("CAA_ACCESS_LEVELS_NEW", ""), str(params.get("MODE", "")).upper())
+    covered, monitor, removed, unknown, unclear = [], [], [], [], []
+    for name in app_names:
+        entry = latest.get(str(name).strip().lower())
+        if entry is None:
+            unknown.append(name)
+            continue
+        levels, mode = entry[1], entry[2]
+        has_levels = bool(levels) and str(levels).strip() not in ("[]", "{}", "none", "None")
+        if not has_levels:
+            removed.append(name)
+        elif "MONITOR" in mode or "DRY" in mode:
+            monitor.append(name)
+        elif not mode or "ACTIVE" in mode or "ENFORC" in mode:
+            covered.append(name)
+        else:
+            # The MODE parameter's values are not documented; an unrecognised one is not a PASS.
+            unclear.append(f"{name} (mode {mode})")
+    return {"toggle": toggle[1] if toggle else None, "covered": covered, "monitor": monitor,
+            "removed": removed, "unknown": unknown, "unclear": unclear}
+
+
 @check(
     check_id="ADD-20",
     title="Ensure Context-Aware Access is applied to OIDC apps",
@@ -1082,18 +1126,58 @@ def check_caa_oidc(data: dict) -> CheckResult:
             expected_value="CAA denial events present for OIDC apps",
         )
 
+    # Step 2b — Configuration evidence from the admin audit log: CAA toggled off, or access
+    # levels assigned to (or removed from) the detected apps, decide without a denial.
+    evidence = _caa_app_assignment_evidence(data.get("admin_logs", []), oidc_apps)
+    actual = {"oidc_apps": oidc_count, "denials": 0, "caa_enabled": evidence["toggle"],
+              "covered": evidence["covered"], "monitor_only": evidence["monitor"],
+              "levels_removed": evidence["removed"], "no_assignment_event": evidence["unknown"],
+              "unrecognised_mode": evidence["unclear"]}
+    if evidence["toggle"] == "DISABLED":
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Context-Aware Access was turned off (latest admin-log change), so none of the "
+                     f"{oidc_count} third-party OIDC app(s) is covered."),
+            actual_value=actual, expected_value="CAA enabled with access levels assigned to OIDC apps",
+            remediation=_REMEDIATION,
+        )
+    if evidence["removed"] or evidence["monitor"]:
+        parts = []
+        if evidence["removed"]:
+            parts.append(f"access levels removed from {', '.join(evidence['removed'])}")
+        if evidence["monitor"]:
+            parts.append(f"assigned in monitor mode only (not enforced) for {', '.join(evidence['monitor'])}")
+        return make_fail(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Latest Context-Aware Access assignment changes in the admin audit log: " + "; ".join(parts) + ".",
+            actual_value=actual, expected_value="CAA enabled with access levels assigned to OIDC apps",
+            remediation=_REMEDIATION,
+        )
+    if oidc_apps and not evidence["unknown"] and not evidence["unclear"]:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"All {len(evidence['covered'])} detected third-party OIDC app(s) have access levels assigned "
+                     f"in active mode (latest CHANGE_CAA_APP_ASSIGNMENTS admin-log change): "
+                     f"{', '.join(evidence['covered'])}."),
+            actual_value=actual, expected_value="CAA enabled with access levels assigned to OIDC apps",
+        )
+
+    covered_note = (f" {len(evidence['covered'])} app(s) have access levels assigned per the admin log "
+                    f"({', '.join(evidence['covered'][:5])}); no assignment event was found for the others." if evidence["covered"] else "")
+    if evidence["unclear"]:
+        covered_note += f" Assignment logged with an unrecognised mode for: {', '.join(evidence['unclear'])}."
     return make_review(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details=(
             f"{oidc_count} third-party OIDC app(s) detected "
             f"({', '.join(oidc_apps[:5])}{'...' if len(oidc_apps) > 5 else ''}) "
-            "but no CAA ACCESS_DENY_EVENT was logged in the window. "
-            "Absence of denials does not prove CAA is disabled — verify the "
+            "but no CAA ACCESS_DENY_EVENT and no access-level assignment change for them "
+            "was logged in the window. Absence of denials does not prove CAA is disabled — verify the "
             "policy assignment in Admin console > Security > "
-            "Context-Aware Access."
+            "Context-Aware Access." + covered_note
         ),
         remediation=_REMEDIATION,
-        actual_value={"oidc_apps": oidc_count, "denials": 0},
+        actual_value=actual,
     )
 
 

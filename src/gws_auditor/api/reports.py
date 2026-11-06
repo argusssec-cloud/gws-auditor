@@ -224,6 +224,39 @@ class ReportsClient(BaseAPIClient):
             self.record_error("get_caa_activities", exc)
             return []
 
+    def get_user_accounts_activities(
+        self,
+        customer_id: str,
+        start_time: str | None = None,
+        max_items: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Retrieve user accounts security-setting events.
+
+        Queries ``applicationName=user_accounts``, whose documented events are
+        ``2sv_enroll``, ``2sv_disable``, ``password_edit``, ``recovery_*_edit``,
+        ``titanium_enroll`` / ``titanium_unenroll`` (Advanced Protection Program)
+        and ``email_forwarding_out_of_domain``. The actor is the account whose
+        setting changed.
+
+        Reference: https://developers.google.com/workspace/admin/reports/v1/appendix/activity/user-accounts
+        """
+        try:
+            activities = self.paginate(
+                self.service.activities().list,
+                items_key="items",
+                max_items=max_items,
+                userKey="all",
+                applicationName="user_accounts",
+                customerId=customer_id,
+                startTime=start_time or _default_start_time(),
+                maxResults=1000,
+            )
+            logger.info("Retrieved %d user accounts activity events", len(activities))
+            return activities
+        except Exception as exc:
+            self.record_error("get_user_accounts_activities", exc)
+            return []
+
     # ------------------------------------------------------------------
     # Usage reports
     # ------------------------------------------------------------------
@@ -232,6 +265,7 @@ class ReportsClient(BaseAPIClient):
         self,
         customer_id: str,
         date: str,
+        parameters: str | None = None,
     ) -> list[dict[str, Any]]:
         """Retrieve per-user usage statistics for a given date.
 
@@ -241,18 +275,27 @@ class ReportsClient(BaseAPIClient):
             The Google Workspace customer ID.
         date:
             The date for the report in ``YYYY-MM-DD`` format.
+        parameters:
+            Optional comma-separated parameter list (e.g.
+            ``"accounts:is_2sv_enrolled,accounts:num_security_keys"``).
+            Without it the API returns every parameter.
 
         Returns
         -------
         A list of user-usage resource dicts.
         """
         try:
+            kwargs: dict[str, Any] = {
+                "userKey": "all",
+                "date": date,
+                "customerId": customer_id,
+            }
+            if parameters:
+                kwargs["parameters"] = parameters
             usage = self.paginate(
                 self.service.userUsageReport().get,
                 items_key="usageReports",
-                userKey="all",
-                date=date,
-                customerId=customer_id,
+                **kwargs,
             )
             logger.info(
                 "Retrieved %d user usage reports for %s", len(usage), date

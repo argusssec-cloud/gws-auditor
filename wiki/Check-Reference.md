@@ -28,7 +28,7 @@ The GWS Security Auditor implements **227 security checks** across four framewor
 | **MEDIUM** | 80 |
 | **LOW** | 42 |
 
-41 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
+40 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
 
 ## Check Statuses
 
@@ -292,7 +292,7 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 | ID | Title | Level | Source | Severity | Notes |
 |----|-------|-------|--------|----------|-------|
 | CIS-5.1.1.1 | Ensure App Usage Activity Report is reviewed | L1 | CIS | LOW | unscored |
-| CIS-5.1.1.2 | Ensure Security Investigation Tool is used | L1 | CIS | LOW | unscored, Enterprise Standard+ |
+| CIS-5.1.1.2 | Ensure the Security Report is reviewed regularly for anomalies | L1 | CIS | LOW |  |
 | GWS.COMMONCONTROLS.14.1 | Ensure audit logging is enabled | L1 | CISA | HIGH |  |
 | GWS.COMMONCONTROLS.14.2 | Ensure audit log retention meets minimum requirements | L1 | CISA | HIGH | unscored |
 

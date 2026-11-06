@@ -9,6 +9,7 @@ Only checks NOT already covered by CIS/OTHER/GOOGLE or the main CISA module.
 """
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified,
+                   admin_emails, user_usage_by_email, advanced_protection_enrolment, make_not_applicable,
                    format_ou_values_readable, is_default_policy, is_admin_configured, field_value, ou_verdict)
 from ..models import CheckResult, Status
 
@@ -66,21 +67,48 @@ def check_context_aware_access(data: dict) -> CheckResult:
     # OU-aware path
     # Context-Aware Access is not a Policy API setting (security.login_challenges only carries
     # enableEmployeeIdChallenge). The latest TOGGLE_CAA_ENABLEMENT admin-log event gives the state.
-    caa_events = [log for log in data.get("admin_logs", [])
-                  if log.get("event_name") == "TOGGLE_CAA_ENABLEMENT"
-                  and isinstance(log.get("parameters"), dict) and "NEW_VALUE" in log["parameters"]]
-    if caa_events:
-        state = str(max(caa_events, key=lambda log: log.get("time", ""))["parameters"]["NEW_VALUE"]).upper()
-        if state == "ENABLED":
-            return make_pass(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details="Context-Aware Access is enabled (latest admin-log change).",
-                actual_value=state, expected_value="ENABLED",
-            )
+    # The toggle is necessary, not sufficient: a tenant can be ON with no access level at all
+    # (seen live 2026-11-05). PASS needs an access-level assignment in active mode, or a denial
+    # event proving enforcement; ON without an assignment event is a review item.
+    from .additional import _caa_app_assignment_evidence
+    assignments = [log for log in data.get("admin_logs", [])
+                   if log.get("event_name") == "CHANGE_CAA_APP_ASSIGNMENTS" and isinstance(log.get("parameters"), dict)]
+    apps = sorted({str(log["parameters"].get("APPLICATION_NAME", "")).strip() for log in assignments
+                   if log["parameters"].get("APPLICATION_NAME")})
+    evidence = _caa_app_assignment_evidence(data.get("admin_logs", []), apps)
+    denials = [e for e in data.get("caa_events", []) if isinstance(e, dict) and e.get("event_name") == "ACCESS_DENY_EVENT"]
+    state = evidence["toggle"]
+    expected = "Context-Aware Access enabled with access levels assigned to apps"
+    actual = {"caa_enabled": state, "apps_with_levels": evidence["covered"], "monitor_only": evidence["monitor"],
+              "levels_removed": evidence["removed"], "denials": len(denials)}
+    if state == "DISABLED":
         return make_fail(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Context-Aware Access was turned off (latest admin-log change).",
-            actual_value=state, expected_value="ENABLED", remediation=_REMED,
+            actual_value=actual, expected_value=expected, remediation=_REMED,
+        )
+    if denials:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"Context-Aware Access is enforcing: {len(denials)} ACCESS_DENY_EVENT(s) in the audit window.",
+            actual_value=actual, expected_value=expected,
+        )
+    if state == "ENABLED" and evidence["covered"]:
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Context-Aware Access is enabled and access levels are assigned in active mode to "
+                     f"{len(evidence['covered'])} app(s) per the latest admin-log changes: {', '.join(evidence['covered'][:8])}."),
+            actual_value=actual, expected_value=expected,
+        )
+    if state == "ENABLED":
+        why = ("access levels were removed from or only monitored for the assigned apps"
+               if evidence["removed"] or evidence["monitor"] else
+               "no access-level assignment to an app appears in the audit window, so there may be no access level at all")
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=(f"Context-Aware Access is enabled (latest admin-log change) but {why}. Verify that access levels "
+                     "exist and are assigned in Admin console > Security > Access and data control > Context-Aware Access."),
+            actual_value=actual, expected_value=expected, remediation=_REMED,
         )
 
     # Legacy shape only. A bare "enabled" key is NOT accepted: the provider adds it to the real
@@ -531,18 +559,72 @@ def check_recovery_info_disabled(data: dict) -> CheckResult:
 
 # Policy API: security.advanced_protection_program only says whether users MAY self-enroll
 # (enableAdvancedProtectionSelfEnrollment); per-account enrollment is not exposed.
-_SELF_ENROLLMENT_REVIEW = (
-    "Advanced Protection self-enrollment is allowed, but which accounts are actually enrolled "
-    "is not exposed by the API — verify enrollment in Admin console > Users."
+_APP_REMED = (
+    "Admin console > Security > Authentication > Advanced Protection Program: allow users to enroll. Then "
+    "enroll each account at https://myaccount.google.com/advanced-protection with two security keys or passkeys. "
+    "https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
 )
 
 
-def _self_enrollment_judge(entry: dict):
-    """Self-enrollment off -> accounts cannot enroll (FAIL); on or unknown -> cannot judge enrollment."""
-    self_enroll = field_value(entry, "enableAdvancedProtectionSelfEnrollment")
-    if self_enroll is False:
-        return False, "self-enrollment disabled"
-    return None
+def _advanced_protection_verdict(data: dict, population: set[str], who: str, *, check_id: str, title: str,
+                                 level: str) -> CheckResult:
+    """Three-state Advanced Protection verdict for *population* (lower-case emails).
+
+    * self-enrolment disabled in an OU -> FAIL (nobody there can enrol);
+    * an account whose latest user-accounts event is ``titanium_unenroll``, or that has no security
+      key and no passkey (so cannot be enrolled) -> FAIL;
+    * every account has ``titanium_enroll`` as its latest event -> PASS;
+    * otherwise MANUAL: enrolment is not exposed by any API and the audit log only covers 180 days.
+    """
+    common = dict(check_id=check_id, title=title, level=level, source="CISA", section="Security")
+    expected = f"Self-enrollment allowed and every {who} account enrolled"
+    security = data.get("policies", {}).get("security", {})
+    ou_values = get_ou_values(security, "advanced_protection_program")
+    disabled = sorted(str(e.get("org_unit", "/")) for e in ou_values
+                      if field_value(e, "enableAdvancedProtectionSelfEnrollment") is False)
+    if disabled:
+        return make_fail(**common, details=(
+            f"{len(disabled)} OU(s) disable Advanced Protection self-enrollment, so {who} accounts there cannot "
+            f"enroll: {', '.join(disabled)}"), actual_value={"self_enrollment_disabled_ous": disabled},
+            expected_value=expected, remediation=_APP_REMED)
+
+    enrolment = advanced_protection_enrolment(data)
+    usage = user_usage_by_email(data)
+    failed, enrolled, unknown = [], [], []
+    for email in sorted(population):
+        state = enrolment.get(email)
+        row = usage.get(email) or {}
+        keys, passkeys = row.get("accounts:num_security_keys"), row.get("accounts:num_passkeys_enrolled")
+        if state and state[0] == "titanium_unenroll":
+            failed.append(f"{email} [left Advanced Protection on {state[1][:10]}]")
+        elif keys == 0 and passkeys == 0:
+            failed.append(f"{email} [no security key or passkey, so cannot be enrolled]")
+        elif state and state[0] == "titanium_enroll":
+            enrolled.append(email)
+        else:
+            unknown.append(email)
+    actual = {"enrolled": enrolled, "not_enrolled": failed, "unknown": unknown}
+    if failed:
+        return make_fail(**common, details=(
+            f"{len(failed)} of {len(population)} {who} account(s) are not in Advanced Protection: " + "; ".join(failed)),
+            actual_value=actual, expected_value=expected, remediation=_APP_REMED)
+    if unknown:
+        sources = []
+        if not data.get("user_account_logs"):
+            sources.append("the user_accounts audit log was not collected")
+        if not usage:
+            sources.append("the per-user usage report was not collected")
+        why = ("; " + " and ".join(sources)) if sources else ""
+        return make_review(**common, details=(
+            f"{len(enrolled)} of {len(population)} {who} account(s) show an Advanced Protection enrollment event; "
+            f"{len(unknown)} have no enrollment event in the 180-day user-accounts audit log and the API does not "
+            f"expose enrollment state{why}: {', '.join(unknown)}. Verify them in Admin console > Users."),
+            actual_value=actual, expected_value=expected, remediation=_APP_REMED)
+    return make_pass(**common, details=(
+        f"All {len(enrolled)} {who} account(s) are enrolled in Advanced Protection (titanium_enroll is their "
+        "latest user-accounts audit event)."), actual_value=actual, expected_value=expected)
+
+
 
 @check(
     check_id="GWS.COMMONCONTROLS.9.1",
@@ -550,96 +632,21 @@ def _self_enrollment_judge(entry: dict):
     level="L1",
     source="CISA",
     section="Security",
-    remediation=(
-        "Admin console > Security > Authentication > Advanced Protection Program. "
-        "Enforce enrollment for all admin accounts. The Advanced Protection "
-        "Program provides the strongest account security with hardware "
-        "security keys and restricted third-party app access. https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
-    ),
+    remediation=_APP_REMED,
 )
 def check_admin_advanced_protection(data: dict) -> CheckResult:
-    """Admin enrollment in the Advanced Protection Program should be enforced."""
-    _ID = "GWS.COMMONCONTROLS.9.1"
-    _TITLE = "Ensure privileged accounts are in Advanced Protection Program"
-    _L, _S, _SEC = "L1", "CISA", "Security"
-    _REMED = (
-        "Admin console > Security > Authentication > Advanced Protection Program. "
-        "Enforce enrollment for all admin accounts. The Advanced Protection "
-        "Program provides the strongest account security with hardware "
-        "security keys and restricted third-party app access. https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
-    )
+    """Super admins and delegated admins should be enrolled in the Advanced Protection Program."""
+    admins = admin_emails(data)
+    if not admins:
+        return make_manual(check_id="GWS.COMMONCONTROLS.9.1",
+                           title="Ensure privileged accounts are in Advanced Protection Program",
+                           level="L1", source="CISA", section="Security",
+                           details="No administrator accounts were collected, so Advanced Protection enrollment "
+                                   "cannot be assessed.", remediation=_APP_REMED)
+    return _advanced_protection_verdict(
+        data, admins, "administrator", check_id="GWS.COMMONCONTROLS.9.1",
+        title="Ensure privileged accounts are in Advanced Protection Program", level="L1")
 
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-
-    # OU-aware path
-    # Policy API: security.advanced_protection_program only says whether users MAY self-enroll
-    # (enableAdvancedProtectionSelfEnrollment); per-account enrollment is not exposed.
-    ou_values = get_ou_values(security, "advanced_protection_program")
-    legacy_values = [e for e in ou_values
-                     if "adminEnrollmentEnforced" in e["value"] or "enabled" in e["value"]]
-    real_shape = any("enableAdvancedProtectionSelfEnrollment" in e["value"] for e in ou_values)
-    if ou_values and (real_shape or not legacy_values):
-        allowed = any(field_value(e, "enableAdvancedProtectionSelfEnrollment") is True for e in ou_values)
-        return ou_verdict(
-            ou_values, _self_enrollment_judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="disable Advanced Protection self-enrollment, so accounts there cannot enroll",
-            pass_text="allow Advanced Protection self-enrollment",
-            expected_value="Enrollment allowed and completed", remediation=_REMED,
-            unknown_text=_SELF_ENROLLMENT_REVIEW if allowed else None,
-        )
-
-    # Legacy shape only
-    if legacy_values:
-        return ou_verdict(
-            legacy_values, _flag_judge("adminEnrollmentEnforced", "enabled", expected=True),
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="lack Advanced Protection enforcement",
-            pass_text="enforce Advanced Protection for admins",
-            expected_value="Enabled for all OUs", remediation=_REMED,
-        )
-
-    # Fallback: mapped root-level value
-    ap = security.get("advanced_protection", {})
-    enforced = ap.get("admin_enrollment_enforced", None)
-
-    if enforced is True:
-        return make_pass(
-            check_id="GWS.COMMONCONTROLS.9.1",
-            title="Ensure privileged accounts are in Advanced Protection Program",
-            level="L1", source="CISA", section="Security",
-            details="Advanced Protection Program enrollment is enforced for admins.",
-            actual_value=enforced,
-            expected_value="Enabled for all OUs",
-        )
-
-    if enforced is None:
-        return make_manual(
-            check_id="GWS.COMMONCONTROLS.9.1",
-            title="Ensure privileged accounts are in Advanced Protection Program",
-            level="L1", source="CISA", section="Security",
-            details="Could not determine Advanced Protection Program enforcement for admins.",
-            remediation=(
-                "Admin console > Security > Authentication > Advanced Protection Program. "
-                "Enable enrollment enforcement for admin accounts to provide the "
-                "strongest account protection including phishing-resistant keys. https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
-            ),
-        )
-
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.9.1",
-        title="Ensure privileged accounts are in Advanced Protection Program",
-        level="L1", source="CISA", section="Security",
-        details="Advanced Protection Program enrollment is not enforced for admins.",
-        actual_value=enforced,
-        expected_value="Enabled for all OUs",
-        remediation=(
-            "Admin console > Security > Authentication > Advanced Protection Program. "
-            "Enforce enrollment for all admin accounts. The Advanced Protection "
-            "Program provides the strongest account security with hardware "
-            "security keys and restricted third-party app access. https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
-        ),
-    )
 
 
 @check(
@@ -648,96 +655,34 @@ def check_admin_advanced_protection(data: dict) -> CheckResult:
     level="L2",
     source="CISA",
     section="Security",
-    remediation=(
-        "Admin console > Security > Authentication > Advanced Protection Program. "
-        "Enable enrollment for sensitive users. These users are high-value targets "
-        "and should have the strongest available account protections including "
-        "hardware security keys and restricted app access. https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
-    ),
+    remediation=_APP_REMED,
 )
 def check_sensitive_user_advanced_protection(data: dict) -> CheckResult:
-    """Sensitive users should be enrolled in the Advanced Protection Program."""
-    _ID = "GWS.COMMONCONTROLS.9.2"
-    _TITLE = "Ensure sensitive users are in Advanced Protection Program"
-    _L, _S, _SEC = "L2", "CISA", "Security"
-    _REMED = (
-        "Admin console > Security > Authentication > Advanced Protection Program. "
-        "Enable enrollment for sensitive users. These users are high-value targets "
-        "and should have the strongest available account protections including "
-        "hardware security keys and restricted app access. https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
-    )
-
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-
-    # OU-aware path
-    # Policy API: security.advanced_protection_program only says whether users MAY self-enroll
-    # (enableAdvancedProtectionSelfEnrollment); per-account enrollment is not exposed.
-    ou_values = get_ou_values(security, "advanced_protection_program")
-    legacy_values = [e for e in ou_values
-                     if "sensitiveUserEnrollment" in e["value"] or "sensitiveUsersEnrolled" in e["value"]]
-    real_shape = any("enableAdvancedProtectionSelfEnrollment" in e["value"] for e in ou_values)
-    if ou_values and (real_shape or not legacy_values):
-        allowed = any(field_value(e, "enableAdvancedProtectionSelfEnrollment") is True for e in ou_values)
-        return ou_verdict(
-            ou_values, _self_enrollment_judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="disable Advanced Protection self-enrollment, so accounts there cannot enroll",
-            pass_text="allow Advanced Protection self-enrollment",
-            expected_value="Enrollment allowed and completed", remediation=_REMED,
-            unknown_text=_SELF_ENROLLMENT_REVIEW if allowed else None,
-        )
-
-    # Legacy shape only
-    if legacy_values:
-        return ou_verdict(
-            legacy_values, _flag_judge("sensitiveUserEnrollment", "sensitiveUsersEnrolled", expected=True),
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="lack Advanced Protection for sensitive users",
-            pass_text="enroll sensitive users in Advanced Protection",
-            expected_value="Enabled for all OUs", remediation=_REMED,
-        )
-
-    # Fallback: mapped root-level value
-    ap = security.get("advanced_protection", {})
-    enrollment = ap.get("sensitive_user_enrollment", None)
-
-    if enrollment is True:
-        return make_pass(
-            check_id="GWS.COMMONCONTROLS.9.2",
-            title="Ensure sensitive users are in Advanced Protection Program",
-            level="L2", source="CISA", section="Security",
-            details="Advanced Protection Program enrollment is enabled for sensitive users.",
-            actual_value=enrollment,
-            expected_value="Enabled for all OUs",
-        )
-
-    if enrollment is None:
-        return make_manual(
-            check_id="GWS.COMMONCONTROLS.9.2",
-            title="Ensure sensitive users are in Advanced Protection Program",
-            level="L2", source="CISA", section="Security",
-            details="Could not determine Advanced Protection Program enrollment for sensitive users.",
-            remediation=(
-                "Admin console > Security > Authentication > Advanced Protection Program. "
-                "Enable enrollment for sensitive users such as executives, finance, "
-                "and IT staff who handle critical data. https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
-            ),
-        )
-
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.9.2",
-        title="Ensure sensitive users are in Advanced Protection Program",
-        level="L2", source="CISA", section="Security",
-        details="Advanced Protection Program enrollment is not enabled for sensitive users.",
-        actual_value=enrollment,
-        expected_value="Enabled for all OUs",
-        remediation=(
-            "Admin console > Security > Authentication > Advanced Protection Program. "
-            "Enable enrollment for sensitive users. These users are high-value targets "
-            "and should have the strongest available account protections including "
-            "hardware security keys and restricted app access. https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
-        ),
-    )
+    """Accounts the organisation designates as sensitive (``options.sensitive_users``: emails or
+    group addresses) should be enrolled in the Advanced Protection Program."""
+    _ID, _TITLE = "GWS.COMMONCONTROLS.9.2", "Ensure sensitive users are in Advanced Protection Program"
+    configured = (data.get("_options", {}) or {}).get("sensitive_users", []) or []
+    if isinstance(configured, str):
+        configured = [configured]
+    members = data.get("group_members", {}) or {}
+    population: set[str] = set()
+    for entry in configured:
+        key = str(entry).strip().lower()
+        if not key:
+            continue
+        group = next((members[g] for g in members if str(g).lower() == key), None)
+        if group is not None:
+            population.update(str(m.get("email", "")).lower() for m in group if isinstance(m, dict) and m.get("email"))
+        else:
+            population.add(key)
+    if not population:
+        return make_not_applicable(
+            check_id=_ID, title=_TITLE, level="L2", source="CISA", section="Security",
+            details=("No sensitive-user population is defined (options.sensitive_users is empty), so there is "
+                     "nothing to assess. List the emails or group addresses of sensitive accounts in the config; "
+                     "administrators are covered by GWS.COMMONCONTROLS.9.1."),
+            actual_value=[])
+    return _advanced_protection_verdict(data, population, "sensitive", check_id=_ID, title=_TITLE, level="L2")
 
 
 # ===========================================================================

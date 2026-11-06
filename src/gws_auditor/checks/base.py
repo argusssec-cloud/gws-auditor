@@ -902,3 +902,73 @@ def make_not_applicable(check_id: str, title: str, level: str, source: str,
         actual_value=actual_value, expected_value=expected_value,
         org_unit=org_unit, cis_controls=cis_controls or [],
     )
+
+
+# ---------------------------------------------------------------------------
+# Account-level evidence shared by the Security report and Advanced Protection checks
+# ---------------------------------------------------------------------------
+
+def admin_emails(data: dict) -> set[str]:
+    """Primary emails of active super admins and delegated admins (normalized users)."""
+    emails: set[str] = set()
+    for u in data.get("users", []) or []:
+        if not isinstance(u, dict) or u.get("suspended") or u.get("archived"):
+            continue
+        if u.get("is_admin") or u.get("isAdmin") or u.get("is_delegated_admin") or u.get("isDelegatedAdmin"):
+            email = (u.get("primary_email") or u.get("primaryEmail") or "").lower()
+            if email:
+                emails.add(email)
+    return emails
+
+
+def _usage_parameter_value(param: dict):
+    """Typed value of one Reports API usage parameter (``boolValue``, ``intValue``,
+    ``stringValue``, ``datetimeValue``; ``intValue`` arrives as a string)."""
+    if "boolValue" in param:
+        return bool(param["boolValue"])
+    if "intValue" in param:
+        try:
+            return int(param["intValue"])
+        except (TypeError, ValueError):
+            return None
+    if "stringValue" in param:
+        return param["stringValue"]
+    if "datetimeValue" in param:
+        return param["datetimeValue"]
+    return param.get("msgValue")
+
+
+def user_usage_by_email(data: dict) -> dict[str, dict]:
+    """``{email: {parameter name: value}}`` from the per-user usage report rows in
+    ``data["user_usage"]`` (Reports API ``userUsageReport.get`` shape: ``entity.userEmail``
+    plus a ``parameters`` list). Empty when the report was not collected."""
+    out: dict[str, dict] = {}
+    for row in data.get("user_usage", []) or []:
+        if not isinstance(row, dict):
+            continue
+        email = str((row.get("entity") or {}).get("userEmail", "")).lower()
+        if not email:
+            continue
+        values = out.setdefault(email, {})
+        for param in row.get("parameters", []) or []:
+            if isinstance(param, dict) and param.get("name"):
+                values[param["name"]] = _usage_parameter_value(param)
+    return out
+
+
+def advanced_protection_enrolment(data: dict) -> dict[str, tuple[str, str]]:
+    """``{email: (latest event name, time)}`` from ``titanium_enroll`` / ``titanium_unenroll``
+    events in the normalized ``user_accounts`` audit log (``data["user_account_logs"]``).
+    The actor is the account whose enrolment changed. Empty when nothing was collected."""
+    latest: dict[str, tuple[str, str]] = {}
+    for log in data.get("user_account_logs", []) or []:
+        if not isinstance(log, dict):
+            continue
+        event = str(log.get("event_name", "")).lower()
+        if event not in ("titanium_enroll", "titanium_unenroll"):
+            continue
+        email = str(log.get("actor_email", "")).lower()
+        when = str(log.get("time", ""))
+        if email and (email not in latest or when >= latest[email][1]):
+            latest[email] = (event, when)
+    return latest

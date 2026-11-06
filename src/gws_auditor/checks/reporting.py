@@ -7,7 +7,7 @@
 CIS Google Workspace Benchmark v1.3.0 - Reporting controls.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, admin_emails, user_usage_by_email
 from ..models import CheckResult, Status
 
 
@@ -66,63 +66,83 @@ def check_usage_report_reviewed(data: dict) -> CheckResult:
     )
 
 
+
+_SECURITY_REPORT_REMED = (
+    "Admin console > Reporting > Reports > User reports > Security. Review the report weekly, at a minimum "
+    "for administrator accounts: enrol them in 2-Step Verification, require strong and compliant passwords "
+    "and keep less secure app access off. https://knowledge.workspace.google.com/admin/reports"
+)
+
+
 @check(
     check_id="CIS-5.1.1.2",
-    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
-    title="Ensure Security Investigation Tool is used",
+    title="Ensure the Security Report is reviewed regularly for anomalies",
     level="L1",
     source="CIS",
     section="Reporting",
-    requires_license="enterprise_standard",
-    remediation=(
-        "Admin console > Security > Investigation tool. "
-        "Train administrators to use the Security Investigation Tool "
-        "for analyzing security threats, reviewing user activity, and "
-        "investigating incidents. https://knowledge.workspace.google.com/admin/security/about-the-security-investigation-tool"
-    ),
+    remediation=_SECURITY_REPORT_REMED,
 )
-def check_security_investigation_tool(data: dict) -> CheckResult:
-    """The Security Investigation Tool should be used for threat analysis."""
-    admin_logs = data.get("admin_logs", [])
+def check_security_report_reviewed(data: dict) -> CheckResult:
+    """CIS 5.1.1.2 asks for a weekly review of Reporting > User reports > Security and says that
+    "at a minimum, all Administrator and Super Administrator users should be reviewed". The
+    report's columns are the ``accounts:*`` user usage parameters, so the administrator rows are
+    judged here on 2-Step Verification enrolment, password strength, password length compliance
+    and less secure app access. Security keys, passkeys and authorized apps are reported, not
+    judged (CIS-4.1.1.2 and ADD-33 cover them)."""
+    common = dict(check_id="CIS-5.1.1.2", title="Ensure the Security Report is reviewed regularly for anomalies",
+                  level="L1", source="CIS", section="Reporting")
+    admins = admin_emails(data)
+    if not admins:
+        return make_manual(**common, details="No administrator accounts were collected, so the Security report rows "
+                                             "to review are unknown.", remediation=_SECURITY_REPORT_REMED)
+    usage = user_usage_by_email(data)
+    if not usage:
+        return make_review(**common, details=(
+            "The per-user usage report with the accounts:* parameters was not collected (Reports API, scope "
+            "admin.reports.usage.readonly), so the Security report columns cannot be reviewed here. Review "
+            "Admin console > Reporting > Reports > User reports > Security, at least for administrators."),
+            remediation=_SECURITY_REPORT_REMED)
 
-    # Heuristic: look for evidence of investigation tool usage in admin logs
-    investigation_events = [
-        log for log in admin_logs
-        if log.get("event_name", "").lower() in (
-            "security_investigation",
-            "investigation_query",
-            "security_center_query",
-        )
-        or "investigation" in log.get("event_name", "").lower()
-    ]
+    anomalies, missing, reviewed = [], [], {}
+    for email in sorted(admins):
+        row = usage.get(email)
+        if row is None:
+            missing.append(email)
+            continue
+        problems = []
+        if row.get("accounts:is_2sv_enrolled") is False:
+            problems.append("2SV not enrolled")
+        strength = str(row.get("accounts:password_strength") or "").upper()
+        if strength and strength != "STRONG":
+            problems.append(f"password strength {strength}")
+        compliance = str(row.get("accounts:password_length_compliance") or "").upper()
+        if compliance and compliance != "COMPLIANT":
+            problems.append(f"password length {compliance}")
+        if row.get("accounts:is_less_secure_apps_access_allowed") is True:
+            problems.append("less secure apps allowed")
+        reviewed[email] = {
+            "problems": problems,
+            "security_keys": row.get("accounts:num_security_keys"),
+            "passkeys": row.get("accounts:num_passkeys_enrolled"),
+            "authorized_apps": row.get("accounts:num_authorized_apps"),
+        }
+        if problems:
+            anomalies.append(f"{email} [{', '.join(problems)}]")
 
-    if investigation_events:
-        return make_review(
-            check_id="CIS-5.1.1.2",
-            title="Ensure Security Investigation Tool is used",
-            level="L1", source="CIS", section="Reporting",
-            details=(
-                f"Found {len(investigation_events)} security investigation event(s) in logs. "
-                "Verify that the tool is being used regularly and effectively."
-            ),
-            remediation=(
-                "Admin console > Security > Investigation tool. "
-                "Use the Security Investigation Tool regularly to analyze "
-                "security threats and take action on findings. https://knowledge.workspace.google.com/admin/security/about-the-security-investigation-tool"
-            ),
-        )
-
-    return make_review(
-        check_id="CIS-5.1.1.2",
-        title="Ensure Security Investigation Tool is used",
-        level="L1", source="CIS", section="Reporting",
-        details=(
-            "No Security Investigation Tool activity is visible in the admin audit log; the log does not record tool usage reliably, so review usage manually."
-        ),
-        remediation=(
-            "Admin console > Security > Investigation tool. "
-            "Train administrators to use the Security Investigation Tool "
-            "for analyzing security threats, reviewing user activity, and "
-            "investigating incidents. https://knowledge.workspace.google.com/admin/security/about-the-security-investigation-tool"
-        ),
-    )
+    expected = "Every administrator row of the Security report shows 2SV enrolled, a strong compliant password and no less secure app access"
+    if anomalies:
+        return make_fail(**common, details=(
+            f"{len(anomalies)} of {len(admins)} administrator row(s) in the Security report show an anomaly: "
+            + "; ".join(anomalies)), actual_value={"admins": reviewed, "no_row_yet": missing},
+            expected_value=expected, remediation=_SECURITY_REPORT_REMED)
+    if missing:
+        return make_review(**common, details=(
+            f"{len(reviewed)} administrator row(s) reviewed without anomaly, but {len(missing)} administrator(s) have "
+            f"no Security report row yet (the report lags two to three days): {', '.join(missing)}. Review them in "
+            "Admin console > Reporting > Reports > User reports > Security."),
+            actual_value={"admins": reviewed, "no_row_yet": missing}, expected_value=expected,
+            remediation=_SECURITY_REPORT_REMED)
+    return make_pass(**common, details=(
+        f"All {len(reviewed)} administrator row(s) of the Security report are clean: 2SV enrolled, strong compliant "
+        "password, no less secure app access."), actual_value={"admins": reviewed, "no_row_yet": []},
+        expected_value=expected)

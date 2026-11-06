@@ -14,14 +14,29 @@ from collections import Counter
 
 from .auth import AuthManager
 from .constants import (
+    DEFAULT_ADMIN_LOG_EXTENDED_LOOKBACK_DAYS,
     DEFAULT_ADMIN_LOG_LOOKBACK_DAYS,
     DEFAULT_LOGIN_LOG_LOOKBACK_DAYS,
     DEFAULT_MAX_LOG_EVENTS,
     DEFAULT_TOKEN_LOG_LOOKBACK_DAYS,
+    DEFAULT_USER_ACCOUNTS_LOG_LOOKBACK_DAYS,
+    EXTENDED_ADMIN_LOG_EVENTS,
     LICENSE_TIERS,
+    USER_USAGE_ACCOUNT_PARAMETERS,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _activity_key(log: dict) -> tuple:
+    """Identity of a Reports API activity: its ``id.uniqueQualifier`` when present, else
+    the timestamp plus event names, so merged queries do not duplicate an event."""
+    ident = log.get("id") if isinstance(log, dict) else None
+    if isinstance(ident, dict) and ident.get("uniqueQualifier"):
+        return ("uq", str(ident.get("uniqueQualifier")), str(ident.get("time", "")))
+    time = ident.get("time", "") if isinstance(ident, dict) else ""
+    names = tuple(e.get("name", "") for e in (log.get("events") or []) if isinstance(e, dict)) if isinstance(log, dict) else ()
+    return ("t", time, names)
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +95,9 @@ class Provider:
         ("login_logs", "_get_login_logs"),
         ("token_logs", "_get_token_logs"),
         ("caa_events", "_get_caa_events"),
+        ("user_account_logs", "_get_user_account_logs"),
         ("usage_reports", "_get_usage_reports"),
+        ("user_usage", "_get_user_usage"),
         ("dns_records", "_get_dns_records"),
         ("alert_center_rules", "_get_alert_center_rules"),
         ("chat_spaces", "_get_chat_spaces"),
@@ -121,7 +138,9 @@ class Provider:
             "login_logs": self._get_login_logs(),
             "token_logs": self._get_token_logs(),
             "caa_events": self._get_caa_events(),
+            "user_account_logs": self._get_user_account_logs(),
             "usage_reports": self._get_usage_reports(),
+            "user_usage": self._get_user_usage(),
             "dns_records": self._get_dns_records(),
             "alert_center_rules": self._get_alert_center_rules(),
             "chat_spaces": self._get_chat_spaces(),
@@ -414,11 +433,71 @@ class Provider:
                 start_time=start_time,
                 max_items=self._get_max_log_events(),
             )
+            # Rare state-giving events (delegation grants, CAA changes) are fetched by
+            # name over the full retention window and merged, deduplicated on the
+            # activity id, so a change older than the general window is still seen.
+            seen = {_activity_key(log) for log in logs}
+            extended_start = (datetime.now(timezone.utc)
+                              - timedelta(days=DEFAULT_ADMIN_LOG_EXTENDED_LOOKBACK_DAYS)
+                              ).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            for event_name in EXTENDED_ADMIN_LOG_EVENTS:
+                for log in client.get_admin_activities(
+                        self.customer_id, start_time=extended_start,
+                        event_name=event_name, max_items=self._get_max_log_events()):
+                    key = _activity_key(log)
+                    if key not in seen:
+                        seen.add(key)
+                        logs.append(log)
             self._propagate_client_errors(client)
             logger.info("Collected %d admin activity events", len(logs))
             return logs
         except Exception as e:
             self._record_error("get_admin_activities", e)
+            return []
+
+    def _get_user_account_logs(self) -> list[dict]:
+        """Fetch user accounts security-setting events (2SV, password, recovery,
+        Advanced Protection enrolment) over the full Reports API retention."""
+        try:
+            from .api.reports import ReportsClient
+            client = ReportsClient(self.auth)
+            dt = datetime.now(timezone.utc) - timedelta(days=DEFAULT_USER_ACCOUNTS_LOG_LOOKBACK_DAYS)
+            start_time = dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            logs = client.get_user_accounts_activities(
+                self.customer_id,
+                start_time=start_time,
+                max_items=self._get_max_log_events(),
+            )
+            self._propagate_client_errors(client)
+            logger.info("Collected %d user accounts events", len(logs))
+            return logs
+        except Exception as e:
+            self._record_error("get_user_accounts_activities", e)
+            return []
+
+    def _get_user_usage(self) -> list[dict]:
+        """Fetch the per-user usage report rows for the account security parameters.
+
+        These are the columns of the Admin console Security report (2SV, security keys,
+        passkeys, password strength and length compliance, less secure apps, authorized
+        apps). The report lags two to three days; the first date with rows wins.
+        """
+        try:
+            from .api.reports import ReportsClient
+            client = ReportsClient(self.auth)
+            parameters = ",".join(USER_USAGE_ACCOUNT_PARAMETERS)
+            for days_back in (3, 4, 5):
+                date = (datetime.now(timezone.utc) - timedelta(days=days_back)).strftime("%Y-%m-%d")
+                rows = client.get_user_usage_report(self.customer_id, date, parameters=parameters)
+                if rows:
+                    logger.info("Collected %d user usage rows for %s", len(rows), date)
+                    self._propagate_client_errors(client)
+                    return rows
+            self._propagate_client_errors(client)
+            logger.info("No user usage rows available in the last 5 days")
+            return []
+        except Exception as e:
+            self._record_error("get_user_usage_report", e)
             return []
 
     def _get_login_logs(self) -> list[dict]:
@@ -1318,6 +1397,7 @@ def normalize_data(data: dict) -> dict:
     data["login_logs"] = _normalize_activity_logs(data.get("login_logs", []))
     data["token_logs"] = _normalize_activity_logs(data.get("token_logs", []))
     data["caa_events"] = _normalize_activity_logs(data.get("caa_events", []))
+    data["user_account_logs"] = _normalize_activity_logs(data.get("user_account_logs", []))
     data["dns_records"] = _normalize_dns_records(data.get("dns_records", {}))
     # Ensure new data keys have safe defaults
     data.setdefault("group_members", {})

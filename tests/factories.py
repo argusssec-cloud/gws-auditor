@@ -195,3 +195,45 @@ def make_log_entry(
         **extra,
     )
     return entry.model_dump()
+
+
+def make_user_usage_row(email, *, is_2sv_enrolled=True, is_2sv_enforced=True, num_security_keys=1,
+                        num_passkeys_enrolled=0, password_strength="STRONG",
+                        password_length_compliance="COMPLIANT", is_less_secure_apps_access_allowed=False,
+                        num_authorized_apps=0, is_suspended=False, date="2026-11-02"):
+    """One ``userUsageReport.get`` row with the ``accounts:*`` parameters.
+
+    Shape captured from a real response on 2026-11-05: ``entity.userEmail`` plus a ``parameters``
+    list where booleans use ``boolValue``, counts ``intValue`` (as a string) and enums
+    ``stringValue`` (``password_strength`` STRONG/WEAK, ``password_length_compliance``
+    COMPLIANT/NON_COMPLIANT).
+    """
+    return {
+        "kind": "admin#reports#usageReport",
+        "date": date,
+        "entity": {"type": "USER", "customerId": "C0test", "userEmail": email, "profileId": "1"},
+        "parameters": [
+            {"name": "accounts:is_2sv_enrolled", "boolValue": is_2sv_enrolled},
+            {"name": "accounts:is_2sv_enforced", "boolValue": is_2sv_enforced},
+            {"name": "accounts:num_security_keys", "intValue": str(num_security_keys)},
+            {"name": "accounts:num_passkeys_enrolled", "intValue": str(num_passkeys_enrolled)},
+            {"name": "accounts:password_strength", "stringValue": password_strength},
+            {"name": "accounts:password_length_compliance", "stringValue": password_length_compliance},
+            {"name": "accounts:is_less_secure_apps_access_allowed", "boolValue": is_less_secure_apps_access_allowed},
+            {"name": "accounts:num_authorized_apps", "intValue": str(num_authorized_apps)},
+            {"name": "accounts:is_suspended", "boolValue": is_suspended},
+        ],
+    }
+
+
+def make_user_account_event(email, event_name, time="2026-10-01T10:00:00.000Z"):
+    """A normalized ``user_accounts`` audit entry (``titanium_enroll``, ``titanium_unenroll``,
+    ``2sv_enroll``, ...), as ``provider._normalize_activity_logs`` emits it."""
+    return {"actor_email": email, "event_name": event_name, "event_type": "titanium_change"
+            if "titanium" in event_name else "2sv_change", "time": time, "ip_address": "", "parameters": {}}
+
+
+def make_admin_event(event_name, parameters=None, time="2026-10-01T10:00:00.000Z", actor="admin@example.com"):
+    """A normalized admin audit entry with a flat ``parameters`` dict."""
+    return {"actor_email": actor, "event_name": event_name, "event_type": "", "time": time,
+            "ip_address": "", "parameters": dict(parameters or {})}

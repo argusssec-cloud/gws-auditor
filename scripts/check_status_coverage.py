@@ -29,8 +29,7 @@ NEGATIVE = {"FAIL", "WARN", "PARTIAL"}
 BY_DESIGN: dict[str, str] = {
     "CIS-1.1.3": "never PASS: login-count heuristic, WARN or MANUAL review only",
     "CIS-4.2.1.2": "never PASS: third-party app review always ends in MANUAL or FAIL",
-    "CIS-4.2.1.4": "never PASS: domain-wide delegation grants are always listed for review (WARN/MANUAL)",
-    "ADD-20": "never FAIL: evidence-only (CAA denial events) -> PASS, else MANUAL",
+    "CIS-4.2.1.4": "never PASS: the audit log cannot prove the delegation inventory is complete (WARN/MANUAL)",
     "ADD-40": "never FAIL: evidence-only (CAA denial events) -> PASS, else MANUAL",
     "GWS.COMMONCONTROLS.14.1": "never FAIL: audit log presence -> PASS, else MANUAL",
 }

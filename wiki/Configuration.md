@@ -42,6 +42,8 @@ options:
   collect_mailbox_forwarding: false  # ADD-51: opt-in, see below
   mailbox_forwarding_max_users: 500
   trust_rules_file: null           # JSON export of Drive trust rules
+  sensitive_users: []              # GWS.COMMONCONTROLS.9.2: emails or groups expected in Advanced Protection
+  dwd_allowlist: []                # CIS-4.2.1.4: vetted domain-wide delegation client IDs
   external_sharing_ous: []         # OUs whose external sharing is deliberate
 
 ai:
@@ -111,3 +113,11 @@ CLI flags take precedence over config.yaml values:
 ```bash
 gws-auditor --credentials other.json --subject other@co.com --customer-id C0xxxx
 ```
+
+### Account-level evidence (CIS-5.1.1.2, GWS.COMMONCONTROLS.9.1 / 9.2, CIS-4.2.1.4, ADD-20)
+
+Four controls that used to end in MANUAL now read evidence the standard scopes already cover:
+
+- The per-user usage report (`admin.reports.usage.readonly`) supplies the columns of the Admin console Security report: 2-Step Verification, security keys, passkeys, password strength and length compliance, less secure app access and authorized apps. **CIS-5.1.1.2** judges the administrator rows, the benchmark's minimum. The report lags two to three days, so a brand-new admin has no row yet and the check says so.
+- The `user_accounts` audit log (`admin.reports.audit.readonly`, 180 days) records `titanium_enroll` and `titanium_unenroll`, Google's names for joining and leaving the Advanced Protection Program. **GWS.COMMONCONTROLS.9.1** passes when every administrator's latest event is an enrollment, fails on an unenrollment or on an account with no security key and no passkey (which cannot be enrolled), and stays MANUAL for accounts that enrolled before the log window. **GWS.COMMONCONTROLS.9.2** applies the same logic to `sensitive_users` and is NOT_APPLICABLE until that list is set.
+- Domain-wide delegation grants and revocations, and Context-Aware Access toggles and app assignments, are fetched by event name over the full 180-day retention. **CIS-4.2.1.4** warns when an observed grant carries org-wide write scopes (`dwd_allowlist` marks vetted clients) and otherwise reports the observed clients for review; it never passes, because grants older than the retention are invisible and the Admin console remains the only full inventory. **ADD-20** fails when CAA was turned off or access levels were removed from, or only monitored for, a detected OIDC app, and passes when every detected app has levels assigned in active mode; an assignment logged with an unrecognised mode stays MANUAL.

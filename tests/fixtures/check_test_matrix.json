@@ -507,14 +507,14 @@
  },
  {
   "check_id": "CIS-5.1.1.2",
-  "func": "check_security_investigation_tool",
+  "func": "check_security_report_reviewed",
   "module": "checks/reporting.py",
-  "inputs": "data['admin_logs'][*].event_name (lowercased) containing 'investigation' or in (security_investigation, investigation_query, security_center_query). requires_license='enterprise_standard' (NOT_APPLICABLE below). subscription_info/subscription_type for gating.",
+  "inputs": "data['users'] admins (is_admin/is_delegated_admin, not suspended); data['user_usage'] rows (userUsageReport accounts:* params: is_2sv_enrolled, password_strength, password_length_compliance, is_less_secure_apps_access_allowed; keys/passkeys/authorized apps reported only).",
   "paths": [
-   "logs"
+   "usage_report"
   ],
-  "pass_case": "Never PASS. MANUAL (make_review): admin_logs contains an event_name with 'investigation' (e.g. 'run_investigation_report') -> MANUAL with count.",
-  "fail_case": "admin_logs=[] or no event_name containing 'investigation' -> FAIL 'No evidence'. This is the production outcome for every licensed tenant because the Admin SDK admin audit log has no investigation-tool event names.",
+  "pass_case": "every admin row clean -> PASS",
+  "fail_case": "an admin row with 2SV off, WEAK password, NON_COMPLIANT length or LSA allowed -> FAIL; user_usage empty -> MANUAL; admin without a row -> MANUAL",
   "other_cases": "NOT_APPLICABLE: subscription below Enterprise Standard (verified Business Starter -> N/A). ERROR: event_name None -> .lower() AttributeError -> decorator ERROR (verified).",
   "edge_cases": "Absence of evidence -> scored FAIL (false positive for every tenant); no known Reports API event name matches; log window length; event_name None; admin_logs missing key -> FAIL. Unknown edition -> check runs -> FAIL.",
   "coverage_now": "test_reporting.py::TestSecurityInvestigationTool::test_manual_with_investigation_events, test_manual_with_investigation_substring_match (MANUAL), test_fail_no_investigation_events, test_fail_with_empty_admin_logs (FAIL). status_rec: MANUAL, FAIL. Licence gate tested only for other checks.",
@@ -1959,13 +1959,12 @@
   "check_id": "CIS-4.2.1.4",
   "func": "check_domain_wide_delegation",
   "module": "security_access",
-  "inputs": "security.api_access.domain_wide_delegation_clients (provider never sets -> dead); admin_logs event_name AUTHORIZE_API_CLIENT_ACCESS / REMOVE_API_CLIENT_ACCESS with parameters API_CLIENT_NAME, API_SCOPES (latest event per client, >= so later same-time entry wins); _classify_scope_risk from constants.OAUTH_SCOPE_RISK_LEVELS; '.readonly' scopes skipped.",
+  "inputs": "admin_logs AUTHORIZE_API_CLIENT_ACCESS / REMOVE_API_CLIENT_ACCESS (API_CLIENT_NAME comma-split, API_SCOPES; latest per client), fetched over 180 days; _options.dwd_allowlist; _classify_scope_risk.",
   "paths": [
-   "admin_log",
-   "legacy_fallback"
+   "admin_log"
   ],
-  "pass_case": "Never PASS by design. Client with only read-only scopes -> MANUAL (review).",
-  "fail_case": "Never FAIL. WARN when a current grant has a CRITICAL/HIGH non-readonly scope, e.g. AUTHORIZE_API_CLIENT_ACCESS API_SCOPES 'https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/drive'.",
+  "pass_case": "observed grants carry no CRITICAL/HIGH write scopes (or those clients are allowlisted) -> PASS with window note",
+  "fail_case": "a grant with org-wide write scopes -> WARN; no DWD event in the window -> MANUAL",
   "other_cases": "MANUAL: dwd_clients list non-empty; grants exist but none risky; or nothing found (could not determine).",
   "edge_cases": "API_SCOPES as a list (Reports API multiValue is preserved as list by provider flattening, provider.py:2914) -> str(list) splits to \"['https://...readonly']\" so endswith('.readonly') fails -> admin.directory.*.readonly flagged CRITICAL -> false WARN (probe I). Space-separated scopes handled. REMOVE after AUTHORIZE same timestamp -> revoked (list order). Scope 'drive.file' MEDIUM not flagged; 'drive' HIGH flagged. Empty admin_logs -> MANUAL.",
   "coverage_now": "tests/test_checks/test_security_access.py/tests/test_checks/test_security.py::TestDomainWideDelegation (legacy list -> MANUAL, empty -> MANUAL), tests/test_checks/test_real_shapes_batch2.py::test_dwd_scopes_classified_and_revocation_honoured (string scopes, readonly MANUAL, risky WARN, revocation). status_rec: MANUAL, WARN (confirmed: only MANUAL/WARN).",
@@ -2847,8 +2846,8 @@
   "paths": [
    "logs"
   ],
-  "pass_case": "token_logs=[{'client_id':'1-a.apps.googleusercontent.com','app_name':'LinkedIn','parameters':{}}]; caa_events=[{'event_name':'ACCESS_DENY_EVENT','parameters':{'application_type':'OAUTH'}}] -> PASS.",
-  "fail_case": "Never FAILs by design. Nearest negative: same token_logs with caa_events=[] -> MANUAL (review).",
+  "pass_case": "caa_events ACCESS_DENY_EVENT for an OAuth app -> PASS; or admin_logs CHANGE_CAA_APP_ASSIGNMENTS with non-empty CAA_ACCESS_LEVELS_NEW in active mode for every detected OIDC app -> PASS",
+  "fail_case": "latest TOGGLE_CAA_ENABLEMENT DISABLED, or levels removed / MONITOR mode for a detected app -> FAIL; no evidence -> MANUAL; no OIDC apps -> NOT_APPLICABLE",
   "other_cases": "token_logs=[] or only client_ids without the googleusercontent suffix or app_name 'Google ...' -> NOT_APPLICABLE. OIDC apps + no denials -> MANUAL. Below Enterprise Standard -> NOT_APPLICABLE.",
   "edge_cases": "Denial event with no application_type (real shape) counts for OIDC -> PASS from ANY CAA denial, e.g. Gmail web (verified). Google first-party apps not prefixed 'Google ' (Gmail, YouTube, Android) count as third-party -> MANUAL instead of N/A. token_logs empty because get_token_activities failed -> N/A hides unknown. application_type 'saml' event with SAML-only denials -> not counted for OIDC (correct). is_third_party_oauth True -> counted.",
   "coverage_now": "tests/test_checks/test_additional.py::TestCaaOidc: N/A x2, PASS (application_type OAUTH), MANUAL. Statuses: NOT_APPLICABLE, PASS, MANUAL.",
@@ -4467,14 +4466,14 @@
   "check_id": "GWS.COMMONCONTROLS.9.1",
   "func": "check_admin_advanced_protection",
   "module": "cisa_commoncontrols",
-  "inputs": "security._ou_policies security.advanced_protection_program.enableAdvancedProtectionSelfEnrollment (real); legacy adminEnrollmentEnforced/enabled (unreal); fallback security.advanced_protection.admin_enrollment_enforced (provider sets enrollment_available only -> fallback never resolves).",
+  "inputs": "security.advanced_protection_program.enableAdvancedProtectionSelfEnrollment; data['user_account_logs'] titanium_enroll/titanium_unenroll (actor_email, latest wins); data['user_usage'] accounts:num_security_keys / num_passkeys_enrolled; admins from data['users'].",
   "paths": [
    "ou_policy",
-   "ou_policy(legacy)",
-   "legacy_fallback"
+   "user_accounts_log",
+   "usage_report"
   ],
-  "pass_case": "Production path never PASSes: enableAdvancedProtectionSelfEnrollment True -> MANUAL. PASS only via test-only shapes: {'adminEnrollmentEnforced':True} or fallback {'advanced_protection':{'admin_enrollment_enforced':True}}.",
-  "fail_case": "make_ou_policy('security','advanced_protection_program',{'enableAdvancedProtectionSelfEnrollment':False}) -> FAIL (accounts cannot enroll).",
+  "pass_case": "self-enrollment allowed and every admin's latest event is titanium_enroll -> PASS",
+  "fail_case": "self-enrollment disabled in an OU, an admin whose latest event is titanium_unenroll, or an admin with 0 keys and 0 passkeys -> FAIL; admins without evidence -> MANUAL",
   "other_cases": "self-enrollment True -> MANUAL (make_review); no data -> ERROR (make_manual).",
   "edge_cases": "DEFAULT-only entry with False -> FAIL (not admin_only); mixed OUs root True child False -> FAIL; exception OUs not exempted; per-account enrollment is not exposed so PASS is impossible in production (document in report).",
   "coverage_now": "test_cisa_commoncontrols.py::TestAdvancedProtection (fallback PASS/FAIL), ::TestAdminAdvancedProtectionOU (legacy adminEnrollmentEnforced), test_real_shapes_batch2.py::TestNoGuessing (real field True->MANUAL, False->FAIL). status_rec: PASS/FAIL/MANUAL.",
@@ -4489,14 +4488,14 @@
   "check_id": "GWS.COMMONCONTROLS.9.2",
   "func": "check_sensitive_user_advanced_protection",
   "module": "cisa_commoncontrols",
-  "inputs": "Same as 9.1: advanced_protection_program.enableAdvancedProtectionSelfEnrollment; legacy sensitiveUserEnrollment/sensitiveUsersEnrolled; fallback advanced_protection.sensitive_user_enrollment (never set).",
+  "inputs": "Same evidence as 9.1 over _options.sensitive_users (emails or group addresses resolved through data['group_members']).",
   "paths": [
    "ou_policy",
-   "ou_policy(legacy)",
-   "legacy_fallback"
+   "user_accounts_log",
+   "usage_report"
   ],
-  "pass_case": "Only test shapes: {'sensitiveUserEnrollment':True} OU entries or fallback {'sensitive_user_enrollment':True}. Real True -> MANUAL.",
-  "fail_case": "{'enableAdvancedProtectionSelfEnrollment':False} -> FAIL.",
+  "pass_case": "configured population all enrolled -> PASS",
+  "fail_case": "as 9.1 -> FAIL; options.sensitive_users empty -> NOT_APPLICABLE",
   "other_cases": "Real True -> MANUAL; no data -> ERROR.",
   "edge_cases": "Identical logic to 9.1 -> both checks always produce the same verdict in production (double-counted finding); DEFAULT-only False -> FAIL.",
   "coverage_now": "test_cisa_commoncontrols.py::TestAdvancedProtection (fallback), ::TestSensitiveUserAdvancedProtectionOU (legacy field, /Vendors child FAIL). Real-field path NOT tested for 9.2. status_rec: PASS/FAIL.",

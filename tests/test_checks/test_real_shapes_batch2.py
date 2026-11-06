@@ -132,7 +132,15 @@ class TestAdminLogInference:
         def toggle(v):
             return [{"event_name": "TOGGLE_CAA_ENABLEMENT", "time": "2026-04-01T00:00:00Z", "parameters": {"NEW_VALUE": v}}]
         full_audit_data["admin_logs"] = toggle("ENABLED")
-        assert check_context_aware_access(full_audit_data).status == Status.PASS
+        result = check_context_aware_access(full_audit_data)
+        assert result.status == Status.MANUAL  # ON with no access level assigned is not "implemented" (seen live)
+        assert "no access-level assignment" in result.details
+        full_audit_data["admin_logs"] = toggle("ENABLED") + [{"event_name": "CHANGE_CAA_APP_ASSIGNMENTS", "time": "2026-04-02T00:00:00Z",
+            "parameters": {"APPLICATION_NAME": "Gmail", "CAA_ACCESS_LEVELS_NEW": "[Corp devices]", "MODE": "ACTIVE"}}]
+        result = check_context_aware_access(full_audit_data)
+        assert result.status == Status.PASS and "Gmail" in result.details
+        full_audit_data["admin_logs"][-1]["parameters"]["CAA_ACCESS_LEVELS_NEW"] = ""
+        assert check_context_aware_access(full_audit_data).status == Status.MANUAL
         full_audit_data["admin_logs"] = toggle("DISABLED")
         assert check_context_aware_access(full_audit_data).status == Status.FAIL
 
@@ -144,12 +152,12 @@ class TestAdminLogInference:
         base = "https://www.googleapis.com/auth/"
         full_audit_data["policies"].setdefault("security", {}).pop("api_access", None)
         full_audit_data["admin_logs"] = [ev("AUTHORIZE_API_CLIENT_ACCESS", "111", base + "admin.directory.user.readonly", "2026-01-01")]
-        assert check_domain_wide_delegation(full_audit_data).status == Status.MANUAL  # read-only: review only
+        assert check_domain_wide_delegation(full_audit_data).status == Status.MANUAL  # read-only scope: nothing to flag, inventory unproven
         full_audit_data["admin_logs"].append(ev("AUTHORIZE_API_CLIENT_ACCESS", "222", f"{base}gmail.modify,{base}drive", "2026-01-02"))
         result = check_domain_wide_delegation(full_audit_data)
         assert result.status == Status.WARN and "222" in result.details and "111:" not in result.details
         full_audit_data["admin_logs"].append(ev("REMOVE_API_CLIENT_ACCESS", "222", "", "2026-01-03"))
-        assert check_domain_wide_delegation(full_audit_data).status == Status.MANUAL
+        assert check_domain_wide_delegation(full_audit_data).status == Status.MANUAL  # the risky grant was revoked
 
 
 class TestNoGuessing:

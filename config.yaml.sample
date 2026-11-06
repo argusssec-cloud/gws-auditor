@@ -39,6 +39,17 @@ options:
   # is governed by an active BLOCK_SHARE rule instead of failing it.
   # trust_rules_file: ./trust_rules.json
 
+  # Accounts the organisation treats as sensitive (GWS.COMMONCONTROLS.9.2):
+  # emails or group addresses. They are expected in the Advanced Protection
+  # Program; enrollment is read from the user_accounts audit log and the
+  # security-key / passkey counts. Empty = NOT_APPLICABLE.
+  # sensitive_users: ["ceo@example.com", "executives@example.com"]
+
+  # OAuth client IDs whose domain-wide delegation has been vetted
+  # (CIS-4.2.1.4). A listed client holding org-wide write scopes is reported
+  # but no longer flagged.
+  # dwd_allowlist: ["123456789012-abc.apps.googleusercontent.com"]
+
   # OU paths (or fnmatch patterns) whose permissive external sharing is
   # deliberate. Matching OUs downgrade an otherwise-FAIL sharing check to
   # PARTIAL rather than hiding it. Leave empty to use the built-in patterns

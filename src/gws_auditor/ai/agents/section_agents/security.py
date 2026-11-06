@@ -35,9 +35,10 @@ BENCHMARK_REQUIREMENTS: dict[str, str] = {
         "listing OAuth apps is a stub, not a real check."
     ),
     "CIS-4.2.1.4": (
-        "Ensure domain-wide delegation (DWD) is not granted or is "
-        "reviewed. The check must verify API data was actually "
-        "returned — a PASS when data is missing masks real risk."
+        "Ensure domain-wide delegation (DWD) grants follow least privilege. The "
+        "check reads grant and revocation events from the admin audit log, so a "
+        "PASS covers only the grants changed inside the log window; the Admin "
+        "console remains the full inventory."
     ),
     "CIS-4.2.2.1": (
         "Ensure context-aware access / geo-blocking is configured. The "

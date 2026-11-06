@@ -54,6 +54,13 @@ DEFAULT_CONFIG = {
         "collect_mailbox_forwarding": False,
         "mailbox_forwarding_max_users": 500,
         "trust_rules_file": None,
+        # GWS.COMMONCONTROLS.9.2: accounts (emails or group addresses) the organisation
+        # treats as sensitive and expects in the Advanced Protection Program. Empty means
+        # no population is defined and the check is NOT_APPLICABLE.
+        "sensitive_users": [],
+        # CIS-4.2.1.4: OAuth client IDs whose domain-wide delegation has been vetted; a
+        # listed client with org-wide write scopes is reported but not flagged.
+        "dwd_allowlist": [],
         # OU paths or fnmatch patterns whose permissive sharing is
         # intentional. Empty list = use the built-in pattern set in
         # checks/base.py (_DEFAULT_EXTERNAL_SHARING_PATTERNS).
