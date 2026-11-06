@@ -3308,6 +3308,12 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
     )
 
 
+_GEMINI_BETA_SETTING_NAMES = (
+    "Beta Gemini Features Beta Features enabled",  # live admin-log name (flip test 2026-11-06)
+    "GenAiAlphaSettingsProto alpha_enabled",  # name used by CISA ScubaGoggles
+)
+
+
 @check(
     check_id="GWS.GEMINI.2.1",
     title="Ensure alpha Gemini features are disabled",
@@ -3315,8 +3321,8 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
     source="CISA",
     section="Gemini",
     remediation=(
-        "Admin console > Apps > Google Workspace > Gemini > "
-        "Features. Disable alpha features to avoid exposing "
+        "Admin console > Generative AI > Gemini in Workspace > Beta features "
+        "(Beta Gemini features). Disable alpha/beta features to avoid exposing "
         "users to unstable or untested functionality. https://knowledge.workspace.google.com/admin/gemini/turn-access-to-google-workspace-with-gemini-alpha-on-or-off"
     ),
 )
@@ -3326,8 +3332,8 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
     _TITLE = "Ensure alpha Gemini features are disabled"
     _L, _S, _SEC = "L1", "CISA", "Gemini"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Gemini > "
-        "Features. Disable alpha features to avoid exposing "
+        "Admin console > Generative AI > Gemini in Workspace > Beta features "
+        "(Beta Gemini features). Disable alpha/beta features to avoid exposing "
         "users to unstable or untested functionality. https://knowledge.workspace.google.com/admin/gemini/turn-access-to-google-workspace-with-gemini-alpha-on-or-off"
     )
 
@@ -3349,15 +3355,19 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
             expected_value="Disabled for all OUs", remediation=_REMED,
         )
 
-    # Not exposed by the Policy API: infer from the latest admin audit-log change
-    # (setting name as used by CISA ScubaGoggles). No event -> fall through to MANUAL.
-    inferred = result_from_setting_changes(
-        data, "GenAiAlphaSettingsProto alpha_enabled", ('true',),
-        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-        what="Alpha Gemini features", remediation=_REMED,
-    )
-    if inferred is not None:
-        return inferred
+    # Not exposed by the Policy API: infer from the latest admin audit-log change. The live
+    # SETTING_NAME (flip test 2026-11-06) is "Beta Gemini Features Beta Features enabled" under
+    # APPLICATION_NAME "Gemini in Workspace"; the first save logs CREATE_APPLICATION_SETTING and
+    # later saves CHANGE_APPLICATION_SETTING, both with NEW_VALUE "true"/"false". The ScubaGoggles
+    # name is kept as a fallback. No event -> fall through to MANUAL.
+    for setting_name in _GEMINI_BETA_SETTING_NAMES:
+        inferred = result_from_setting_changes(
+            data, setting_name, ('true',),
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            what="Alpha/Beta Gemini features", remediation=_REMED,
+        )
+        if inferred is not None:
+            return inferred
 
     # Fallback: mapped root-level value
     features = gemini.get("features", {})
@@ -3383,8 +3393,8 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
                 "Policy API. Verify manually in Admin console."
             ),
             remediation=(
-                "Admin console > Apps > Google Workspace > Gemini > "
-                "Features. Disable alpha features. https://knowledge.workspace.google.com/admin/gemini/turn-access-to-google-workspace-with-gemini-alpha-on-or-off"
+                "Admin console > Generative AI > Gemini in Workspace > Beta features "
+                "(Beta Gemini features). Disable alpha/beta features. https://knowledge.workspace.google.com/admin/gemini/turn-access-to-google-workspace-with-gemini-alpha-on-or-off"
             ),
         )
 

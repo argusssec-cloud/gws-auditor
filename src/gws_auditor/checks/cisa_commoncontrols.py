@@ -70,27 +70,36 @@ def check_context_aware_access(data: dict) -> CheckResult:
     # The toggle is necessary, not sufficient: a tenant can be ON with no access level at all
     # (seen live 2026-11-05). PASS needs an access-level assignment in active mode, or a denial
     # event proving enforcement; ON without an assignment event is a review item.
-    from .additional import _caa_app_assignment_evidence
+    from .additional import _caa_app_assignment_evidence, _caa_enforcement_events
     assignments = [log for log in data.get("admin_logs", [])
                    if log.get("event_name") == "CHANGE_CAA_APP_ASSIGNMENTS" and isinstance(log.get("parameters"), dict)]
     apps = sorted({str(log["parameters"].get("APPLICATION_NAME", "")).strip() for log in assignments
                    if log["parameters"].get("APPLICATION_NAME")})
     evidence = _caa_app_assignment_evidence(data.get("admin_logs", []), apps)
-    denials = [e for e in data.get("caa_events", []) if isinstance(e, dict) and e.get("event_name") == "ACCESS_DENY_EVENT"]
+    # Active-mode evaluations in the context_aware_access log (allowed ACCESS_LEVELS_EVALUATED or
+    # ACCESS_DENY_EVENT) with an applied level are direct proof that CAA is enforced, whatever the
+    # outcome; they are the strongest evidence and survive an assignment made before the log window.
+    enforced = [e for e in _caa_enforcement_events(data.get("caa_events", [])) if e["applied"]]
+    denials = sum(1 for e in enforced if e["denied"])
+    newest_eval = max((e["time"] for e in enforced), default="")
     state = evidence["toggle"]
     expected = "Context-Aware Access enabled with access levels assigned to apps"
     actual = {"caa_enabled": state, "apps_with_levels": evidence["covered"], "monitor_only": evidence["monitor"],
-              "levels_removed": evidence["removed"], "denials": len(denials)}
-    if state == "DISABLED":
+              "levels_removed": evidence["removed"], "evaluations": len(enforced), "denials": denials}
+    if state == "DISABLED" and not (enforced and newest_eval > evidence["toggle_time"]):
         return make_fail(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details="Context-Aware Access was turned off (latest admin-log change).",
             actual_value=actual, expected_value=expected, remediation=_REMED,
         )
-    if denials:
+    if enforced:
+        apps = sorted({e["app"] for e in enforced if e["app"]})
+        levels = sorted({t for e in enforced for t in e["applied"]})
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"Context-Aware Access is enforcing: {len(denials)} ACCESS_DENY_EVENT(s) in the audit window.",
+            details=(f"Context-Aware Access is enforcing: {len(enforced)} active-mode evaluation(s) "
+                     f"({denials} denied) in the CAA log window across {len(apps)} app(s) "
+                     f"({', '.join(apps[:8])}) applying access level(s) {', '.join(levels[:5])}."),
             actual_value=actual, expected_value=expected,
         )
     if state == "ENABLED" and evidence["covered"]:

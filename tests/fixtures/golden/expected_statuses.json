@@ -965,8 +965,9 @@
    "status": "MANUAL"
   },
   "ADD-20": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "status": "MANUAL",
+   "note": "same flip as GWS.COMMONCONTROLS.2.1 (2026-11-06): MODE vocabulary is MONITOR and BLOCK (WARN assumed for the Warn action), not ACTIVE; assignment list parameter is CAA_ACCESS_ASSIGNMENTS_NEW. Tasks is not an OIDC app so the live status is unchanged. Evening 2026-11-06 (Geo restriction assigned to all 19 Workspace apps): live result still MANUAL, correct, because the 8 detected third-party OIDC apps are not Workspace apps and no assignment covers them. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement."
   },
   "ADD-21": {
    "confirmed": false,
@@ -1046,8 +1047,9 @@
    "status": "PASS"
   },
   "ADD-40": {
-   "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "confirmed": true,
+   "status": "NOT_APPLICABLE",
+   "note": "2026-11-06: CAA evidence now requires an active-mode evaluation (allowed or denied) whose CAA_APPLICATION names a detected SAML app; the old parser matched invented parameter names and counted any denial. Status unchanged."
   },
   "ADD-41": {
    "confirmed": false,
@@ -1422,8 +1424,9 @@
    "status": "MANUAL"
   },
   "CIS-4.2.2.1": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "status": "MANUAL",
+   "note": "flip test 2026-11-06 (evening): created access level 'Geo restriction' (basic condition regions ['AQ'], negate true) and assigned it in BLOCK mode to all 19 apps. Admin log: CREATE_ACCESS_LEVEL_V2 with ACCESS_LEVEL_TITLE, ACCESS_LEVEL_NAME and ACCESS_LEVEL_CURR_STATE (JSON text of the level), then 19 CHANGE_CAA_APP_ASSIGNMENTS MODE BLOCK CAA_ACCESS_ASSIGNMENTS_NEW ['Geo restriction']; this morning's DELETE_ACCESS_LEVEL_V2 (ACCESS_LEVEL_NAME only) appeared late. Check now reads this inventory; live result PASS ('Geographic access level(s) assigned to apps in active mode per the admin log: Geo restriction'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement."
   },
   "CIS-4.2.3.1": {
    "confirmed": true,
@@ -1656,8 +1659,9 @@
    "status": "FAIL"
   },
   "GWS.COMMONCONTROLS.2.1": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "status": "MANUAL",
+   "note": "flip test 2026-11-06: created a catch-all access level, assigned it to Tasks in monitor mode, switched to active/Block, removed it, deleted the level (tenant back to CAA ON with no levels). CHANGE_CAA_APP_ASSIGNMENTS is written per app and mode with APPLICATION_NAME=TASKS, MODE=MONITOR|BLOCK, CAA_ACCESS_ASSIGNMENTS_NEW=[level names] (or CAA_ACCESS_ASSIGNMENTS_OLD alone on removal), CAA_ENFORCEMENT_ENDPOINTS_OLD/NEW, TARGET_ENTITY_TYPE/NAME. Level creation and deletion ARE logged (CREATE/DELETE_ACCESS_LEVEL_V2, event type ACCESS_LEVEL, delivered minutes late; the morning read-back missed them). Check updated to that shape; live result stays MANUAL (ON, latest assignment removed), console agrees. Evening 2026-11-06: access level 'Geo restriction' (regions AQ, negate) assigned in BLOCK mode to all 19 apps and left in place; live result PASS ('assigned in active mode to 19 app(s)'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement."
   },
   "GWS.COMMONCONTROLS.3.1": {
    "confirmed": false,
@@ -1790,12 +1794,14 @@
    "status": "PASS"
   },
   "GWS.GEMINI.1.1": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "status": "MANUAL",
+   "note": "flip test 2026-11-06: ticking and unticking 'Allow all users to access the Gemini app, regardless of license' logged CHANGE_APPLICATION_SETTING with APPLICATION_NAME 'Gemini app', SETTING_NAME 'BardNonDuetEnablementProto enable_bard_non_duet_access', NEW_VALUE 'true' then 'false' (two events per change, one with APPLICATION_EDITION). String and value vocabulary match the check; check FAIL on true, PASS on false. Golden snapshot predates the events so stays MANUAL."
   },
   "GWS.GEMINI.2.1": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "status": "MANUAL",
+   "note": "flip test 2026-11-06 (after approval): turning 'Beta Gemini features' On then Off logged APPLICATION_NAME 'Gemini in Workspace', SETTING_NAME 'Beta Gemini Features Beta Features enabled', NEW_VALUE 'true' (first save = CREATE_APPLICATION_SETTING, no OLD_VALUE, plus a sibling 'Beta UXR outreach enabled' false event) then 'false' (CHANGE_APPLICATION_SETTING). ScubaGoggles' 'GenAiAlphaSettingsProto alpha_enabled' did not appear; check now reads the live name first. Golden snapshot predates the events so stays MANUAL."
   },
   "GWS.GMAIL.10.1": {
    "confirmed": true,

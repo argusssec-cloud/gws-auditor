@@ -539,12 +539,13 @@ class Provider:
             return []
 
     def _get_caa_events(self) -> list[dict]:
-        """Fetch Context-Aware Access denial activity logs.
+        """Fetch Context-Aware Access activity logs.
 
-        Reads ``applicationName=context_aware_access`` from the Reports
-        API.  The single documented event ``ACCESS_DENY_EVENT`` fires when
-        a CAA policy blocks an access attempt — used as positive evidence
-        that CAA is actively enforcing.
+        Reads ``applicationName=context_aware_access`` from the Reports API. The appendix
+        documents only ``ACCESS_DENY_EVENT``; live tenants also write ``ACCESS_LEVELS_EVALUATED``
+        for every allowed access (observed 2026-11-06), both carrying the applied, satisfied and
+        unsatisfied access-level titles and the app. Either is positive evidence that CAA is
+        actively enforcing.
         """
         try:
             from .api.reports import ReportsClient

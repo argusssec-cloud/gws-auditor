@@ -221,7 +221,7 @@ class TestGeoBlocking:
         from gws_auditor.checks.security_access import check_geo_blocking
         full_audit_data["policies"].setdefault("security", {})["context_aware_access"] = {
             "geo_blocking_enabled": True,
-            "blocked_regions": ["CN", "RU", "KP"],
+            "blocked_regions": ["AQ", "BV", "HM"],
         }
         result = check_geo_blocking(full_audit_data)
         assert result.status == Status.PASS
@@ -234,6 +234,109 @@ class TestGeoBlocking:
         }
         result = check_geo_blocking(full_audit_data)
         assert result.status == Status.FAIL
+
+    # Admin-log evidence: exact events observed live on 2026-11-06 (Geo restriction flip).
+    _LEVEL = "accessPolicies/134654395911/accessLevels/geo_restriction_fttlt6s2"
+    _STATE = ('{\n  "basic": {\n    "conditions": [{\n      "regions": ["AQ"],\n      "negate": true\n    }]\n  },\n'
+              '  "title": "Geo restriction",\n  "name": "accessPolicies/134654395911/accessLevels/geo_restriction_fttlt6s2"\n}')
+
+    @classmethod
+    def _create(cls, time="2026-11-06T18:23:52.947Z", state=None):
+        from tests.factories import make_admin_event
+        return make_admin_event("CREATE_ACCESS_LEVEL_V2", {
+            "ACCESS_LEVEL_TITLE": "Geo restriction", "ACCESS_LEVEL_NAME": cls._LEVEL,
+            "ACCESS_LEVEL_CURR_STATE": cls._STATE if state is None else state,
+            "AUTH_PRINCIPLE_EMAIL": "admin@example.com"}, time)
+
+    @classmethod
+    def _delete(cls, time="2026-11-06T19:00:00.000Z"):
+        from tests.factories import make_admin_event
+        return make_admin_event("DELETE_ACCESS_LEVEL_V2", {
+            "ACCESS_LEVEL_NAME": cls._LEVEL, "AUTH_PRINCIPLE_EMAIL": "admin@example.com"}, time)
+
+    @staticmethod
+    def _assign(app, mode, levels, time="2026-11-06T18:26:28.786Z", removed=False):
+        from tests.factories import make_admin_event
+        key = "CAA_ACCESS_ASSIGNMENTS_OLD" if removed else "CAA_ACCESS_ASSIGNMENTS_NEW"
+        return make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {
+            "APPLICATION_NAME": app, "CAA_ENFORCEMENT_ENDPOINTS_OLD": "CAA_WEB_VERSION",
+            "CAA_ENFORCEMENT_ENDPOINTS_NEW": "CAA_WEB_VERSION_AND_1P_OAUTH_CLIENTS",
+            "TARGET_ENTITY_TYPE": "ORG_UNIT", "TARGET_ENTITY_NAME": "example.com",
+            "MODE": mode, key: list(levels)}, time)
+
+    def test_live_geo_restriction_sequence(self, full_audit_data):
+        """Create level -> assign BLOCK to apps -> PASS; delete the level -> back to MANUAL."""
+        from gws_auditor.checks.security_access import check_geo_blocking
+        full_audit_data["policies"]["security"].pop("context_aware_access", None)
+        full_audit_data["admin_logs"] = []
+        assert check_geo_blocking(full_audit_data).status == Status.MANUAL
+        full_audit_data["admin_logs"] = [self._create()]
+        result = check_geo_blocking(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "no active-mode assignment" in result.details
+        full_audit_data["admin_logs"] += [self._assign("GMAIL", "BLOCK", ["Geo restriction"]),
+                                          self._assign("DRIVE", "BLOCK", ["Geo restriction"], time="2026-11-06T18:26:28.785Z")]
+        result = check_geo_blocking(full_audit_data)
+        assert result.status == Status.PASS
+        assert "Geo restriction" in result.details
+        full_audit_data["admin_logs"].append(self._delete())
+        assert check_geo_blocking(full_audit_data).status == Status.MANUAL
+
+    def test_monitor_mode_or_removed_assignment_is_review(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_geo_blocking
+        full_audit_data["policies"]["security"].pop("context_aware_access", None)
+        full_audit_data["admin_logs"] = [self._create(), self._assign("GMAIL", "MONITOR", ["Geo restriction"])]
+        result = check_geo_blocking(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "monitor mode only" in result.details
+        full_audit_data["admin_logs"] = [self._create(), self._assign("GMAIL", "BLOCK", ["Geo restriction"]),
+                                         self._assign("GMAIL", "BLOCK", ["Geo restriction"], time="2026-11-06T18:40:00.000Z", removed=True)]
+        assert check_geo_blocking(full_audit_data).status == Status.MANUAL
+
+    def test_non_geographic_level_or_other_level_assigned_is_not_geo_blocking(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_geo_blocking
+        full_audit_data["policies"]["security"].pop("context_aware_access", None)
+        device_only = '{"basic": {"conditions": [{"devicePolicy": {"requireScreenlock": true}}]}, "title": "Geo restriction"}'
+        full_audit_data["admin_logs"] = [self._create(state=device_only), self._assign("GMAIL", "BLOCK", ["Geo restriction"])]
+        assert check_geo_blocking(full_audit_data).status == Status.MANUAL
+        full_audit_data["admin_logs"] = [self._create(), self._assign("GMAIL", "BLOCK", ["Corp devices"])]
+        assert check_geo_blocking(full_audit_data).status == Status.MANUAL
+
+    def test_caa_disabled_fails_even_with_geo_level(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_geo_blocking
+        from tests.factories import make_admin_event
+        full_audit_data["policies"]["security"].pop("context_aware_access", None)
+        full_audit_data["admin_logs"] = [self._create(), self._assign("GMAIL", "BLOCK", ["Geo restriction"]),
+                                         make_admin_event("TOGGLE_CAA_ENABLEMENT", {"OLD_VALUE": "ENABLED", "NEW_VALUE": "DISABLED"},
+                                                          "2026-11-06T19:00:00.000Z")]
+        assert check_geo_blocking(full_audit_data).status == Status.FAIL
+
+    def test_caa_log_evaluation_of_geo_level_passes_without_assignment_event(self, full_audit_data):
+        """Live 2026-11-06: ACCESS_LEVELS_EVALUATED applying Geo restriction proves geo-blocking is enforced."""
+        from gws_auditor.checks.security_access import check_geo_blocking
+        from tests.test_checks.test_additional import _caa_event
+        full_audit_data["policies"]["security"].pop("context_aware_access", None)
+        full_audit_data["admin_logs"] = [self._create()]
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL")]
+        result = check_geo_blocking(full_audit_data)
+        assert result.status == Status.PASS
+        assert "Context-Aware Access log" in result.details and "GMAIL" in result.details
+        # Enforced level whose conditions are unknown (no create event in the window) -> MANUAL.
+        full_audit_data["admin_logs"] = []
+        result = check_geo_blocking(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "Geo restriction" in result.details
+        # Monitor-mode evaluation is not enforcement.
+        full_audit_data["admin_logs"] = [self._create()]
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED_MONITOR_MODE", "GMAIL")]
+        assert check_geo_blocking(full_audit_data).status == Status.MANUAL
+
+    def test_custom_cel_region_expression_counts(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_geo_blocking
+        full_audit_data["policies"]["security"].pop("context_aware_access", None)
+        custom = '{"custom": {"expr": "!(origin.region_code in [\\"AQ\\", \\"BV\\"])"}, "title": "Geo restriction"}'
+        full_audit_data["admin_logs"] = [self._create(state=custom), self._assign("GMAIL", "WARN", ["Geo restriction"])]
+        assert check_geo_blocking(full_audit_data).status == Status.PASS
 
 
 # -----------------------------------------------------------------------

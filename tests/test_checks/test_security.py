@@ -202,7 +202,7 @@ class TestGeoBlocking:
         from gws_auditor.checks.security_access import check_geo_blocking
         full_audit_data["policies"].setdefault("security", {})["context_aware_access"] = {
             "geo_blocking_enabled": True,
-            "blocked_regions": ["CN", "RU", "KP"],
+            "blocked_regions": ["AQ", "BV", "HM"],
         }
         result = check_geo_blocking(full_audit_data)
         assert result.status == Status.PASS

@@ -1982,19 +1982,19 @@
   "check_id": "CIS-4.2.2.1",
   "func": "check_geo_blocking",
   "module": "security_access",
-  "inputs": "security.context_aware_access.geo_blocking_enabled / blocked_regions (provider never populates; CAA policies not in Policy API). requires_license enterprise_standard.",
+  "inputs": "Admin-log (180 d): CREATE/UPDATE_ACCESS_LEVEL_V2 (ACCESS_LEVEL_NAME, ACCESS_LEVEL_TITLE, ACCESS_LEVEL_CURR_STATE JSON text with basic.conditions[].regions / custom.expr origin.region_code) and DELETE_ACCESS_LEVEL_V2 build the level inventory (additional._caa_access_level_inventory); CHANGE_CAA_APP_ASSIGNMENTS per app+mode gives assigned titles (additional._caa_assigned_level_titles); TOGGLE_CAA_ENABLEMENT gives the state. Shapes verified live 2026-11-06 (Geo restriction flip). Legacy security.context_aware_access.geo_blocking_enabled / blocked_regions fallback (provider never populates). requires_license enterprise_standard. caa_events active-mode evaluations (additional._caa_enforcement_events): ACCESS_LEVELS_EVALUATED (allowed; live 2026-11-06, undocumented in the Reports API appendix) or ACCESS_DENY_EVENT, parameters CAA_ACCESS_LEVEL_APPLIED/_SATISFIED/_UNSATISFIED (multi-value titles), CAA_APPLICATION (GMAIL, DRIVE, CALENDAR...), PROTECTED_API_ACCESS / BLOCKED_API_ACCESS; event names containing MONITOR are monitor mode and never count. An evaluation applying a level known (from the inventory) to restrict regions -> PASS even without an assignment event; evaluations applying levels of unknown conditions -> MANUAL naming them.",
   "paths": [
+   "admin_log",
    "legacy_fallback"
   ],
-  "pass_case": "security.context_aware_access {'geo_blocking_enabled':True,'blocked_regions':['CN']} -> PASS (synthetic only; production never reaches it).",
-  "fail_case": "geo_blocking_enabled False or True with blocked_regions [] -> FAIL.",
-  "other_cases": "MANUAL (make_review) when geo_blocking_enabled None (always in production). NOT_APPLICABLE when subscription_type below Enterprise Standard (e.g. 'Business Starter').",
-  "edge_cases": "True with empty regions -> FAIL. License gate: unknown edition -> runs -> MANUAL; 'Business Standard' -> N/A. caa_events (collected) are not used here (ADD-39/40 use them).",
-  "coverage_now": "tests/test_checks/test_security_access.py::TestGeoBlocking, tests/test_checks/test_security.py::TestGeoBlocking (synthetic PASS/FAIL). status_rec: PASS, FAIL. MANUAL and NOT_APPLICABLE untested.",
+  "pass_case": "CREATE_ACCESS_LEVEL_V2 with regions ['AQ'] + CHANGE_CAA_APP_ASSIGNMENTS MODE BLOCK (or WARN) listing that title -> PASS. Legacy synthetic {'geo_blocking_enabled':True,'blocked_regions':['AQ']} -> PASS. caa_events ACCESS_LEVELS_EVALUATED applying 'Geo restriction' with the CREATE event in the window -> PASS.",
+  "fail_case": "Latest TOGGLE_CAA_ENABLEMENT NEW_VALUE DISABLED -> FAIL (even with a geo level). Legacy geo_blocking_enabled False -> FAIL.",
+  "other_cases": "Geo level exists but only MONITOR-assigned, assignment removed, or never assigned -> MANUAL (make_review). Level deleted (DELETE_ACCESS_LEVEL_V2 latest) -> no live geo level -> MANUAL. Non-geographic level (devicePolicy only) or another title assigned -> MANUAL. No events at all -> MANUAL (levels created before the window are invisible, never FAIL). NOT_APPLICABLE below Enterprise Standard.",
+  "edge_cases": "negate true/false both count as geographic restriction; custom CEL expr containing origin.region_code counts; ACCESS_LEVEL_CURR_STATE may be a dict or JSON text (unparseable -> level without state -> not geographic). ACCESS_LEVEL events arrive minutes after admin-setting events.",
+  "coverage_now": "tests/test_checks/test_security_access.py::TestGeoBlocking (legacy PASS/FAIL; live Geo restriction sequence MANUAL->MANUAL->PASS->MANUAL; monitor/removed -> MANUAL; non-geo level / other title -> MANUAL; CAA disabled -> FAIL; custom CEL -> PASS), tests/test_checks/test_security.py::TestGeoBlocking. statuses PASS, FAIL, MANUAL. test_caa_log_evaluation_of_geo_level_passes_without_assignment_event.",
   "gaps": [
-   "Default production shape (key absent) -> MANUAL",
    "License gating: Business Starter -> NOT_APPLICABLE, Enterprise Standard -> runs",
-   "geo_blocking_enabled True with blocked_regions [] -> FAIL"
+   "UPDATE_ACCESS_LEVEL_V2 shape assumed (not observed)"
   ],
   "suspected_bugs": []
  },
@@ -2842,15 +2842,15 @@
   "check_id": "ADD-20",
   "func": "check_caa_oidc",
   "module": "additional",
-  "inputs": "data.token_logs[].client_id / app_name (promoted from parameters by provider._normalize_activity_logs): third-party = client_id contains '.apps.googleusercontent.com' and app_name not startswith 'Google '. data.caa_events[] event_name=='ACCESS_DENY_EVENT' with parameters.application_type/application_name/is_third_party_oauth (names not documented for the context_aware_access Reports app; absent in practice). requires_license=enterprise_standard.",
+  "inputs": "data.token_logs[].client_id / app_name (promoted from parameters by provider._normalize_activity_logs): third-party = client_id contains '.apps.googleusercontent.com' and app_name not startswith 'Google '. caa_events active-mode evaluations (additional._caa_enforcement_events): ACCESS_LEVELS_EVALUATED (allowed; live 2026-11-06, undocumented in the Reports API appendix) or ACCESS_DENY_EVENT, parameters CAA_ACCESS_LEVEL_APPLIED/_SATISFIED/_UNSATISFIED (multi-value titles), CAA_APPLICATION (GMAIL, DRIVE, CALENDAR...), PROTECTED_API_ACCESS / BLOCKED_API_ACCESS; event names containing MONITOR are monitor mode and never count. An evaluation counts only when CAA_APPLICATION matches a detected OIDC app name (case-insensitive); Workspace-app evaluations are not OIDC evidence. Then admin_logs TOGGLE_CAA_ENABLEMENT / CHANGE_CAA_APP_ASSIGNMENTS as before.",
   "paths": [
    "logs"
   ],
-  "pass_case": "caa_events ACCESS_DENY_EVENT for an OAuth app -> PASS; or admin_logs CHANGE_CAA_APP_ASSIGNMENTS with non-empty CAA_ACCESS_LEVELS_NEW in active mode for every detected OIDC app -> PASS",
-  "fail_case": "latest TOGGLE_CAA_ENABLEMENT DISABLED, or levels removed / MONITOR mode for a detected app -> FAIL; no evidence -> MANUAL; no OIDC apps -> NOT_APPLICABLE",
-  "other_cases": "token_logs=[] or only client_ids without the googleusercontent suffix or app_name 'Google ...' -> NOT_APPLICABLE. OIDC apps + no denials -> MANUAL. Below Enterprise Standard -> NOT_APPLICABLE.",
-  "edge_cases": "Denial event with no application_type (real shape) counts for OIDC -> PASS from ANY CAA denial, e.g. Gmail web (verified). Google first-party apps not prefixed 'Google ' (Gmail, YouTube, Android) count as third-party -> MANUAL instead of N/A. token_logs empty because get_token_activities failed -> N/A hides unknown. application_type 'saml' event with SAML-only denials -> not counted for OIDC (correct). is_third_party_oauth True -> counted.",
-  "coverage_now": "tests/test_checks/test_additional.py::TestCaaOidc: N/A x2, PASS (application_type OAUTH), MANUAL. Statuses: NOT_APPLICABLE, PASS, MANUAL.",
+  "pass_case": "caa_events ACCESS_DENY_EVENT or ACCESS_LEVELS_EVALUATED with CAA_APPLICATION naming a detected OIDC app -> PASS; or admin_logs CHANGE_CAA_APP_ASSIGNMENTS in BLOCK/WARN/ACTIVE mode covering every detected app -> PASS.",
+  "fail_case": "latest TOGGLE_CAA_ENABLEMENT DISABLED, or levels only in MONITOR mode, or every mode's assignment removed (CAA_ACCESS_ASSIGNMENTS_OLD without _NEW) for a detected app -> FAIL; levels under an unrecognised MODE -> MANUAL; no evidence -> MANUAL; no OIDC apps -> NOT_APPLICABLE",
+  "other_cases": "token_logs=[] or only client_ids without the googleusercontent suffix or app_name 'Google ...' -> NOT_APPLICABLE. OIDC apps + no denials -> MANUAL. Below Enterprise Standard -> NOT_APPLICABLE. Evaluation for GMAIL/DRIVE only, or a MONITOR-named event, is not evidence -> falls through to admin-log inference (MANUAL when nothing else).",
+  "edge_cases": "Denial event with no application_type (real shape) counts for OIDC -> PASS from ANY CAA denial, e.g. Gmail web (verified). Google first-party apps not prefixed 'Google ' (Gmail, YouTube, Android) count as third-party -> MANUAL instead of N/A. token_logs empty because get_token_activities failed -> N/A hides unknown. application_type 'saml' event with SAML-only denials -> not counted for OIDC (correct). is_third_party_oauth True -> counted. MODE vocabulary: BLOCK (live), ACTIVE (Reports API appendix), WARN (assumed) count as enforcing; MONITOR is monitor; anything else -> MANUAL. Assignment list read from CAA_ACCESS_ASSIGNMENTS_NEW (live) or the documented aliases CAA_ACCESS_LEVELS_NEW / CAA_ASSIGNMENTS_NEW.",
+  "coverage_now": "tests/test_checks/test_additional.py::TestCaaOidc: N/A x2, PASS (application_type OAUTH), MANUAL. Statuses: NOT_APPLICABLE, PASS, MANUAL. test_caa_oidc_allowed_evaluation_for_the_app_passes, test_caa_oidc_evaluation_for_workspace_app_or_monitor_mode_is_not_evidence (live CAA shape).",
   "gaps": [
    "Test ambiguous denial (no application_type) -> currently PASS; decide expected (MANUAL recommended).",
    "Test application_type='SAML' only -> MANUAL for ADD-20.",
@@ -2859,7 +2859,6 @@
    "Test app_name 'Gmail' with googleusercontent client_id -> currently counted as third-party."
   ],
   "suspected_bugs": [
-   "src/gws_auditor/checks/additional.py:995 `or not app_type` counts every ACCESS_DENY_EVENT lacking application_type toward OIDC; since the real context_aware_access log does not carry application_type, any CAA denial (e.g. Drive web) yields PASS for 'CAA applied to OIDC apps' -> false PASS.",
    "src/gws_auditor/checks/additional.py:1050 token_logs empty due to collection error (api_errors get_token_activities) returns NOT_APPLICABLE instead of MANUAL."
   ]
  },
@@ -3260,13 +3259,13 @@
   "check_id": "ADD-40",
   "func": "check_caa_saml_default",
   "module": "additional",
-  "inputs": "data.login_logs[].parameters.login_type == 'saml' (count distinct parameters.application_name / saml_idp / idp_initiated_url / '<unknown SAML>'); data.caa_events ACCESS_DENY_EVENT via _caa_denials('saml') (application_type contains 'saml' OR absent). requires_license=enterprise_standard.",
+  "inputs": "data.login_logs[].parameters.login_type == 'saml' (count distinct parameters.application_name / saml_idp / idp_initiated_url / '<unknown SAML>'); caa_events active-mode evaluations (additional._caa_enforcement_events): ACCESS_LEVELS_EVALUATED (allowed; live 2026-11-06, undocumented in the Reports API appendix) or ACCESS_DENY_EVENT, parameters CAA_ACCESS_LEVEL_APPLIED/_SATISFIED/_UNSATISFIED (multi-value titles), CAA_APPLICATION (GMAIL, DRIVE, CALENDAR...), PROTECTED_API_ACCESS / BLOCKED_API_ACCESS; event names containing MONITOR are monitor mode and never count. Counts only evaluations whose CAA_APPLICATION matches a detected SAML app name. requires_license=enterprise_standard.",
   "paths": [
    "logs"
   ],
-  "pass_case": "login_logs=[{'event_name':'login_success','parameters':{'login_type':'saml','application_name':'Workday'}}]; caa_events=[{'event_name':'ACCESS_DENY_EVENT','parameters':{'application_type':'SAML'}}] -> PASS.",
+  "pass_case": "caa_events ACCESS_DENY_EVENT or ACCESS_LEVELS_EVALUATED with CAA_APPLICATION naming a detected SAML app -> PASS.",
   "fail_case": "Never FAILs by design. Nearest negative: SAML login present, caa_events=[] -> MANUAL.",
-  "other_cases": "No login event with login_type 'saml' -> NOT_APPLICABLE. Below Enterprise Standard -> N/A.",
+  "other_cases": "No login event with login_type 'saml' -> NOT_APPLICABLE. Below Enterprise Standard -> N/A. Evaluation naming another app (e.g. GMAIL) -> MANUAL.",
   "edge_cases": "login audit login_type=saml means the USER signed into Google via a third-party SAML IdP (Google as SP); SAML apps where Google is the IdP are in the separate 'saml' Reports application (not collected). So a tenant with 50 SAML apps + password login -> N/A (false N/A); a tenant with Okta SSO and zero SAML apps -> MANUAL/PASS. Denial without application_type counts -> PASS from any denial. login_type case 'SAML' -> not matched. Missing application_name -> '<unknown SAML>' bucket counts as 1 app.",
   "coverage_now": "tests/test_checks/test_additional.py::TestCaaSamlDefault: N/A, PASS, MANUAL. Statuses: NOT_APPLICABLE, PASS, MANUAL.",
   "gaps": [
@@ -4187,17 +4186,17 @@
   "check_id": "GWS.GEMINI.2.1",
   "func": "check_gemini_alpha_features",
   "module": "cisa_scuba",
-  "inputs": "OU: get_ou_values(policies.gemini,'features') - dead (no gemini category). Admin-log: SETTING_NAME 'GenAiAlphaSettingsProto alpha_enabled', NEW_VALUE 'true' -> FAIL, else PASS; no event -> legacy gemini.features.alpha_features_enabled (never produced) -> MANUAL.",
+  "inputs": "OU: get_ou_values(policies.gemini,'features') - dead (no gemini category). Admin-log: SETTING_NAME 'Beta Gemini Features Beta Features enabled' (live, APPLICATION_NAME 'Gemini in Workspace'; flip test 2026-11-06: first save CREATE_APPLICATION_SETTING, later CHANGE_APPLICATION_SETTING, both with NEW_VALUE) or ScubaGoggles' 'GenAiAlphaSettingsProto alpha_enabled' as fallback; NEW_VALUE 'true' -> FAIL, else PASS; no event -> legacy gemini.features.alpha_features_enabled (never produced) -> MANUAL.",
   "paths": [
    "admin_log",
    "ou_policy",
    "legacy_fallback"
   ],
-  "pass_case": "admin_logs=[_setting_change('GenAiAlphaSettingsProto alpha_enabled','false')] -> PASS.",
-  "fail_case": "admin_logs=[_setting_change('GenAiAlphaSettingsProto alpha_enabled','true')] -> FAIL.",
+  "pass_case": "admin_logs=[_setting_change('Beta Gemini Features Beta Features enabled','false')] -> PASS.",
+  "fail_case": "admin_logs=[_setting_change('Beta Gemini Features Beta Features enabled','true')] -> FAIL; legacy name 'GenAiAlphaSettingsProto alpha_enabled' 'true' -> FAIL.",
   "other_cases": "No event, no gemini data -> MANUAL (make_review). No ERROR/NA.",
   "edge_cases": "(1) unexpected NEW_VALUE -> PASS (unknown -> PASS); (2) newest event wins; (3) per-OU; (4) INHERIT_FROM_PARENT ignored.",
-  "coverage_now": "tests/test_checks/test_cisa_scuba.py::TestCisaGemini::test_gemini_alpha_features_pass/_fail (legacy, never produced in production); test_real_shapes_batch2.py::TestAdminLogInference::test_gemini_alpha (log true FAIL / false PASS). statuses PASS, FAIL; MANUAL untested.",
+  "coverage_now": "tests/test_checks/test_cisa_scuba.py::TestCisaGemini::test_gemini_alpha_features_pass/_fail (legacy, never produced in production); test_real_shapes_batch2.py::TestAdminLogInference::test_gemini_alpha (live name true FAIL / false PASS, legacy name) and ::test_gemini_beta_live_sequence (exact 2026-11-06 events: MANUAL -> FAIL -> PASS; sibling UXR setting ignored). statuses PASS, FAIL, MANUAL.",
   "gaps": [
    "test: no event -> MANUAL",
    "test: newest-wins ordering",
@@ -4308,17 +4307,17 @@
   "check_id": "GWS.COMMONCONTROLS.2.1",
   "func": "check_context_aware_access",
   "module": "cisa_commoncontrols",
-  "inputs": "admin_logs event_name=TOGGLE_CAA_ENABLEMENT parameters.NEW_VALUE (newest by time wins); legacy: security._ou_policies login_challenges.devicePoliciesConfigured (not a real field, excluded when enableEmployeeIdChallenge present); legacy mapped security.context_aware_access.device_policies_configured (provider never sets it). requires_license=enterprise_standard.",
+  "inputs": "admin_logs TOGGLE_CAA_ENABLEMENT parameters.NEW_VALUE (newest wins) plus CHANGE_CAA_APP_ASSIGNMENTS per app and mode (APPLICATION_NAME, MODE MONITOR|BLOCK, CAA_ACCESS_ASSIGNMENTS_NEW/_OLD lists; real shape verified 2026-11-06) via additional._caa_app_assignment_evidence; caa_events ACCESS_DENY_EVENT. requires_license=enterprise_standard. caa_events active-mode evaluations (additional._caa_enforcement_events): ACCESS_LEVELS_EVALUATED (allowed; live 2026-11-06, undocumented in the Reports API appendix) or ACCESS_DENY_EVENT, parameters CAA_ACCESS_LEVEL_APPLIED/_SATISFIED/_UNSATISFIED (multi-value titles), CAA_APPLICATION (GMAIL, DRIVE, CALENDAR...), PROTECTED_API_ACCESS / BLOCKED_API_ACCESS; event names containing MONITOR are monitor mode and never count. Any active-mode evaluation with a non-empty applied list -> PASS (strongest evidence; survives assignments made before the admin-log window). A DISABLED toggle older than the newest evaluation is overridden by the evaluation.",
   "paths": [
    "admin_log",
    "ou_policy(legacy, unreachable in prod)",
    "legacy_fallback"
   ],
-  "pass_case": "admin_logs=[{event_name:'TOGGLE_CAA_ENABLEMENT',time:'2026-04-01T..',parameters:{NEW_VALUE:'ENABLED'}}] -> PASS. Multi-event: ENABLED@2026-01, DISABLED@2026-02 -> FAIL (newest wins); reverse order -> PASS.",
-  "fail_case": "NEW_VALUE:'DISABLED' -> FAIL. Also any other string ('true', 'OFF') -> FAIL because only 'ENABLED' (case-insensitive) passes.",
-  "other_cases": "No TOGGLE_CAA_ENABLEMENT event + no legacy keys -> MANUAL (make_review). NOT_APPLICABLE when subscription below enterprise_standard. Legacy login_challenges entry with only enableEmployeeIdChallenge/enabled -> MANUAL.",
-  "edge_cases": "Event with parameters missing NEW_VALUE is ignored; NEW_VALUE 'true'/'1' -> FAIL (verify real enum from Reports API; if Google logs 'true' this is a false FAIL); event with time '' sorts lowest; caa_events data key (CAA denial logs) is NOT consulted; CAA enabled but no device policies defined is still PASS (check title says policies implemented).",
-  "coverage_now": "test_cisa_commoncontrols.py::TestContextAwareAccess (legacy mapped key PASS/FAIL), ::TestContextAwareAccessOU (legacy devicePoliciesConfigured OU path PASS/FAIL), test_real_shapes_batch2.py::TestAdminLogInference::test_context_aware_access_event (admin_log PASS/FAIL), test_live_tenant_shapes.py: unknown->MANUAL, employee-id alias->MANUAL. status_rec: PASS/FAIL/MANUAL.",
+  "pass_case": "caa_events ACCESS_LEVELS_EVALUATED/ACCESS_DENY_EVENT with CAA_ACCESS_LEVEL_APPLIED -> PASS; else ENABLED toggle plus an app whose latest BLOCK/WARN-mode event carries CAA_ACCESS_ASSIGNMENTS_NEW -> PASS; any ACCESS_DENY_EVENT -> PASS.",
+  "fail_case": "NEW_VALUE:'DISABLED' (newest) -> FAIL.",
+  "other_cases": "ENABLED with no assignment event, with monitor-only assignments, or with every assignment removed -> MANUAL (seen live: ON with zero access levels). No toggle event -> MANUAL. Below enterprise_standard -> NOT_APPLICABLE.",
+  "edge_cases": "Event with parameters missing NEW_VALUE is ignored; NEW_VALUE 'true'/'1' -> FAIL (verify real enum from Reports API; if Google logs 'true' this is a false FAIL); event with time '' sorts lowest; caa_events data key (CAA denial logs) is NOT consulted; CAA enabled but no device policies defined is still PASS (check title says policies implemented). MODE vocabulary: BLOCK (live), ACTIVE (Reports API appendix), WARN (assumed) count as enforcing; MONITOR is monitor; anything else -> MANUAL. Assignment list read from CAA_ACCESS_ASSIGNMENTS_NEW (live) or the documented aliases CAA_ACCESS_LEVELS_NEW / CAA_ASSIGNMENTS_NEW.",
+  "coverage_now": "test_cisa_commoncontrols.py::TestContextAwareAccess (legacy mapped key PASS/FAIL), ::TestContextAwareAccessOU (legacy devicePoliciesConfigured OU path PASS/FAIL), test_real_shapes_batch2.py::TestAdminLogInference::test_context_aware_access_event (admin_log PASS/FAIL), test_live_tenant_shapes.py: unknown->MANUAL, employee-id alias->MANUAL. status_rec: PASS/FAIL/MANUAL. test_real_shapes_batch2.py::TestAdminLogInference::test_context_aware_access_allowed_evaluations_prove_enforcement (live shape; monitor/no-applied -> MANUAL; evaluation vs DISABLED toggle ordering).",
   "gaps": [
    "newest-event-wins ordering with two TOGGLE_CAA_ENABLEMENT events (ENABLED then DISABLED and reverse)",
    "NEW_VALUE case variants ('enabled') and non-enum values ('true') documented as FAIL vs expected",

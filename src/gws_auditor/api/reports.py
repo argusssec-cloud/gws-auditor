@@ -198,12 +198,12 @@ class ReportsClient(BaseAPIClient):
         start_time: str | None = None,
         max_items: int = 0,
     ) -> list[dict[str, Any]]:
-        """Retrieve Context-Aware Access denial events.
+        """Retrieve Context-Aware Access user events (allowed and denied).
 
-        Queries ``applicationName=context_aware_access`` which exposes a
-        single documented event ``ACCESS_DENY_EVENT`` — fired whenever a
-        CAA policy blocks an access attempt.  Used as positive evidence
-        that CAA is actively enforcing for the tenant.
+        Queries ``applicationName=context_aware_access``. The appendix documents
+        ``ACCESS_DENY_EVENT`` only; live tenants also log ``ACCESS_LEVELS_EVALUATED``
+        for allowed accesses (observed 2026-11-06). Both name the applied access
+        levels and the app, so either proves CAA is actively enforcing.
 
         Reference: https://developers.google.com/admin-sdk/reports/v1/appendix/activity/context-aware-access
         """

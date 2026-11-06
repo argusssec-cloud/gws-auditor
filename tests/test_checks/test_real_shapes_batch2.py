@@ -121,10 +121,73 @@ class TestAdminLogInference:
         from gws_auditor.checks.cisa_scuba import check_gemini_alpha_features
 
         full_audit_data["policies"].pop("gemini", None)
+        # Live name and values (flip test 2026-11-06, APPLICATION_NAME "Gemini in Workspace").
+        live = "Beta Gemini Features Beta Features enabled"
+        full_audit_data["admin_logs"] = [_setting_change(live, "true")]
+        assert check_gemini_alpha_features(full_audit_data).status == Status.FAIL
+        full_audit_data["admin_logs"] = [_setting_change(live, "false")]
+        assert check_gemini_alpha_features(full_audit_data).status == Status.PASS
+        # ScubaGoggles' name is still honoured as a fallback.
         full_audit_data["admin_logs"] = [_setting_change("GenAiAlphaSettingsProto alpha_enabled", "true")]
         assert check_gemini_alpha_features(full_audit_data).status == Status.FAIL
-        full_audit_data["admin_logs"] = [_setting_change("GenAiAlphaSettingsProto alpha_enabled", "false")]
+
+    def test_gemini_beta_live_sequence(self, full_audit_data):
+        """Exact 2026-11-06 flip: the first save is CREATE_APPLICATION_SETTING (no OLD_VALUE), the
+        revert CHANGE_APPLICATION_SETTING; a sibling UXR setting with the same prefix must not match."""
+        from gws_auditor.checks.cisa_scuba import check_gemini_alpha_features
+
+        full_audit_data["policies"].pop("gemini", None)
+        create_on = {"event_name": "CREATE_APPLICATION_SETTING", "time": "2026-11-06T17:40:57.787Z",
+                     "parameters": {"APPLICATION_NAME": "Gemini in Workspace", "ORG_UNIT_NAME": "argussec.io",
+                                    "SETTING_NAME": "Beta Gemini Features Beta Features enabled",
+                                    "NEW_VALUE": "true", "APPLICATION_EDITION": "duet_main_enterprise_standard_2024"}}
+        uxr = {"event_name": "CREATE_APPLICATION_SETTING", "time": "2026-11-06T17:40:57.787Z",
+               "parameters": {"APPLICATION_NAME": "Gemini in Workspace", "ORG_UNIT_NAME": "argussec.io",
+                              "SETTING_NAME": "Beta Gemini Features Beta UXR outreach enabled",
+                              "NEW_VALUE": "false", "APPLICATION_EDITION": "duet_main_enterprise_standard_2024"}}
+        change_off = {"event_name": "CHANGE_APPLICATION_SETTING", "time": "2026-11-06T17:41:13.591Z",
+                      "parameters": {"APPLICATION_NAME": "Gemini in Workspace", "ORG_UNIT_NAME": "argussec.io",
+                                     "SETTING_NAME": "Beta Gemini Features Beta Features enabled",
+                                     "OLD_VALUE": "true", "NEW_VALUE": "false",
+                                     "APPLICATION_EDITION": "duet_main_enterprise_standard_2024"}}
+        full_audit_data["admin_logs"] = []
+        assert check_gemini_alpha_features(full_audit_data).status == Status.MANUAL
+        full_audit_data["admin_logs"] = [create_on, uxr]
+        result = check_gemini_alpha_features(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "argussec.io" in result.details
+        full_audit_data["admin_logs"] = [create_on, uxr, change_off]
         assert check_gemini_alpha_features(full_audit_data).status == Status.PASS
+        full_audit_data["admin_logs"] = [uxr]  # only the sibling setting: unknown -> MANUAL
+        assert check_gemini_alpha_features(full_audit_data).status == Status.MANUAL
+
+    def test_context_aware_access_allowed_evaluations_prove_enforcement(self, full_audit_data):
+        """Exact live events 2026-11-06: ACCESS_LEVELS_EVALUATED with Geo restriction applied and satisfied."""
+        from gws_auditor.checks.cisa_commoncontrols import check_context_aware_access
+        from tests.test_checks.test_additional import _caa_event
+
+        full_audit_data["admin_logs"] = []
+        full_audit_data["caa_events"] = [
+            {"event_name": "ACCESS_LEVELS_EVALUATED", "event_type": "CONTEXT_AWARE_ACCESS_USER_EVENT",
+             "time": "2026-11-06T18:33:34.387Z", "actor_email": "admin@example.com", "ip_address": "203.0.113.5",
+             "parameters": {"CAA_ACCESS_LEVEL_APPLIED": ["Geo restriction"], "CAA_ACCESS_LEVEL_SATISFIED": ["Geo restriction"],
+                            "CAA_APPLICATION": "GMAIL", "CAA_DEVICE_ID": "UNKNOWN",
+                            "CAA_DEVICE_STATE": "No Device Signals", "PROTECTED_API_ACCESS": ["GMAIL"]}}]
+        result = check_context_aware_access(full_audit_data)
+        assert result.status == Status.PASS
+        assert "1 active-mode evaluation(s) (0 denied)" in result.details
+        assert "GMAIL" in result.details and "Geo restriction" in result.details
+        # Monitor-mode names and evaluations without an applied level are not enforcement.
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED_MONITOR_MODE", "GMAIL"),
+                                         _caa_event("ACCESS_LEVELS_EVALUATED", "DRIVE", applied=())]
+        assert check_context_aware_access(full_audit_data).status == Status.MANUAL
+        # An evaluation newer than a DISABLED toggle beats the toggle; an older one does not.
+        full_audit_data["admin_logs"] = [{"event_name": "TOGGLE_CAA_ENABLEMENT", "time": "2026-11-01T00:00:00Z",
+                                          "parameters": {"NEW_VALUE": "DISABLED"}}]
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL", time="2026-11-06T18:33:34.387Z")]
+        assert check_context_aware_access(full_audit_data).status == Status.PASS
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL", time="2026-10-01T00:00:00Z")]
+        assert check_context_aware_access(full_audit_data).status == Status.FAIL
 
     def test_context_aware_access_event(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_context_aware_access
@@ -135,12 +198,19 @@ class TestAdminLogInference:
         result = check_context_aware_access(full_audit_data)
         assert result.status == Status.MANUAL  # ON with no access level assigned is not "implemented" (seen live)
         assert "no access-level assignment" in result.details
+        # Real CHANGE_CAA_APP_ASSIGNMENTS shape (flip test 2026-11-06): per app and mode, list-valued.
         full_audit_data["admin_logs"] = toggle("ENABLED") + [{"event_name": "CHANGE_CAA_APP_ASSIGNMENTS", "time": "2026-04-02T00:00:00Z",
-            "parameters": {"APPLICATION_NAME": "Gmail", "CAA_ACCESS_LEVELS_NEW": "[Corp devices]", "MODE": "ACTIVE"}}]
+            "parameters": {"APPLICATION_NAME": "GMAIL", "CAA_ACCESS_ASSIGNMENTS_NEW": ["Corp devices"], "MODE": "BLOCK",
+                           "TARGET_ENTITY_TYPE": "ORG_UNIT", "TARGET_ENTITY_NAME": "example.com"}}]
         result = check_context_aware_access(full_audit_data)
-        assert result.status == Status.PASS and "Gmail" in result.details
-        full_audit_data["admin_logs"][-1]["parameters"]["CAA_ACCESS_LEVELS_NEW"] = ""
+        assert result.status == Status.PASS and "GMAIL" in result.details
+        full_audit_data["admin_logs"][-1]["parameters"]["MODE"] = "MONITOR"
         assert check_context_aware_access(full_audit_data).status == Status.MANUAL
+        full_audit_data["admin_logs"][-1]["parameters"]["MODE"] = "BLOCK"
+        full_audit_data["admin_logs"].append({"event_name": "CHANGE_CAA_APP_ASSIGNMENTS", "time": "2026-04-03T00:00:00Z",
+            "parameters": {"APPLICATION_NAME": "GMAIL", "CAA_ACCESS_ASSIGNMENTS_OLD": ["Corp devices"], "MODE": "BLOCK"}})
+        result = check_context_aware_access(full_audit_data)
+        assert result.status == Status.MANUAL and "removed" in result.details
         full_audit_data["admin_logs"] = toggle("DISABLED")
         assert check_context_aware_access(full_audit_data).status == Status.FAIL
 

@@ -8,6 +8,23 @@ from gws_auditor.models import Status
 from tests.factories import make_ou_policy, make_user
 
 
+
+def _caa_event(name, app, applied=("Geo restriction",), satisfied=None, unsatisfied=(), time="2026-11-06T18:33:34.387Z"):
+    """A normalized context_aware_access entry in the live shape observed 2026-11-06."""
+    applied = list(applied)
+    satisfied = applied if satisfied is None and not unsatisfied else list(satisfied or [])
+    params = {"CAA_ACCESS_LEVEL_APPLIED": applied, "CAA_APPLICATION": app,
+              "CAA_DEVICE_ID": "UNKNOWN", "CAA_DEVICE_STATE": "No Device Signals"}
+    if satisfied:
+        params["CAA_ACCESS_LEVEL_SATISFIED"] = satisfied
+        params["PROTECTED_API_ACCESS"] = [app]
+    if unsatisfied:
+        params["CAA_ACCESS_LEVEL_UNSATISFIED"] = list(unsatisfied)
+        params["BLOCKED_API_ACCESS"] = [app]
+    return {"actor_email": "user@example.com", "event_name": name, "event_type": "CONTEXT_AWARE_ACCESS_USER_EVENT",
+            "time": time, "ip_address": "203.0.113.5", "parameters": params}
+
+
 class TestAdditionalChecks:
     """Tests for Other + Google best practice checks."""
 
@@ -339,18 +356,28 @@ class TestCaaOidc:
                 },
             },
         ]
-        full_audit_data["caa_events"] = [
-            {
-                "event_name": "ACCESS_DENY_EVENT",
-                "parameters": {
-                    "application_name": "LinkedIn",
-                    "application_type": "OAUTH",
-                },
-            },
-        ]
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_DENY_EVENT", "LinkedIn", unsatisfied=["Corp devices"])]
         result = check_caa_oidc(full_audit_data)
         assert result.status == Status.PASS
-        assert "1" in result.details  # 1 denial event
+        assert "1 active-mode evaluation(s) (1 denied)" in result.details
+
+    def test_caa_oidc_allowed_evaluation_for_the_app_passes(self, full_audit_data):
+        """ACCESS_LEVELS_EVALUATED (allowed, live shape 2026-11-06) naming the app is enforcement too."""
+        from gws_auditor.checks.additional import check_caa_oidc
+        self._oidc(full_audit_data, "Notion")
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "Notion")]
+        result = check_caa_oidc(full_audit_data)
+        assert result.status == Status.PASS
+        assert "(0 denied)" in result.details
+
+    def test_caa_oidc_evaluation_for_workspace_app_or_monitor_mode_is_not_evidence(self, full_audit_data):
+        """A Gmail evaluation says nothing about OIDC coverage; monitor-mode names never count."""
+        from gws_auditor.checks.additional import check_caa_oidc
+        self._oidc(full_audit_data, "Notion")
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL"),
+                                         _caa_event("ACCESS_DENY_EVENT", "DRIVE", unsatisfied=["Geo restriction"]),
+                                         _caa_event("ACCESS_DENY_EVENT_MONITOR_MODE", "Notion", unsatisfied=["Geo restriction"])]
+        assert check_caa_oidc(full_audit_data).status == Status.MANUAL
 
     def test_caa_oidc_apps_without_denials_review(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_oidc
@@ -386,54 +413,98 @@ class TestCaaOidc:
         result = check_caa_oidc(full_audit_data)
         assert result.status == Status.FAIL and "turned off" in result.details
 
+    # Event shape below is the one observed live (flip test 2026-11-06, Tasks app): one event per app
+    # and mode, APPLICATION_NAME upper-case, MODE MONITOR|BLOCK, CAA_ACCESS_ASSIGNMENTS_NEW a list of
+    # level names, or CAA_ACCESS_ASSIGNMENTS_OLD alone when that mode's assignment is removed.
+    @staticmethod
+    def _assign(app, mode, levels, time="2026-10-01T10:00:00.000Z", removed=False):
+        from tests.factories import make_admin_event
+        key = "CAA_ACCESS_ASSIGNMENTS_OLD" if removed else "CAA_ACCESS_ASSIGNMENTS_NEW"
+        return make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {
+            "APPLICATION_NAME": app.upper(), "CAA_ENFORCEMENT_ENDPOINTS_OLD": "CAA_WEB_VERSION",
+            "CAA_ENFORCEMENT_ENDPOINTS_NEW": "CAA_WEB_VERSION_AND_1P_OAUTH_CLIENTS",
+            "TARGET_ENTITY_TYPE": "ORG_UNIT", "TARGET_ENTITY_NAME": "example.com",
+            "MODE": mode, key: list(levels)}, time)
+
     def test_access_levels_assigned_to_every_app_pass(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_oidc
-        from tests.factories import make_admin_event
         self._oidc(full_audit_data, "Notion", "LinkedIn")
-        full_audit_data["admin_logs"] = [
-            make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {"APPLICATION_NAME": "notion", "CAA_ACCESS_LEVELS_NEW": "[Corp devices]", "MODE": "ACTIVE"}),
-            make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {"APPLICATION_NAME": "LinkedIn", "CAA_ACCESS_LEVELS_NEW": ["Corp devices"], "MODE": "ACTIVE"})]
+        full_audit_data["admin_logs"] = [self._assign("notion", "BLOCK", ["Corp devices"]),
+                                         self._assign("LinkedIn", "WARN", ["Corp devices"])]
         result = check_caa_oidc(full_audit_data)
         assert result.status == Status.PASS
         assert sorted(result.actual_value["covered"]) == ["LinkedIn", "Notion"]
 
     def test_levels_removed_or_monitor_mode_fail(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_oidc
-        from tests.factories import make_admin_event
         self._oidc(full_audit_data, "Notion", "LinkedIn")
         full_audit_data["admin_logs"] = [
-            make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {"APPLICATION_NAME": "Notion", "CAA_ACCESS_LEVELS_NEW": "[Corp devices]", "MODE": "ACTIVE"}, "2026-01-01T00:00:00Z"),
-            make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {"APPLICATION_NAME": "Notion", "CAA_ACCESS_LEVELS_NEW": "", "MODE": "ACTIVE"}, "2026-02-01T00:00:00Z"),
-            make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {"APPLICATION_NAME": "LinkedIn", "CAA_ACCESS_LEVELS_NEW": "[Corp devices]", "MODE": "MONITOR"})]
+            self._assign("Notion", "BLOCK", ["Corp devices"], "2026-01-01T00:00:00Z"),
+            self._assign("Notion", "BLOCK", ["Corp devices"], "2026-02-01T00:00:00Z", removed=True),
+            self._assign("LinkedIn", "MONITOR", ["Corp devices"])]
         result = check_caa_oidc(full_audit_data)
         assert result.status == Status.FAIL
         assert "removed from Notion" in result.details and "monitor mode only" in result.details and "LinkedIn" in result.details
 
+    def test_live_sequence_monitor_then_block_then_removed(self, full_audit_data):
+        """The exact event sequence recorded on 2026-11-06: assign in monitor mode, switch to block
+        (block NEW + monitor OLD at the same instant), then remove (block OLD)."""
+        from gws_auditor.checks.additional import check_caa_oidc
+        self._oidc(full_audit_data, "Tasks")
+        t1, t2, t3 = "2026-11-06T08:23:11.500Z", "2026-11-06T08:26:27.197Z", "2026-11-06T08:28:07.000Z"
+        monitor_on = [self._assign("TASKS", "MONITOR", ["Audit flip test (temporary)"], t1)]
+        full_audit_data["admin_logs"] = list(monitor_on)
+        result = check_caa_oidc(full_audit_data)
+        assert result.status == Status.FAIL and "monitor mode only" in result.details
+        switched = monitor_on + [self._assign("TASKS", "BLOCK", ["Audit flip test (temporary)"], t2),
+                                 self._assign("TASKS", "MONITOR", ["Audit flip test (temporary)"], t2, removed=True)]
+        full_audit_data["admin_logs"] = list(switched)
+        result = check_caa_oidc(full_audit_data)
+        assert result.status == Status.PASS and result.actual_value["covered"] == ["Tasks"]
+        full_audit_data["admin_logs"] = switched + [self._assign("TASKS", "BLOCK", ["Audit flip test (temporary)"], t3, removed=True)]
+        result = check_caa_oidc(full_audit_data)
+        assert result.status == Status.FAIL and result.actual_value["levels_removed"] == ["Tasks"]
+
     def test_partial_assignment_stays_review(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_oidc
-        from tests.factories import make_admin_event
         self._oidc(full_audit_data, "Notion", "LinkedIn")
-        full_audit_data["admin_logs"] = [
-            make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {"APPLICATION_NAME": "Notion", "CAA_ACCESS_LEVELS_NEW": "[Corp devices]", "MODE": "ACTIVE"})]
+        full_audit_data["admin_logs"] = [self._assign("Notion", "BLOCK", ["Corp devices"])]
         result = check_caa_oidc(full_audit_data)
         assert result.status == Status.MANUAL
         assert result.actual_value["covered"] == ["Notion"] and result.actual_value["no_assignment_event"] == ["LinkedIn"]
 
     def test_unrecognised_mode_is_review_not_pass(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_oidc
-        from tests.factories import make_admin_event
         self._oidc(full_audit_data, "Notion")
-        full_audit_data["admin_logs"] = [
-            make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {"APPLICATION_NAME": "Notion", "CAA_ACCESS_LEVELS_NEW": "[Corp devices]", "MODE": "SOMETHING_NEW"})]
+        full_audit_data["admin_logs"] = [self._assign("Notion", "ENFORCE", ["Corp devices"])]
         result = check_caa_oidc(full_audit_data)
         assert result.status == Status.MANUAL
-        assert result.actual_value["unrecognised_mode"] == ["Notion (mode SOMETHING_NEW)"]
+        assert result.actual_value["unrecognised_mode"] == ["Notion (mode ENFORCE)"]
+
+    def test_documented_active_mode_and_parameter_aliases(self, full_audit_data):
+        """The Reports API appendix documents MODE ACTIVE and CAA_ACCESS_LEVELS_NEW / CAA_ASSIGNMENTS_NEW."""
+        from tests.factories import make_admin_event
+        from gws_auditor.checks.additional import check_caa_oidc
+        self._oidc(full_audit_data, "Notion")
+        full_audit_data["admin_logs"] = [self._assign("Notion", "ACTIVE", ["Corp devices"])]
+        assert check_caa_oidc(full_audit_data).status == Status.PASS
+        full_audit_data["admin_logs"] = [make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {
+            "APPLICATION_NAME": "NOTION", "MODE": "ACTIVE", "CAA_ASSIGNMENTS_NEW": ["Corp devices"]})]
+        assert check_caa_oidc(full_audit_data).status == Status.PASS
+
+    def test_legacy_levels_parameter_still_read(self, full_audit_data):
+        from gws_auditor.checks.additional import check_caa_oidc
+        from tests.factories import make_admin_event
+        self._oidc(full_audit_data, "Notion")
+        full_audit_data["admin_logs"] = [make_admin_event("CHANGE_CAA_APP_ASSIGNMENTS", {
+            "APPLICATION_NAME": "NOTION", "CAA_ACCESS_LEVELS_NEW": "[Corp devices]", "MODE": "BLOCK"})]
+        assert check_caa_oidc(full_audit_data).status == Status.PASS
 
     def test_denial_evidence_still_wins(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_oidc
         from tests.factories import make_admin_event
         self._oidc(full_audit_data, "Notion")
-        full_audit_data["caa_events"] = [{"event_name": "ACCESS_DENY_EVENT", "parameters": {"application_name": "Notion", "application_type": "OAUTH"}}]
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_DENY_EVENT", "Notion", unsatisfied=["Corp devices"])]
         full_audit_data["admin_logs"] = [make_admin_event("TOGGLE_CAA_ENABLEMENT", {"NEW_VALUE": "DISABLED"})]
         assert check_caa_oidc(full_audit_data).status == Status.PASS
 
@@ -471,17 +542,16 @@ class TestCaaSamlDefault:
                 },
             },
         ]
-        full_audit_data["caa_events"] = [
-            {
-                "event_name": "ACCESS_DENY_EVENT",
-                "parameters": {
-                    "application_name": "Workday",
-                    "application_type": "SAML",
-                },
-            },
-        ]
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_DENY_EVENT", "Workday", unsatisfied=["Corp devices"])]
         result = check_caa_saml_default(full_audit_data)
         assert result.status == Status.PASS
+
+    def test_caa_saml_evaluation_for_other_app_is_not_evidence(self, full_audit_data):
+        from gws_auditor.checks.additional import check_caa_saml_default
+        full_audit_data["login_logs"] = [{"event_name": "login_success",
+                                          "parameters": {"login_type": "saml", "application_name": "Workday"}}]
+        full_audit_data["caa_events"] = [_caa_event("ACCESS_LEVELS_EVALUATED", "GMAIL")]
+        assert check_caa_saml_default(full_audit_data).status == Status.MANUAL
 
     def test_caa_saml_apps_without_denials_review(self, full_audit_data):
         from gws_auditor.checks.additional import check_caa_saml_default

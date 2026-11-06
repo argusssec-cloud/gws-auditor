@@ -8,6 +8,7 @@ Custom security checks from OTHER and GOOGLE best practices
 that supplement the CIS Benchmark controls.
 """
 
+import json
 from datetime import datetime, timedelta, timezone
 
 from .base import (
@@ -979,53 +980,110 @@ def _count_saml_apps(login_logs: list) -> tuple[int, list[str]]:
     return len(seen), sorted(seen)
 
 
-def _caa_denials(caa_events: list, app_class: str) -> tuple[int, list[str]]:
-    """Count CAA denial events relevant to ``app_class`` (``"oidc"`` or ``"saml"``).
+# Context-Aware Access user events (applicationName=context_aware_access). The Reports API appendix
+# documents only ACCESS_DENY_EVENT; the live tenant (2026-11-06) also writes ACCESS_LEVELS_EVALUATED for
+# every allowed access ("Access Evaluated" in the Workspace help), with CAA_ACCESS_LEVEL_APPLIED /
+# _SATISFIED / _UNSATISFIED (multi-value level titles), CAA_APPLICATION (upper-case app code such as
+# GMAIL, DRIVE, CALENDAR), CAA_DEVICE_ID, CAA_DEVICE_STATE and PROTECTED_API_ACCESS or
+# BLOCKED_API_ACCESS. Monitor-mode results ("Access Denied (Monitor mode)", "Access Evaluated (Monitor
+# mode)") were not observed; any event name containing MONITOR is treated as monitor mode and is never
+# proof of enforcement.
+_CAA_ACTIVE_EVENTS = ("ACCESS_DENY_EVENT", "ACCESS_LEVELS_EVALUATED")
 
-    The ``ACCESS_DENY_EVENT`` parameters that disambiguate app class are not
-    rigidly documented, so this function is intentionally conservative:
-    it accepts any of several plausible signals
-    (``application_type`` / ``is_third_party_oauth`` / ``application_name``).
-    When no per-event signal is present, the event is counted toward both
-    classes — better to report "CAA is enforcing somewhere" than to miss it.
+
+def _as_title_list(value) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return [str(v).strip() for v in value if str(v).strip()]
+    text = str(value).strip()
+    if text.startswith("[") and text.endswith("]"):
+        text = text[1:-1]
+    return [t.strip() for t in text.split(",") if t.strip()]
+
+
+def _caa_enforcement_events(caa_events: list) -> list[dict]:
+    """Active-mode Context-Aware Access evaluations (allowed or denied) from ``data["caa_events"]``.
+
+    Each item: ``{"event", "denied", "app", "applied", "satisfied", "unsatisfied", "time"}``. An
+    evaluation with a non-empty ``applied`` list proves that an access level was enforced on that app
+    at that time, whatever the outcome. Monitor-mode and unknown event names are skipped.
     """
-    matched: list[str] = []
+    out: list[dict] = []
     for entry in caa_events or []:
         if not isinstance(entry, dict):
             continue
-        if entry.get("event_name") != "ACCESS_DENY_EVENT":
+        name = str(entry.get("event_name", "")).upper()
+        if name not in _CAA_ACTIVE_EVENTS or "MONITOR" in name:
             continue
         params = entry.get("parameters", {}) or {}
-        app_type = str(params.get("application_type", "")).lower()
-        app_name = str(params.get("application_name", "")) or "<unknown>"
+        app = str(params.get("CAA_APPLICATION") or params.get("application_name") or "").strip()
+        out.append({
+            "event": name,
+            "denied": name == "ACCESS_DENY_EVENT",
+            "app": app,
+            "applied": _as_title_list(params.get("CAA_ACCESS_LEVEL_APPLIED")),
+            "satisfied": _as_title_list(params.get("CAA_ACCESS_LEVEL_SATISFIED")),
+            "unsatisfied": _as_title_list(params.get("CAA_ACCESS_LEVEL_UNSATISFIED")),
+            "time": str(entry.get("time", "")),
+        })
+    return out
 
-        if app_class == "oidc":
-            keep = (
-                "oauth" in app_type
-                or "oidc" in app_type
-                or params.get("is_third_party_oauth") is True
-                or not app_type  # ambiguous → count for both classes
-            )
-        elif app_class == "saml":
-            keep = "saml" in app_type or not app_type
-        else:
-            keep = False
 
-        if keep:
-            matched.append(app_name)
-    return len(matched), sorted(set(matched))
+def _caa_enforcement_for_apps(caa_events: list, app_names: list[str]) -> tuple[int, list[str], int]:
+    """Count active-mode CAA evaluations whose ``CAA_APPLICATION`` names one of *app_names*.
+
+    Returns ``(evaluations, matched app names, denials)``. Matching is case-insensitive on the app
+    name; an evaluation for a Workspace app (GMAIL, DRIVE ...) never counts for a third-party app, so
+    "CAA is enforcing somewhere" is no longer evidence that it covers these apps.
+    """
+    wanted = {str(n).strip().lower() for n in app_names if str(n).strip()}
+    count, denials, matched = 0, 0, set()
+    for ev in _caa_enforcement_events(caa_events):
+        if ev["app"].lower() in wanted:
+            count += 1
+            denials += int(ev["denied"])
+            matched.add(ev["app"])
+    return count, sorted(matched), denials
+
+
+# CHANGE_CAA_APP_ASSIGNMENTS MODE values seen live (2026-11-06 flip test on argussec.io): MONITOR for
+# monitor mode, BLOCK for active mode with the Block action. WARN is the console's other active action
+# ("access levels enforced and users get a warning") and is assumed to log the same way; any other
+# value is treated as unknown rather than as enforcement.
+# Live events (2026-11-06) carry MODE BLOCK; the Reports API appendix documents ACTIVE | MONITOR; WARN is
+# assumed for the console's Warn action. Anything else is "unclear" (MANUAL), never PASS.
+_CAA_ACTIVE_MODES = ("BLOCK", "WARN", "ACTIVE")
+_CAA_MONITOR_MODES = ("MONITOR",)
+
+
+# Live events use CAA_ACCESS_ASSIGNMENTS_NEW; the Reports API appendix also documents
+# CAA_ACCESS_LEVELS_NEW and CAA_ASSIGNMENTS_NEW for the same event.
+_CAA_NEW_ASSIGNMENT_KEYS = ("CAA_ACCESS_ASSIGNMENTS_NEW", "CAA_ACCESS_LEVELS_NEW", "CAA_ASSIGNMENTS_NEW")
+
+
+def _caa_new_assignment_value(params: dict):
+    for key in _CAA_NEW_ASSIGNMENT_KEYS:
+        if key in params:
+            return params.get(key)
+    return None
 
 
 def _caa_app_assignment_evidence(admin_logs: list, app_names: list[str]) -> dict:
     """Admin-log evidence for Context-Aware Access on the given apps.
 
-    ``TOGGLE_CAA_ENABLEMENT`` gives the global state; ``CHANGE_CAA_APP_ASSIGNMENTS`` (parameters
-    ``APPLICATION_NAME``, ``CAA_ACCESS_LEVELS_NEW``, ``MODE``) gives the latest access-level
-    assignment per app. Returns ``{"toggle": state|None, "covered": [...], "monitor": [...],
-    "removed": [...], "unknown": [...]}`` over *app_names* (matched case-insensitively).
+    ``TOGGLE_CAA_ENABLEMENT`` gives the global state. ``CHANGE_CAA_APP_ASSIGNMENTS`` is written once
+    per app *and* mode (observed live): ``APPLICATION_NAME`` (upper-case, e.g. ``TASKS``), ``MODE``
+    (``MONITOR`` or ``BLOCK``), ``CAA_ACCESS_ASSIGNMENTS_NEW`` (multi-value list of access-level names
+    now assigned in that mode) or ``CAA_ACCESS_ASSIGNMENTS_OLD`` alone when the assignment in that mode
+    was removed. The latest event per app and mode gives that mode's current assignment. Returns
+    ``{"toggle": state|None, "covered": [...], "monitor": [...], "removed": [...], "unknown": [...],
+    "unclear": [...]}`` over *app_names* (matched case-insensitively): covered = an active-mode
+    assignment with levels; monitor = levels only in monitor mode; removed = events exist but no mode
+    keeps levels; unknown = no event; unclear = levels only under an unrecognised mode.
     """
     toggle: tuple[str, str] | None = None
-    latest: dict[str, tuple[str, object, str]] = {}
+    state: dict[str, dict[str, tuple[str, bool]]] = {}
     for log in admin_logs or []:
         if not isinstance(log, dict):
             continue
@@ -1037,27 +1095,125 @@ def _caa_app_assignment_evidence(admin_logs: list, app_names: list[str]) -> dict
                 toggle = (when, str(params["NEW_VALUE"]).upper())
         elif event == "CHANGE_CAA_APP_ASSIGNMENTS":
             app = str(params.get("APPLICATION_NAME", "")).strip().lower()
-            if app and (app not in latest or when >= latest[app][0]):
-                latest[app] = (when, params.get("CAA_ACCESS_LEVELS_NEW", ""), str(params.get("MODE", "")).upper())
+            if not app:
+                continue
+            mode = str(params.get("MODE", "")).strip().upper()
+            new = _caa_new_assignment_value(params)
+            has_levels = bool(new) and str(new).strip() not in ("[]", "{}", "none", "None")
+            per_mode = state.setdefault(app, {})
+            if mode not in per_mode or when >= per_mode[mode][0]:
+                per_mode[mode] = (when, has_levels)
     covered, monitor, removed, unknown, unclear = [], [], [], [], []
     for name in app_names:
-        entry = latest.get(str(name).strip().lower())
-        if entry is None:
+        per_mode = state.get(str(name).strip().lower())
+        if per_mode is None:
             unknown.append(name)
             continue
-        levels, mode = entry[1], entry[2]
-        has_levels = bool(levels) and str(levels).strip() not in ("[]", "{}", "none", "None")
-        if not has_levels:
-            removed.append(name)
-        elif "MONITOR" in mode or "DRY" in mode:
-            monitor.append(name)
-        elif not mode or "ACTIVE" in mode or "ENFORC" in mode:
+        live = [mode for mode, (_, has_levels) in per_mode.items() if has_levels]
+        if any(mode in _CAA_ACTIVE_MODES for mode in live):
             covered.append(name)
+        elif any(mode not in _CAA_MONITOR_MODES for mode in live):
+            # Levels assigned under a mode this code does not know; not evidence of enforcement.
+            other = sorted(mode or "(blank)" for mode in live if mode not in _CAA_MONITOR_MODES)
+            unclear.append(f"{name} (mode {', '.join(other)})")
+        elif live:
+            monitor.append(name)
         else:
-            # The MODE parameter's values are not documented; an unrecognised one is not a PASS.
-            unclear.append(f"{name} (mode {mode})")
-    return {"toggle": toggle[1] if toggle else None, "covered": covered, "monitor": monitor,
+            removed.append(name)
+    return {"toggle": toggle[1] if toggle else None, "toggle_time": toggle[0] if toggle else "", "covered": covered, "monitor": monitor,
             "removed": removed, "unknown": unknown, "unclear": unclear}
+
+
+_ACCESS_LEVEL_STATE_EVENTS = ("CREATE_ACCESS_LEVEL_V2", "UPDATE_ACCESS_LEVEL_V2")
+_ACCESS_LEVEL_DELETE_EVENTS = ("DELETE_ACCESS_LEVEL_V2",)
+
+
+def _caa_access_level_inventory(admin_logs: list) -> dict[str, dict]:
+    """Access levels known from the admin audit log, keyed by ``ACCESS_LEVEL_NAME``.
+
+    Observed live 2026-11-06 (event type ``ACCESS_LEVEL``, delivered a few minutes late):
+    ``CREATE_ACCESS_LEVEL_V2`` with ``ACCESS_LEVEL_TITLE``, ``ACCESS_LEVEL_NAME``
+    (``accessPolicies/<id>/accessLevels/<id>``) and ``ACCESS_LEVEL_CURR_STATE`` (JSON text of the
+    level: ``basic.conditions[]`` with ``regions``, ``ipSubnetworks``, ``devicePolicy`` ... and
+    ``negate``, or ``custom.expr``); ``DELETE_ACCESS_LEVEL_V2`` with ``ACCESS_LEVEL_NAME`` only.
+    ``UPDATE_ACCESS_LEVEL_V2`` is assumed to carry the same fields as create. The latest event per
+    name wins. Each value: ``{"title", "state" (parsed dict or None), "deleted", "time"}``. Levels
+    created before the log window never appear, so an empty result means unknown, not none.
+    """
+    inventory: dict[str, dict] = {}
+    for log in admin_logs or []:
+        if not isinstance(log, dict):
+            continue
+        event = log.get("event_name")
+        if event not in _ACCESS_LEVEL_STATE_EVENTS and event not in _ACCESS_LEVEL_DELETE_EVENTS:
+            continue
+        params = log.get("parameters", {}) or {}
+        name = str(params.get("ACCESS_LEVEL_NAME", "")).strip()
+        if not name:
+            continue
+        when = str(log.get("time", ""))
+        current = inventory.get(name)
+        if current is not None and when < current["time"]:
+            continue
+        if event in _ACCESS_LEVEL_DELETE_EVENTS:
+            title = current["title"] if current else ""
+            inventory[name] = {"title": title, "state": None, "deleted": True, "time": when}
+            continue
+        raw = params.get("ACCESS_LEVEL_CURR_STATE")
+        state = None
+        if isinstance(raw, dict):
+            state = raw
+        elif isinstance(raw, str) and raw.strip():
+            try:
+                parsed = json.loads(raw)
+                state = parsed if isinstance(parsed, dict) else None
+            except ValueError:
+                state = None
+        title = str(params.get("ACCESS_LEVEL_TITLE") or (state or {}).get("title") or "").strip()
+        inventory[name] = {"title": title, "state": state, "deleted": False, "time": when}
+    return inventory
+
+
+def _access_level_restricts_region(state: dict | None) -> bool:
+    """True when an access level's state carries a geographic condition (allow-list or negated)."""
+    if not isinstance(state, dict):
+        return False
+    for cond in (state.get("basic") or {}).get("conditions") or []:
+        if isinstance(cond, dict) and cond.get("regions"):
+            return True
+    expr = str((state.get("custom") or {}).get("expr") or "")
+    return "origin.region_code" in expr
+
+
+def _caa_assigned_level_titles(admin_logs: list) -> dict[str, set[str]]:
+    """Access-level titles currently assigned to at least one app, keyed by ``MODE``.
+
+    Same per-app, per-mode reading of ``CHANGE_CAA_APP_ASSIGNMENTS`` as
+    ``_caa_app_assignment_evidence``: the latest event per app and mode gives that mode's
+    current list; ``CAA_ACCESS_ASSIGNMENTS_OLD`` alone (removal) clears it.
+    """
+    latest: dict[tuple[str, str], tuple[str, list[str]]] = {}
+    for log in admin_logs or []:
+        if not isinstance(log, dict) or log.get("event_name") != "CHANGE_CAA_APP_ASSIGNMENTS":
+            continue
+        params = log.get("parameters", {}) or {}
+        app = str(params.get("APPLICATION_NAME", "")).strip().lower()
+        if not app:
+            continue
+        mode = str(params.get("MODE", "")).strip().upper()
+        new = _caa_new_assignment_value(params)
+        if isinstance(new, str):
+            new = [t.strip() for t in new.strip("[]").split(",") if t.strip()]
+        titles = [str(t).strip() for t in (new or []) if str(t).strip()]
+        when = str(log.get("time", ""))
+        key = (app, mode)
+        if key not in latest or when >= latest[key][0]:
+            latest[key] = (when, titles)
+    assigned: dict[str, set[str]] = {}
+    for (_, mode), (_, titles) in latest.items():
+        if titles:
+            assigned.setdefault(mode, set()).update(titles)
+    return assigned
 
 
 @check(
@@ -1113,17 +1269,18 @@ def check_caa_oidc(data: dict) -> CheckResult:
             actual_value=0,
         )
 
-    deny_count, denied_apps = _caa_denials(data.get("caa_events", []), "oidc")
-    if deny_count > 0:
+    eval_count, enforced_apps, deny_count = _caa_enforcement_for_apps(data.get("caa_events", []), oidc_apps)
+    if eval_count > 0:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=(
-                f"CAA is actively enforcing on OIDC traffic: {deny_count} "
-                f"ACCESS_DENY_EVENT(s) in the window across "
-                f"{len(denied_apps)} app(s)."
+                f"CAA is actively enforcing on OIDC traffic: {eval_count} active-mode "
+                f"evaluation(s) ({deny_count} denied) in the window for "
+                f"{len(enforced_apps)} of the detected app(s): {', '.join(enforced_apps[:5])}."
             ),
-            actual_value={"oidc_apps": oidc_count, "denials": deny_count},
-            expected_value="CAA denial events present for OIDC apps",
+            actual_value={"oidc_apps": oidc_count, "evaluations": eval_count, "denials": deny_count,
+                          "enforced_apps": enforced_apps},
+            expected_value="CAA evaluations present for OIDC apps",
         )
 
     # Step 2b — Configuration evidence from the admin audit log: CAA toggled off, or access
@@ -1235,17 +1392,18 @@ def check_caa_saml_default(data: dict) -> CheckResult:
             actual_value=0,
         )
 
-    deny_count, denied_apps = _caa_denials(data.get("caa_events", []), "saml")
-    if deny_count > 0:
+    eval_count, enforced_apps, deny_count = _caa_enforcement_for_apps(data.get("caa_events", []), saml_apps)
+    if eval_count > 0:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=(
-                f"CAA is actively enforcing on SAML traffic: {deny_count} "
-                f"ACCESS_DENY_EVENT(s) in the window across "
-                f"{len(denied_apps)} app(s)."
+                f"CAA is actively enforcing on SAML traffic: {eval_count} active-mode "
+                f"evaluation(s) ({deny_count} denied) in the window for "
+                f"{len(enforced_apps)} of the detected app(s): {', '.join(enforced_apps[:5])}."
             ),
-            actual_value={"saml_apps": saml_count, "denials": deny_count},
-            expected_value="CAA denial events present for SAML apps",
+            actual_value={"saml_apps": saml_count, "evaluations": eval_count, "denials": deny_count,
+                          "enforced_apps": enforced_apps},
+            expected_value="CAA evaluations present for SAML apps",
         )
 
     return make_review(
@@ -1253,8 +1411,8 @@ def check_caa_saml_default(data: dict) -> CheckResult:
         details=(
             f"{saml_count} SAML app(s) detected "
             f"({', '.join(saml_apps[:5])}{'...' if len(saml_apps) > 5 else ''}) "
-            "but no CAA ACCESS_DENY_EVENT was logged in the window. "
-            "Absence of denials does not prove CAA is disabled — verify the "
+            "but no active-mode CAA evaluation (allowed or denied) names them in the window. "
+            "Absence of evaluations does not prove CAA is disabled — verify the "
             "default policy in Admin console > Security > Context-Aware "
             "Access > General settings."
         ),
