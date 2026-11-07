@@ -44,7 +44,7 @@ def _is_default_allow(entry: dict) -> bool:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > Context-aware access. "
+        "Admin console > Security > Access and data control > Context-Aware Access. "
         "Configure device policies to enforce endpoint trust "
         "requirements such as screen lock, encryption, and OS version. https://knowledge.workspace.google.com/admin/security/deploy-context-aware-access"
     ),
@@ -56,7 +56,7 @@ def check_context_aware_access(data: dict) -> CheckResult:
     _TITLE = "Ensure context-aware access policies are implemented"
     _L, _S, _SEC = "L2", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > Context-aware access. "
+        "Admin console > Security > Access and data control > Context-Aware Access. "
         "Configure device policies to enforce endpoint trust "
         "requirements such as screen lock, encryption, and OS version. https://knowledge.workspace.google.com/admin/security/deploy-context-aware-access"
     )
@@ -172,7 +172,7 @@ def check_context_aware_access(data: dict) -> CheckResult:
             details=("Context-Aware Access is not exposed by the Cloud Identity Policy API and no enablement change was found "
                      "in the admin audit log — verify in Admin console > Security > Context-Aware Access."),
             remediation=(
-                "Admin console > Security > Context-aware access. "
+                "Admin console > Security > Access and data control > Context-Aware Access. "
                 "Create device policies that enforce device trust levels "
                 "before granting access to Google Workspace services. https://knowledge.workspace.google.com/admin/security/deploy-context-aware-access"
             ),
@@ -186,7 +186,7 @@ def check_context_aware_access(data: dict) -> CheckResult:
         actual_value=configured,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > Context-aware access. "
+            "Admin console > Security > Access and data control > Context-Aware Access. "
             "Configure device policies to enforce endpoint trust "
             "requirements such as screen lock, encryption, and OS version. https://knowledge.workspace.google.com/admin/security/deploy-context-aware-access"
         ),

@@ -429,7 +429,7 @@ def check_domain_wide_delegation(data: dict) -> CheckResult:
     source="CIS",
     section="Access Control",
     remediation=(
-        "Admin console > Security > Context-aware access. "
+        "Admin console > Security > Access and data control > Context-Aware Access. "
         "Configure access levels to restrict sign-ins from "
         "countries where your organization does not operate. https://knowledge.workspace.google.com/admin/security/about-context-aware-access"
     ),
@@ -440,11 +440,11 @@ def check_geo_blocking(data: dict) -> CheckResult:
     _ID, _TITLE = "CIS-4.2.2.1", "Ensure geo-blocking is configured"
     _L, _S, _SEC = "L2", "CIS", "Access Control"
     _REMED = (
-        "Admin console > Security > Context-aware access. "
+        "Admin console > Security > Access and data control > Context-Aware Access. "
         "Configure access levels to restrict sign-ins from "
         "countries where your organization does not operate. https://knowledge.workspace.google.com/admin/security/about-context-aware-access"
     )
-    _EXPECTED = "A geographic access level assigned to apps in active mode"
+    _EXPECTED = "A geographic access level assigned to apps in Block mode"
 
     # Context-Aware Access is not in the Policy API. The admin audit log (180 days) records access
     # levels (CREATE/UPDATE/DELETE_ACCESS_LEVEL_V2 with the level's JSON state, seen live 2026-11-06)
@@ -452,7 +452,7 @@ def check_geo_blocking(data: dict) -> CheckResult:
     # is assigned in an active mode is geo-blocking in force. Levels created before the window are
     # invisible, so the absence of events is unknown (MANUAL), never FAIL.
     from .additional import (
-        _CAA_ACTIVE_MODES, _access_level_restricts_region, _caa_app_assignment_evidence,
+        _CAA_BLOCKING_MODES, _access_level_restricts_region, _caa_app_assignment_evidence,
         _caa_assigned_level_titles, _caa_enforcement_events, caa_access_levels,
     )
     admin_logs = data.get("admin_logs", [])
@@ -486,25 +486,27 @@ def check_geo_blocking(data: dict) -> CheckResult:
         )
     if geo_levels:
         assigned = _caa_assigned_level_titles(admin_logs)
-        active_titles = set().union(*(assigned.get(mode, set()) for mode in _CAA_ACTIVE_MODES))
-        enforced = sorted(t for t in geo_titles if t in active_titles)
+        blocking_titles = set().union(*(assigned.get(mode, set()) for mode in _CAA_BLOCKING_MODES))
+        enforced = sorted(t for t in geo_titles if t in blocking_titles)
         if enforced:
             return make_pass(
                 check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
                 details=(f"Geographic access level(s) ({inventory_source.replace('_', ' ')}) assigned to apps in "
-                         f"active mode per the admin log: {', '.join(enforced)}."),
+                         f"Block mode per the admin log: {', '.join(enforced)}."),
                 actual_value={"geo_access_levels": enforced, "assigned_modes": sorted(assigned),
                               "inventory_source": inventory_source},
                 expected_value=_EXPECTED,
             )
+        warned = sorted(t for t in geo_titles if t in assigned.get("WARN", set()))
         all_assigned = set().union(*assigned.values()) if assigned else set()
         monitored = sorted(l["title"] for l in geo_levels.values() if l["title"] in all_assigned)
         return make_review(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=(f"Geographic access level(s) exist per the admin log ({', '.join(sorted(l['title'] for l in geo_levels.values()))}) "
-                     + ("but are assigned in monitor mode only" if monitored else
-                        "but no active-mode assignment to an app appears in the log window")
-                     + ". Verify the assignment in Admin console > Security > Context-Aware Access."),
+                     + ("but are assigned with the Warn action only, which warns users and still allows sign-in" if warned else
+                        "but are assigned in monitor mode only" if monitored else
+                        "but no Block-mode assignment to an app appears in the log window")
+                     + ". Verify the assignment in Admin console > Security > Access and data control > Context-Aware Access."),
             actual_value={"geo_access_levels": sorted(l["title"] for l in geo_levels.values()),
                           "assigned_modes": sorted(assigned)},
             expected_value=_EXPECTED, remediation=_REMED,
@@ -571,7 +573,7 @@ def check_geo_blocking(data: dict) -> CheckResult:
         actual_value={"enabled": geo_blocking, "blocked_count": len(blocked_regions)},
         expected_value="Geo-blocking enabled with regions configured",
         remediation=(
-            "Admin console > Security > Context-aware access. "
+            "Admin console > Security > Access and data control > Context-Aware Access. "
             "Configure access levels to restrict sign-ins from "
             "countries where your organization does not operate. https://knowledge.workspace.google.com/admin/security/about-context-aware-access"
         ),

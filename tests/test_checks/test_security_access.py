@@ -273,7 +273,7 @@ class TestGeoBlocking:
         full_audit_data["admin_logs"] = [self._create()]
         result = check_geo_blocking(full_audit_data)
         assert result.status == Status.MANUAL
-        assert "no active-mode assignment" in result.details
+        assert "no Block-mode assignment" in result.details
         full_audit_data["admin_logs"] += [self._assign("GMAIL", "BLOCK", ["Geo restriction"]),
                                           self._assign("DRIVE", "BLOCK", ["Geo restriction"], time="2026-11-06T18:26:28.785Z")]
         result = check_geo_blocking(full_audit_data)
@@ -281,6 +281,13 @@ class TestGeoBlocking:
         assert "Geo restriction" in result.details
         full_audit_data["admin_logs"].append(self._delete())
         assert check_geo_blocking(full_audit_data).status == Status.MANUAL
+
+    def test_warn_only_assignment_is_review(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_geo_blocking
+        full_audit_data["policies"]["security"].pop("context_aware_access", None)
+        full_audit_data["admin_logs"] = [self._create(), self._assign("GMAIL", "WARN", ["Geo restriction"])]
+        result = check_geo_blocking(full_audit_data)
+        assert result.status == Status.MANUAL and "Warn action only" in result.details
 
     def test_monitor_mode_or_removed_assignment_is_review(self, full_audit_data):
         from gws_auditor.checks.security_access import check_geo_blocking
@@ -372,7 +379,7 @@ class TestGeoBlocking:
         from gws_auditor.checks.security_access import check_geo_blocking
         full_audit_data["policies"]["security"].pop("context_aware_access", None)
         custom = '{"custom": {"expr": "!(origin.region_code in [\\"AQ\\", \\"BV\\"])"}, "title": "Geo restriction"}'
-        full_audit_data["admin_logs"] = [self._create(state=custom), self._assign("GMAIL", "WARN", ["Geo restriction"])]
+        full_audit_data["admin_logs"] = [self._create(state=custom), self._assign("GMAIL", "BLOCK", ["Geo restriction"])]
         assert check_geo_blocking(full_audit_data).status == Status.PASS
 
 

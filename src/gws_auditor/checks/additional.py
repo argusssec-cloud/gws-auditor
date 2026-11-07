@@ -1064,6 +1064,10 @@ def _caa_enforcement_for_apps(caa_events: list, app_names: list[str]) -> tuple[i
 # PASS. Each event is scoped by TARGET_ENTITY_TYPE / TARGET_ENTITY_NAME (ORG_UNIT "argussec.io" for the
 # root, "Workspace Guests" for a sub-OU), so state is kept per app, target and mode.
 _CAA_ACTIVE_MODES = ("BLOCK", "WARN", "ACTIVE")
+# Per the help article "Assign Context-Aware Access levels to apps": Block blocks access; Warn "allows
+# access to the app and sends the user a warning notification". A Warn assignment is therefore an
+# implemented policy but not a blocking one, and checks that promise blocking require these modes.
+_CAA_BLOCKING_MODES = ("BLOCK", "ACTIVE")
 _CAA_MONITOR_MODES = ("MONITOR",)
 
 
@@ -1090,10 +1094,11 @@ def _caa_app_assignment_evidence(admin_logs: list, app_names: list[str]) -> dict
     was removed. Events are scoped to an OU or group (``TARGET_ENTITY_TYPE`` / ``TARGET_ENTITY_NAME``,
     observed live for the root OU and a sub-OU), so the latest event per app, target and mode gives that
     target's current assignment in that mode and a sub-OU change never masks the root's. Returns
-    ``{"toggle": state|None, "covered": [...], "monitor": [...], "removed": [...], "unknown": [...],
-    "unclear": [...]}`` over *app_names* (matched case-insensitively): covered = an active-mode
-    assignment with levels on any target; monitor = levels only in monitor mode; removed = events exist
-    but no target keeps levels in any mode; unknown = no event; unclear = levels only under an
+    ``{"toggle": state|None, "covered": [...], "warn_only": [...], "monitor": [...], "removed": [...],
+    "unknown": [...], "unclear": [...]}`` over *app_names* (matched case-insensitively): covered = an
+    active-mode assignment with levels on any target; warn_only = the subset of covered whose only active
+    mode is WARN (users are warned, not blocked); monitor = levels only in monitor mode; removed = events
+    exist but no target keeps levels in any mode; unknown = no event; unclear = levels only under an
     unrecognised mode.
     """
     toggle: tuple[str, str] | None = None
@@ -1119,7 +1124,7 @@ def _caa_app_assignment_evidence(admin_logs: list, app_names: list[str]) -> dict
             key = (target, mode)
             if key not in per_key or when >= per_key[key][0]:
                 per_key[key] = (when, has_levels)
-    covered, monitor, removed, unknown, unclear = [], [], [], [], []
+    covered, warn_only, monitor, removed, unknown, unclear = [], [], [], [], [], []
     for name in app_names:
         per_key = state.get(str(name).strip().lower())
         if per_key is None:
@@ -1128,6 +1133,8 @@ def _caa_app_assignment_evidence(admin_logs: list, app_names: list[str]) -> dict
         live = [mode for (_, mode), (_, has_levels) in per_key.items() if has_levels]
         if any(mode in _CAA_ACTIVE_MODES for mode in live):
             covered.append(name)
+            if not any(mode in _CAA_BLOCKING_MODES for mode in live):
+                warn_only.append(name)
         elif any(mode not in _CAA_MONITOR_MODES for mode in live):
             # Levels assigned under a mode this code does not know; not evidence of enforcement.
             other = sorted(mode or "(blank)" for mode in live if mode not in _CAA_MONITOR_MODES)
@@ -1136,8 +1143,8 @@ def _caa_app_assignment_evidence(admin_logs: list, app_names: list[str]) -> dict
             monitor.append(name)
         else:
             removed.append(name)
-    return {"toggle": toggle[1] if toggle else None, "toggle_time": toggle[0] if toggle else "", "covered": covered, "monitor": monitor,
-            "removed": removed, "unknown": unknown, "unclear": unclear}
+    return {"toggle": toggle[1] if toggle else None, "toggle_time": toggle[0] if toggle else "", "covered": covered,
+            "warn_only": warn_only, "monitor": monitor, "removed": removed, "unknown": unknown, "unclear": unclear}
 
 
 _ACCESS_LEVEL_STATE_EVENTS = ("CREATE_ACCESS_LEVEL_V2", "UPDATE_ACCESS_LEVEL_V2")
@@ -1551,8 +1558,8 @@ def _caa_level_enforcement(data: dict, predicate) -> dict:
 
     Returns ``{"inventory_source", "authoritative", "evidence", "evaluations", "matching"(titles),
     "evaluated"(matching titles applied in the CAA log), "evaluated_apps", "assigned"(mode -> titles),
-    "enforced"(matching titles assigned in an active mode), "monitored"(matching titles assigned at all),
-    "all_titles"}``.
+    "enforced"(matching titles assigned in a blocking mode), "warned"(matching titles assigned with the
+    Warn action only), "monitored"(matching titles assigned at all), "all_titles"}``.
     """
     admin_logs = data.get("admin_logs", [])
     inventory, source = caa_access_levels(data)
@@ -1563,13 +1570,15 @@ def _caa_level_enforcement(data: dict, predicate) -> dict:
     evaluated = sorted({t for e in evaluations for t in e["applied"] if t in matching})
     evaluated_apps = sorted({e["app"] for e in evaluations if e["app"] and set(e["applied"]) & set(matching)})
     assigned = _caa_assigned_level_titles(admin_logs)
-    active_titles = set().union(*(assigned.get(mode, set()) for mode in _CAA_ACTIVE_MODES)) if assigned else set()
+    blocking_titles = set().union(*(assigned.get(mode, set()) for mode in _CAA_BLOCKING_MODES)) if assigned else set()
+    warn_titles = assigned.get("WARN", set()) - blocking_titles
     all_assigned = set().union(*assigned.values()) if assigned else set()
     return {
         "inventory_source": source, "authoritative": source == "access_context_manager",
         "evidence": evidence, "evaluations": evaluations, "matching": matching, "evaluated": evaluated,
         "evaluated_apps": evaluated_apps, "assigned": assigned,
-        "enforced": sorted(t for t in matching if t in active_titles),
+        "enforced": sorted(t for t in matching if t in blocking_titles),
+        "warned": sorted(t for t in matching if t in warn_titles),
         "monitored": sorted(t for t in matching if t in all_assigned),
         "all_titles": sorted(lvl["title"] for lvl in inventory.values() if not lvl["deleted"]),
     }
@@ -1577,36 +1586,43 @@ def _caa_level_enforcement(data: dict, predicate) -> dict:
 
 @check(
     check_id="ADD-53",
+    scored=False,  # Google supports it but cautions against it unless needed (lock-out risk); review, not score
     title="Ensure the Admin console is protected by a Context-Aware Access level",
-    level="L1",
+    level="L2",
     source="GOOGLE",
     section="Security",
-    severity="HIGH",
     remediation=(
         "Admin console > Security > Access and data control > Context-Aware Access > Assign access levels. "
-        "Select the Admin console app and assign an access level (ideally device-based) in Block mode. "
+        "The Admin console is a separate row above the app list: Actions > Assign, choose a level (ideally "
+        "device-based) in Active mode with the Block action. Google's note: only do this when you need to limit "
+        "other admins' access, and keep a level you yourself satisfy, or you can be locked out. "
         "https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps"
     ),
     requires_license="enterprise_standard",
 )
 def check_caa_admin_console(data: dict) -> CheckResult:
-    """The Admin console is the highest-value target in the tenant; Google's hardening guidance
-    puts it behind Context-Aware Access first.
+    """The Admin console is the highest-value target in the tenant. Google supports assigning access
+    levels to it (help article "Assign Context-Aware Access levels to the Admin console") but adds the
+    note "Do not assign access levels to the Admin console unless you specifically need to limit the
+    access to the Admin console by other admins", so this is a review check, not a scored one.
 
-    PASS needs an active-mode evaluation for the Admin console app in the CAA user log or an
-    active-mode assignment in the admin log. FAIL when CAA is switched off, when the assignment was
-    removed or left in monitor mode in the window, or when Access Context Manager shows that the
-    organisation has no access level at all. Otherwise MANUAL naming the levels that exist.
+    PASS needs an active-mode evaluation for the Admin console app in the CAA user log or a Block-mode
+    assignment in the admin log. A Warn-only assignment warns admins without blocking them (MANUAL).
+    FAIL when CAA is switched off, when the assignment was removed or left in monitor mode in the
+    window, or when Access Context Manager shows that the organisation has no access level at all.
+    Otherwise MANUAL naming the levels that exist.
     """
     _ID = "ADD-53"
     _TITLE = "Ensure the Admin console is protected by a Context-Aware Access level"
-    _L, _S, _SEC = "L1", "GOOGLE", "Security"
+    _L, _S, _SEC = "L2", "GOOGLE", "Security"
     _REMED = (
         "Admin console > Security > Access and data control > Context-Aware Access > Assign access levels. "
-        "Select the Admin console app and assign an access level (ideally device-based) in Block mode. "
+        "The Admin console is a separate row above the app list: Actions > Assign, choose a level (ideally "
+        "device-based) in Active mode with the Block action. Google's note: only do this when you need to limit "
+        "other admins' access, and keep a level you yourself satisfy, or you can be locked out. "
         "https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps"
     )
-    _EXPECTED = "An access level assigned to the Admin console in an active (Block or Warn) mode"
+    _EXPECTED = "An access level assigned to the Admin console in Active mode with the Block action"
     admin_logs = data.get("admin_logs", [])
     evidence = _caa_app_assignment_evidence(admin_logs, list(_CAA_ADMIN_CONSOLE_APPS))
     evaluations = [e for e in _caa_enforcement_events(data.get("caa_events", [])) if e["applied"]]
@@ -1630,11 +1646,18 @@ def check_caa_admin_console(data: dict) -> CheckResult:
             actual_value={"evaluations": len(console_evals), "denials": denied, "access_levels": applied},
             expected_value=_EXPECTED,
         )
-    if evidence["covered"]:
+    if evidence["covered"] and not evidence["warn_only"]:
         return make_pass(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details="An access level is assigned to the Admin console in an active mode (latest CHANGE_CAA_APP_ASSIGNMENTS in the admin log).",
+            details="An access level is assigned to the Admin console in Block mode (latest CHANGE_CAA_APP_ASSIGNMENTS in the admin log).",
             actual_value={"assigned_apps": evidence["covered"], "access_levels": titles}, expected_value=_EXPECTED,
+        )
+    if evidence["warn_only"]:
+        return make_review(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=("An access level is assigned to the Admin console with the Warn action only: admins who fail it are warned "
+                     "but not blocked. Switch the action to Block if the level is meant to protect the console."),
+            actual_value={"warn_only": evidence["warn_only"], "access_levels": titles}, expected_value=_EXPECTED, remediation=_REMED,
         )
     if evidence["monitor"] or evidence["removed"]:
         why = ("left in monitor mode only, which logs but never blocks" if evidence["monitor"]
@@ -1731,9 +1754,10 @@ def check_caa_device_level(data: dict) -> CheckResult:
         return make_review(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=(f"Device-based access level(s) exist ({', '.join(ev['matching'])}) "
-                     + ("but are assigned in monitor mode only" if ev["monitored"] else
-                        "but no active-mode assignment to an app appears in the log window")
-                     + ". Verify the assignment in Admin console > Security > Context-Aware Access."),
+                     + ("but are assigned with the Warn action only, which warns users and still allows access" if ev["warned"] else
+                        "but are assigned in monitor mode only" if ev["monitored"] else
+                        "but no Block-mode assignment to an app appears in the log window")
+                     + ". Verify the assignment in Admin console > Security > Access and data control > Context-Aware Access."),
             actual_value={**base, "assigned_modes": sorted(ev["assigned"])}, expected_value=_EXPECTED, remediation=_REMED,
         )
     if ev["authoritative"]:
@@ -1833,7 +1857,7 @@ def check_caa_unassigned_levels(data: dict) -> CheckResult:
     source="OTHER",
     section="Security",
     remediation=(
-        "Admin console > Reporting > Audit and investigation > Context-Aware Access log events. Confirm each denial is "
+        "Admin console > Security > Investigation tool (or Reporting > Audit and investigation), data source 'Context Aware Access log events'; the Assign access levels page also offers Actions > View logs per app. Confirm each denial is "
         "legitimate (user, app, region, unsatisfied level); tune the level rather than removing it when real users are blocked."
     ),
     requires_license="enterprise_standard",
@@ -1846,7 +1870,7 @@ def check_caa_denials(data: dict) -> CheckResult:
     _TITLE = "Review Context-Aware Access denials"
     _L, _S, _SEC = "L2", "OTHER", "Security"
     _REMED = (
-        "Admin console > Reporting > Audit and investigation > Context-Aware Access log events. Confirm each denial is "
+        "Admin console > Security > Investigation tool (or Reporting > Audit and investigation), data source 'Context Aware Access log events'; the Assign access levels page also offers Actions > View logs per app. Confirm each denial is "
         "legitimate (user, app, region, unsatisfied level); tune the level rather than removing it when real users are blocked."
     )
     events = _caa_enforcement_events(data.get("caa_events", []))

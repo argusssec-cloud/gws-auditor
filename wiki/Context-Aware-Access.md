@@ -4,7 +4,7 @@ GWS Security Auditor ships six checks that audit your Context-Aware Access (CAA)
 
 - **ADD-20** -- Ensure Context-Aware Access is applied to OIDC apps
 - **ADD-40** -- Ensure default Context-Aware Access policy is enabled for SAML applications *(new in v1.2.0)*
-- **ADD-53** -- Ensure the Admin console is protected by a Context-Aware Access level
+- **ADD-53** -- Ensure the Admin console is protected by a Context-Aware Access level *(unscored: Google supports it but advises against it unless needed)*
 - **ADD-54** -- Ensure a device-based Context-Aware Access level is enforced
 - **ADD-55** -- Review Context-Aware Access levels that are not assigned to any app *(unscored)*
 - **ADD-56** -- Review Context-Aware Access denials *(unscored)*
@@ -128,10 +128,12 @@ These four checks combine three sources: the access-level inventory from Access 
 
 | Check | PASS when | FAIL when | MANUAL when |
 |---|---|---|---|
-| ADD-53 Admin console | An active-mode evaluation names the Admin console app, or the latest assignment for it is in Block/Warn mode | CAA switched off; the Admin console assignment was removed or left in monitor mode; Access Context Manager lists no level at all | Levels exist but no Admin console assignment or evaluation is in the log window |
-| ADD-54 device-based level | A level with device conditions (screen lock, encryption, OS, company-owned, admin approval) is applied in an evaluation or assigned in an active mode | CAA switched off; Access Context Manager shows that no level requires device posture | A device-based level exists but is unassigned or monitor-only; or the inventory is not readable |
+| ADD-53 Admin console (unscored) | An active-mode evaluation names the Admin console app, or the latest assignment for it uses the Block action | CAA switched off; the Admin console assignment was removed or left in monitor mode; Access Context Manager lists no level at all | Assignment uses the Warn action only; or levels exist but no Admin console assignment or evaluation is in the log window |
+| ADD-54 device-based level | A level with device conditions (screen lock, encryption, OS, company-owned, admin approval) is applied in an evaluation or assigned with the Block action | CAA switched off; Access Context Manager shows that no level requires device posture | A device-based level exists but is unassigned, Warn-only or monitor-only; or the inventory is not readable |
 | ADD-55 unassigned levels (unscored) | Every known level appears in an assignment or an evaluation | never | Some level never appears, or a level has no condition at all (always satisfied) |
 | ADD-56 denials (unscored) | Evaluations exist and none was denied | never | Denials exist: counts per app, user, region and unsatisfied level, with denied super admins called out |
+
+The Warn action "allows access to the app and sends the user a warning notification" (Google's help article), so a Warn-only assignment counts as an implemented policy for GWS.COMMONCONTROLS.2.1, ADD-20 and ADD-40 but never as blocking for CIS-4.2.2.1, ADD-53 and ADD-54. Several active levels on one app are OR'd: a user who satisfies any one of them gets in.
 
 ADD-54 also reports how many evaluations carried device signals (`CAA_DEVICE_STATE`). A device-based level whose evaluations all say "No Device Signals" means Endpoint Verification or device management is not deployed, so the level cannot be satisfied. ADD-55 and ADD-56 return NOT_APPLICABLE when there is nothing to review (no level known, or no evaluation in the window).
 

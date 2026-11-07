@@ -1651,6 +1651,15 @@ class TestCaaAdminConsole:
         result = self._run(full_audit_data)
         assert result.status == Status.FAIL and "removed" in result.details
 
+    def test_warn_only_assignment_is_review(self, full_audit_data):
+        """Warn 'allows access to the app and sends the user a warning' (help article), so it is not protection."""
+        full_audit_data["caa_events"] = []
+        full_audit_data["admin_logs"] = [_assign(_ADMIN_APP, "WARN", ["Geo restriction"])]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL and "Warn action only" in result.details
+        full_audit_data["admin_logs"].append(_assign(_ADMIN_APP, "BLOCK", ["Geo restriction"], time="2026-11-06T19:00:00.000Z"))
+        assert self._run(full_audit_data).status == Status.PASS
+
     def test_caa_disabled_fails_unless_newer_evaluation(self, full_audit_data):
         full_audit_data["caa_events"] = []
         full_audit_data["admin_logs"] = [_assign(_ADMIN_APP, "BLOCK", ["Geo restriction"]), _toggle("DISABLED", "2026-11-06T19:00:00.000Z")]
@@ -1703,12 +1712,19 @@ class TestCaaDeviceLevel:
         result = self._run(full_audit_data)
         assert result.status == Status.PASS and "active mode" in result.details
 
+    def test_device_level_warn_only_is_review(self, full_audit_data):
+        full_audit_data["caa_events"] = []
+        full_audit_data["access_context"] = _acm(_DEVICE_LEVEL)
+        full_audit_data["admin_logs"] = [_assign("GMAIL", "WARN", ["Managed device"])]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL and "Warn action only" in result.details
+
     def test_device_level_unassigned_or_monitor_is_review(self, full_audit_data):
         full_audit_data["caa_events"] = []
         full_audit_data["access_context"] = _acm(_DEVICE_LEVEL)
         full_audit_data["admin_logs"] = []
         result = self._run(full_audit_data)
-        assert result.status == Status.MANUAL and "no active-mode assignment" in result.details
+        assert result.status == Status.MANUAL and "no Block-mode assignment" in result.details
         full_audit_data["admin_logs"] = [_assign("GMAIL", "MONITOR", ["Managed device"])]
         result = self._run(full_audit_data)
         assert result.status == Status.MANUAL and "monitor mode only" in result.details
@@ -1795,7 +1811,7 @@ class TestCaaDeviceLevel:
         change["parameters"]["CAA_ACCESS_ASSIGNMENTS_NEW"] = ["Geo restriction"]
         change["parameters"]["CAA_ACCESS_ASSIGNMENTS_OLD"] = ["Geo restriction", "Managed device"]
         result = self._run(full_audit_data)
-        assert result.status == Status.MANUAL and "no active-mode assignment" in result.details
+        assert result.status == Status.MANUAL and "no Block-mode assignment" in result.details
 
     def test_sub_ou_removal_does_not_mask_root_assignment(self, full_audit_data):
         full_audit_data["caa_events"] = []

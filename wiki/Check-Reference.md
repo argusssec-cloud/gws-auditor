@@ -16,19 +16,19 @@ The GWS Security Auditor implements **231 security checks** across four framewor
 
 ## Check Levels
 
-- **L1 (Level 1)** -- 152 checks. Baseline security settings that should be applied to all organizations. Minimal performance impact, broad applicability.
-- **L2 (Level 2)** -- 79 checks. Advanced security settings for organizations with higher security requirements. May restrict functionality or require additional configuration.
+- **L1 (Level 1)** -- 151 checks. Baseline security settings that should be applied to all organizations. Minimal performance impact, broad applicability.
+- **L2 (Level 2)** -- 80 checks. Advanced security settings for organizations with higher security requirements. May restrict functionality or require additional configuration.
 
 ## Severity
 
 | Severity | Checks |
 |----------|-------:|
 | **CRITICAL** | 24 |
-| **HIGH** | 83 |
-| **MEDIUM** | 82 |
+| **HIGH** | 82 |
+| **MEDIUM** | 83 |
 | **LOW** | 42 |
 
-42 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
+43 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
 
 ## Check Statuses
 
@@ -316,7 +316,7 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 | ADD-47 | Ensure compromised, unencrypted or unlocked devices do not keep access | L1 | OTHER | HIGH |  |
 | ADD-48 | Review custom admin roles with account-takeover privileges | L2 | OTHER | MEDIUM |  |
 | ADD-49 | Review who holds Google Vault privileges | L2 | OTHER | LOW | unscored |
-| ADD-53 | Ensure the Admin console is protected by a Context-Aware Access level | L1 | GOOGLE | HIGH | Enterprise Standard+ |
+| ADD-53 | Ensure the Admin console is protected by a Context-Aware Access level | L2 | GOOGLE | MEDIUM | unscored, Enterprise Standard+ |
 | ADD-54 | Ensure a device-based Context-Aware Access level is enforced | L2 | GOOGLE | HIGH | Enterprise Standard+ |
 | ADD-55 | Review Context-Aware Access levels that are not assigned to any app | L2 | OTHER | MEDIUM | unscored, Enterprise Standard+ |
 | ADD-56 | Review Context-Aware Access denials | L2 | OTHER | MEDIUM | unscored, Enterprise Standard+ |

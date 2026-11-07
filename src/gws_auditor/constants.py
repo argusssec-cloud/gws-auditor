@@ -295,7 +295,6 @@ HIGH_CHECKS: frozenset[str] = frozenset({
     # Context-aware access & geo-blocking
     "CIS-4.2.2.1",        # Ensure geo-blocking is configured
     "GWS.COMMONCONTROLS.2.1",  # Ensure context-aware access policies are implemented
-    "ADD-53",             # Ensure the Admin console is protected by a Context-Aware Access level
     "ADD-54",             # Ensure a device-based Context-Aware Access level is enforced
     # MFA and SSO
     "GWS.COMMONCONTROLS.1.4",  # Ensure MFA enrollment period is configured
