@@ -5304,9 +5304,9 @@
   "fail_case": "Never FAIL (unscored review): one or more denials -> MANUAL with counts per app, actor, region and unsatisfied level, plus the denied super admins.",
   "other_cases": "No active-mode CAA event in the window -> NOT_APPLICABLE (nothing to review; enablement is GWS.COMMONCONTROLS.2.1's job).",
   "edge_cases": "Event names containing MONITOR are ignored entirely (so monitor-only tenants are N/A); missing region/actor counted as '(unknown)'; super-admin match is case-insensitive on primary_email.",
-  "coverage_now": "tests/test_checks/test_additional.py::TestCaaDenials (3 tests: N/A + PASS, MANUAL breakdown with a denied super admin, monitor events ignored). Live 2026-11-06 (audit cache 190032): PASS (7 evaluations, 0 denials).",
+  "coverage_now": "tests/test_checks/test_additional.py::TestCaaDenials (3 tests: N/A + PASS, MANUAL breakdown with a denied super admin, monitor events ignored). Live 2026-11-06 (audit cache 190032): PASS (7 evaluations, 0 denials). Live denial shape pinned in test_live_denial_event_shape.",
   "gaps": [
-   "a real ACCESS_DENY_EVENT has not been captured live; monitor-mode evaluations are MONITOR_MODE_ACCESS_EVALUATED_EVENT (observed), the monitor-mode denial name is assumed"
+   "monitor-mode denial event name assumed (MONITOR_MODE_ACCESS_DENY_EVENT); the active-mode ACCESS_DENY_EVENT shape was captured live 2026-11-06 23:59Z"
   ],
   "suspected_bugs": []
  }

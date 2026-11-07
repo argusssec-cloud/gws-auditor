@@ -1139,7 +1139,7 @@
   "ADD-56": {
    "confirmed": false,
    "status": "NOT_APPLICABLE",
-   "note": "new 2026-11-06. Snapshot: NOT_APPLICABLE (no context_aware_access events). Live 2026-11-06: PASS (7 allowed evaluations, 0 ACCESS_DENY_EVENT). A real denial has not been captured live yet. Monitor-mode evaluations are named MONITOR_MODE_ACCESS_EVALUATED_EVENT (observed 23:33Z) and are excluded; a monitor-mode denial name is still assumed."
+   "note": "new 2026-11-06. Snapshot: NOT_APPLICABLE (no context_aware_access events). Live 2026-11-06: PASS (7 allowed evaluations, 0 ACCESS_DENY_EVENT). Real denial captured 2026-11-06 23:59Z (level the admin's own region fails, alone in Block mode on Tasks): ACCESS_DENY_EVENT with CAA_ACCESS_LEVEL_APPLIED/UNSATISFIED, CAA_APPLICATION TASKS, BLOCKED_API_ACCESS, CAA_DEVICE_ID/STATE and CAA_ACCESS_EVALUATION_DETAILS (text proto); Tasks redirected to the access.workspace.google.com remediation page. Two active levels on one app are OR'd (allowed evaluation 23:54Z with one unsatisfied level). Monitor-mode evaluations are named MONITOR_MODE_ACCESS_EVALUATED_EVENT (observed 23:33Z) and are excluded; a monitor-mode denial name is still assumed."
   },
   "CIS-1.1.1": {
    "confirmed": false,

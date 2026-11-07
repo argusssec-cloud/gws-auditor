@@ -10,7 +10,13 @@ from tests.factories import make_ou_policy, make_user
 
 
 def _caa_event(name, app, applied=("Geo restriction",), satisfied=None, unsatisfied=(), time="2026-11-06T18:33:34.387Z"):
-    """A normalized context_aware_access entry in the live shape observed 2026-11-06."""
+    """A normalized context_aware_access entry in the live shape observed 2026-11-06.
+
+    Allowed (ACCESS_LEVELS_EVALUATED, 18:33Z): APPLIED, SATISFIED, PROTECTED_API_ACCESS. Denied
+    (ACCESS_DENY_EVENT, 23:59Z flip with a level the admin's own region fails): APPLIED, UNSATISFIED,
+    BLOCKED_API_ACCESS, no SATISFIED, plus CAA_ACCESS_EVALUATION_DETAILS (text proto with the level, its
+    CEL AST and access_level_state ACCESS_LEVEL_STATE_NOT_GRANTED), which the checks never read.
+    """
     applied = list(applied)
     satisfied = applied if satisfied is None and not unsatisfied else list(satisfied or [])
     params = {"CAA_ACCESS_LEVEL_APPLIED": applied, "CAA_APPLICATION": app,
@@ -1777,6 +1783,20 @@ class TestCaaDeviceLevel:
         # the monitor-mode evaluation is not an evaluation of the device level, and its device signal is not counted
         assert result.actual_value["device_signals"] == {"evaluations": 1, "with_device_signals": 0}
 
+    def test_list_change_event_carries_old_and_new(self, full_audit_data):
+        """Live 2026-11-06 23:58Z: narrowing the Tasks list logged CAA_ACCESS_ASSIGNMENTS_OLD [geo, deny] and
+        CAA_ACCESS_ASSIGNMENTS_NEW [deny] in one event; NEW is the current list, OLD alone would be a removal."""
+        full_audit_data["caa_events"] = []
+        full_audit_data["access_context"] = _acm(_DEVICE_LEVEL, _GEO_LEVEL)
+        change = _assign("TASKS", "BLOCK", ["Managed device"], time="2026-11-06T23:58:52.031Z")
+        change["parameters"]["CAA_ACCESS_ASSIGNMENTS_OLD"] = ["Geo restriction", "Managed device"]
+        full_audit_data["admin_logs"] = [_assign("TASKS", "BLOCK", ["Geo restriction", "Managed device"]), change]
+        assert self._run(full_audit_data).status == Status.PASS
+        change["parameters"]["CAA_ACCESS_ASSIGNMENTS_NEW"] = ["Geo restriction"]
+        change["parameters"]["CAA_ACCESS_ASSIGNMENTS_OLD"] = ["Geo restriction", "Managed device"]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL and "no active-mode assignment" in result.details
+
     def test_sub_ou_removal_does_not_mask_root_assignment(self, full_audit_data):
         full_audit_data["caa_events"] = []
         full_audit_data["access_context"] = _acm(_DEVICE_LEVEL)
@@ -1881,6 +1901,35 @@ class TestCaaDenials:
         assert result.actual_value["by_unsatisfied_level"] == {"Geo restriction": 3}
         assert result.actual_value["super_admins_denied"] == ["admin@example.com"]
         assert "3 of 4" in result.details and "Super admin(s) denied: admin@example.com" in result.details
+
+    def test_allowed_evaluation_with_an_unsatisfied_level_is_not_a_denial(self, full_audit_data):
+        """Live 2026-11-06 23:54Z: two active levels on Tasks are OR'd; ACCESS_LEVELS_EVALUATED carried
+        APPLIED [both], SATISFIED [one], UNSATISFIED [the other] and PROTECTED_API_ACCESS (access allowed)."""
+        allowed = _caa_event("ACCESS_LEVELS_EVALUATED", "TASKS", applied=("Deny test region", "Geo restriction"),
+                             satisfied=("Geo restriction",))
+        allowed["parameters"]["CAA_ACCESS_LEVEL_UNSATISFIED"] = ["Deny test region"]
+        full_audit_data["caa_events"] = [allowed]
+        result = self._run(full_audit_data)
+        assert result.status == Status.PASS and result.actual_value["denials"] == 0
+
+    def test_live_denial_event_shape(self, full_audit_data):
+        """Exact ACCESS_DENY_EVENT parameters observed 2026-11-06 23:59Z (region code from networkInfo)."""
+        from tests.factories import make_user
+        full_audit_data["users"] = [make_user("admin@example.com", is_admin=True)]
+        denied = {"actor_email": "admin@example.com", "event_name": "ACCESS_DENY_EVENT",
+                  "event_type": "CONTEXT_AWARE_ACCESS_USER_EVENT", "time": "2026-11-06T23:59:08.784Z",
+                  "ip_address": "203.0.113.5", "region_code": "AQ",
+                  "parameters": {"CAA_ACCESS_EVALUATION_DETAILS": "access_evaluation_details {\n  access_level {\n    title: \"Deny test region\"\n  }\n"
+                                                                   "  access_level_state: ACCESS_LEVEL_STATE_NOT_GRANTED\n}",
+                                 "CAA_ACCESS_LEVEL_APPLIED": ["Deny test region"], "CAA_ACCESS_LEVEL_UNSATISFIED": ["Deny test region"],
+                                 "CAA_APPLICATION": "TASKS", "BLOCKED_API_ACCESS": ["TASKS"],
+                                 "CAA_DEVICE_ID": "djDiqQW5QpphtKTT4MnTy_gfCSzUAm7mhjVuDRUWDkQ", "CAA_DEVICE_STATE": "No Device Signals"}}
+        full_audit_data["caa_events"] = [denied]
+        result = self._run(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert result.actual_value["by_app"] == {"TASKS": 1} and result.actual_value["by_region"] == {"AQ": 1}
+        assert result.actual_value["by_unsatisfied_level"] == {"Deny test region": 1}
+        assert result.actual_value["super_admins_denied"] == ["admin@example.com"]
 
     def test_monitor_mode_events_are_ignored(self, full_audit_data):
         full_audit_data["caa_events"] = [_caa_event("MONITOR_MODE_ACCESS_DENY_EVENT", "GMAIL", satisfied=(), unsatisfied=("Geo restriction",))]

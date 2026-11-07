@@ -986,7 +986,9 @@ def _count_saml_apps(login_logs: list) -> tuple[int, list[str]]:
 # _SATISFIED / _UNSATISFIED (multi-value level titles), CAA_APPLICATION (upper-case app code such as
 # GMAIL, DRIVE, CALENDAR, ADMIN_CONSOLE), CAA_DEVICE_ID, CAA_DEVICE_STATE ("No Device Signals", or
 # "Normal" when Endpoint Verification reported for a device-based level) and PROTECTED_API_ACCESS or
-# BLOCKED_API_ACCESS. A monitor-mode assignment writes MONITOR_MODE_ACCESS_EVALUATED_EVENT with the same
+# BLOCKED_API_ACCESS. ACCESS_DENY_EVENT (observed 2026-11-06 23:59Z) carries APPLIED, UNSATISFIED,
+# BLOCKED_API_ACCESS and CAA_ACCESS_EVALUATION_DETAILS (a text proto with the level and its CEL AST), no
+# SATISFIED list. A monitor-mode assignment writes MONITOR_MODE_ACCESS_EVALUATED_EVENT with the same
 # parameters (observed 2026-11-06 23:33Z); the denied variant is assumed to follow the same naming. Any
 # event name containing MONITOR is monitor mode and is never proof of enforcement.
 _CAA_ACTIVE_EVENTS = ("ACCESS_DENY_EVENT", "ACCESS_LEVELS_EVALUATED")
@@ -1008,7 +1010,9 @@ def _caa_enforcement_events(caa_events: list) -> list[dict]:
     """Active-mode Context-Aware Access evaluations (allowed or denied) from ``data["caa_events"]``.
 
     Each item: ``{"event", "denied", "app", "applied", "satisfied", "unsatisfied", "time", "actor",
-    "region", "device_state"}``. An
+    "region", "device_state"}``. ``denied`` comes from the event name only: several active levels on one
+    app are OR'd (observed 2026-11-06 23:54Z: ACCESS_LEVELS_EVALUATED with one satisfied and one
+    unsatisfied level, access allowed), so a non-empty ``unsatisfied`` list is not a denial. An
     evaluation with a non-empty ``applied`` list proves that an access level was enforced on that app
     at that time, whatever the outcome. Monitor-mode and unknown event names are skipped.
     """
@@ -1064,7 +1068,8 @@ _CAA_MONITOR_MODES = ("MONITOR",)
 
 
 # Live events use CAA_ACCESS_ASSIGNMENTS_NEW; the Reports API appendix also documents
-# CAA_ACCESS_LEVELS_NEW and CAA_ASSIGNMENTS_NEW for the same event.
+# CAA_ACCESS_LEVELS_NEW and CAA_ASSIGNMENTS_NEW for the same event. A change of an existing list
+# carries both _OLD and _NEW (observed 2026-11-06 23:58Z); only _OLD without _NEW is a removal.
 _CAA_NEW_ASSIGNMENT_KEYS = ("CAA_ACCESS_ASSIGNMENTS_NEW", "CAA_ACCESS_LEVELS_NEW", "CAA_ASSIGNMENTS_NEW")
 
 
