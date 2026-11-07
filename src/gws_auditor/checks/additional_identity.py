@@ -176,8 +176,8 @@ def check_unlicensed_users(data: dict) -> CheckResult:
     title="Ensure Chat spaces with external members are restricted",
     level="L2", source="OTHER", section="Google Chat",
     remediation=(
-        "Admin console > Apps > Google Workspace > Google Chat > External Spaces. Turn external spaces off, or "
-        "limit them to allowlisted domains. https://knowledge.workspace.google.com/admin/chat/chat-with-external-users"
+        "Admin console > Apps > Google Workspace > Google Chat > External Spaces & Group Direct Messages. Turn external spaces off, or "
+        "limit them to allowlisted domains. https://knowledge.workspace.google.com/admin/chat/control-external-chat-and-spaces-chat-options"
     ),
 )
 def check_chat_external_spaces(data: dict) -> CheckResult:
@@ -204,8 +204,8 @@ def check_chat_external_spaces(data: dict) -> CheckResult:
         pass_text="disable external spaces or limit them to allowlisted domains",
         expected_value="External spaces off or limited to allowlisted domains",
         remediation=(
-            "Admin console > Apps > Google Workspace > Google Chat > External Spaces. Turn external spaces off, or "
-            "limit them to allowlisted domains. https://knowledge.workspace.google.com/admin/chat/chat-with-external-users"
+            "Admin console > Apps > Google Workspace > Google Chat > External Spaces & Group Direct Messages. Turn external spaces off, or "
+            "limit them to allowlisted domains. https://knowledge.workspace.google.com/admin/chat/control-external-chat-and-spaces-chat-options"
         ),
     )
 
@@ -394,7 +394,7 @@ def check_vault_privilege_holders(data: dict) -> CheckResult:
     remediation=(
         "Publish a '_mta-sts.<domain>' TXT record (v=STSv1; id=...) and host the policy at "
         "https://mta-sts.<domain>/.well-known/mta-sts.txt with mode: enforce; add a '_smtp._tls.<domain>' TLS-RPT "
-        "record to receive failure reports. https://knowledge.workspace.google.com/admin/security/increase-email-security-with-mta-sts-and-tls-reporting"
+        "record to receive failure reports. https://knowledge.workspace.google.com/admin/gmail/advanced/turn-on-mta-sts-and-tls-reporting"
     ),
 )
 def check_mta_sts(data: dict) -> CheckResult:

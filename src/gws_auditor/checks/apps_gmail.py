@@ -138,7 +138,7 @@ def check_gmail_offline(data: dict) -> CheckResult:
             details=(
                 "Could not determine offline Gmail setting. "
                 "The Policy API does not expose this setting. Verify manually in "
-                "Admin console > Apps > Google Workspace > Gmail > End User Access."
+                "Admin console > Apps > Google Workspace > Gmail > User settings."
             ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Gmail > "
@@ -1473,7 +1473,7 @@ def check_gmail_outbound_gateway(data: dict) -> CheckResult:
     section="Gmail",
     remediation=(
         "Admin console > Apps > Google Workspace > Gmail > "
-        "User settings. Enable 'Warn users when sending emails to "
+        "End User Access > Warn for external recipients. Enable 'Warn users when sending emails to "
         "external recipients'. https://knowledge.workspace.google.com/admin/gmail/advanced/control-gmail-external-recipient-warnings"
     ),
     requires_license="enterprise_plus",
@@ -1515,7 +1515,7 @@ def check_gmail_external_recipient_warning(data: dict) -> CheckResult:
             details="Could not determine external recipient warning setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Gmail > "
-                "User settings. Enable 'Warn users when sending emails to "
+                "End User Access > Warn for external recipients. Enable 'Warn users when sending emails to "
                 "external recipients'. https://knowledge.workspace.google.com/admin/gmail/advanced/control-gmail-external-recipient-warnings"
             ),
         )
@@ -1529,7 +1529,7 @@ def check_gmail_external_recipient_warning(data: dict) -> CheckResult:
         expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Gmail > "
-            "User settings. Enable 'Warn users when sending emails to "
+            "End User Access > Warn for external recipients. Enable 'Warn users when sending emails to "
             "external recipients'. https://knowledge.workspace.google.com/admin/gmail/advanced/control-gmail-external-recipient-warnings"
         ),
     )
@@ -1546,8 +1546,8 @@ def check_gmail_external_recipient_warning(data: dict) -> CheckResult:
     source="CIS",
     section="Gmail",
     remediation=(
-        "Admin console > Apps > Google Workspace > Gmail > Safety > "
-        "Spoofing and authentication. Enable 'Enhanced pre-delivery "
+        "Admin console > Apps > Google Workspace > Gmail > Spam, Phishing and Malware > "
+        "Enhanced pre-delivery message scanning. Enable 'Enhanced pre-delivery "
         "message scanning'. https://knowledge.workspace.google.com/admin/gmail/advanced/advanced-phishing-and-malware-protection"
     ),
 )
@@ -1557,8 +1557,8 @@ def check_gmail_predelivery_scanning(data: dict) -> CheckResult:
     _TITLE = "Ensure enhanced pre-delivery message scanning is enabled"
     _L, _S, _SEC = "L1", "CIS", "Gmail"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Gmail > Safety > "
-        "Spoofing and authentication. Enable 'Enhanced pre-delivery "
+        "Admin console > Apps > Google Workspace > Gmail > Spam, Phishing and Malware > "
+        "Enhanced pre-delivery message scanning. Enable 'Enhanced pre-delivery "
         "message scanning'. https://knowledge.workspace.google.com/admin/gmail/advanced/advanced-phishing-and-malware-protection"
     )
 
@@ -1598,7 +1598,7 @@ def check_gmail_predelivery_scanning(data: dict) -> CheckResult:
             details=(
                 "Could not determine pre-delivery scanning setting. "
                 "Verify manually in Admin console > Apps > Google Workspace > "
-                "Gmail > Safety > Spoofing and authentication."
+                "Gmail > Spam, Phishing and Malware > Enhanced pre-delivery message scanning."
             ),
             remediation=_REMED,
         )

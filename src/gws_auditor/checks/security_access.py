@@ -160,7 +160,7 @@ def check_third_party_app_access(data: dict) -> CheckResult:
     source="CIS",
     section="Access Control",
     remediation=(
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Configure an app access policy to restrict third-party app access. "
         "Trust only verified, necessary apps. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     ),
@@ -186,7 +186,7 @@ def check_third_party_app_review(data: dict) -> CheckResult:
                 "Manual review of authorized third-party apps is recommended."
             ),
             remediation=(
-                "Admin console > Security > API controls > App access control. "
+                "Admin console > Security > Access and data control > API controls > App access control. "
                 "Review the list of third-party apps that have been granted access "
                 "to organizational data. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
             ),
@@ -217,10 +217,10 @@ def check_third_party_app_review(data: dict) -> CheckResult:
                 details=(
                     f"Found {len(oauth_apps)} unique third-party app(s) with OAuth grants. The Policy API did not "
                     "report the unconfigured-apps access level (ACCESS_LEVEL_UNSPECIFIED) — verify the app access "
-                    "policy in Admin console > Security > API controls."
+                    "policy in Admin console > Security > Access and data control > API controls."
                 ),
                 remediation=(
-                    "Admin console > Security > API controls > App access control. "
+                    "Admin console > Security > Access and data control > API controls > App access control. "
                     "Review the list of third-party apps that have been granted access to organizational data."
                 ),
             )
@@ -238,7 +238,7 @@ def check_third_party_app_review(data: dict) -> CheckResult:
             actual_value={"app_count": len(oauth_apps), "policy": app_access_policy or "none"},
             expected_value="App access control policy configured",
             remediation=(
-                "Admin console > Security > API controls > App access control. "
+                "Admin console > Security > Access and data control > API controls > App access control. "
                 "Configure an app access policy to restrict third-party app access. "
                 "Trust only verified, necessary apps. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
             ),
@@ -254,7 +254,7 @@ def check_third_party_app_review(data: dict) -> CheckResult:
             "Manual review is recommended to validate each app's access is appropriate."
         ),
         remediation=(
-            "Admin console > Security > API controls > App access control. "
+            "Admin console > Security > Access and data control > API controls > App access control. "
             "Review each authorized app and revoke access for unneeded applications. "
             "Establish a periodic review process for third-party app access. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
         ),
@@ -268,7 +268,7 @@ def check_third_party_app_review(data: dict) -> CheckResult:
     source="CIS",
     section="Access Control",
     remediation=(
-        "Admin console > Security > API controls. "
+        "Admin console > Security > Access and data control > API controls. "
         "Configure API access controls for internal applications. "
         "Use OAuth client allowlisting. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     ),
@@ -297,7 +297,7 @@ def check_internal_api_access(data: dict) -> CheckResult:
             level="L2", source="CIS", section="Access Control",
             details="Could not determine internal app API access control settings.",
             remediation=(
-                "Admin console > Security > API controls. "
+                "Admin console > Security > Access and data control > API controls. "
                 "Review and configure API access controls for internal applications. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
             ),
         )
@@ -310,7 +310,7 @@ def check_internal_api_access(data: dict) -> CheckResult:
         actual_value=internal_apps_controlled,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > API controls. "
+            "Admin console > Security > Access and data control > API controls. "
             "Configure API access controls for internal applications. "
             "Use OAuth client allowlisting. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
         ),
@@ -325,7 +325,7 @@ def check_internal_api_access(data: dict) -> CheckResult:
     source="CIS",
     section="Access Control",
     remediation=(
-        "Admin console > Security > API controls > Domain-wide delegation. "
+        "Admin console > Security > Access and data control > API controls > Domain-wide delegation. "
         "Review each service account and its authorized scopes. "
         "Remove unnecessary delegations and restrict scopes to minimum required. https://knowledge.workspace.google.com/admin/apps/control-api-access-with-domain-wide-delegation"
     ),
@@ -587,7 +587,7 @@ def check_geo_blocking(data: dict) -> CheckResult:
     source="CIS",
     section="Access Control",
     remediation=(
-        "Admin console > Security > Data protection > Manage rules. "
+        "Admin console > Security > Access and data control > Data protection > Manage rules. "
         "Create DLP rules to detect sensitive data (PII, financial data, etc.) "
         "and prevent unauthorized sharing from Drive. https://knowledge.workspace.google.com/admin/security/create-dlp-for-drive-rules-and-custom-content-detectors"
     ),
@@ -625,7 +625,7 @@ def check_drive_dlp(data: dict) -> CheckResult:
                 actual_value={"enabled": True, "rule_count": rule_count, "unconfigured": len(unconfigured_rules)},
                 expected_value="DLP enabled with properly configured rules",
                 remediation=(
-                    "Admin console > Security > Data protection > Manage rules. "
+                    "Admin console > Security > Access and data control > Data protection > Manage rules. "
                     "Review each DLP rule and ensure conditions and triggers are configured. https://knowledge.workspace.google.com/admin/security/create-dlp-for-drive-rules-and-custom-content-detectors"
                 ),
             )
@@ -649,7 +649,7 @@ def check_drive_dlp(data: dict) -> CheckResult:
                 "verify Drive DLP coverage in Admin console."
             ),
             remediation=(
-                "Admin console > Security > Data protection > Manage rules. "
+                "Admin console > Security > Access and data control > Data protection > Manage rules. "
                 "Create DLP rules to detect and protect sensitive data in Drive. https://knowledge.workspace.google.com/admin/security/create-dlp-for-drive-rules-and-custom-content-detectors"
             ),
         )
@@ -662,7 +662,7 @@ def check_drive_dlp(data: dict) -> CheckResult:
         actual_value={"enabled": drive_dlp_enabled, "rule_count": rule_count},
         expected_value="DLP enabled with rules configured",
         remediation=(
-            "Admin console > Security > Data protection > Manage rules. "
+            "Admin console > Security > Access and data control > Data protection > Manage rules. "
             "Create DLP rules to detect sensitive data (PII, financial data, etc.) "
             "and prevent unauthorized sharing from Drive. https://knowledge.workspace.google.com/admin/security/create-dlp-for-drive-rules-and-custom-content-detectors"
         ),
@@ -676,8 +676,8 @@ def check_drive_dlp(data: dict) -> CheckResult:
     source="CIS",
     section="Access Control",
     remediation=(
-        "Admin console > Security > Access and data control > "
-        "Google Cloud session control. Enable 'Device Bound Session "
+        "Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
+        "Device Bound Session Credentials. Enable \'Device Bound Session "
         "Credentials (DBSC)' to bind sessions to the device. https://knowledge.workspace.google.com/admin/security/prevent-cookie-theft-with-session-binding"
     ),
 )
@@ -687,8 +687,8 @@ def check_session_control(data: dict) -> CheckResult:
     _TITLE = "Ensure Device Bound Session Credentials (DBSC) are enabled"
     _L, _S, _SEC = "L2", "CIS", "Access Control"
     _REMED = (
-        "Admin console > Security > Access and data control > "
-        "Google Cloud session control. Enable 'Device Bound Session "
+        "Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
+        "Device Bound Session Credentials. Enable \'Device Bound Session "
         "Credentials (DBSC)' to bind sessions to the device. https://knowledge.workspace.google.com/admin/security/prevent-cookie-theft-with-session-binding"
     )
 
@@ -714,8 +714,8 @@ def check_session_control(data: dict) -> CheckResult:
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details=(
             "Could not determine DBSC setting. Verify manually in "
-            "Admin console > Security > Access and data control > "
-            "Google Cloud session control."
+            "Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
+            "Device Bound Session Credentials."
         ),
         remediation=_REMED,
     )
@@ -761,7 +761,7 @@ def _parse_session_duration_hours(duration) -> float | None:
     source="CIS",
     section="Access Control",
     remediation=(
-        "Admin console > Security > Google Cloud session control. "
+        "Admin console > Security > Access and data control > Google Cloud session control. "
         "Enable reauthentication policy and set an appropriate "
         "session duration for Google Cloud access. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
     ),
@@ -799,7 +799,7 @@ def check_cloud_session_control(data: dict) -> CheckResult:
             level="L2", source="CIS", section="Access Control",
             details="Could not determine cloud session control setting.",
             remediation=(
-                "Admin console > Security > Google Cloud session control. "
+                "Admin console > Security > Access and data control > Google Cloud session control. "
                 "Enable and configure reauthentication policy for Google Cloud. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
             ),
         )
@@ -812,7 +812,7 @@ def check_cloud_session_control(data: dict) -> CheckResult:
         actual_value=cloud_control_enabled,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > Google Cloud session control. "
+            "Admin console > Security > Access and data control > Google Cloud session control. "
             "Enable reauthentication policy and set an appropriate "
             "session duration for Google Cloud access. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
         ),

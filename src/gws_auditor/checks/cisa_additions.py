@@ -54,7 +54,7 @@ def _evaluate_setting(data: dict, category: str, setting_key: str, fields: tuple
 
 _CHAT_2_1_REMED = (
     "Admin console > Apps > Google Workspace > Google Chat > Chat File Sharing. "
-    "Set External filesharing to 'No files'. https://knowledge.workspace.google.com/admin/chat/allow-users-to-share-files-in-chat"
+    "Set External filesharing to 'No files'. https://knowledge.workspace.google.com/admin/chat/control-file-sharing-in-chat"
 )
 
 
@@ -209,7 +209,7 @@ def check_phishing_resistant_mfa(data: dict) -> CheckResult:
 _SA_RECOVERY_REMED = (
     "Admin console > Security > Authentication > Account recovery > Super admin account recovery. "
     "Turn off 'Allow super admins to recover their account'. "
-    "https://knowledge.workspace.google.com/admin/security/set-up-password-recovery-for-users"
+    "https://knowledge.workspace.google.com/admin/users/allow-super-administrators-to-recover-their-password"
 )
 
 
@@ -320,13 +320,13 @@ def _forms_manual(check_id: str, title: str, guidance: str) -> CheckResult:
     scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure forms cannot accept external responses when external sharing is off",
     level="L2", source="CISA", section="Drive and Docs", severity="LOW",
-    remediation="Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options.",
+    remediation="Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options > Form responses.",
 )
 def check_forms_external_responses(data: dict) -> CheckResult:
     """Manual: forms owned by the organization should not accept responses from outside it."""
     return _forms_manual(
         "GWS.DRIVEDOCS.1.10", "Ensure forms cannot accept external responses when external sharing is off",
-        "Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options: if sharing "
+        "Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options > Form responses: if sharing "
         "outside the organization is OFF, confirm forms cannot accept external responses.")
 
 
@@ -335,11 +335,11 @@ def check_forms_external_responses(data: dict) -> CheckResult:
     scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure users cannot respond to external forms when receiving files is off",
     level="L2", source="CISA", section="Drive and Docs", severity="LOW",
-    remediation="Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options.",
+    remediation="Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options > Form responses.",
 )
 def check_forms_external_submission(data: dict) -> CheckResult:
     """Manual: users should not submit responses to forms owned outside the organization."""
     return _forms_manual(
         "GWS.DRIVEDOCS.1.11", "Ensure users cannot respond to external forms when receiving files is off",
-        "Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options: if receiving "
+        "Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > Sharing options > Form responses: if receiving "
         "files from outside the organization is OFF, confirm users cannot submit responses to external forms.")

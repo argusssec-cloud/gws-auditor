@@ -211,7 +211,7 @@ def check_primary_cal_internal_sharing(data: dict) -> CheckResult:
     source="CIS",
     section="Calendar",
     remediation=(
-        "Admin console > Apps > Google Workspace > Calendar > Sharing settings. "
+        "Admin console > Apps > Google Workspace > Calendar > External Invitations. "
         "Enable 'Warn users when inviting guests outside of the domain'. https://knowledge.workspace.google.com/admin/calendar/allow-external-invitations-in-google-calendar-events"
     ),
 )
@@ -221,7 +221,7 @@ def check_cal_external_invitation_warning(data: dict) -> CheckResult:
     _TITLE = "Ensure external invitations show warning"
     _L, _S, _SEC = "L1", "CIS", "Calendar"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Calendar > Sharing settings. "
+        "Admin console > Apps > Google Workspace > Calendar > External Invitations. "
         "Enable 'Warn users when inviting guests outside of the domain'. https://knowledge.workspace.google.com/admin/calendar/allow-external-invitations-in-google-calendar-events"
     )
 

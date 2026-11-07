@@ -1158,7 +1158,7 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
     section="Drive and Docs",
     remediation=(
         "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Features and Applications > Google Drive for Desktop. "
+        "Google Drive for desktop. "
         "Restrict to authorized devices or disable entirely. https://knowledge.workspace.google.com/admin/drive/set-up-drive-for-desktop-for-your-organization"
     ),
 )
@@ -1169,7 +1169,7 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CISA", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Features and Applications > Google Drive for Desktop. "
+        "Google Drive for desktop. "
         "Restrict to authorized devices or disable entirely. https://knowledge.workspace.google.com/admin/drive/set-up-drive-for-desktop-for-your-organization"
     )
 
@@ -1227,7 +1227,7 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
             details="Could not determine Drive for Desktop device restriction setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Drive and Docs > "
-                "Features and Applications > Google Drive for Desktop. "
+                "Google Drive for desktop. "
                 "Restrict to authorized devices or disable entirely. https://knowledge.workspace.google.com/admin/drive/set-up-drive-for-desktop-for-your-organization"
             ),
         )
@@ -1244,7 +1244,7 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
         expected_value="desktop_authorized_only=True or desktop_allowed=False",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
-            "Features and Applications > Google Drive for Desktop. "
+            "Google Drive for desktop. "
             "Enable 'Only allow Drive for Desktop on authorized devices' "
             "or disable Drive for Desktop entirely to prevent data syncing "
             "to unmanaged endpoints. https://knowledge.workspace.google.com/admin/drive/set-up-drive-for-desktop-for-your-organization"
@@ -1264,7 +1264,7 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
     section="Google Chat",
     remediation=(
         "Admin console > Apps > Google Workspace > Google Chat > "
-        "Chat history. Enable history for spaces to retain "
+        "History for Spaces. Enable history for spaces to retain "
         "conversation records for compliance. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
     ),
 )
@@ -1275,7 +1275,7 @@ def check_chat_space_history(data: dict) -> CheckResult:
     _L, _S, _SEC = "L2", "CISA", "Google Chat"
     _REMED = (
         "Admin console > Apps > Google Workspace > Google Chat > "
-        "Chat history. Enable history for spaces to retain "
+        "History for Spaces. Enable history for spaces to retain "
         "conversation records for compliance. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
     )
 
@@ -1323,7 +1323,7 @@ def check_chat_space_history(data: dict) -> CheckResult:
             details="Could not determine Chat space history setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Chat > "
-                "Chat history. Enable history for spaces to retain "
+                "History for Spaces. Enable history for spaces to retain "
                 "conversation records for compliance. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
             ),
         )
@@ -1337,7 +1337,7 @@ def check_chat_space_history(data: dict) -> CheckResult:
         expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
-            "Chat history. Enable space history to ensure conversations "
+            "History for Spaces. Enable space history to ensure conversations "
             "in Chat spaces are retained for audit and compliance purposes. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
         ),
     )

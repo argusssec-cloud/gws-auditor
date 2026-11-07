@@ -978,7 +978,7 @@ def check_drive_offline_access(data: dict) -> CheckResult:
     section="Drive and Docs",
     remediation=(
         "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Features and Applications. Disable 'Allow Google Drive for Desktop'. https://knowledge.workspace.google.com/admin/drive/set-up-drive-for-desktop-for-your-organization"
+        "Google Drive for desktop. Disable 'Allow Google Drive for Desktop'. https://knowledge.workspace.google.com/admin/drive/set-up-drive-for-desktop-for-your-organization"
     ),
 )
 def check_drive_desktop_access(data: dict) -> CheckResult:
@@ -988,7 +988,7 @@ def check_drive_desktop_access(data: dict) -> CheckResult:
     _L, _S, _SEC = "L2", "CIS", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Features and Applications. Disable 'Allow Google Drive for Desktop'. https://knowledge.workspace.google.com/admin/drive/set-up-drive-for-desktop-for-your-organization"
+        "Google Drive for desktop. Disable 'Allow Google Drive for Desktop'. https://knowledge.workspace.google.com/admin/drive/set-up-drive-for-desktop-for-your-organization"
     )
 
     policies = data.get("policies", {})

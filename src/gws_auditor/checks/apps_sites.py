@@ -18,7 +18,7 @@ from ..models import CheckResult, Status
     level="L2",
     source="CIS",
     section="Sites",
-    remediation="Admin console > Apps > Google Workspace > Sites > New Sites. Disable 'Allow users to create new Sites'. https://knowledge.workspace.google.com/admin/users/access/turn-google-sites-on-or-off-for-users",
+    remediation="Admin console > Apps > Google Workspace > Sites > New Sites. Disable 'Allow users to create new Sites'. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users",
 )
 def check_sites_creation_disabled(data: dict) -> CheckResult:
     """Google Sites creation should be disabled to prevent unmanaged web publishing."""
@@ -27,7 +27,7 @@ def check_sites_creation_disabled(data: dict) -> CheckResult:
     _L, _S, _SEC = "L2", "CIS", "Sites"
     _REMED = (
         "Admin console > Apps > Google Workspace > Sites > "
-        "New Sites. Disable 'Allow users to create new Sites'. https://knowledge.workspace.google.com/admin/users/access/turn-google-sites-on-or-off-for-users"
+        "New Sites. Disable 'Allow users to create new Sites'. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users"
     )
 
     policies = data.get("policies", {})

@@ -464,7 +464,7 @@ def check_calendar_interop_disabled(data: dict) -> CheckResult:
     section="Calendar",
     remediation=(
         "Admin console > Apps > Google Workspace > Calendar > "
-        "General settings. Disable paid appointment scheduling. https://knowledge.workspace.google.com/admin/calendar/allow-paid-appointment-schedules-in-calendar"
+        "General settings. Turn off 'Appointment schedules with payments'. https://knowledge.workspace.google.com/admin/calendar/allow-paid-appointment-schedules-in-calendar"
     ),
     requires_license="business_standard",
 )
@@ -475,7 +475,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CISA", "Calendar"
     _REMED = (
         "Admin console > Apps > Google Workspace > Calendar > "
-        "General settings. Disable paid appointment scheduling. https://knowledge.workspace.google.com/admin/calendar/allow-paid-appointment-schedules-in-calendar"
+        "General settings. Turn off 'Appointment schedules with payments'. https://knowledge.workspace.google.com/admin/calendar/allow-paid-appointment-schedules-in-calendar"
     )
 
     policies = data.get("policies", {})
@@ -518,7 +518,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
             details="Could not determine paid appointment scheduling setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Calendar > "
-                "General settings. Disable paid appointment scheduling. https://knowledge.workspace.google.com/admin/calendar/allow-paid-appointment-schedules-in-calendar"
+                "General settings. Turn off 'Appointment schedules with payments'. https://knowledge.workspace.google.com/admin/calendar/allow-paid-appointment-schedules-in-calendar"
             ),
         )
 
@@ -549,7 +549,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
     section="Google Chat",
     remediation=(
         "Admin console > Apps > Google Workspace > Google Chat > "
-        "Chat history. Enable history for compliance and audit. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+        "History for chats. Enable history for compliance and audit. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
     ),
 )
 def check_chat_history_enabled(data: dict) -> CheckResult:
@@ -559,7 +559,7 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CISA", "Google Chat"
     _REMED = (
         "Admin console > Apps > Google Workspace > Google Chat > "
-        "Chat history. Enable history for compliance and audit. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+        "History for chats. Enable history for compliance and audit. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
     )
 
     policies = data.get("policies", {})
@@ -610,7 +610,7 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
             details="Could not determine Chat history setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Chat > "
-                "Chat history. Enable history for compliance and audit. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+                "History for chats. Enable history for compliance and audit. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
             ),
         )
 
@@ -623,7 +623,7 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
         expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
-            "Chat history. Enable history to ensure traceability. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+            "History for chats. Enable history to ensure traceability. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
         ),
     )
 
@@ -636,7 +636,7 @@ def check_chat_history_enabled(data: dict) -> CheckResult:
     section="Google Chat",
     remediation=(
         "Admin console > Apps > Google Workspace > Google Chat > "
-        "Chat history. Prevent users from changing their history setting. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+        "History for chats. Prevent users from changing their history setting. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
     ),
 )
 def check_chat_history_user_control(data: dict) -> CheckResult:
@@ -646,7 +646,7 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CISA", "Google Chat"
     _REMED = (
         "Admin console > Apps > Google Workspace > Google Chat > "
-        "Chat history. Prevent users from changing their history setting. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+        "History for chats. Prevent users from changing their history setting. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
     )
 
     policies = data.get("policies", {})
@@ -690,7 +690,7 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
             details="Could not determine user history modification setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Chat > "
-                "Chat history. Prevent users from changing their history setting. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+                "History for chats. Prevent users from changing their history setting. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
             ),
         )
 
@@ -703,7 +703,7 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
         expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
-            "Chat history. Disable user ability to modify history setting. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+            "History for chats. Disable user ability to modify history setting. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
         ),
     )
 
@@ -1181,7 +1181,7 @@ def check_drive_default_access(data: dict) -> CheckResult:
     section="Drive and Docs",
     remediation=(
         "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Features and Applications. Apply security updates to files. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
+        "Sharing settings > Security update for files. Apply security updates to files. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
     ),
 )
 def check_drive_security_updates(data: dict) -> CheckResult:
@@ -1191,7 +1191,7 @@ def check_drive_security_updates(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CISA", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Features and Applications. Apply security updates to files. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
+        "Sharing settings > Security update for files. Apply security updates to files. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
     )
 
     policies = data.get("policies", {})
@@ -1244,7 +1244,7 @@ def check_drive_security_updates(data: dict) -> CheckResult:
             details="Could not determine file security updates setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Drive and Docs > "
-                "Features and Applications. Apply security updates to files. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
+                "Sharing settings > Security update for files. Apply security updates to files. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
             ),
         )
 
@@ -1257,7 +1257,7 @@ def check_drive_security_updates(data: dict) -> CheckResult:
         expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Drive and Docs > "
-            "Features and Applications. Enable security updates to "
+            "Sharing settings > Security update for files. Enable security updates to "
             "apply resource key requirements to existing files. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
         ),
     )
@@ -1623,7 +1623,7 @@ def check_meet_external_warning(data: dict) -> CheckResult:
     section="Google Meet",
     remediation=(
         "Admin console > Apps > Google Workspace > Google Meet > "
-        "Meet settings. Restrict incoming calls to contacts and "
+        "Meet safety settings > Incoming call restrictions. Restrict incoming calls to contacts and "
         "other users in the organization. https://knowledge.workspace.google.com/admin/meet/restrict-who-can-call-my-organizations-users-with-google-meet"
     ),
 )
@@ -1634,7 +1634,7 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CISA", "Google Meet"
     _REMED = (
         "Admin console > Apps > Google Workspace > Google Meet > "
-        "Meet settings. Restrict incoming calls to contacts and "
+        "Meet safety settings > Incoming call restrictions. Restrict incoming calls to contacts and "
         "other users in the organization. https://knowledge.workspace.google.com/admin/meet/restrict-who-can-call-my-organizations-users-with-google-meet"
     )
 
@@ -1682,7 +1682,7 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
             details="Could not determine incoming calls restriction setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Meet > "
-                "Meet settings. Restrict incoming calls to contacts and "
+                "Meet safety settings > Incoming call restrictions. Restrict incoming calls to contacts and "
                 "organization users. https://knowledge.workspace.google.com/admin/meet/restrict-who-can-call-my-organizations-users-with-google-meet"
             ),
         )
@@ -1696,7 +1696,7 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
         expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
-            "Meet settings. Restrict incoming calls to contacts and "
+            "Meet safety settings > Incoming call restrictions. Restrict incoming calls to contacts and "
             "other users in the organization. https://knowledge.workspace.google.com/admin/meet/restrict-who-can-call-my-organizations-users-with-google-meet"
         ),
     )
@@ -1710,7 +1710,7 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
     section="Google Meet",
     remediation=(
         "Admin console > Apps > Google Workspace > Google Meet > "
-        "Meet settings. Disable automatic recordings to prevent "
+        "Meet video settings > Automatic recording. Disable automatic recordings to prevent "
         "unauthorized capture of meeting content. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
     ),
     requires_license="business_standard",
@@ -1722,7 +1722,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CISA", "Google Meet"
     _REMED = (
         "Admin console > Apps > Google Workspace > Google Meet > "
-        "Meet settings. Disable automatic recordings to prevent "
+        "Meet video settings > Automatic recording. Disable automatic recordings to prevent "
         "unauthorized capture of meeting content. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
     )
 
@@ -1787,7 +1787,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
             details="Could not determine automatic recording setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Meet > "
-                "Meet settings. Disable automatic recordings. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
+                "Meet video settings > Automatic recording. Disable automatic recordings. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
             ),
         )
 
@@ -1800,7 +1800,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
         expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
-            "Meet settings. Disable automatic recordings to prevent "
+            "Meet video settings > Automatic recording. Disable automatic recordings to prevent "
             "unauthorized capture of meeting content. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
         ),
     )
@@ -1814,7 +1814,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
     section="Google Meet",
     remediation=(
         "Admin console > Apps > Google Workspace > Google Meet > "
-        "Meet settings. Disable automatic transcripts to mitigate "
+        "Meet video settings > Automatic transcription. Disable automatic transcripts to mitigate "
         "sensitive data recording risks. https://knowledge.workspace.google.com/admin/meet/turn-meeting-transcription-on-or-off"
     ),
     requires_license="business_standard",
@@ -1826,7 +1826,7 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CISA", "Google Meet"
     _REMED = (
         "Admin console > Apps > Google Workspace > Google Meet > "
-        "Meet settings. Disable automatic transcripts to mitigate "
+        "Meet video settings > Automatic transcription. Disable automatic transcripts to mitigate "
         "sensitive data recording risks. https://knowledge.workspace.google.com/admin/meet/turn-meeting-transcription-on-or-off"
     )
 
@@ -1890,7 +1890,7 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
             ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Meet > "
-                "Meet settings. Disable automatic transcripts. https://knowledge.workspace.google.com/admin/meet/turn-meeting-transcription-on-or-off"
+                "Meet video settings > Automatic transcription. Disable automatic transcripts. https://knowledge.workspace.google.com/admin/meet/turn-meeting-transcription-on-or-off"
             ),
         )
 
@@ -1903,7 +1903,7 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
         expected_value="Disabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
-            "Meet settings. Disable automatic transcripts to mitigate "
+            "Meet video settings > Automatic transcription. Disable automatic transcripts to mitigate "
             "sensitive data recording risks. https://knowledge.workspace.google.com/admin/meet/turn-meeting-transcription-on-or-off"
         ),
     )
@@ -2383,8 +2383,8 @@ def check_trust_device_disabled(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Account > Account management. Enable "
-        "automatic management of conflicting accounts. https://knowledge.workspace.google.com/admin/security/block-access-to-consumer-accounts"
+        "Admin console > Account > Account settings > Account management > Conflicting accounts management. Enable "
+        "automatic management of conflicting accounts. https://knowledge.workspace.google.com/admin/users/find-and-add-unmanaged-users"
     ),
 )
 def check_conflicting_accounts(data: dict) -> CheckResult:
@@ -2393,8 +2393,8 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
     _TITLE = "Ensure conflicting account management is configured"
     _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
-        "Admin console > Account > Account management. Enable "
-        "automatic management of conflicting accounts. https://knowledge.workspace.google.com/admin/security/block-access-to-consumer-accounts"
+        "Admin console > Account > Account settings > Account management > Conflicting accounts management. Enable "
+        "automatic management of conflicting accounts. https://knowledge.workspace.google.com/admin/users/find-and-add-unmanaged-users"
     )
 
     policies = data.get("policies", {})
@@ -2440,9 +2440,9 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
                 "Identity Policy API — verify in Admin console."
             ),
             remediation=(
-                "Admin console > Account > Account management. Configure "
+                "Admin console > Account > Account settings > Account management > Conflicting accounts management. Configure "
                 "automatic handling of conflicting accounts to prevent "
-                "shadow IT accounts. https://knowledge.workspace.google.com/admin/security/block-access-to-consumer-accounts"
+                "shadow IT accounts. https://knowledge.workspace.google.com/admin/users/find-and-add-unmanaged-users"
             ),
         )
 
@@ -2454,8 +2454,8 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
         actual_value=conflict_mgmt,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Account > Account management. Enable "
-            "automatic management of conflicting accounts. https://knowledge.workspace.google.com/admin/security/block-access-to-consumer-accounts"
+            "Admin console > Account > Account settings > Account management > Conflicting accounts management. Enable "
+            "automatic management of conflicting accounts. https://knowledge.workspace.google.com/admin/users/find-and-add-unmanaged-users"
         ),
     )
 
@@ -2469,7 +2469,7 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
     remediation=(
         "Admin console > Reporting > Audit and investigation. "
         "Verify audit logging is enabled. Consider configuring "
-        "log export to BigQuery or a SIEM for long-term retention. https://knowledge.workspace.google.com/admin/reports"
+        "log export to BigQuery or a SIEM for long-term retention. https://knowledge.workspace.google.com/admin/reports/reports-overview"
     ),
 )
 def check_audit_logging_enabled(data: dict) -> CheckResult:
@@ -2504,7 +2504,7 @@ def check_audit_logging_enabled(data: dict) -> CheckResult:
         remediation=(
             "Admin console > Reporting > Audit and investigation. "
             "Verify audit logging is enabled. Consider configuring "
-            "log export to BigQuery or a SIEM for long-term retention. https://knowledge.workspace.google.com/admin/reports"
+            "log export to BigQuery or a SIEM for long-term retention. https://knowledge.workspace.google.com/admin/reports/reports-overview"
         ),
     )
 
@@ -2516,7 +2516,7 @@ def check_audit_logging_enabled(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Account > Account settings > Data regions. "
+        "Admin console > Data > Compliance > Data regions. "
         "Configure data storage locations to comply with data "
         "residency requirements. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
     ),
@@ -2528,7 +2528,7 @@ def check_data_regions(data: dict) -> CheckResult:
     _TITLE = "Ensure data regions are configured"
     _L, _S, _SEC = "L2", "CISA", "Security"
     _REMED = (
-        "Admin console > Account > Account settings > Data regions. "
+        "Admin console > Data > Compliance > Data regions. "
         "Configure data storage locations to comply with data "
         "residency requirements. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
     )
@@ -2577,7 +2577,7 @@ def check_data_regions(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Could not determine data region configuration.",
             remediation=(
-                "Admin console > Account > Account settings > Data regions. "
+                "Admin console > Data > Compliance > Data regions. "
                 "Configure data regions to meet data residency requirements. "
                 "Requires Enterprise Plus license. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
             ),
@@ -2591,7 +2591,7 @@ def check_data_regions(data: dict) -> CheckResult:
         actual_value=configured,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Account > Account settings > Data regions. "
+            "Admin console > Data > Compliance > Data regions. "
             "Configure data storage locations to comply with data "
             "residency requirements. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
         ),
@@ -2605,7 +2605,7 @@ def check_data_regions(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > Multi-party approval. "
+        "Admin console > Security > Authentication > Multi-party approval settings. "
         "Enable to require multiple admin approvals for "
         "sensitive operations like user deletion or settings changes. https://knowledge.workspace.google.com/admin/security/multi-party-approval-for-sensitive-actions"
     ),
@@ -2617,7 +2617,7 @@ def check_multi_party_approval(data: dict) -> CheckResult:
     _TITLE = "Ensure multi-party approval is enabled"
     _L, _S, _SEC = "L2", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > Multi-party approval. "
+        "Admin console > Security > Authentication > Multi-party approval settings. "
         "Enable to require multiple admin approvals for "
         "sensitive operations like user deletion or settings changes. https://knowledge.workspace.google.com/admin/security/multi-party-approval-for-sensitive-actions"
     )
@@ -2686,7 +2686,7 @@ def check_multi_party_approval(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Could not determine multi-party approval setting.",
             remediation=(
-                "Admin console > Security > Multi-party approval. "
+                "Admin console > Security > Authentication > Multi-party approval settings. "
                 "Enable multi-party approval to require additional "
                 "admin authorization for sensitive operations. https://knowledge.workspace.google.com/admin/security/multi-party-approval-for-sensitive-actions"
             ),
@@ -2700,7 +2700,7 @@ def check_multi_party_approval(data: dict) -> CheckResult:
         actual_value=enabled,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > Multi-party approval. "
+            "Admin console > Security > Authentication > Multi-party approval settings. "
             "Enable to require multiple admin approvals for "
             "sensitive operations like user deletion or settings changes. https://knowledge.workspace.google.com/admin/security/multi-party-approval-for-sensitive-actions"
         ),
@@ -2718,7 +2718,7 @@ def check_multi_party_approval(data: dict) -> CheckResult:
     source="CISA",
     section="Classroom",
     remediation=(
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "Class settings. Set class membership to 'Domain only' or "
         "'Allowlisted domains' to prevent external access. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     ),
@@ -2734,7 +2734,7 @@ def check_class_membership_restricted(data: dict) -> CheckResult:
     _TITLE = "Ensure class membership is restricted to domain"
     _L, _S, _SEC = "L1", "CISA", "Classroom"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "Class settings. Set 'Who can join classes in your domain' "
         "to 'Users in your domain only'. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     )
@@ -2800,7 +2800,7 @@ def check_class_membership_restricted(data: dict) -> CheckResult:
     source="CISA",
     section="Classroom",
     remediation=(
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "Class settings. Set to 'Domain only' or 'Allowlisted domains' "
         "to prevent joining external classes. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     ),
@@ -2815,7 +2815,7 @@ def check_classes_to_join_restricted(data: dict) -> CheckResult:
     _TITLE = "Ensure classes users can join are restricted to domain"
     _L, _S, _SEC = "L1", "CISA", "Classroom"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "Class settings. Set 'Which classes can users in your domain "
         "join' to 'Classes in your domain only'. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     )
@@ -2881,7 +2881,7 @@ def check_classes_to_join_restricted(data: dict) -> CheckResult:
     source="CISA",
     section="Classroom",
     remediation=(
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "API access. Disable Classroom API access to prevent "
         "unauthorized programmatic interaction. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     ),
@@ -2892,7 +2892,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
     _TITLE = "Ensure Classroom API access is disabled"
     _L, _S, _SEC = "L1", "CISA", "Classroom"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "API access. Disable Classroom API access to prevent "
         "unauthorized programmatic interaction. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     )
@@ -2936,7 +2936,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Classroom",
             details="Could not determine Classroom API access setting.",
             remediation=(
-                "Admin console > Apps > Google Workspace > Classroom > "
+                "Admin console > Apps > Additional Google services > Classroom > "
                 "API access. Disable Classroom API access. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
             ),
         )
@@ -2949,7 +2949,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
         actual_value=enabled,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Apps > Google Workspace > Classroom > "
+            "Admin console > Apps > Additional Google services > Classroom > "
             "API access. Disable Classroom API access to prevent "
             "unauthorized programmatic interaction. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
         ),
@@ -2963,7 +2963,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
     source="CISA",
     section="Classroom",
     remediation=(
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "Roster import. Disable Clever integration to prevent "
         "external roster synchronization. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     ),
@@ -2974,7 +2974,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
     _TITLE = "Ensure roster import with Clever is disabled"
     _L, _S, _SEC = "L1", "CISA", "Classroom"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "Roster import. Disable Clever integration to prevent "
         "external roster synchronization. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     )
@@ -3021,7 +3021,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Classroom",
             details="Could not determine Clever roster import setting.",
             remediation=(
-                "Admin console > Apps > Google Workspace > Classroom > "
+                "Admin console > Apps > Additional Google services > Classroom > "
                 "Roster import. Disable roster import with Clever. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
             ),
         )
@@ -3034,7 +3034,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
         actual_value=clever_enabled,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Apps > Google Workspace > Classroom > "
+            "Admin console > Apps > Additional Google services > Classroom > "
             "Roster import. Disable Clever integration to prevent "
             "external roster synchronization. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
         ),
@@ -3048,7 +3048,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
     source="CISA",
     section="Classroom",
     remediation=(
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "Class settings. Restrict student unenrollment to "
         "'Teachers only' to prevent students from leaving classes. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     ),
@@ -3059,7 +3059,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
     _TITLE = "Ensure only teachers can unenroll students"
     _L, _S, _SEC = "L1", "CISA", "Classroom"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "Class settings. Restrict student unenrollment to "
         "'Teachers only' to prevent students from leaving classes. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     )
@@ -3104,7 +3104,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Classroom",
             details="Could not determine student unenrollment setting.",
             remediation=(
-                "Admin console > Apps > Google Workspace > Classroom > "
+                "Admin console > Apps > Additional Google services > Classroom > "
                 "Class settings. Set who can unenroll students to "
                 "'Teachers only'. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
             ),
@@ -3118,7 +3118,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
         actual_value=who_can_unenroll,
         expected_value="teachers_only",
         remediation=(
-            "Admin console > Apps > Google Workspace > Classroom > "
+            "Admin console > Apps > Additional Google services > Classroom > "
             "Class settings. Restrict student unenrollment to "
             "'Teachers only' to prevent students from leaving classes. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
         ),
@@ -3132,7 +3132,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
     source="CISA",
     section="Classroom",
     remediation=(
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "General settings. Set who can create classes to "
         "'Verified teachers only' to prevent unauthorized class creation. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     ),
@@ -3143,7 +3143,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
     _TITLE = "Ensure class creation is restricted to verified teachers"
     _L, _S, _SEC = "L1", "CISA", "Classroom"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Classroom > "
+        "Admin console > Apps > Additional Google services > Classroom > "
         "General settings. Set who can create classes to "
         "'Verified teachers only' to prevent unauthorized class creation. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
     )
@@ -3188,7 +3188,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Classroom",
             details="Could not determine class creation setting.",
             remediation=(
-                "Admin console > Apps > Google Workspace > Classroom > "
+                "Admin console > Apps > Additional Google services > Classroom > "
                 "General settings. Restrict class creation to verified "
                 "teachers only. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
             ),
@@ -3202,7 +3202,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
         actual_value=who_can_create,
         expected_value="verified_teachers",
         remediation=(
-            "Admin console > Apps > Google Workspace > Classroom > "
+            "Admin console > Apps > Additional Google services > Classroom > "
             "General settings. Set who can create classes to "
             "'Verified teachers only' to prevent unauthorized class creation. https://knowledge.workspace.google.com/admin/users/access/turn-classroom-on-or-off-for-users"
         ),
@@ -3220,9 +3220,9 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
     source="CISA",
     section="Gemini",
     remediation=(
-        "Admin console > Apps > Google Workspace > Gemini. "
+        "Admin console > Generative AI > Gemini app. "
         "Disable unlicensed access to ensure only licensed "
-        "users can access Gemini features. https://knowledge.workspace.google.com/admin/gemini/turn-the-gemini-app-on-or-off"
+        "users can access Gemini features. https://knowledge.workspace.google.com/admin/generative-ai/gemini-app/turn-the-gemini-app-on-or-off"
     ),
 )
 def check_gemini_unlicensed_access(data: dict) -> CheckResult:
@@ -3231,9 +3231,9 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
     _TITLE = "Ensure Gemini app access is restricted to licensed users"
     _L, _S, _SEC = "L1", "CISA", "Gemini"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Gemini. "
+        "Admin console > Generative AI > Gemini app. "
         "Disable unlicensed access to ensure only licensed "
-        "users can access Gemini features. https://knowledge.workspace.google.com/admin/gemini/turn-the-gemini-app-on-or-off"
+        "users can access Gemini features. https://knowledge.workspace.google.com/admin/generative-ai/gemini-app/turn-the-gemini-app-on-or-off"
     )
 
     policies = data.get("policies", {})
@@ -3288,8 +3288,8 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
                 "Policy API. Verify manually in Admin console."
             ),
             remediation=(
-                "Admin console > Apps > Google Workspace > Gemini. "
-                "Restrict Gemini app access to licensed users only. https://knowledge.workspace.google.com/admin/gemini/turn-the-gemini-app-on-or-off"
+                "Admin console > Generative AI > Gemini app. "
+                "Restrict Gemini app access to licensed users only. https://knowledge.workspace.google.com/admin/generative-ai/gemini-app/turn-the-gemini-app-on-or-off"
             ),
         )
 
@@ -3301,9 +3301,9 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
         actual_value=unlicensed_enabled,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Apps > Google Workspace > Gemini. "
+            "Admin console > Generative AI > Gemini app. "
             "Disable unlicensed access to ensure only licensed "
-            "users can access Gemini features. https://knowledge.workspace.google.com/admin/gemini/turn-the-gemini-app-on-or-off"
+            "users can access Gemini features. https://knowledge.workspace.google.com/admin/generative-ai/gemini-app/turn-the-gemini-app-on-or-off"
         ),
     )
 
@@ -3323,7 +3323,7 @@ _GEMINI_BETA_SETTING_NAMES = (
     remediation=(
         "Admin console > Generative AI > Gemini in Workspace > Beta features "
         "(Beta Gemini features). Disable alpha/beta features to avoid exposing "
-        "users to unstable or untested functionality. https://knowledge.workspace.google.com/admin/gemini/turn-access-to-google-workspace-with-gemini-alpha-on-or-off"
+        "users to unstable or untested functionality. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/turn-access-to-google-workspace-with-gemini-beta-on-or-off"
     ),
 )
 def check_gemini_alpha_features(data: dict) -> CheckResult:
@@ -3334,7 +3334,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
     _REMED = (
         "Admin console > Generative AI > Gemini in Workspace > Beta features "
         "(Beta Gemini features). Disable alpha/beta features to avoid exposing "
-        "users to unstable or untested functionality. https://knowledge.workspace.google.com/admin/gemini/turn-access-to-google-workspace-with-gemini-alpha-on-or-off"
+        "users to unstable or untested functionality. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/turn-access-to-google-workspace-with-gemini-beta-on-or-off"
     )
 
     policies = data.get("policies", {})
@@ -3394,7 +3394,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
             ),
             remediation=(
                 "Admin console > Generative AI > Gemini in Workspace > Beta features "
-                "(Beta Gemini features). Disable alpha/beta features. https://knowledge.workspace.google.com/admin/gemini/turn-access-to-google-workspace-with-gemini-alpha-on-or-off"
+                "(Beta Gemini features). Disable alpha/beta features. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/turn-access-to-google-workspace-with-gemini-beta-on-or-off"
             ),
         )
 
@@ -3408,7 +3408,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
         remediation=(
             "Admin console > Apps > Google Workspace > Gemini > "
             "Features. Disable alpha features to avoid exposing "
-            "users to unstable or untested functionality. https://knowledge.workspace.google.com/admin/gemini/turn-access-to-google-workspace-with-gemini-alpha-on-or-off"
+            "users to unstable or untested functionality. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/turn-access-to-google-workspace-with-gemini-beta-on-or-off"
         ),
     )
 
@@ -3735,7 +3735,7 @@ def check_multi_region_processing_disabled(data: dict) -> CheckResult:
     remediation=(
         "Admin console > Apps > Google Workspace > Sites. "
         "Disable the Sites service to reduce the attack surface "
-        "if Google Sites is not actively used. https://knowledge.workspace.google.com/admin/users/access/turn-google-sites-on-or-off-for-users"
+        "if Google Sites is not actively used. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users"
     ),
 )
 def check_sites_service_disabled(data: dict) -> CheckResult:
@@ -3746,7 +3746,7 @@ def check_sites_service_disabled(data: dict) -> CheckResult:
     _REMED = (
         "Admin console > Apps > Google Workspace > Sites. "
         "Disable the Sites service to reduce the attack surface "
-        "if Google Sites is not actively used. https://knowledge.workspace.google.com/admin/users/access/turn-google-sites-on-or-off-for-users"
+        "if Google Sites is not actively used. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users"
     )
 
     policies = data.get("policies", {})
@@ -3788,7 +3788,7 @@ def check_sites_service_disabled(data: dict) -> CheckResult:
             details="Could not determine Sites service status.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Sites. "
-                "Disable the Sites service if not required. https://knowledge.workspace.google.com/admin/users/access/turn-google-sites-on-or-off-for-users"
+                "Disable the Sites service if not required. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users"
             ),
         )
 
@@ -3802,6 +3802,6 @@ def check_sites_service_disabled(data: dict) -> CheckResult:
         remediation=(
             "Admin console > Apps > Google Workspace > Sites. "
             "Disable the Sites service to reduce the attack surface "
-            "if Google Sites is not actively used. https://knowledge.workspace.google.com/admin/users/access/turn-google-sites-on-or-off-for-users"
+            "if Google Sites is not actively used. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users"
         ),
     )

@@ -20,7 +20,7 @@ from ..models import CheckResult, Status
     section="Google Chat",
     remediation=(
         "Admin console > Apps > Google Workspace > Google Chat > "
-        "External chat settings. Restrict external chat to allowlisted domains only. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+        "External chat settings. Restrict external chat to allowlisted domains only. https://knowledge.workspace.google.com/admin/chat/control-external-chat-and-spaces-chat-options"
     ),
 )
 def check_chat_external_restriction(data: dict) -> CheckResult:
@@ -30,7 +30,7 @@ def check_chat_external_restriction(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CIS", "Google Chat"
     _REMED = (
         "Admin console > Apps > Google Workspace > Google Chat > "
-        "External chat settings. Restrict external chat to allowlisted domains only. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+        "External chat settings. Restrict external chat to allowlisted domains only. https://knowledge.workspace.google.com/admin/chat/control-external-chat-and-spaces-chat-options"
     )
 
     policies = data.get("policies", {})
@@ -88,7 +88,7 @@ def check_chat_external_restriction(data: dict) -> CheckResult:
             details="Could not determine external chat restriction setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Chat > "
-                "External chat settings. Restrict external chat to allowlisted domains. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+                "External chat settings. Restrict external chat to allowlisted domains. https://knowledge.workspace.google.com/admin/chat/control-external-chat-and-spaces-chat-options"
             ),
         )
 
@@ -101,7 +101,7 @@ def check_chat_external_restriction(data: dict) -> CheckResult:
         expected_value="allowlisted_domains or disabled",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Chat > "
-            "External chat settings. Restrict external chat to allowlisted domains only. https://knowledge.workspace.google.com/admin/chat/set-up-chat-for-your-organization"
+            "External chat settings. Restrict external chat to allowlisted domains only. https://knowledge.workspace.google.com/admin/chat/control-external-chat-and-spaces-chat-options"
         ),
     )
 

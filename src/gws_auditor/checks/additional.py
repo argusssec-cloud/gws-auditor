@@ -35,8 +35,8 @@ from ..constants import DANGEROUS_OAUTH_SCOPES, OAUTH_SCOPE_RISK_LEVELS
     source="OTHER",
     section="Gmail",
     remediation=(
-        "Admin console > Apps > Google Workspace > Gmail > Safety > "
-        "Security Sandbox. Enable Security Sandbox to scan attachments "
+        "Admin console > Apps > Google Workspace > Gmail > Spam, Phishing and Malware > "
+        "Security sandbox. Enable Security Sandbox to scan attachments "
         "in a virtual environment. Note: requires Business Standard or higher license. https://knowledge.workspace.google.com/admin/gmail/advanced/gmail-security-sandbox-overview"
     ),
     requires_license="business_standard",
@@ -68,8 +68,8 @@ def check_security_sandbox(data: dict) -> CheckResult:
                 "Policy API — verify in Admin console."
             ),
             remediation=(
-                "Admin console > Apps > Google Workspace > Gmail > Safety > "
-                "Security Sandbox. Enable Security Sandbox to scan attachments "
+                "Admin console > Apps > Google Workspace > Gmail > Spam, Phishing and Malware > "
+                "Security sandbox. Enable Security Sandbox to scan attachments "
                 "in a virtual environment. Requires Business Standard or higher license. https://knowledge.workspace.google.com/admin/gmail/advanced/gmail-security-sandbox-overview"
             ),
         )
@@ -82,8 +82,8 @@ def check_security_sandbox(data: dict) -> CheckResult:
         actual_value=sandbox_enabled,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Apps > Google Workspace > Gmail > Safety > "
-            "Security Sandbox. Enable Security Sandbox to scan attachments "
+            "Admin console > Apps > Google Workspace > Gmail > Spam, Phishing and Malware > "
+            "Security sandbox. Enable Security Sandbox to scan attachments "
             "in a virtual environment. Note: requires Business Standard or higher license. https://knowledge.workspace.google.com/admin/gmail/advanced/gmail-security-sandbox-overview"
         ),
     )
@@ -349,7 +349,7 @@ def check_partner_tls(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Security",
     remediation=(
-        "Admin console > Devices > Chrome > Settings > Users & browsers > "
+        "Admin console > Devices > Chrome > Settings > User & browser settings > "
         "Password Alert. Set password protection warning to warn on "
         "password reuse. https://knowledge.workspace.google.com/admin/gmail/advanced/advanced-phishing-and-malware-protection"
     ),
@@ -360,7 +360,7 @@ def check_password_alert(data: dict) -> CheckResult:
     _TITLE = "Ensure password protection warning is enabled"
     _L, _S, _SEC = "L2", "GOOGLE", "Security"
     _REMED = (
-        "Admin console > Devices > Chrome > Settings > Users & browsers > "
+        "Admin console > Devices > Chrome > Settings > User & browser settings > "
         "Password Alert. Set password protection warning to warn on "
         "password reuse. https://knowledge.workspace.google.com/admin/gmail/advanced/advanced-phishing-and-malware-protection"
     )
@@ -413,9 +413,9 @@ def check_password_alert(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Security",
     remediation=(
-        "Admin console > Account > Data sharing > Google Takeout. "
+        "Admin console > Apps > Additional Google services > Google Takeout. "
         "Disable Google Takeout to prevent users from bulk-exporting "
-        "organizational data. https://knowledge.workspace.google.com/admin/gemini/export-google-workspace-with-gemini-data"
+        "organizational data. https://knowledge.workspace.google.com/admin/users/advanced/turn-on-or-off-additional-google-services"
     ),
 )
 def check_takeout_restriction(data: dict) -> CheckResult:
@@ -486,9 +486,9 @@ def check_takeout_restriction(data: dict) -> CheckResult:
                 "Policy API — verify in Admin console."
             ),
             remediation=(
-                "Admin console > Account > Data sharing > Google Takeout. "
+                "Admin console > Apps > Additional Google services > Google Takeout. "
                 "Disable Google Takeout to prevent users from bulk-exporting "
-                "organizational data. https://knowledge.workspace.google.com/admin/gemini/export-google-workspace-with-gemini-data"
+                "organizational data. https://knowledge.workspace.google.com/admin/users/advanced/turn-on-or-off-additional-google-services"
             ),
         )
 
@@ -500,8 +500,8 @@ def check_takeout_restriction(data: dict) -> CheckResult:
         actual_value=takeout_enabled,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Account > Data sharing > Google Takeout. "
-            "Disable Google Takeout to prevent bulk data export by users. https://knowledge.workspace.google.com/admin/gemini/export-google-workspace-with-gemini-data"
+            "Admin console > Apps > Additional Google services > Google Takeout. "
+            "Disable Google Takeout to prevent bulk data export by users. https://knowledge.workspace.google.com/admin/users/advanced/turn-on-or-off-additional-google-services"
         ),
     )
 
@@ -514,7 +514,7 @@ def check_takeout_restriction(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Security",
     remediation=(
-        "Admin console > Security > Access and data control > "
+        "Admin console > Data > Compliance > "
         "Client-side encryption. Enable CSE for Drive, Gmail, Calendar, "
         "and Meet. Configure an external key management service. "
         "Note: requires Enterprise Plus license. https://knowledge.workspace.google.com/admin/security/about-client-side-encryption"
@@ -548,7 +548,7 @@ def check_client_side_encryption(data: dict) -> CheckResult:
                 "CSE requires Enterprise Plus license and external key service."
             ),
             remediation=(
-                "Admin console > Security > Access and data control > "
+                "Admin console > Data > Compliance > "
                 "Client-side encryption. Enable CSE and configure an external "
                 "key management service. Requires Enterprise Plus license. https://knowledge.workspace.google.com/admin/security/about-client-side-encryption"
             ),
@@ -562,7 +562,7 @@ def check_client_side_encryption(data: dict) -> CheckResult:
         actual_value=cse_enabled,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > Access and data control > "
+            "Admin console > Data > Compliance > "
             "Client-side encryption. Enable CSE for Drive, Gmail, Calendar, "
             "and Meet. Configure an external key management service. "
             "Note: requires Enterprise Plus license. https://knowledge.workspace.google.com/admin/security/about-client-side-encryption"
@@ -577,7 +577,7 @@ def check_client_side_encryption(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Gmail",
     remediation=(
-        "Admin console > Security > Data protection > Manage rules. "
+        "Admin console > Security > Access and data control > Data protection > Manage rules. "
         "Create DLP rules to detect PII, financial data, and other "
         "sensitive content in outbound emails. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
     ),
@@ -625,7 +625,7 @@ def check_gmail_dlp(data: dict) -> CheckResult:
                 "API — verify in Admin console."
             ),
             remediation=(
-                "Admin console > Security > Data protection > Manage rules. "
+                "Admin console > Security > Access and data control > Data protection > Manage rules. "
                 "Create DLP rules for Gmail to detect and prevent sensitive "
                 "data from being sent via email. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
             ),
@@ -643,7 +643,7 @@ def check_gmail_dlp(data: dict) -> CheckResult:
         },
         expected_value="DLP rules configured for Gmail",
         remediation=(
-            "Admin console > Security > Data protection > Manage rules. "
+            "Admin console > Security > Access and data control > Data protection > Manage rules. "
             "Create DLP rules to detect PII, financial data, and other "
             "sensitive content in outbound emails. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
         ),
@@ -663,9 +663,9 @@ def check_gmail_dlp(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Gemini",
     remediation=(
-        "Admin console > Apps > Google Workspace > Gemini. "
+        "Admin console > Generative AI > Gemini in Workspace. "
         "Disable or restrict Gemini features in Workspace apps "
-        "to control AI-generated content and data processing. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+        "to control AI-generated content and data processing. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/manage-access-to-gemini-features-in-workspace-services"
     ),
 )
 def check_gemini_workspace_features(data: dict) -> CheckResult:
@@ -695,9 +695,9 @@ def check_gemini_workspace_features(data: dict) -> CheckResult:
                 "No programmatic API is available for this control."
             ),
             remediation=(
-                "Admin console > Apps > Google Workspace > Gemini. "
+                "Admin console > Generative AI > Gemini in Workspace. "
                 "Review and control Gemini features in Docs, Sheets, "
-                "Slides, and Gmail to meet organizational AI policies. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+                "Slides, and Gmail to meet organizational AI policies. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/manage-access-to-gemini-features-in-workspace-services"
             ),
         )
 
@@ -709,9 +709,9 @@ def check_gemini_workspace_features(data: dict) -> CheckResult:
         actual_value=enabled,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Apps > Google Workspace > Gemini. "
+            "Admin console > Generative AI > Gemini in Workspace. "
             "Disable or restrict Gemini features in Workspace apps "
-            "to control AI-generated content and data processing. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+            "to control AI-generated content and data processing. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/manage-access-to-gemini-features-in-workspace-services"
         ),
     )
 
@@ -723,9 +723,9 @@ def check_gemini_workspace_features(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Gemini",
     remediation=(
-        "Admin console > Devices > Chrome > Settings > Users & browsers. "
+        "Admin console > Devices > Chrome > Settings > User & browser settings. "
         "Disable Gemini in Chrome to prevent browser-based AI from "
-        "processing organizational data. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+        "processing organizational data. https://support.google.com/chrome/a/answer/16291696"
     ),
 )
 def check_gemini_chrome(data: dict) -> CheckResult:
@@ -754,8 +754,8 @@ def check_gemini_chrome(data: dict) -> CheckResult:
             actual_value=None,
             expected_value="Disabled for all OUs",
             remediation=(
-                "Admin console > Devices > Chrome > Settings > Users & browsers. "
-                "Disable Gemini in Chrome to prevent browser-level AI data processing. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+                "Admin console > Devices > Chrome > Settings > User & browser settings. "
+                "Disable Gemini in Chrome to prevent browser-level AI data processing. https://support.google.com/chrome/a/answer/16291696"
             ),
         )
 
@@ -767,9 +767,9 @@ def check_gemini_chrome(data: dict) -> CheckResult:
         actual_value=enabled,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Devices > Chrome > Settings > Users & browsers. "
+            "Admin console > Devices > Chrome > Settings > User & browser settings. "
             "Disable Gemini in Chrome to prevent browser-based AI from "
-            "processing organizational data. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+            "processing organizational data. https://support.google.com/chrome/a/answer/16291696"
         ),
     )
 
@@ -782,9 +782,9 @@ def check_gemini_chrome(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Gemini",
     remediation=(
-        "Admin console > Apps > Google Workspace > Gemini > "
+        "Admin console > Apps > Google Workspace > "
         "Workspace Studio. Disable or restrict access to prevent "
-        "uncontrolled AI app creation by users. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+        "uncontrolled AI app creation by users. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/manage-access-to-gemini-features-in-workspace-services"
     ),
 )
 def check_workspace_studio(data: dict) -> CheckResult:
@@ -814,9 +814,9 @@ def check_workspace_studio(data: dict) -> CheckResult:
                 "No programmatic API is available for this control."
             ),
             remediation=(
-                "Admin console > Apps > Google Workspace > Gemini > "
+                "Admin console > Apps > Google Workspace > "
                 "Workspace Studio. Disable or restrict Workspace Studio "
-                "access to control AI app creation. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+                "access to control AI app creation. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/manage-access-to-gemini-features-in-workspace-services"
             ),
         )
 
@@ -828,9 +828,9 @@ def check_workspace_studio(data: dict) -> CheckResult:
         actual_value=enabled,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Apps > Google Workspace > Gemini > "
+            "Admin console > Apps > Google Workspace > "
             "Workspace Studio. Disable or restrict access to prevent "
-            "uncontrolled AI app creation by users. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+            "uncontrolled AI app creation by users. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/manage-access-to-gemini-features-in-workspace-services"
         ),
     )
 
@@ -846,7 +846,7 @@ def check_workspace_studio(data: dict) -> CheckResult:
         "Admin console > Devices > Mobile & endpoints > Settings > iOS > "
         "Data sharing > Apple Intelligence. Turn off 'Allow users to use "
         "Apple Intelligence Writing Tools within Google Workspace apps on "
-        "iOS devices'. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+        "iOS devices'. https://knowledge.workspace.google.com/admin/devices/prevent-accidental-data-leaks-on-ios-devices"
     ),
 )
 def check_apple_writing_tools(data: dict) -> CheckResult:
@@ -862,7 +862,7 @@ def check_apple_writing_tools(data: dict) -> CheckResult:
         "Admin console > Devices > Mobile & endpoints > Settings > iOS > "
         "Data sharing > Apple Intelligence. Turn off 'Allow users to use "
         "Apple Intelligence Writing Tools within Google Workspace apps on "
-        "iOS devices'. https://knowledge.workspace.google.com/admin/gemini/manage-access-to-gemini-features-in-workspace-services"
+        "iOS devices'. https://knowledge.workspace.google.com/admin/devices/prevent-accidental-data-leaks-on-ios-devices"
     )
 
     return make_review(
@@ -886,7 +886,7 @@ def check_apple_writing_tools(data: dict) -> CheckResult:
     remediation=(
         "Admin console > Security > Authentication > Passwordless. "
         "Enable 'Allow users to skip their password and authenticate "
-        "with a passkey' to enforce passkeys as primary authentication. https://knowledge.workspace.google.com/admin/security/deploy-2-step-verification"
+        "with a passkey' to enforce passkeys as primary authentication. https://knowledge.workspace.google.com/admin/users/allow-users-to-skip-passwords-at-sign-in"
     ),
 )
 def check_passkeys_enforced(data: dict) -> CheckResult:
@@ -902,7 +902,7 @@ def check_passkeys_enforced(data: dict) -> CheckResult:
     _REMED = (
         "Admin console > Security > Authentication > Passwordless. "
         "Enable 'Allow users to skip their password and authenticate "
-        "with a passkey' to enforce passkeys as primary authentication. https://knowledge.workspace.google.com/admin/security/deploy-2-step-verification"
+        "with a passkey' to enforce passkeys as primary authentication. https://knowledge.workspace.google.com/admin/users/allow-users-to-skip-passwords-at-sign-in"
     )
 
     return make_review(
@@ -1405,7 +1405,7 @@ def check_caa_oidc(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Security",
     remediation=(
-        "Admin console > Security > Context-Aware Access > General settings. "
+        "Admin console > Security > Access and data control > Context-Aware Access > General settings. "
         "Enable a default CAA policy for all SAML applications so apps "
         "without specific assignments inherit a secure baseline. "
         "https://knowledge.workspace.google.com/admin/security/apply-caa-policy-for-all-saml-apps"
@@ -1434,7 +1434,7 @@ def check_caa_saml_default(data: dict) -> CheckResult:
     )
     _L, _S, _SEC = "L2", "GOOGLE", "Security"
     _REMEDIATION = (
-        "Admin console > Security > Context-Aware Access > General settings. "
+        "Admin console > Security > Access and data control > Context-Aware Access > General settings. "
         "Enable a default CAA policy for all SAML applications so apps "
         "without specific assignments inherit a secure baseline. "
         "https://knowledge.workspace.google.com/admin/security/apply-caa-policy-for-all-saml-apps"
@@ -1922,7 +1922,7 @@ def check_caa_denials(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Security",
     remediation=(
-        "Admin console > Security > Multi-Party Approval. "
+        "Admin console > Security > Authentication > Multi-party approval settings. "
         "Add Vault exports to the MPA-covered actions to prevent "
         "unauthorized export of eDiscovery data. https://knowledge.workspace.google.com/admin/security/multi-party-approval-for-sensitive-actions"
     ),
@@ -1954,7 +1954,7 @@ def check_mpa_vault_exports(data: dict) -> CheckResult:
             actual_value=None,
             expected_value="Enabled for all OUs",
             remediation=(
-                "Admin console > Security > Multi-Party Approval. "
+                "Admin console > Security > Authentication > Multi-party approval settings. "
                 "Enable MPA for Vault export operations to require "
                 "additional approval before sensitive data can be exported. https://knowledge.workspace.google.com/admin/security/multi-party-approval-for-sensitive-actions"
             ),
@@ -1968,7 +1968,7 @@ def check_mpa_vault_exports(data: dict) -> CheckResult:
         actual_value=vault_covered,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > Multi-Party Approval. "
+            "Admin console > Security > Authentication > Multi-party approval settings. "
             "Add Vault exports to the MPA-covered actions to prevent "
             "unauthorized export of eDiscovery data. https://knowledge.workspace.google.com/admin/security/multi-party-approval-for-sensitive-actions"
         ),
@@ -1983,7 +1983,7 @@ def check_mpa_vault_exports(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Gmail",
     remediation=(
-        "Admin console > Security > Data protection > Data classification. "
+        "Admin console > Security > Access and data control > Data protection > Data classification. "
         "Enable classification labels for Gmail to categorize emails by "
         "sensitivity and apply DLP rules accordingly. https://knowledge.workspace.google.com/admin/security/create-classification-labels-for-your-organization"
     ),
@@ -2016,7 +2016,7 @@ def check_gmail_classification_labels(data: dict) -> CheckResult:
                 "No programmatic API is available for this control."
             ),
             remediation=(
-                "Admin console > Security > Data protection > Data classification. "
+                "Admin console > Security > Access and data control > Data protection > Data classification. "
                 "Enable classification labels for Gmail to allow DLP rules "
                 "based on sensitivity labels. https://knowledge.workspace.google.com/admin/security/create-classification-labels-for-your-organization"
             ),
@@ -2030,7 +2030,7 @@ def check_gmail_classification_labels(data: dict) -> CheckResult:
         actual_value=labels_enabled,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > Data protection > Data classification. "
+            "Admin console > Security > Access and data control > Data protection > Data classification. "
             "Enable classification labels for Gmail to categorize emails by "
             "sensitivity and apply DLP rules accordingly. https://knowledge.workspace.google.com/admin/security/create-classification-labels-for-your-organization"
         ),
@@ -2044,7 +2044,7 @@ def check_gmail_classification_labels(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Calendar",
     remediation=(
-        "Admin console > Security > Data protection > Manage rules. "
+        "Admin console > Security > Access and data control > Data protection > Manage rules. "
         "Create DLP rules for Calendar to detect sensitive information "
         "in event titles, descriptions, and attachments. https://knowledge.workspace.google.com/admin/security/about-dlp-for-calendar"
     ),
@@ -2084,7 +2084,7 @@ def check_calendar_dlp(data: dict) -> CheckResult:
             actual_value=None,
             expected_value="DLP rules configured for Calendar",
             remediation=(
-                "Admin console > Security > Data protection > Manage rules. "
+                "Admin console > Security > Access and data control > Data protection > Manage rules. "
                 "Create DLP rules for Calendar to detect sensitive information "
                 "in event titles, descriptions, and attachments. https://knowledge.workspace.google.com/admin/security/about-dlp-for-calendar"
             ),
@@ -2101,7 +2101,7 @@ def check_calendar_dlp(data: dict) -> CheckResult:
         },
         expected_value="DLP rules configured for Calendar",
         remediation=(
-            "Admin console > Security > Data protection > Manage rules. "
+            "Admin console > Security > Access and data control > Data protection > Manage rules. "
             "Create DLP rules for Calendar to protect sensitive information "
             "shared in meeting details. https://knowledge.workspace.google.com/admin/security/about-dlp-for-calendar"
         ),
@@ -2116,7 +2116,7 @@ def check_calendar_dlp(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Drive and Docs",
     remediation=(
-        "Admin console > Security > Data protection > Data classification. "
+        "Admin console > Security > Access and data control > Data protection > Data classification. "
         "Enable AI-powered classification for Drive to automatically "
         "detect and label sensitive files. https://knowledge.workspace.google.com/admin/security/label-google-drive-files-automatically-using-ai-classification"
     ),
@@ -2148,7 +2148,7 @@ def check_drive_ai_classification(data: dict) -> CheckResult:
                 "No programmatic API is available for this control."
             ),
             remediation=(
-                "Admin console > Security > Data protection > Data classification. "
+                "Admin console > Security > Access and data control > Data protection > Data classification. "
                 "Enable AI-powered classification for Drive to automatically "
                 "label files based on content sensitivity. https://knowledge.workspace.google.com/admin/security/label-google-drive-files-automatically-using-ai-classification"
             ),
@@ -2162,7 +2162,7 @@ def check_drive_ai_classification(data: dict) -> CheckResult:
         actual_value=ai_enabled,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Security > Data protection > Data classification. "
+            "Admin console > Security > Access and data control > Data protection > Data classification. "
             "Enable AI-powered classification for Drive to automatically "
             "detect and label sensitive files. https://knowledge.workspace.google.com/admin/security/label-google-drive-files-automatically-using-ai-classification"
         ),
@@ -2176,8 +2176,8 @@ def check_drive_ai_classification(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Drive and Docs",
     remediation=(
-        "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Trust rules. Create trust rules to enable context-based sharing "
+        "Admin console > Apps > Google Workspace > Sharing settings > View trust rules (or Admin console > Rules > "
+        "Trust rules). Create trust rules to enable context-based sharing "
         "policies integrated with DLP. https://knowledge.workspace.google.com/admin/security/create-and-manage-trust-rules-for-drive-sharing"
     ),
 )
@@ -2207,8 +2207,8 @@ def check_drive_trust_rules(data: dict) -> CheckResult:
                 "No programmatic API is available for this control."
             ),
             remediation=(
-                "Admin console > Apps > Google Workspace > Drive and Docs > "
-                "Trust rules. Configure trust rules to control sharing based "
+                "Admin console > Apps > Google Workspace > Sharing settings > View trust rules (or Admin console > Rules > "
+                "Trust rules). Configure trust rules to control sharing based "
                 "on organizational context and DLP labels. https://knowledge.workspace.google.com/admin/security/create-and-manage-trust-rules-for-drive-sharing"
             ),
         )
@@ -2221,8 +2221,8 @@ def check_drive_trust_rules(data: dict) -> CheckResult:
         actual_value={"trust_rule_count": 0},
         expected_value="Trust rules configured",
         remediation=(
-            "Admin console > Apps > Google Workspace > Drive and Docs > "
-            "Trust rules. Create trust rules to enable context-based sharing "
+            "Admin console > Apps > Google Workspace > Sharing settings > View trust rules (or Admin console > Rules > "
+            "Trust rules). Create trust rules to enable context-based sharing "
             "policies integrated with DLP. https://knowledge.workspace.google.com/admin/security/create-and-manage-trust-rules-for-drive-sharing"
         ),
     )
@@ -2236,7 +2236,7 @@ def check_drive_trust_rules(data: dict) -> CheckResult:
     source="GOOGLE",
     section="Gmail",
     remediation=(
-        "Admin console > Security > Access and data control > "
+        "Admin console > Data > Compliance > "
         "Client-side encryption > Gmail. Enable CSE for Gmail to "
         "provide end-to-end encryption for sensitive emails. "
         "Requires Enterprise Plus license. https://knowledge.workspace.google.com/admin/security/turn-client-side-encryption-on-or-off-for-users"
@@ -2269,7 +2269,7 @@ def check_gmail_cse(data: dict) -> CheckResult:
                 "No programmatic API is available for this control."
             ),
             remediation=(
-                "Admin console > Security > Access and data control > "
+                "Admin console > Data > Compliance > "
                 "Client-side encryption > Gmail. Enable CSE for Gmail "
                 "to provide end-to-end encryption. Requires Enterprise Plus. https://knowledge.workspace.google.com/admin/security/turn-client-side-encryption-on-or-off-for-users"
             ),
@@ -2283,7 +2283,7 @@ def check_gmail_cse(data: dict) -> CheckResult:
         actual_value=cse_enabled,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > Access and data control > "
+            "Admin console > Data > Compliance > "
             "Client-side encryption > Gmail. Enable CSE for Gmail to "
             "provide end-to-end encryption for sensitive emails. "
             "Requires Enterprise Plus license. https://knowledge.workspace.google.com/admin/security/turn-client-side-encryption-on-or-off-for-users"
@@ -2300,7 +2300,7 @@ def check_gmail_cse(data: dict) -> CheckResult:
     requires_license="assured_controls",
     remediation=(
         "Admin console > Apps > Google Workspace > Google Meet > "
-        "Meet compliance settings. Enable compliance recording for "
+        "Meet video settings > Recording. Enable compliance recording for "
         "users subject to regulatory recording requirements. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
     ),
 )
@@ -2311,7 +2311,7 @@ def check_meet_compliance_recording(data: dict) -> CheckResult:
     _L, _S, _SEC = "L2", "GOOGLE", "Google Meet"
     _REMED = (
         "Admin console > Apps > Google Workspace > Google Meet > "
-        "Meet compliance settings. Enable compliance recording for "
+        "Meet video settings > Recording. Enable compliance recording for "
         "users subject to regulatory recording requirements. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
     )
 
@@ -2365,7 +2365,7 @@ def check_meet_compliance_recording(data: dict) -> CheckResult:
             ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Meet > "
-                "Meet compliance settings. Enable compliance recording for "
+                "Meet video settings > Recording. Enable compliance recording for "
                 "users subject to regulatory recording requirements. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
             ),
         )
@@ -2379,7 +2379,7 @@ def check_meet_compliance_recording(data: dict) -> CheckResult:
         expected_value="Enabled for all OUs",
         remediation=(
             "Admin console > Apps > Google Workspace > Google Meet > "
-            "Meet compliance settings. Enable compliance recording to "
+            "Meet video settings > Recording. Enable compliance recording to "
             "automatically record meetings for regulatory compliance. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
         ),
     )
@@ -2596,8 +2596,8 @@ def check_chat_spaces_inactive(data: dict) -> CheckResult:
     source="OTHER",
     section="Devices",
     remediation=(
-        "Admin console > Devices > Mobile devices. Review stale devices "
-        "and wipe or remove those that have not synced recently. https://knowledge.workspace.google.com/admin/devices"
+        "Admin console > Devices > Mobile & endpoints > Devices. Review stale devices "
+        "and wipe or remove those that have not synced recently. https://knowledge.workspace.google.com/admin/devices/overview-manage-devices-with-google-endpoint-management"
     ),
     scored=False,
 )
@@ -2607,8 +2607,8 @@ def check_mobile_devices_stale(data: dict) -> CheckResult:
     _TITLE = "Ensure mobile devices are syncing recently"
     _L, _S, _SEC = "L1", "OTHER", "Devices"
     _REMED = (
-        "Admin console > Devices > Mobile devices. Review stale devices "
-        "and wipe or remove those that have not synced recently. https://knowledge.workspace.google.com/admin/devices"
+        "Admin console > Devices > Mobile & endpoints > Devices. Review stale devices "
+        "and wipe or remove those that have not synced recently. https://knowledge.workspace.google.com/admin/devices/overview-manage-devices-with-google-endpoint-management"
     )
 
     devices = data.get("mobile_devices", [])
@@ -2677,8 +2677,8 @@ def check_mobile_devices_stale(data: dict) -> CheckResult:
     source="OTHER",
     section="Devices",
     remediation=(
-        "Admin console > Devices > Chrome devices. Review stale ChromeOS "
-        "devices and deprovision or disable those no longer in use. https://knowledge.workspace.google.com/admin/devices"
+        "Admin console > Devices > Chrome > Devices. Review stale ChromeOS "
+        "devices and deprovision or disable those no longer in use. https://knowledge.workspace.google.com/admin/devices/overview-manage-devices-with-google-endpoint-management"
     ),
     scored=False,
 )
@@ -2688,8 +2688,8 @@ def check_chromeos_devices_stale(data: dict) -> CheckResult:
     _TITLE = "Ensure ChromeOS devices are active recently"
     _L, _S, _SEC = "L1", "OTHER", "Devices"
     _REMED = (
-        "Admin console > Devices > Chrome devices. Review stale ChromeOS "
-        "devices and deprovision or disable those no longer in use. https://knowledge.workspace.google.com/admin/devices"
+        "Admin console > Devices > Chrome > Devices. Review stale ChromeOS "
+        "devices and deprovision or disable those no longer in use. https://knowledge.workspace.google.com/admin/devices/overview-manage-devices-with-google-endpoint-management"
     )
 
     devices = data.get("chromeos_devices", [])
@@ -2759,9 +2759,9 @@ def check_chromeos_devices_stale(data: dict) -> CheckResult:
     source="OTHER",
     section="Devices",
     remediation=(
-        "Admin console > Devices > Endpoint verification. Review stale "
+        "Admin console > Devices > Mobile & endpoints > Devices (filter: Endpoint Verification). Review stale "
         "endpoint devices (Windows/Mac/Linux) and remove those that have "
-        "not synced recently. https://knowledge.workspace.google.com/admin/devices"
+        "not synced recently. https://knowledge.workspace.google.com/admin/devices/overview-manage-devices-with-google-endpoint-management"
     ),
     scored=False,
 )
@@ -2771,9 +2771,9 @@ def check_endpoint_devices_stale(data: dict) -> CheckResult:
     _TITLE = "Ensure endpoint verification devices are syncing recently"
     _L, _S, _SEC = "L1", "OTHER", "Devices"
     _REMED = (
-        "Admin console > Devices > Endpoint verification. Review stale "
+        "Admin console > Devices > Mobile & endpoints > Devices (filter: Endpoint Verification). Review stale "
         "endpoint devices (Windows/Mac/Linux) and remove those that have "
-        "not synced recently. https://knowledge.workspace.google.com/admin/devices"
+        "not synced recently. https://knowledge.workspace.google.com/admin/devices/overview-manage-devices-with-google-endpoint-management"
     )
 
     devices = data.get("endpoint_devices", [])
@@ -2854,10 +2854,10 @@ def check_endpoint_devices_stale(data: dict) -> CheckResult:
     source="OTHER",
     section="Devices",
     remediation=(
-        "Admin console > Devices. Review devices stuck in 'Pending' state "
+        "Admin console > Devices > Mobile & endpoints > Device approvals. Review devices stuck in 'Pending' state "
         "and either approve or block them. Unreviewed pending devices "
         "represent unmanaged access to corporate data. "
-        "https://knowledge.workspace.google.com/admin/devices"
+        "https://knowledge.workspace.google.com/admin/devices/overview-manage-devices-with-google-endpoint-management"
     ),
     scored=False,
 )
@@ -2867,10 +2867,10 @@ def check_devices_pending(data: dict) -> CheckResult:
     _TITLE = "Ensure pending devices are approved promptly"
     _L, _S, _SEC = "L2", "OTHER", "Devices"
     _REMED = (
-        "Admin console > Devices. Review devices stuck in 'Pending' state "
+        "Admin console > Devices > Mobile & endpoints > Device approvals. Review devices stuck in 'Pending' state "
         "and either approve or block them. Unreviewed pending devices "
         "represent unmanaged access to corporate data. "
-        "https://knowledge.workspace.google.com/admin/devices"
+        "https://knowledge.workspace.google.com/admin/devices/overview-manage-devices-with-google-endpoint-management"
     )
 
     options = data.get("_options", {})
@@ -2943,7 +2943,7 @@ def check_devices_pending(data: dict) -> CheckResult:
     source="OTHER",
     section="Security",
     remediation=(
-        "Admin console > Security > 2-Step Verification. "
+        "Admin console > Security > Authentication > 2-step verification. "
         "Enforce 2SV for all organizational units. "
         "Follow up with unenrolled users to complete enrollment. https://knowledge.workspace.google.com/admin/security/deploy-2-step-verification"
     ),
@@ -2955,7 +2955,7 @@ def check_2sv_inventory(data: dict) -> CheckResult:
     _TITLE = "Users without 2-Step Verification by OU inventory"
     _L, _S, _SEC = "L1", "OTHER", "Security"
     _REMED = (
-        "Admin console > Security > 2-Step Verification. "
+        "Admin console > Security > Authentication > 2-step verification. "
         "Enforce 2SV for all organizational units. "
         "Follow up with unenrolled users to complete enrollment. https://knowledge.workspace.google.com/admin/security/deploy-2-step-verification"
     )
@@ -3063,7 +3063,7 @@ _RISK_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2}
     source="OTHER",
     section="Security",
     remediation=(
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Review apps with dangerous scopes and revoke or block those "
         "that are not approved. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     ),
@@ -3075,7 +3075,7 @@ def check_oauth_dangerous_apps(data: dict) -> CheckResult:
     _TITLE = "Ensure no OAuth apps have dangerous privilege grants"
     _L, _S, _SEC = "L1", "OTHER", "Security"
     _REMED = (
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Review apps with dangerous scopes and revoke or block those "
         "that are not approved. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     )
@@ -3193,7 +3193,7 @@ def check_oauth_dangerous_apps(data: dict) -> CheckResult:
     source="OTHER",
     section="Security",
     remediation=(
-        "Admin console > Security > Less secure apps. "
+        "Admin console > Directory > Users > (user) > Security > App passwords. "
         "Review and revoke unnecessary App-Specific Passwords. "
         "ASPs bypass 2-Step Verification and pose a security risk. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
     ),
@@ -3208,7 +3208,7 @@ def check_app_passwords(data: dict) -> CheckResult:
     _TITLE = "Ensure no users have active App-Specific Passwords"
     _L, _S, _SEC = "L1", "OTHER", "Security"
     _REMED = (
-        "Admin console > Security > Less secure apps. "
+        "Admin console > Directory > Users > (user) > Security > App passwords. "
         "Review and revoke unnecessary App-Specific Passwords. "
         "ASPs bypass 2-Step Verification and pose a security risk. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
     )
@@ -3390,7 +3390,7 @@ def check_shared_drive_restrictions(data: dict) -> CheckResult:
     source="OTHER",
     section="Security",
     remediation=(
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Review and revoke active tokens with dangerous scopes. Block "
         "unverified or anonymous apps that should not have access. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     ),
@@ -3406,7 +3406,7 @@ def check_active_oauth_tokens(data: dict) -> CheckResult:
     _TITLE = "Ensure no active OAuth tokens grant dangerous privileges"
     _L, _S, _SEC = "L1", "OTHER", "Security"
     _REMED = (
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Review and revoke active tokens with dangerous scopes. Block "
         "unverified or anonymous apps that should not have access. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     )

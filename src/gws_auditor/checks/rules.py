@@ -166,7 +166,7 @@ def _make_alert_result(data: dict, check_id: str, title: str,
     """Run the alert rule check and return the appropriate result."""
     _L, _S, _SEC = "L1", "CIS", "Alert Rules"
     _REMED = (
-        "Admin console > Security > Alert center > Manage rules. "
+        "Admin console > Rules. "
         f"Enable the alert rule for {rule_display} events."
     )
     found = _check_alert_rule(data, rule_keyword, rule_display)
@@ -187,7 +187,7 @@ def _make_alert_result(data: dict, check_id: str, title: str,
         check_id=check_id, title=title, level=_L, source=_S, section=_SEC,
         details=(
             f"Could not determine alert rule status for {rule_display}. "
-            "Verify manually in Admin console > Security > Alert center > Manage rules."
+            "Verify manually in Admin console > Rules."
         ),
         remediation=_REMED,
     )
@@ -200,7 +200,7 @@ def _make_alert_result(data: dict, check_id: str, title: str,
     source="CIS",
     section="Alert Rules",
     remediation=(
-        "Admin console > Security > Alert center > Manage rules. "
+        "Admin console > Rules. "
         "Create an alert rule to notify on user password change events. https://knowledge.workspace.google.com/admin/security/use-rules-to-turn-alerts-on-or-off"
     ),
 )
@@ -218,7 +218,7 @@ def check_alert_password_change(data: dict) -> CheckResult:
     source="CIS",
     section="Alert Rules",
     remediation=(
-        "Admin console > Security > Alert center > Manage rules. "
+        "Admin console > Rules. "
         "Ensure the 'Government-backed attack' alert is enabled. "
         "This is a system alert that should be active by default. https://knowledge.workspace.google.com/admin/security/use-rules-to-turn-alerts-on-or-off"
     ),
@@ -237,7 +237,7 @@ def check_alert_government_attacks(data: dict) -> CheckResult:
     source="CIS",
     section="Alert Rules",
     remediation=(
-        "Admin console > Security > Alert center > Manage rules. "
+        "Admin console > Rules. "
         "Create or enable an alert rule for suspicious user activity detection. https://knowledge.workspace.google.com/admin/security/use-rules-to-turn-alerts-on-or-off"
     ),
 )
@@ -255,7 +255,7 @@ def check_alert_suspicious_activity(data: dict) -> CheckResult:
     source="CIS",
     section="Alert Rules",
     remediation=(
-        "Admin console > Security > Alert center > Manage rules. "
+        "Admin console > Rules. "
         "Create an alert rule to notify when admin privileges are "
         "granted to any user account. https://knowledge.workspace.google.com/admin/security/use-rules-to-turn-alerts-on-or-off"
     ),
@@ -274,7 +274,7 @@ def check_alert_admin_privilege(data: dict) -> CheckResult:
     source="CIS",
     section="Alert Rules",
     remediation=(
-        "Admin console > Security > Alert center > Manage rules. "
+        "Admin console > Rules. "
         "Enable the 'Suspicious programmatic login' system alert. https://knowledge.workspace.google.com/admin/security/use-rules-to-turn-alerts-on-or-off"
     ),
 )
@@ -292,7 +292,7 @@ def check_alert_suspicious_programmatic_login(data: dict) -> CheckResult:
     source="CIS",
     section="Alert Rules",
     remediation=(
-        "Admin console > Security > Alert center > Manage rules. "
+        "Admin console > Rules. "
         "Enable the 'Suspicious login' system alert to detect "
         "unusual sign-in patterns. https://knowledge.workspace.google.com/admin/security/use-rules-to-turn-alerts-on-or-off"
     ),
@@ -311,7 +311,7 @@ def check_alert_suspicious_login(data: dict) -> CheckResult:
     source="CIS",
     section="Alert Rules",
     remediation=(
-        "Admin console > Security > Alert center > Manage rules. "
+        "Admin console > Rules. "
         "Enable the 'User's password has been leaked' system alert "
         "to detect when credentials appear in known breaches. https://knowledge.workspace.google.com/admin/security/use-rules-to-turn-alerts-on-or-off"
     ),
@@ -330,7 +330,7 @@ def check_alert_leaked_password(data: dict) -> CheckResult:
     source="CIS",
     section="Alert Rules",
     remediation=(
-        "Admin console > Security > Alert center > Manage rules. "
+        "Admin console > Rules. "
         "Create a custom alert rule for employee name spoofing "
         "or enable the related Gmail safety alert. https://knowledge.workspace.google.com/admin/security/use-rules-to-turn-alerts-on-or-off"
     ),

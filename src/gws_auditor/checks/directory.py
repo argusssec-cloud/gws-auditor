@@ -20,7 +20,7 @@ from ..models import CheckResult, Status
     remediation=(
         "Create at least 2 super admin accounts for redundancy. "
         "Admin console > Account > Admin roles > Super Admin. "
-        "https://knowledge.workspace.google.com/admin/users/add-accounts"
+        "https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
     ),
 )
 def check_super_admin_count_min(data: dict) -> CheckResult:
@@ -49,7 +49,7 @@ def check_super_admin_count_min(data: dict) -> CheckResult:
         remediation=(
             "Create at least 2 super admin accounts for redundancy. "
             "Admin console > Account > Admin roles > Super Admin. "
-            "https://knowledge.workspace.google.com/admin/users/add-accounts"
+            "https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
         ),
     )
 
@@ -110,7 +110,7 @@ def check_super_admin_count_max(data: dict) -> CheckResult:
         "Create separate standard user accounts for daily tasks. "
         "Super admin accounts should only be used for administrative duties. "
         "Admin console > Directory > Users. "
-        "https://knowledge.workspace.google.com/admin/users/add-accounts"
+        "https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
     ),
 )
 def check_super_admin_usage(data: dict) -> CheckResult:
@@ -138,7 +138,7 @@ def check_super_admin_usage(data: dict) -> CheckResult:
             title="Ensure Super Admin accounts are only used for admin tasks",
             level="L2", source="CIS", section="Directory",
             details="No super admin accounts found to evaluate.",
-            remediation="Verify super admin accounts exist and review their usage. https://knowledge.workspace.google.com/admin/users/add-accounts",
+            remediation="Verify super admin accounts exist and review their usage. https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user",
         )
 
     if heavy_users:
@@ -157,7 +157,7 @@ def check_super_admin_usage(data: dict) -> CheckResult:
                 "Create separate standard user accounts for daily tasks. "
                 "Super admin accounts should only be used for administrative duties. "
                 "Admin console > Directory > Users. "
-                "https://knowledge.workspace.google.com/admin/users/add-accounts"
+                "https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
             ),
         )
 
@@ -189,7 +189,7 @@ def check_super_admin_usage(data: dict) -> CheckResult:
         "Admin console > Directory > Directory settings > Sharing settings > "
         "External Directory Sharing. Select 'Authenticated user basic profile "
         "fields' (REQUESTER_BASIC_PROFILE_ONLY). "
-        "https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "https://knowledge.workspace.google.com/admin/users/let-third-party-apps-access-directory-data"
     ),
 )
 def check_directory_external_sharing(data: dict) -> CheckResult:
@@ -209,7 +209,7 @@ def check_directory_external_sharing(data: dict) -> CheckResult:
         "Admin console > Directory > Directory settings > Sharing settings > "
         "External Directory Sharing. Select 'Authenticated user basic profile "
         "fields' (REQUESTER_BASIC_PROFILE_ONLY). "
-        "https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "https://knowledge.workspace.google.com/admin/users/let-third-party-apps-access-directory-data"
     )
     _SAFE = "REQUESTER_BASIC_PROFILE_ONLY"
 

@@ -396,9 +396,9 @@ def check_2sv_all_users(data: dict) -> CheckResult:
     source="CIS",
     section="Security",
     remediation=(
-        "Admin console > Security > Account recovery. "
+        "Admin console > Security > Authentication > Account recovery. "
         "Disable 'Allow super admins to recover their account' to prevent "
-        "account takeover via recovery mechanisms. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "account takeover via recovery mechanisms. https://knowledge.workspace.google.com/admin/users/allow-super-administrators-to-recover-their-password"
     ),
 )
 def check_super_admin_recovery(data: dict) -> CheckResult:
@@ -407,9 +407,9 @@ def check_super_admin_recovery(data: dict) -> CheckResult:
     _TITLE = "Ensure super admin account recovery is disabled"
     _L, _S, _SEC = "L1", "CIS", "Security"
     _REMED = (
-        "Admin console > Security > Account recovery. "
+        "Admin console > Security > Authentication > Account recovery. "
         "Disable 'Allow super admins to recover their account' to prevent "
-        "account takeover via recovery mechanisms. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "account takeover via recovery mechanisms. https://knowledge.workspace.google.com/admin/users/allow-super-administrators-to-recover-their-password"
     )
 
     policies = data.get("policies", {})
@@ -464,9 +464,9 @@ def check_super_admin_recovery(data: dict) -> CheckResult:
     source="CIS",
     section="Security",
     remediation=(
-        "Admin console > Security > Account recovery. "
+        "Admin console > Security > Authentication > Account recovery. "
         "Enable account recovery for standard users to allow "
-        "self-service password reset. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "self-service password reset. https://knowledge.workspace.google.com/admin/users/set-up-password-recovery-for-users"
     ),
 )
 def check_user_account_recovery(data: dict) -> CheckResult:
@@ -475,9 +475,9 @@ def check_user_account_recovery(data: dict) -> CheckResult:
     _TITLE = "Ensure user account recovery is enabled"
     _L, _S, _SEC = "L1", "CIS", "Security"
     _REMED = (
-        "Admin console > Security > Account recovery. "
+        "Admin console > Security > Authentication > Account recovery. "
         "Enable account recovery for standard users to allow "
-        "self-service password reset. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "self-service password reset. https://knowledge.workspace.google.com/admin/users/set-up-password-recovery-for-users"
     )
 
     policies = data.get("policies", {})
@@ -672,7 +672,7 @@ def check_login_challenges(data: dict) -> CheckResult:
         "Admin console > Security > Authentication > Password management. "
         "Set minimum password length to at least 12 characters. "
         "Enable 'Enforce strong password'. Consider disabling password expiration "
-        "per NIST guidelines. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "per NIST guidelines. https://knowledge.workspace.google.com/admin/users/enforce-and-monitor-password-requirements-for-users"
     ),
 )
 def check_password_policy(data: dict) -> CheckResult:
@@ -684,7 +684,7 @@ def check_password_policy(data: dict) -> CheckResult:
         "Admin console > Security > Authentication > Password management. "
         "Set minimum password length to at least 12 characters. "
         "Enable 'Enforce strong password'. Consider disabling password expiration "
-        "per NIST guidelines. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "per NIST guidelines. https://knowledge.workspace.google.com/admin/users/enforce-and-monitor-password-requirements-for-users"
     )
 
     policies = data.get("policies", {})

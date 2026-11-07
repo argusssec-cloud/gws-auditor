@@ -19,9 +19,9 @@ from ..models import CheckResult, Status
     source="CIS",
     section="Reporting",
     remediation=(
-        "Admin console > Reporting > App reports > Accounts. "
+        "Admin console > Reporting > Apps Reports > Accounts. "
         "Review app usage activity regularly to detect anomalous behavior. "
-        "Establish a review schedule (e.g., weekly or monthly). https://knowledge.workspace.google.com/admin/reports"
+        "Establish a review schedule (e.g., weekly or monthly). https://knowledge.workspace.google.com/admin/reports/reports-overview"
     ),
 )
 def check_usage_report_reviewed(data: dict) -> CheckResult:
@@ -43,9 +43,9 @@ def check_usage_report_reviewed(data: dict) -> CheckResult:
                 "reports are being regularly analyzed for anomalies."
             ),
             remediation=(
-                "Admin console > Reporting > App reports > Accounts. "
+                "Admin console > Reporting > Apps Reports > Accounts. "
                 "Review app usage activity regularly to detect anomalous behavior. "
-                "Establish a review schedule (e.g., weekly or monthly). https://knowledge.workspace.google.com/admin/reports"
+                "Establish a review schedule (e.g., weekly or monthly). https://knowledge.workspace.google.com/admin/reports/reports-overview"
             ),
         )
 
@@ -61,16 +61,16 @@ def check_usage_report_reviewed(data: dict) -> CheckResult:
         ),
         remediation=(
             "Verify your domain in the Admin console, or upgrade to a "
-            "Google Workspace edition that includes usage reports. https://knowledge.workspace.google.com/admin/reports"
+            "Google Workspace edition that includes usage reports. https://knowledge.workspace.google.com/admin/reports/reports-overview"
         ),
     )
 
 
 
 _SECURITY_REPORT_REMED = (
-    "Admin console > Reporting > Reports > User reports > Security. Review the report weekly, at a minimum "
+    "Admin console > Reporting > User Reports > Security. Review the report weekly, at a minimum "
     "for administrator accounts: enrol them in 2-Step Verification, require strong and compliant passwords "
-    "and keep less secure app access off. https://knowledge.workspace.google.com/admin/reports"
+    "and keep less secure app access off. https://knowledge.workspace.google.com/admin/reports/reports-overview"
 )
 
 
@@ -100,7 +100,7 @@ def check_security_report_reviewed(data: dict) -> CheckResult:
         return make_review(**common, details=(
             "The per-user usage report with the accounts:* parameters was not collected (Reports API, scope "
             "admin.reports.usage.readonly), so the Security report columns cannot be reviewed here. Review "
-            "Admin console > Reporting > Reports > User reports > Security, at least for administrators."),
+            "Admin console > Reporting > User Reports > Security, at least for administrators."),
             remediation=_SECURITY_REPORT_REMED)
 
     anomalies, missing, reviewed = [], [], {}
@@ -139,7 +139,7 @@ def check_security_report_reviewed(data: dict) -> CheckResult:
         return make_review(**common, details=(
             f"{len(reviewed)} administrator row(s) reviewed without anomaly, but {len(missing)} administrator(s) have "
             f"no Security report row yet (the report lags two to three days): {', '.join(missing)}. Review them in "
-            "Admin console > Reporting > Reports > User reports > Security."),
+            "Admin console > Reporting > User Reports > Security."),
             actual_value={"admins": reviewed, "no_row_yet": missing}, expected_value=expected,
             remediation=_SECURITY_REPORT_REMED)
     return make_pass(**common, details=(

@@ -718,7 +718,7 @@ CONSOLE_SECTION_LINKS = {
     "Meet": "https://admin.google.com/ac/appslist/core",
     "Groups": "https://admin.google.com/ac/groups",
     "Sites": "https://admin.google.com/ac/appslist/core",
-    "Marketplace": "https://admin.google.com/ac/apps/gmail/marketplace/allowlistaccess",
+    "Marketplace": "https://admin.google.com/ac/apps/gmail/marketplace/allowlist",
     "Security": "https://admin.google.com/ac/security",
     "Authentication": "https://admin.google.com/ac/security/2sv",
     "Reporting": "https://admin.google.com/ac/reporting/home",

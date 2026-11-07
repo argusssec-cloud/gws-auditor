@@ -205,9 +205,9 @@ def check_context_aware_access(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > Authentication > SSO with third-party IdP. "
+        "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
         "Enable post-SSO verification so that users must re-authenticate with "
-        "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/apps/about-the-sso-identity-confirmation-screen"
+        "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
     ),
     requires_license="enterprise_plus",
 )
@@ -217,9 +217,9 @@ def check_sso_verification(data: dict) -> CheckResult:
     _TITLE = "Ensure SSO verification is enabled for organization SSO profile"
     _L, _S, _SEC = "L2", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > Authentication > SSO with third-party IdP. "
+        "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
         "Enable post-SSO verification so that users must re-authenticate with "
-        "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/apps/about-the-sso-identity-confirmation-screen"
+        "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
     )
 
     policies = data.get("policies", {})
@@ -257,9 +257,9 @@ def check_sso_verification(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Could not determine post-SSO verification setting.",
             remediation=(
-                "Admin console > Security > Authentication > SSO with third-party IdP. "
+                "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
                 "Enable post-SSO verification to require additional Google authentication "
-                "after SSO for sensitive actions. https://knowledge.workspace.google.com/admin/apps/about-the-sso-identity-confirmation-screen"
+                "after SSO for sensitive actions. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
             ),
         )
 
@@ -271,9 +271,9 @@ def check_sso_verification(data: dict) -> CheckResult:
         actual_value=post_sso,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > Authentication > SSO with third-party IdP. "
+            "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
             "Enable post-SSO verification so that users must re-authenticate with "
-            "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/apps/about-the-sso-identity-confirmation-screen"
+            "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
         ),
     )
 
@@ -286,9 +286,9 @@ def check_sso_verification(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > Authentication > SSO with third-party IdP. "
+        "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
         "Enable post-SSO verification for third-party SSO profiles to ensure "
-        "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/apps/about-the-sso-identity-confirmation-screen"
+        "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
     ),
     requires_license="enterprise_plus",
 )
@@ -298,9 +298,9 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
     _TITLE = "Ensure post-SSO verification is enabled for third-party SSO"
     _L, _S, _SEC = "L2", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > Authentication > SSO with third-party IdP. "
+        "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
         "Enable post-SSO verification for third-party SSO profiles to ensure "
-        "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/apps/about-the-sso-identity-confirmation-screen"
+        "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
     )
 
     policies = data.get("policies", {})
@@ -339,9 +339,9 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Could not determine third-party SSO verification setting.",
             remediation=(
-                "Admin console > Security > Authentication > SSO with third-party IdP. "
+                "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
                 "Enable post-SSO verification for all third-party SSO profiles to add "
-                "a layer of Google authentication. https://knowledge.workspace.google.com/admin/apps/about-the-sso-identity-confirmation-screen"
+                "a layer of Google authentication. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
             ),
         )
 
@@ -353,9 +353,9 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
         actual_value=third_party,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > Authentication > SSO with third-party IdP. "
+            "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
             "Enable post-SSO verification for third-party SSO profiles to ensure "
-            "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/apps/about-the-sso-identity-confirmation-screen"
+            "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
         ),
     )
 
@@ -371,7 +371,7 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > Google session control. "
+        "Admin console > Security > Access and data control > Google session control. "
         "Reduce session duration to 12 hours or less. Longer sessions "
         "increase the risk of session hijacking and unauthorized access. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
     ),
@@ -383,7 +383,7 @@ def check_session_duration(data: dict) -> CheckResult:
     _TITLE = "Ensure users re-authenticate after 12-hour session expiry"
     _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > Google session control. "
+        "Admin console > Security > Access and data control > Google session control. "
         "Reduce session duration to 12 hours or less. Longer sessions "
         "increase the risk of session hijacking and unauthorized access. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
     )
@@ -443,7 +443,7 @@ def check_session_duration(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Could not determine session duration setting.",
             remediation=(
-                "Admin console > Security > Google session control. "
+                "Admin console > Security > Access and data control > Google session control. "
                 "Set session duration to 12 hours or less to ensure "
                 "users re-authenticate periodically. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
             ),
@@ -457,7 +457,7 @@ def check_session_duration(data: dict) -> CheckResult:
         actual_value=duration,
         expected_value="<= 12 hours",
         remediation=(
-            "Admin console > Security > Google session control. "
+            "Admin console > Security > Access and data control > Google session control. "
             "Reduce session duration to 12 hours or less. Longer sessions "
             "increase the risk of session hijacking and unauthorized access. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
         ),
@@ -478,7 +478,7 @@ def check_session_duration(data: dict) -> CheckResult:
         "Ensure all super admin accounts are cloud-only managed accounts. "
         "Federated admin accounts are vulnerable to on-premises identity "
         "compromise. Create dedicated cloud-only admin accounts and remove "
-        "super admin privileges from federated accounts. https://knowledge.workspace.google.com/admin/users/add-accounts"
+        "super admin privileges from federated accounts. https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
     ),
 )
 def check_admin_cloud_only(data: dict) -> CheckResult:
@@ -493,7 +493,7 @@ def check_admin_cloud_only(data: dict) -> CheckResult:
             details="No user data available to check admin account federation status.",
             remediation=(
                 "Verify that all super admin accounts are cloud-only managed "
-                "accounts, not provisioned via directory sync or federation. https://knowledge.workspace.google.com/admin/users/add-accounts"
+                "accounts, not provisioned via directory sync or federation. https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
             ),
         )
 
@@ -528,7 +528,7 @@ def check_admin_cloud_only(data: dict) -> CheckResult:
             "Ensure all super admin accounts are cloud-only managed accounts. "
             "Federated admin accounts are vulnerable to on-premises identity "
             "compromise. Create dedicated cloud-only admin accounts and remove "
-            "super admin privileges from federated accounts. https://knowledge.workspace.google.com/admin/users/add-accounts"
+            "super admin privileges from federated accounts. https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
         ),
     )
 
@@ -545,10 +545,10 @@ def check_admin_cloud_only(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > Account recovery. "
+        "Admin console > Security > Authentication > Account recovery. "
         "Disable the option for users to add recovery email or phone. "
         "Personal recovery options can be exploited if the personal "
-        "accounts are compromised. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "accounts are compromised. https://knowledge.workspace.google.com/admin/users/allow-users-to-add-password-recovery-details"
     ),
 )
 def check_recovery_info_disabled(data: dict) -> CheckResult:
@@ -561,9 +561,9 @@ def check_recovery_info_disabled(data: dict) -> CheckResult:
     _TITLE = "Ensure adding recovery information is disabled"
     _L, _S, _SEC = "L2", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > Account recovery > Recovery information. "
+        "Admin console > Security > Authentication > Account recovery > Recovery information. "
         "Disable 'Allow admins and users to add recovery email information' "
-        "and 'Allow admins and users to add recovery phone information'. https://knowledge.workspace.google.com/admin/security/manage-a-users-security-settings"
+        "and 'Allow admins and users to add recovery phone information'. https://knowledge.workspace.google.com/admin/users/allow-users-to-add-password-recovery-details"
     )
 
     return make_review(
@@ -571,7 +571,7 @@ def check_recovery_info_disabled(data: dict) -> CheckResult:
         details=(
             "Recovery information settings (email/phone) are not available "
             "via the Cloud Identity Policy API. Verify manually in "
-            "Admin console > Security > Account recovery > Recovery information."
+            "Admin console > Security > Authentication > Account recovery > Recovery information."
         ),
         remediation=_REMED,
     )
@@ -584,8 +584,8 @@ def check_recovery_info_disabled(data: dict) -> CheckResult:
 # Policy API: security.advanced_protection_program only says whether users MAY self-enroll
 # (enableAdvancedProtectionSelfEnrollment); per-account enrollment is not exposed.
 _APP_REMED = (
-    "Admin console > Security > Authentication > Advanced Protection Program: allow users to enroll. Then "
-    "enroll each account at https://myaccount.google.com/advanced-protection with two security keys or passkeys. "
+    "Admin console > Security > Authentication > Advanced Protection Program > Enrollment: allow users to enroll. Then "
+    "enroll each account at https://landing.google.com/advancedprotection/ with two security keys or passkeys. "
     "https://knowledge.workspace.google.com/admin/security/protect-users-with-the-advanced-protection-program"
 )
 
@@ -720,7 +720,7 @@ def check_sensitive_user_advanced_protection(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Restrict third-party API access to only approved applications. "
         "Unrestricted access allows any app to request and obtain "
         "user data through OAuth consent. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -732,7 +732,7 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
     _TITLE = "Ensure app access control policies restrict third-party access"
     _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Restrict third-party API access to only approved applications. "
         "Unrestricted access allows any app to request and obtain "
         "user data through OAuth consent. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -805,7 +805,7 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Could not determine third-party API access restriction setting.",
             remediation=(
-                "Admin console > Security > API controls > App access control. "
+                "Admin console > Security > Access and data control > API controls > App access control. "
                 "Configure policies to restrict third-party application access "
                 "to Google Workspace APIs and user data. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
             ),
@@ -819,7 +819,7 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
         actual_value=restricted,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Security > API controls > App access control. "
+            "Admin console > Security > Access and data control > API controls > App access control. "
             "Restrict third-party API access to only approved applications. "
             "Unrestricted access allows any app to request and obtain "
             "user data through OAuth consent. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -834,7 +834,7 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Disable the option for users to consent to low-risk scopes. "
         "Even low-risk scopes can leak data if the requesting app "
         "is malicious or compromised. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -847,7 +847,7 @@ def check_user_consent_low_risk(data: dict) -> CheckResult:
     _TITLE = "Ensure users cannot consent to low-risk app scopes"
     _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Disable the option for users to consent to low-risk scopes. "
         "Even low-risk scopes can leak data if the requesting app "
         "is malicious or compromised. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -903,7 +903,7 @@ def check_user_consent_low_risk(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Could not determine user consent setting for low-risk scopes.",
             remediation=(
-                "Admin console > Security > API controls > App access control. "
+                "Admin console > Security > Access and data control > API controls > App access control. "
                 "Disable user consent for low-risk OAuth scopes to ensure "
                 "all app authorizations go through admin review. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
             ),
@@ -917,7 +917,7 @@ def check_user_consent_low_risk(data: dict) -> CheckResult:
         actual_value=consent,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Security > API controls > App access control. "
+            "Admin console > Security > Access and data control > API controls > App access control. "
             "Disable the option for users to consent to low-risk scopes. "
             "Even low-risk scopes can leak data if the requesting app "
             "is malicious or compromised. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -932,7 +932,7 @@ def check_user_consent_low_risk(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Disable automatic trust for unconfigured internal apps. "
         "Internal apps should be explicitly reviewed and configured "
         "before being granted data access. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -944,7 +944,7 @@ def check_unconfigured_internal_apps(data: dict) -> CheckResult:
     _TITLE = "Ensure unconfigured internal apps are not trusted"
     _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Disable automatic trust for unconfigured internal apps. "
         "Internal apps should be explicitly reviewed and configured "
         "before being granted data access. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -990,7 +990,7 @@ def check_unconfigured_internal_apps(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Could not determine unconfigured internal app trust setting.",
             remediation=(
-                "Admin console > Security > API controls > App access control. "
+                "Admin console > Security > Access and data control > API controls > App access control. "
                 "Do not trust unconfigured internal apps by default. "
                 "Each internal app should be explicitly configured and reviewed. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
             ),
@@ -1004,7 +1004,7 @@ def check_unconfigured_internal_apps(data: dict) -> CheckResult:
         actual_value=trust_internal,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Security > API controls > App access control. "
+            "Admin console > Security > Access and data control > API controls > App access control. "
             "Disable automatic trust for unconfigured internal apps. "
             "Internal apps should be explicitly reviewed and configured "
             "before being granted data access. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -1019,7 +1019,7 @@ def check_unconfigured_internal_apps(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Block unconfigured third-party apps. Allowing unknown apps "
         "creates significant data exfiltration risk as any app can "
         "request OAuth consent from users. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -1031,7 +1031,7 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
     _TITLE = "Ensure unconfigured third-party apps are blocked"
     _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > API controls > App access control. "
+        "Admin console > Security > Access and data control > API controls > App access control. "
         "Block unconfigured third-party apps. Allowing unknown apps "
         "creates significant data exfiltration risk as any app can "
         "request OAuth consent from users. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -1098,7 +1098,7 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Could not determine unconfigured third-party app setting.",
             remediation=(
-                "Admin console > Security > API controls > App access control. "
+                "Admin console > Security > Access and data control > API controls > App access control. "
                 "Block unconfigured third-party apps from accessing Google "
                 "Workspace data. Only explicitly approved apps should be allowed. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
             ),
@@ -1112,7 +1112,7 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
         actual_value=allow_unconfigured,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Security > API controls > App access control. "
+            "Admin console > Security > Access and data control > API controls > App access control. "
             "Block unconfigured third-party apps. Allowing unknown apps "
             "creates significant data exfiltration risk as any app can "
             "request OAuth consent from users. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
@@ -1135,7 +1135,7 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
         "Admin console > Reporting > Audit and investigation. "
         "Verify audit log retention is at least 6 months. Export "
         "logs to BigQuery or a SIEM solution for long-term retention "
-        "and forensic analysis capability. https://knowledge.workspace.google.com/admin/reports"
+        "and forensic analysis capability. https://knowledge.workspace.google.com/admin/reports/reports-overview"
     ),
 )
 def check_audit_log_retention(data: dict) -> CheckResult:
@@ -1152,7 +1152,7 @@ def check_audit_log_retention(data: dict) -> CheckResult:
         "Admin console > Reporting > Audit and investigation. "
         "Verify audit log retention is at least 6 months. Export "
         "logs to BigQuery or a SIEM solution for long-term retention "
-        "and forensic analysis capability. https://knowledge.workspace.google.com/admin/reports"
+        "and forensic analysis capability. https://knowledge.workspace.google.com/admin/reports/reports-overview"
     )
 
     return make_review(
@@ -1178,7 +1178,7 @@ def check_audit_log_retention(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Account > Account settings > Data regions. "
+        "Admin console > Data > Compliance > Data regions. "
         "Enable data processing restrictions to ensure data at rest "
         "and in processing remains within the designated geographic region "
         "for compliance with data sovereignty requirements. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
@@ -1191,7 +1191,7 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
     _TITLE = "Ensure data is processed in the selected storage region"
     _L, _S, _SEC = "L2", "CISA", "Security"
     _REMED = (
-        "Admin console > Account > Account settings > Data regions. "
+        "Admin console > Data > Compliance > Data regions. "
         "Enable data processing restrictions to ensure data at rest "
         "and in processing remains within the designated geographic region "
         "for compliance with data sovereignty requirements. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
@@ -1237,7 +1237,7 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
                 "Policy API for this tenant — verify in Admin console."
             ),
             remediation=(
-                "Admin console > Account > Account settings > Data regions. "
+                "Admin console > Data > Compliance > Data regions. "
                 "Ensure data processing is restricted to the selected "
                 "storage region. Requires Enterprise Plus license. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
             ),
@@ -1251,7 +1251,7 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
         actual_value=processing_in_region,
         expected_value="Enabled for all OUs",
         remediation=(
-            "Admin console > Account > Account settings > Data regions. "
+            "Admin console > Data > Compliance > Data regions. "
             "Enable data processing restrictions to ensure data at rest "
             "and in processing remains within the designated geographic region "
             "for compliance with data sovereignty requirements. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
@@ -1368,7 +1368,7 @@ def check_unused_services_disabled(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Account > Account settings > Release preferences. "
+        "Admin console > Apps > Additional Google services > Early Access Apps. "
         "Disable early access to pre-release features. These features "
         "have not completed full security review and may introduce "
         "vulnerabilities or unexpected data handling behavior. https://knowledge.workspace.google.com/admin/users/access/turn-early-access-apps-on-or-off-for-users"
@@ -1381,7 +1381,7 @@ def check_early_access_disabled(data: dict) -> CheckResult:
     _TITLE = "Ensure early access apps are disabled"
     _L, _S, _SEC = "L2", "CISA", "Security"
     _REMED = (
-        "Admin console > Account > Account settings > Release preferences. "
+        "Admin console > Apps > Additional Google services > Early Access Apps. "
         "Disable early access to pre-release features. These features "
         "have not completed full security review and may introduce "
         "vulnerabilities or unexpected data handling behavior. https://knowledge.workspace.google.com/admin/users/access/turn-early-access-apps-on-or-off-for-users"
@@ -1436,7 +1436,7 @@ def check_early_access_disabled(data: dict) -> CheckResult:
             level="L2", source="CISA", section="Security",
             details="Could not determine early access apps setting.",
             remediation=(
-                "Admin console > Account > Account settings > Release preferences. "
+                "Admin console > Apps > Additional Google services > Early Access Apps. "
                 "Disable early access to new features and apps. Pre-release "
                 "features may not have undergone full security review. https://knowledge.workspace.google.com/admin/users/access/turn-early-access-apps-on-or-off-for-users"
             ),
@@ -1450,7 +1450,7 @@ def check_early_access_disabled(data: dict) -> CheckResult:
         actual_value=early_access,
         expected_value="Disabled for all OUs",
         remediation=(
-            "Admin console > Account > Account settings > Release preferences. "
+            "Admin console > Apps > Additional Google services > Early Access Apps. "
             "Disable early access to pre-release features. These features "
             "have not completed full security review and may introduce "
             "vulnerabilities or unexpected data handling behavior. https://knowledge.workspace.google.com/admin/users/access/turn-early-access-apps-on-or-off-for-users"
@@ -1478,7 +1478,7 @@ def _rule_list_judge(*names: str):
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > Data protection > Manage rules. "
+        "Admin console > Security > Access and data control > Data protection > Manage rules. "
         "Create DLP rules for Google Chat to prevent sensitive data "
         "from being shared in chat conversations. Chat is a common "
         "vector for accidental data exposure. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-from-chat-messages-and-attachments"
@@ -1491,7 +1491,7 @@ def check_dlp_chat(data: dict) -> CheckResult:
     _TITLE = "Ensure DLP policy is configured for Google Chat"
     _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > Data protection > Manage rules. "
+        "Admin console > Security > Access and data control > Data protection > Manage rules. "
         "Create DLP rules for Google Chat to prevent sensitive data "
         "from being shared in chat conversations. Chat is a common "
         "vector for accidental data exposure. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-from-chat-messages-and-attachments"
@@ -1535,7 +1535,7 @@ def check_dlp_chat(data: dict) -> CheckResult:
                 "verify Chat DLP coverage in Admin console."
             ),
             remediation=(
-                "Admin console > Security > Data protection > Manage rules. "
+                "Admin console > Security > Access and data control > Data protection > Manage rules. "
                 "Create DLP rules for Google Chat to detect and prevent "
                 "sharing of sensitive data in chat messages and spaces. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-from-chat-messages-and-attachments"
             ),
@@ -1549,7 +1549,7 @@ def check_dlp_chat(data: dict) -> CheckResult:
         actual_value={"rule_count": 0},
         expected_value="At least one DLP rule for Chat",
         remediation=(
-            "Admin console > Security > Data protection > Manage rules. "
+            "Admin console > Security > Access and data control > Data protection > Manage rules. "
             "Create DLP rules for Google Chat to prevent sensitive data "
             "from being shared in chat conversations. Chat is a common "
             "vector for accidental data exposure. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-from-chat-messages-and-attachments"
@@ -1564,7 +1564,7 @@ def check_dlp_chat(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > Data protection > Manage rules. "
+        "Admin console > Security > Access and data control > Data protection > Manage rules. "
         "Create DLP rules for Gmail to prevent sensitive data from "
         "being emailed externally. Email is the primary channel for "
         "both accidental and intentional data exfiltration. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
@@ -1577,7 +1577,7 @@ def check_dlp_gmail(data: dict) -> CheckResult:
     _TITLE = "Ensure DLP policy is configured for Gmail"
     _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > Data protection > Manage rules. "
+        "Admin console > Security > Access and data control > Data protection > Manage rules. "
         "Create DLP rules for Gmail to prevent sensitive data from "
         "being emailed externally. Email is the primary channel for "
         "both accidental and intentional data exfiltration. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
@@ -1618,7 +1618,7 @@ def check_dlp_gmail(data: dict) -> CheckResult:
             level="L1", source="CISA", section="Security",
             details="Could not determine DLP configuration for Gmail.",
             remediation=(
-                "Admin console > Security > Data protection > Manage rules. "
+                "Admin console > Security > Access and data control > Data protection > Manage rules. "
                 "Create DLP rules for Gmail to detect and prevent "
                 "sensitive data from being sent via email. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
             ),
@@ -1632,7 +1632,7 @@ def check_dlp_gmail(data: dict) -> CheckResult:
         actual_value={"rule_count": 0},
         expected_value="At least one DLP rule for Gmail",
         remediation=(
-            "Admin console > Security > Data protection > Manage rules. "
+            "Admin console > Security > Access and data control > Data protection > Manage rules. "
             "Create DLP rules for Gmail to prevent sensitive data from "
             "being emailed externally. Email is the primary channel for "
             "both accidental and intentional data exfiltration. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
@@ -1647,7 +1647,7 @@ def check_dlp_gmail(data: dict) -> CheckResult:
     source="CISA",
     section="Security",
     remediation=(
-        "Admin console > Security > Data protection > Manage rules. "
+        "Admin console > Security > Access and data control > Data protection > Manage rules. "
         "Set the DLP default action to 'block' or 'block external sharing'. "
         "Warn-only or audit-only actions do not prevent data loss and "
         "should only be used during initial policy tuning. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
@@ -1660,7 +1660,7 @@ def check_dlp_block_external(data: dict) -> CheckResult:
     _TITLE = "Ensure DLP policies block external sharing"
     _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
-        "Admin console > Security > Data protection > Manage rules. "
+        "Admin console > Security > Access and data control > Data protection > Manage rules. "
         "Set the DLP default action to 'block' or 'block external sharing'. "
         "Warn-only or audit-only actions do not prevent data loss and "
         "should only be used during initial policy tuning. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
@@ -1709,7 +1709,7 @@ def check_dlp_block_external(data: dict) -> CheckResult:
                 "verify the DLP default action in Admin console."
             ),
             remediation=(
-                "Admin console > Security > Data protection > Manage rules. "
+                "Admin console > Security > Access and data control > Data protection > Manage rules. "
                 "Configure DLP rules with a default action of 'block' or "
                 "'block external sharing' to prevent sensitive data from "
                 "leaving the organization. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
@@ -1724,7 +1724,7 @@ def check_dlp_block_external(data: dict) -> CheckResult:
         actual_value=default_action,
         expected_value="block or block_external",
         remediation=(
-            "Admin console > Security > Data protection > Manage rules. "
+            "Admin console > Security > Access and data control > Data protection > Manage rules. "
             "Set the DLP default action to 'block' or 'block external sharing'. "
             "Warn-only or audit-only actions do not prevent data loss and "
             "should only be used during initial policy tuning. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
@@ -1742,7 +1742,7 @@ def check_dlp_block_external(data: dict) -> CheckResult:
         "Admin console > Security > Authentication > Account recovery > User account recovery. "
         "Turn off 'Allow users and non-super admins to recover their account'. "
         "Note: CIS-4.1.2.2 recommends the opposite; choose the framework your organization follows. "
-        "https://knowledge.workspace.google.com/admin/security/set-up-password-recovery-for-users"
+        "https://knowledge.workspace.google.com/admin/users/set-up-password-recovery-for-users"
     ),
 )
 def check_user_account_recovery_disabled(data: dict) -> CheckResult:
