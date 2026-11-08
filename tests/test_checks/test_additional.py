@@ -138,10 +138,12 @@ class TestPasswordAlert:
         assert result.status == Status.PASS
 
     def test_password_alert_unknown_manual(self, full_audit_data):
+        """Unknown means the Chrome policy collection failed; an unset policy is Chrome's default (see TestPasswordAlertDefault)."""
         from gws_auditor.checks.additional import check_password_alert
         full_audit_data["policies"]["security"]["password_alert"] = {
             "deployed": None,
         }
+        full_audit_data["api_errors"] = [{"operation": "get_chrome_policies", "error": "403"}]
         result = check_password_alert(full_audit_data)
         assert result.status == Status.MANUAL
 
@@ -297,20 +299,202 @@ class TestWorkspaceStudio:
         assert result.status == Status.MANUAL
 
 
-class TestAppleWritingTools:
-    """Tests for ADD-16 Apple Intelligence Writing Tools."""
+class TestSecuritySandboxLog:
+    """ADD-02 from the admin log (SETTING_NAME per CISA ScubaGoggles GWS.GMAIL.16.1, flip pending)."""
 
-    def test_apple_writing_tools_always_manual(self, full_audit_data):
+    def _ev(self, value, ou="example.com", time="2026-11-06T10:00:00.000Z"):
+        from tests.factories import make_admin_event
+        return make_admin_event("CHANGE_APPLICATION_SETTING", {
+            "APPLICATION_NAME": "Gmail", "SETTING_NAME": "AttachmentDeepScanningSettingsProto deep_scanning_enabled",
+            "NEW_VALUE": value, "ORG_UNIT_NAME": ou}, time)
+
+    def test_latest_change_decides(self, full_audit_data):
+        from gws_auditor.checks.additional import check_security_sandbox
+        full_audit_data["policies"]["gmail"] = {}
+        full_audit_data["admin_logs"] = [self._ev("false"), self._ev("true", time="2026-11-06T11:00:00.000Z")]
+        assert check_security_sandbox(full_audit_data).status == Status.PASS
+        full_audit_data["admin_logs"] = [self._ev("true"), self._ev("false", time="2026-11-06T11:00:00.000Z")]
+        assert check_security_sandbox(full_audit_data).status == Status.FAIL
+
+    def test_no_event_is_review(self, full_audit_data):
+        from gws_auditor.checks.additional import check_security_sandbox
+        full_audit_data["policies"]["gmail"] = {}
+        full_audit_data["admin_logs"] = []
+        assert check_security_sandbox(full_audit_data).status == Status.MANUAL
+
+
+class TestWorkspaceStudioToggle:
+    """ADD-15 from TOGGLE_SERVICE_ENABLED (SERVICE_NAME display-name format observed live for Google Takeout)."""
+
+    def _toggle(self, value, ou="example.com", time="2026-11-06T10:00:00.000Z", name="Workspace Studio"):
+        from tests.factories import make_admin_event
+        return make_admin_event("TOGGLE_SERVICE_ENABLED", {"DOMAIN_NAME": "example.com", "ORG_UNIT_NAME": ou,
+                                                           "SERVICE_NAME": name, "NEW_VALUE": value}, time)
+
+    def test_latest_toggle_decides(self, full_audit_data):
+        from gws_auditor.checks.additional import check_workspace_studio
+        full_audit_data["admin_logs"] = [self._toggle("true"), self._toggle("false", time="2026-11-06T11:00:00.000Z")]
+        assert check_workspace_studio(full_audit_data).status == Status.PASS
+        full_audit_data["admin_logs"] = [self._toggle("false"), self._toggle("true", time="2026-11-06T11:00:00.000Z")]
+        result = check_workspace_studio(full_audit_data)
+        assert result.status == Status.FAIL and "example.com" in result.details
+
+    def test_other_service_or_no_event_is_review(self, full_audit_data):
+        from gws_auditor.checks.additional import check_workspace_studio
+        full_audit_data["admin_logs"] = [self._toggle("false", name="Google Takeout")]
+        assert check_workspace_studio(full_audit_data).status == Status.MANUAL
+
+
+class TestPartnerTlsLog:
+    """ADD-07 from CREATE/CHANGE/DELETE_GMAIL_SETTING with SETTING_NAME TLS_COMPLIANCE (observed live 2026-11-07)."""
+
+    def _ev(self, kind, rule_id="880cd", time="2026-11-06T10:00:00.000Z"):
+        from tests.factories import make_admin_event
+        return make_admin_event(f"{kind}_GMAIL_SETTING", {
+            "SETTING_NAME": "TLS_COMPLIANCE", "ORG_UNIT_NAME": "example.com",
+            "SETTING_DESCRIPTION": "Partner TLS", "USER_DEFINED_SETTING_NAME": rule_id}, time)
+
+    def test_created_rule_passes(self, full_audit_data):
+        from gws_auditor.checks.additional import check_partner_tls
+        full_audit_data["policies"]["gmail"] = {}
+        full_audit_data["admin_logs"] = [self._ev("CREATE")]
+        result = check_partner_tls(full_audit_data)
+        assert result.status == Status.PASS and "880cd" in result.details
+
+    def test_deleted_rule_is_review_not_fail(self, full_audit_data):
+        from gws_auditor.checks.additional import check_partner_tls
+        full_audit_data["policies"]["gmail"] = {}
+        full_audit_data["admin_logs"] = [self._ev("CREATE"), self._ev("DELETE", time="2026-11-06T11:00:00.000Z")]
+        result = check_partner_tls(full_audit_data)
+        assert result.status == Status.MANUAL and "deleted" in result.details
+
+    def test_other_rule_family_or_no_event_is_review(self, full_audit_data):
+        from gws_auditor.checks.additional import check_partner_tls
+        from tests.factories import make_admin_event
+        full_audit_data["policies"]["gmail"] = {}
+        full_audit_data["admin_logs"] = [make_admin_event("CREATE_GMAIL_SETTING", {
+            "SETTING_NAME": "APPROVED_ADDRESS_LIST", "ORG_UNIT_NAME": "example.com",
+            "USER_DEFINED_SETTING_NAME": "d66d7"}, "2026-11-06T10:00:00.000Z")]
+        assert check_partner_tls(full_audit_data).status == Status.MANUAL
+
+
+class TestGeminiWorkspaceFeaturesLog:
+    """ADD-13 from per-service <Service>GenAiEnablementSettingsProto genai_features_enabled (observed live 2026-11-07)."""
+
+    def _ev(self, service, value, time="2026-11-06T10:00:00.000Z"):
+        from tests.factories import make_admin_event
+        return make_admin_event("CREATE_APPLICATION_SETTING", {
+            "APPLICATION_NAME": f"{service}_genai", "ORG_UNIT_NAME": "example.com",
+            "SETTING_NAME": f"{service.capitalize()}GenAiEnablementSettingsProto genai_features_enabled",
+            "NEW_VALUE": value}, time)
+
+    def test_service_turned_off_passes_with_caveat(self, full_audit_data):
+        from gws_auditor.checks.additional import check_gemini_workspace_features
+        full_audit_data["admin_logs"] = [self._ev("calendar", "false")]
+        result = check_gemini_workspace_features(full_audit_data)
+        assert result.status == Status.PASS and "calendar" in result.details and "default" in result.details
+
+    def test_latest_true_fails(self, full_audit_data):
+        from gws_auditor.checks.additional import check_gemini_workspace_features
+        full_audit_data["admin_logs"] = [self._ev("calendar", "false"), self._ev("gmail", "false"),
+                                         self._ev("calendar", "true", time="2026-11-06T11:00:00.000Z")]
+        result = check_gemini_workspace_features(full_audit_data)
+        assert result.status == Status.FAIL and "calendar" in result.details and "gmail" in result.details
+
+    def test_no_event_is_review(self, full_audit_data):
+        from gws_auditor.checks.additional import check_gemini_workspace_features
+        full_audit_data["admin_logs"] = []
+        assert check_gemini_workspace_features(full_audit_data).status == Status.MANUAL
+
+
+class TestSkipPasswordsLog:
+    """ADD-18 from SETTING_NAME 'Skip password enrollment state' under APPLICATION_NAME Security (observed live 2026-11-07)."""
+
+    def _ev(self, value, edition="enterprise", time="2026-11-06T10:00:00.000Z"):
+        from tests.factories import make_admin_event
+        return make_admin_event("CREATE_APPLICATION_SETTING", {
+            "APPLICATION_NAME": "Security", "ORG_UNIT_NAME": "example.com",
+            "SETTING_NAME": "Skip password enrollment state", "NEW_VALUE": value,
+            "APPLICATION_EDITION": edition}, time)
+
+    def test_allow_passes_across_editions(self, full_audit_data):
+        from gws_auditor.checks.additional import check_passkeys_enforced
+        full_audit_data["admin_logs"] = [self._ev("allow", "core"), self._ev("allow", "enterprise")]
+        assert check_passkeys_enforced(full_audit_data).status == Status.PASS
+
+    def test_latest_non_allow_fails(self, full_audit_data):
+        from gws_auditor.checks.additional import check_passkeys_enforced
+        full_audit_data["admin_logs"] = [self._ev("allow"), self._ev("disallow", time="2026-11-06T11:00:00.000Z")]
+        result = check_passkeys_enforced(full_audit_data)
+        assert result.status == Status.FAIL and "example.com" in result.details
+
+    def test_no_event_is_review(self, full_audit_data):
+        from gws_auditor.checks.additional import check_passkeys_enforced
+        full_audit_data["admin_logs"] = []
+        assert check_passkeys_enforced(full_audit_data).status == Status.MANUAL
+
+
+class TestPasswordAlertDefault:
+    """ADD-08: an unset Chrome policy is Chrome's documented default, not unknown."""
+
+    def test_unset_policy_is_chrome_default_pass(self, full_audit_data):
+        from gws_auditor.checks.additional import check_password_alert
+        full_audit_data["policies"].get("security", {}).pop("password_alert", None)
+        full_audit_data["chrome_policies"] = {}
+        full_audit_data["api_errors"] = []
+        result = check_password_alert(full_audit_data)
+        assert result.status == Status.PASS and "Chrome's default" in result.details
+
+    def test_resolve_error_or_not_collected_is_review(self, full_audit_data):
+        from gws_auditor.checks.additional import check_password_alert
+        full_audit_data["policies"].get("security", {}).pop("password_alert", None)
+        full_audit_data["chrome_policies"] = {}
+        full_audit_data["api_errors"] = [{"operation": "resolve_policy(chrome.users.PasswordProtectionWarningTrigger)", "error": "403"}]
+        assert check_password_alert(full_audit_data).status == Status.MANUAL
+        full_audit_data["api_errors"] = []
+        full_audit_data.pop("chrome_policies", None)
+        assert check_password_alert(full_audit_data).status == Status.MANUAL
+
+    def test_explicit_off_fails(self, full_audit_data):
+        from gws_auditor.checks.additional import check_password_alert
+        full_audit_data["policies"].setdefault("security", {})["password_alert"] = {"deployed": False, "trigger": 0}
+        assert check_password_alert(full_audit_data).status == Status.FAIL
+
+
+class TestAppleWritingTools:
+    """Tests for ADD-16 Apple Intelligence Writing Tools (Policy API devices.ios_apple_intelligence, live 2026-11-07)."""
+
+    def test_no_devices_policy_is_review(self, full_audit_data):
         from gws_auditor.checks.additional import check_apple_writing_tools
+        full_audit_data["policies"].pop("devices", None)
         result = check_apple_writing_tools(full_audit_data)
-        assert result.status == Status.MANUAL
+        assert result.status == Status.MANUAL and "devices.ios_apple_intelligence" in result.details
+
+    def test_writing_tools_blocked_passes(self, full_audit_data):
+        from gws_auditor.checks.additional import check_apple_writing_tools
+        from tests.factories import make_ou_policy
+        full_audit_data["policies"]["devices"] = {"_ou_policies": [
+            make_ou_policy("devices", "ios_apple_intelligence", {"writingToolsAllowed": False})]}
+        result = check_apple_writing_tools(full_audit_data)
+        assert result.status == Status.PASS
+
+    def test_writing_tools_allowed_on_any_ou_fails(self, full_audit_data):
+        from gws_auditor.checks.additional import check_apple_writing_tools
+        from tests.factories import make_ou_policy
+        full_audit_data["policies"]["devices"] = {"_ou_policies": [
+            make_ou_policy("devices", "ios_apple_intelligence", {"writingToolsAllowed": False}),
+            make_ou_policy("devices", "ios_apple_intelligence", {"writingToolsAllowed": True}, org_unit="/Sales")]}
+        result = check_apple_writing_tools(full_audit_data)
+        assert result.status == Status.FAIL and "/Sales" in result.details
 
 
 class TestPasskeysEnforced:
     """Tests for ADD-18 passkey enforcement."""
 
-    def test_passkeys_always_manual(self, full_audit_data):
+    def test_passkeys_manual_without_log_evidence(self, full_audit_data):
         from gws_auditor.checks.additional import check_passkeys_enforced
+        full_audit_data["admin_logs"] = [l for l in full_audit_data.get("admin_logs", [])
+                                         if (l.get("parameters") or {}).get("SETTING_NAME") != "Skip password enrollment state"]
         result = check_passkeys_enforced(full_audit_data)
         assert result.status == Status.MANUAL
 

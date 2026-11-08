@@ -1545,7 +1545,7 @@
   "check_id": "CIS-3.1.3.5.4",
   "func": "check_gmail_external_recipient_warning",
   "module": "apps_gmail",
-  "inputs": "legacy gmail.user_settings.external_recipient_warning_enabled (never produced by provider); else admin_logs entries with parameters.SETTING_NAME='OutOfDomainWarningProto disable_untrusted_recipient_warning', NEW_VALUE ('true' => warning disabled => FAIL; anything else => PASS), ORG_UNIT_NAME, time (newest per OU wins; INHERIT_FROM_PARENT dropped). requires_license='enterprise_plus'.",
+  "inputs": "Policy API gmail.external_recipient_warning.enabled (live 2026-11-07) judged first; Google's documented default (enabled) is injected when absent and the verdict says so; the admin-log inference remains the fallback. tests: test_gmail.py::test_external_recipient_warning_from_policy_api. legacy gmail.user_settings.external_recipient_warning_enabled (never produced by provider); else admin_logs entries with parameters.SETTING_NAME='OutOfDomainWarningProto disable_untrusted_recipient_warning', NEW_VALUE ('true' => warning disabled => FAIL; anything else => PASS), ORG_UNIT_NAME, time (newest per OU wins; INHERIT_FROM_PARENT dropped). requires_license='enterprise_plus'.",
   "paths": [
    "legacy_fallback",
    "admin_log",
@@ -2031,7 +2031,7 @@
   ],
   "pass_case": "chrome_policies {'dbsc_enabled': True} -> PASS.",
   "fail_case": "chrome_policies {'dbsc_enabled': False} -> FAIL.",
-  "other_cases": "MANUAL (make_review) when key absent/None or non-bool (string 'true' -> MANUAL, probe Z2).",
+  "other_cases": "Chrome policies collected without error and BoundSessionCredentialsEnabled unset -> PASS by Google's documented default (DBSC on by default for Workspace accounts, prevent-cookie-theft article); explicit false -> FAIL; not collected / resolve error -> MANUAL. MANUAL (make_review) when key absent/None or non-bool (string 'true' -> MANUAL, probe Z2).",
   "edge_cases": "Chrome policy resolved for root only; child OU override ignored. String 'true' -> MANUAL (is True check). chrome_policies None -> AttributeError -> ERROR.",
   "coverage_now": "tests/test_checks/test_security_access.py::TestSessionControl (PASS/FAIL/MANUAL), tests/test_checks/test_security.py::TestSessionControl. status_rec: PASS, FAIL, MANUAL. Complete for the data shape.",
   "gaps": [
@@ -2570,15 +2570,15 @@
   "check_id": "ADD-02",
   "func": "check_security_sandbox",
   "module": "additional",
-  "inputs": "policies.gmail.safety.security_sandbox_enabled (provider-invented key). NOTHING in provider.py writes it: no Policy API setting type for Security Sandbox exists in policy_api_shapes.json. requires_license=business_standard (subscription_type / subscription_info.edition / tier_keys_present).",
+  "inputs": "admin_logs CHANGE_APPLICATION_SETTING / CREATE_APPLICATION_SETTING with SETTING_NAME 'AttachmentDeepScanningSettingsProto deep_scanning_enabled' (CISA ScubaGoggles GWS.GMAIL.16.1; not yet observed on this tenant, flip pending), NEW_VALUE true/false per ORG_UNIT_NAME via base.result_from_setting_changes; legacy policies.gmail.safety.security_sandbox_enabled first. policies.gmail.safety.security_sandbox_enabled (provider-invented key). NOTHING in provider.py writes it: no Policy API setting type for Security Sandbox exists in policy_api_shapes.json. requires_license=business_standard (subscription_type / subscription_info.edition / tier_keys_present).",
   "paths": [
    "legacy_fallback"
   ],
-  "pass_case": "policies['gmail']['safety']={'security_sandbox_enabled': True} -> PASS (unreachable in production).",
-  "fail_case": "policies['gmail']['safety']={'security_sandbox_enabled': False} -> FAIL (unreachable in production).",
-  "other_cases": "key absent/None -> make_review MANUAL (the only production outcome). subscription_type='Business Starter' or subscription_info={'edition':'Business Starter'} -> NOT_APPLICABLE; tier_keys_present=['business_starter','enterprise_plus'] -> runs (MANUAL).",
+  "pass_case": "Latest admin-log change per OU has NEW_VALUE 'true' -> PASS.",
+  "fail_case": "Latest change 'false' on any OU -> FAIL naming the OU.",
+  "other_cases": "No event in the window and no legacy value -> MANUAL; licence below Business Standard -> NOT_APPLICABLE.",
   "edge_cases": "subscription_info.edition unknown string -> runs (MANUAL). PASS value True on Business Starter -> NOT_APPLICABLE wins over PASS (TestLicenseGating accepts either). Value 0/'false' (truthy string) -> FAIL branch.",
-  "coverage_now": "tests/test_checks/test_additional.py::TestSecuritySandbox (PASS/FAIL legacy keys); TestLicenseGating (N/A, MANUAL, subscription_info fallback). Statuses seen: PASS, FAIL, MANUAL, NOT_APPLICABLE. No real-shape test (none possible).",
+  "coverage_now": "tests/test_checks/test_additional.py::TestSecuritySandboxLog (PASS, FAIL, MANUAL). Scored since 2026-11-07.",
   "gaps": [
    "Test that a fully provider-normalized gmail category with every REQUIRED gmail setting present still yields MANUAL (documents that PASS/FAIL are dead paths).",
    "Test tier_keys_present=['business_starter'] + skus with unknown tier_key -> check runs (ambiguity rule)."
@@ -2589,7 +2589,7 @@
   "check_id": "ADD-05",
   "func": "check_mx_records",
   "module": "additional",
-  "inputs": "data.domains[].domainName; data.dns_records[domain].mx \u2014 after provider._normalize_dns_records this is a LIST of {host, priority} (dns.py check_mx lower-cases, strips trailing dot); sibling key mx_uses_google is written by the provider but never read by the check; older cache shape {records, uses_google} also handled.",
+  "inputs": "data.domains[].domainName; data.dns_records[domain].mx — after provider._normalize_dns_records this is a LIST of {host, priority} (dns.py check_mx lower-cases, strips trailing dot); sibling key mx_uses_google is written by the provider but never read by the check; older cache shape {records, uses_google} also handled.",
   "paths": [
    "dns"
   ],
@@ -2640,15 +2640,16 @@
   "check_id": "ADD-07",
   "func": "check_partner_tls",
   "module": "additional",
-  "inputs": "policies.gmail.compliance.partner_domain_tls_rules and .tls_required \u2014 neither is written by provider.py (no Policy API setting for Gmail compliance TLS rules in policy_api_shapes.json).",
+  "inputs": "admin_logs CREATE/CHANGE/DELETE_GMAIL_SETTING with SETTING_NAME 'TLS_COMPLIANCE' and the rule id in USER_DEFINED_SETTING_NAME (observed live 2026-11-07, rule 880cd) via base.gmail_rule_settings; legacy policies.gmail.compliance keys first (never written by provider.py).",
   "paths": [
+   "log_rule_settings",
    "legacy_fallback"
   ],
-  "pass_case": "gmail={'compliance':{'partner_domain_tls_rules':[{'domain':'p.com'}]}} -> PASS; {'compliance':{'tls_required':True}} -> PASS. Both unreachable in production.",
-  "fail_case": "gmail={'compliance':{'partner_domain_tls_rules':[],'tls_required':False}} -> FAIL (unreachable in production).",
-  "other_cases": "Both keys None/absent -> make_review MANUAL (only production outcome). partner_domain_tls_rules=[] with tls_required None -> FAIL (list present, not None).",
+  "pass_case": "A TLS_COMPLIANCE rule created or changed in the window whose latest event is not a delete -> PASS naming the rule id and description.",
+  "fail_case": "Never from the log: the window cannot prove that no rule exists (older rules log nothing). Legacy keys only.",
+  "other_cases": "No TLS_COMPLIANCE event, or every touched rule deleted -> MANUAL (unscored). Address-list events (APPROVED_ADDRESS_LIST) are ignored.",
   "edge_cases": "partner_domain_tls_rules=[] alone -> FAIL (a cached report that wrote an empty list would fail). Non-list value (dict) -> falls to FAIL. tls_required False with rules None -> FAIL.",
-  "coverage_now": "tests/test_checks/test_additional.py::TestPartnerTls (PASS, FAIL); tests/test_checks/test_policy_api_real_shapes.py::TestGmail::test_partner_tls_not_collected_is_manual_not_fail (MANUAL). Statuses: PASS, FAIL, MANUAL.",
+  "coverage_now": "tests/test_checks/test_additional.py::TestPartnerTlsLog. Statuses: PASS, MANUAL.",
   "gaps": [
    "Test tls_required=True alone -> PASS.",
    "Test partner_domain_tls_rules=[] with tls_required absent -> FAIL (documents that an empty list is treated as 'collected and empty')."
@@ -2666,7 +2667,7 @@
   ],
   "pass_case": "security['password_alert']={'deployed':True,'trigger':1} -> PASS 'Password reuse warning'; trigger 2 -> PASS. Via provider: chrome_policies={'password_protection_warning_trigger':1} -> PASS.",
   "fail_case": "security['password_alert']={'deployed':False,'trigger':0} -> FAIL (chrome_policies={'password_protection_warning_trigger':0}).",
-  "other_cases": "password_alert absent or deployed None -> make_review MANUAL (Chrome Policy API unavailable / 404 / not resolved).",
+  "other_cases": "Chrome policies collected without error and PasswordProtectionWarningTrigger unset (no security.password_alert) -> PASS by Chrome's documented default (protects Google passwords; chromium policy yaml, google_defaults.CHROME_POLICY_DEFAULTS); chrome_policies absent or resolve/get_chrome_policies in api_errors -> MANUAL. password_alert absent or deployed None -> make_review MANUAL (Chrome Policy API unavailable / 404 / not resolved).",
   "edge_cases": "chrome_policy.py:224-226 + provider.py:2750: if the Chrome Policy API returns the enum as a string name (e.g. 'PASSWORD_REUSE_WARNING') `trigger > 0` raises TypeError inside normalize_data (outside the check wrapper). trigger as string '1' -> same. Resolve only for root OU; child OU override ignored. api_errors get_chrome_policies -> MANUAL (ok).",
   "coverage_now": "tests/test_checks/test_additional.py::TestPasswordAlert (PASS with deployed True, MANUAL with deployed None). Statuses: PASS, MANUAL. FAIL never exercised; no provider-mapping test for trigger 0.",
   "gaps": [
@@ -2675,7 +2676,7 @@
    "Robustness test: trigger provided as enum string name must not raise in _map_chrome_policies (verify real Chrome Policy API shape)."
   ],
   "suspected_bugs": [
-   "src/gws_auditor/provider.py:2750 `trigger > 0` assumes an integer; Chrome Policy API enum values are commonly returned as string names, which would raise TypeError in normalize_data (unverified offline \u2014 confirm against a live resolve response)."
+   "src/gws_auditor/provider.py:2750 `trigger > 0` assumes an integer; Chrome Policy API enum values are commonly returned as string names, which would raise TypeError in normalize_data (unverified offline — confirm against a live resolve response)."
   ]
  },
  {
@@ -2708,14 +2709,14 @@
   "check_id": "ADD-11",
   "func": "check_client_side_encryption",
   "module": "additional",
-  "inputs": "policies.security.client_side_encryption.enabled \u2014 never written by provider.py (no CSE setting type in Policy API catalogue). requires_license=enterprise_plus.",
+  "inputs": "policies.security.client_side_encryption.enabled — never written by provider.py (no CSE setting type in Policy API catalogue). requires_license=enterprise_plus.",
   "paths": [
    "legacy_fallback"
   ],
   "pass_case": "security['client_side_encryption']={'enabled':True} -> PASS (unreachable in production).",
   "fail_case": "security['client_side_encryption']={'enabled':False} -> FAIL (unreachable in production).",
   "other_cases": "Key absent -> make_manual -> ERROR (the only production outcome on Enterprise Plus, verified on default fixture). subscription_type below enterprise_plus -> NOT_APPLICABLE.",
-  "edge_cases": "Every Enterprise Plus tenant gets ERROR (not MANUAL) for a setting that is simply not exposed \u2014 inconsistent with ADD-02/ADD-26 which use make_review. Unknown edition -> ERROR.",
+  "edge_cases": "Every Enterprise Plus tenant gets ERROR (not MANUAL) for a setting that is simply not exposed — inconsistent with ADD-02/ADD-26 which use make_review. Unknown edition -> ERROR.",
   "coverage_now": "tests/test_checks/test_additional.py::TestClientSideEncryption (PASS, FAIL). Statuses: PASS, FAIL. ERROR/N-A never exercised for this check.",
   "gaps": [
    "Test default fixture (no key) on Enterprise Plus -> currently ERROR; assert MANUAL once fixed.",
@@ -2750,15 +2751,16 @@
   "check_id": "ADD-13",
   "func": "check_gemini_workspace_features",
   "module": "additional",
-  "inputs": "policies.gemini.workspace_features.enabled \u2014 never written by provider.py (only gemini.chrome is populated, from chrome_policies). No admin-log SETTING_NAME inference is used by this check.",
+  "inputs": "admin_logs CREATE/CHANGE_APPLICATION_SETTING with APPLICATION_NAME '<service>_genai' and SETTING_NAME '<Service>GenAiEnablementSettingsProto genai_features_enabled' (observed live 2026-11-07 for calendar_genai), NEW_VALUE true/false per OU via base.latest_setting_changes_by_app; legacy policies.gemini.workspace_features.enabled first (never written by provider.py).",
   "paths": [
+   "log_setting_changes",
    "legacy_fallback"
   ],
-  "pass_case": "policies['gemini']={'workspace_features':{'enabled':False}} -> PASS (unreachable in production).",
-  "fail_case": "policies['gemini']={'workspace_features':{'enabled':True}} -> FAIL (unreachable in production).",
-  "other_cases": "Key absent/None -> make_review MANUAL (only production outcome).",
+  "pass_case": "Every logged service's latest value false -> PASS naming the services, with the caveat that untouched services keep Google's default (on).",
+  "fail_case": "Any logged service's latest value true -> FAIL naming the services turned on and off.",
+  "other_cases": "No genai_features_enabled event -> MANUAL. Unscored: evidence covers only services an admin touched.",
   "edge_cases": "Value 0 (falsy, not False) -> FAIL branch. 'false' string -> FAIL.",
-  "coverage_now": "tests/test_checks/test_additional.py::TestGeminiWorkspaceFeatures (PASS, FAIL, MANUAL). Statuses: PASS, FAIL, MANUAL.",
+  "coverage_now": "tests/test_checks/test_additional.py::TestGeminiWorkspaceFeaturesLog. Statuses: PASS, FAIL, MANUAL.",
   "gaps": [
    "Test full provider normalize_data output (chrome_policies with gemini_in_chrome_disabled) still yields MANUAL for ADD-13 (documents dead PASS/FAIL paths)."
   ],
@@ -2776,7 +2778,7 @@
   "pass_case": "policies['gemini']={'chrome':{'enabled':False}} (chrome_policies={'gemini_in_chrome_disabled':True}) -> PASS.",
   "fail_case": "policies['gemini']={'chrome':{'enabled':True}} (geminiSetting 0) -> FAIL 'enabled'.",
   "other_cases": "gemini absent / chrome absent / enabled None -> FAIL 'not explicitly disabled' (no MANUAL branch at all). Occurs whenever Chrome Policy API is unavailable, 404 (no Chrome Browser Cloud Management), or api_errors has get_chrome_policies.",
-  "edge_cases": "Unknown -> FAIL contradicts the project rule (unknown -> MANUAL); default fixture yields FAIL (verified). chrome_policy.py:200 compares geminiSetting == 1 \u2014 if API returns enum string ('DISABLED'/'GEMINI_SETTING_DISABLED') the tenant is never seen as disabled -> permanent FAIL. Child-OU override not resolved. No license gate though Gemini features vary by edition.",
+  "edge_cases": "Unknown -> FAIL contradicts the project rule (unknown -> MANUAL); default fixture yields FAIL (verified). chrome_policy.py:200 compares geminiSetting == 1 — if API returns enum string ('DISABLED'/'GEMINI_SETTING_DISABLED') the tenant is never seen as disabled -> permanent FAIL. Child-OU override not resolved. No license gate though Gemini features vary by edition.",
   "coverage_now": "tests/test_checks/test_additional.py::TestGeminiChrome: PASS (disabled), FAIL (enabled), FAIL (not configured), FAIL (None), FAIL (missing gemini key). Statuses: PASS, FAIL. tests/test_api/test_chrome_policy.py asserts int 0/1 shape.",
   "gaps": [
    "Test api_errors containing get_chrome_policies with gemini absent -> expect MANUAL/ERROR rather than FAIL.",
@@ -2792,15 +2794,15 @@
   "check_id": "ADD-15",
   "func": "check_workspace_studio",
   "module": "additional",
-  "inputs": "policies.gemini.workspace_studio.enabled \u2014 never written by provider.py.",
+  "inputs": "admin_logs TOGGLE_SERVICE_ENABLED with SERVICE_NAME 'Workspace Studio' and NEW_VALUE 'false'/'true' per ORG_UNIT_NAME (observed live 2026-11-07) via base.latest_service_toggles; legacy policies.gemini.workspace_studio.enabled first (never written by provider.py).",
   "paths": [
    "legacy_fallback"
   ],
-  "pass_case": "policies['gemini']={'workspace_studio':{'enabled':False}} -> PASS (unreachable in production).",
-  "fail_case": "policies['gemini']={'workspace_studio':{'enabled':True}} -> FAIL (unreachable in production).",
-  "other_cases": "Absent/None -> make_review MANUAL (only production outcome).",
+  "pass_case": "Latest toggle per OU 'false' -> PASS.",
+  "fail_case": "Latest toggle 'true' on any OU -> FAIL naming the OU (scored since the live flip of 2026-11-07).",
+  "other_cases": "No toggle for this service in the window -> MANUAL.",
   "edge_cases": "Falsy non-False values (0, '') -> FAIL branch.",
-  "coverage_now": "tests/test_checks/test_additional.py::TestWorkspaceStudio (PASS, FAIL, MANUAL). Statuses: PASS, FAIL, MANUAL.",
+  "coverage_now": "tests/test_checks/test_additional.py::TestWorkspaceStudioToggle.",
   "gaps": [
    "Document/assert that normalize_data never populates gemini.workspace_studio (MANUAL in production)."
   ],
@@ -2810,29 +2812,29 @@
   "check_id": "ADD-16",
   "func": "check_apple_writing_tools",
   "module": "additional",
-  "inputs": "None \u2014 unconditional make_review. Pure MANUAL by design (iOS MDM 'Apple Intelligence' data-sharing setting, not in Policy API).",
+  "inputs": "data.policies.devices._ou_policies, setting devices.ios_apple_intelligence (Policy API, seen live 2026-11-07 on Enterprise Standard), field writingToolsAllowed (bool); checks/additional.check_apple_writing_tools via get_ou_values + ou_verdict.",
   "paths": [],
-  "pass_case": "N/A \u2014 never PASS.",
-  "fail_case": "N/A \u2014 never FAIL.",
-  "other_cases": "Always MANUAL regardless of input (even data={}).",
-  "edge_cases": "data={} must not raise. scored=True by decorator? (MANUAL excluded from scoring anyway).",
-  "coverage_now": "tests/test_checks/test_additional.py::TestAppleWritingTools::test_apple_writing_tools_always_manual. Statuses: MANUAL.",
-  "gaps": [
-   "Test check_apple_writing_tools({}) -> MANUAL (no KeyError)."
-  ],
+  "pass_case": "writingToolsAllowed false on every OU -> PASS.",
+  "fail_case": "writingToolsAllowed true on any OU -> FAIL naming the OU.",
+  "other_cases": "policies.devices absent or without the setting -> MANUAL (review) saying the API returned nothing; field absent / unspecified -> MANUAL via ou_verdict.",
+  "edge_cases": "Google documents no default for this setting, so absence stays MANUAL (no default injection). Scored since 2026-11-07 (was unscored review).",
+  "coverage_now": "tests/test_checks/test_additional.py::TestAppleWritingTools (MANUAL, PASS, FAIL). Live 2026-11-07: the tenant returns writingToolsAllowed (value read in the live run after this change).",
+  "gaps": [],
   "suspected_bugs": []
  },
  {
   "check_id": "ADD-18",
   "func": "check_passkeys_enforced",
   "module": "additional",
-  "inputs": "None \u2014 unconditional make_review. Pure MANUAL by design ('Skip passwords'/passwordless setting not in Policy API). Note security.passkeys_restriction.allowedPasskeysType IS a real setting but is a different control (passkey type restriction), so not usable here.",
-  "paths": [],
-  "pass_case": "N/A \u2014 never PASS.",
-  "fail_case": "N/A \u2014 never FAIL.",
-  "other_cases": "Always MANUAL.",
-  "edge_cases": "data={} must not raise.",
-  "coverage_now": "tests/test_checks/test_additional.py::TestPasskeysEnforced::test_passkeys_always_manual. Statuses: MANUAL.",
+  "inputs": "admin_logs CREATE/CHANGE_APPLICATION_SETTING with APPLICATION_NAME 'Security' and SETTING_NAME 'Skip password enrollment state', NEW_VALUE 'allow' (observed live 2026-11-07; one event per APPLICATION_EDITION for the same OU) via base.latest_setting_changes.",
+  "paths": [
+   "log_setting_changes"
+  ],
+  "pass_case": "Latest value per OU 'allow' -> PASS.",
+  "fail_case": "Latest value per OU anything but 'allow' -> FAIL naming the OU.",
+  "other_cases": "No event in the window -> MANUAL. Scored.",
+  "edge_cases": "data={} must not raise; INHERIT_FROM_PARENT ignored.",
+  "coverage_now": "tests/test_checks/test_additional.py::TestSkipPasswordsLog, TestPasskeysEnforced. Statuses: PASS, FAIL, MANUAL.",
   "gaps": [
    "Test check_passkeys_enforced({}) -> MANUAL."
   ],
@@ -2866,18 +2868,18 @@
   "check_id": "ADD-21",
   "func": "check_mpa_vault_exports",
   "module": "additional",
-  "inputs": "policies.security.multi_party_approval.vault_exports_covered <- provider._map_multi_party_approval reads multi_party_approval.security_actions.coveredActions / .actions \u2014 NOT real fields. Real multi_party_approval.security_actions fields are *MultiPartyApprovalState enums (accountRecovery, advancedProtectionProgram, contextAwareAccess, domainWideDelegation, loginChallenges, passwordless, sessionControls, ssoWithThirdPartyIdps, twoStepVerification); there is no Vault-export action in the Policy API. requires_license=enterprise_standard.",
+  "inputs": "policies.security.multi_party_approval.vault_exports_covered <- provider._map_multi_party_approval reads multi_party_approval.security_actions.coveredActions / .actions — NOT real fields. Real multi_party_approval.security_actions fields are *MultiPartyApprovalState enums (accountRecovery, advancedProtectionProgram, contextAwareAccess, domainWideDelegation, loginChallenges, passwordless, sessionControls, ssoWithThirdPartyIdps, twoStepVerification); there is no Vault-export action in the Policy API. requires_license=enterprise_standard.",
   "paths": [
    "legacy_fallback"
   ],
   "pass_case": "security['multi_party_approval']={'vault_exports_covered':True} -> PASS (unreachable in production).",
-  "fail_case": "security['multi_party_approval']={'vault_exports_covered':False} -> FAIL. Absent/None -> FAIL 'not configured' (verified on default fixture) \u2014 this is the production outcome for EVERY tenant.",
+  "fail_case": "security['multi_party_approval']={'vault_exports_covered':False} -> FAIL. Absent/None -> FAIL 'not configured' (verified on default fixture) — this is the production outcome for EVERY tenant.",
   "other_cases": "No MANUAL branch. Below Enterprise Standard -> NOT_APPLICABLE.",
   "edge_cases": "Unknown -> FAIL is a systematic false FAIL. Real-shape payload make_ou_policy('multi_party_approval','security_actions',{'twoStepVerificationMultiPartyApprovalState':'ENABLED'}) still -> FAIL. mpa.enabled (require_approvals.multiPartyApprovalState) is mapped but unused by this check.",
   "coverage_now": "tests/test_checks/test_additional.py::TestMpaVaultExports (PASS, FAIL False, FAIL None). Statuses: PASS, FAIL. No real-shape test.",
   "gaps": [
    "Real-shape test: multi_party_approval.security_actions with real *MultiPartyApprovalState fields -> should be MANUAL (currently FAIL).",
-   "Test absent key -> expect MANUAL after fix (currently asserted FAIL by test_mpa_vault_not_configured_fail \u2014 that test enshrines the bug)."
+   "Test absent key -> expect MANUAL after fix (currently asserted FAIL by test_mpa_vault_not_configured_fail — that test enshrines the bug)."
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/additional.py:1200-1213 None (never populated) -> FAIL; combined with src/gws_auditor/provider.py:2779-2785 reading non-existent fields coveredActions/actions, every Enterprise Standard+ tenant receives a false FAIL. Should be make_review MANUAL; test_mpa_vault_not_configured_fail locks in the wrong behaviour."
@@ -2887,7 +2889,7 @@
   "check_id": "ADD-22",
   "func": "check_gmail_classification_labels",
   "module": "additional",
-  "inputs": "policies.gmail.compliance.classification_labels_enabled \u2014 never written by provider.py (no Policy API setting). requires_license=business_standard.",
+  "inputs": "policies.gmail.compliance.classification_labels_enabled — never written by provider.py (no Policy API setting). requires_license=business_standard.",
   "paths": [
    "legacy_fallback"
   ],
@@ -2905,14 +2907,14 @@
   "check_id": "ADD-23",
   "func": "check_calendar_dlp",
   "module": "additional",
-  "inputs": "policies.calendar.dlp_rules (never written by provider) and policies.security.dlp.calendar_dlp_enabled <- provider._map_rules scanning rules.items() for a 'triggers' entry containing 'calendar' \u2014 after _normalize_policies only the LAST flattened rule.dlp value sits under rules['dlp'], so only one rule is inspected; only ever set True, never False. requires_license=enterprise_standard.",
+  "inputs": "policies.calendar.dlp_rules (never written by provider) and policies.security.dlp.calendar_dlp_enabled <- provider._map_rules scanning rules.items() for a 'triggers' entry containing 'calendar' — after _normalize_policies only the LAST flattened rule.dlp value sits under rules['dlp'], so only one rule is inspected; only ever set True, never False. requires_license=enterprise_standard.",
   "paths": [
    "legacy_fallback"
   ],
   "pass_case": "security['dlp']={'calendar_dlp_enabled':True} -> PASS; calendar['dlp_rules']=[{'name':'x'}] -> PASS. Production: rules['dlp']={'triggers':['CALENDAR_...'],...} mapped -> PASS only if that rule is the last-flattened one.",
-  "fail_case": "calendar['dlp_rules']=[] + security.dlp.calendar_dlp_enabled False -> FAIL. Both absent/None -> FAIL 'No DLP rules' (verified on default fixture) \u2014 production outcome whenever calendar DLP not detected OR rules not collected.",
+  "fail_case": "calendar['dlp_rules']=[] + security.dlp.calendar_dlp_enabled False -> FAIL. Both absent/None -> FAIL 'No DLP rules' (verified on default fixture) — production outcome whenever calendar DLP not detected OR rules not collected.",
   "other_cases": "No MANUAL branch. Below Enterprise Standard -> N/A.",
-  "edge_cases": "Unknown (rules category never fetched / API error) -> FAIL = false FAIL. Two rule.dlp policies where the calendar rule is flattened first and a drive rule last -> calendar rule invisible -> FAIL (false FAIL). rule.dlp real 'triggers' field format unknown (list of strings vs dicts) \u2014 mapper handles both. calendar_dlp_enabled False never produced by provider.",
+  "edge_cases": "Unknown (rules category never fetched / API error) -> FAIL = false FAIL. Two rule.dlp policies where the calendar rule is flattened first and a drive rule last -> calendar rule invisible -> FAIL (false FAIL). rule.dlp real 'triggers' field format unknown (list of strings vs dicts) — mapper handles both. calendar_dlp_enabled False never produced by provider.",
   "coverage_now": "tests/test_checks/test_additional.py::TestCalendarDlp (PASS x2, FAIL x2). Statuses: PASS, FAIL. No real-shape rule.dlp test, no provider round-trip.",
   "gaps": [
    "Test both keys absent -> expect MANUAL (currently FAIL; test_calendar_dlp_not_configured_fail enshrines it).",
@@ -2928,14 +2930,14 @@
   "check_id": "ADD-24",
   "func": "check_drive_ai_classification",
   "module": "additional",
-  "inputs": "policies.drive.classification.ai_classification_enabled \u2014 never written by provider.py.",
+  "inputs": "policies.drive.classification.ai_classification_enabled — never written by provider.py.",
   "paths": [
    "legacy_fallback"
   ],
   "pass_case": "drive['classification']={'ai_classification_enabled':True} -> PASS (unreachable in production).",
   "fail_case": "drive['classification']={'ai_classification_enabled':False} -> FAIL (unreachable).",
   "other_cases": "Absent/None -> make_review MANUAL (production outcome).",
-  "edge_cases": "FAIL branch expected_value says 'Disabled for all OUs' (copy-paste; should be Enabled). No license gate although AI classification needs Enterprise Standard+/Business Plus \u2014 fine since MANUAL.",
+  "edge_cases": "FAIL branch expected_value says 'Disabled for all OUs' (copy-paste; should be Enabled). No license gate although AI classification needs Enterprise Standard+/Business Plus — fine since MANUAL.",
   "coverage_now": "tests/test_checks/test_drive.py::TestDriveAiClassification (PASS, FAIL, MANUAL). Statuses: PASS, FAIL, MANUAL.",
   "gaps": [
    "Assert FAIL expected_value text reads 'Enabled for all OUs'."
@@ -2968,7 +2970,7 @@
   "check_id": "ADD-26",
   "func": "check_gmail_cse",
   "module": "additional",
-  "inputs": "policies.gmail.compliance.cse_enabled \u2014 never written by provider.py. No license gate on decorator although remediation says Enterprise Plus.",
+  "inputs": "policies.gmail.compliance.cse_enabled — never written by provider.py. No license gate on decorator although remediation says Enterprise Plus.",
   "paths": [
    "legacy_fallback"
   ],
@@ -2986,7 +2988,7 @@
   "check_id": "ADD-27",
   "func": "check_meet_compliance_recording",
   "module": "additional",
-  "inputs": "OU path: get_ou_values(policies.meet,'video_recording') value.enableRecording (REAL meet.video_recording.enableRecording = 'let users record meetings'). Fallback policies.meet.compliance.recording_enabled \u2014 never written by provider. requires_license=assured_controls (LICENSE_TIERS value 99 -> only tier_keys_present/edition containing assured_controls passes; otherwise N/A unless edition unknown).",
+  "inputs": "OU path: get_ou_values(policies.meet,'video_recording') value.enableRecording (REAL meet.video_recording.enableRecording = 'let users record meetings'). Fallback policies.meet.compliance.recording_enabled — never written by provider. requires_license=assured_controls (LICENSE_TIERS value 99 -> only tier_keys_present/edition containing assured_controls passes; otherwise N/A unless edition unknown).",
   "paths": [
    "ou_policy",
    "legacy_fallback"
@@ -3003,7 +3005,7 @@
    "Test ADMIN False at root + DEFAULT True at child -> FAIL."
   ],
   "suspected_bugs": [
-   "src/gws_auditor/checks/additional.py:1572-1582 reads meet.video_recording.enableRecording (user recording permission) as proxy for 'compliance recording'; disabling user recording yields FAIL \u2014 wrong semantics -> false FAIL / false PASS.",
+   "src/gws_auditor/checks/additional.py:1572-1582 reads meet.video_recording.enableRecording (user recording permission) as proxy for 'compliance recording'; disabling user recording yields FAIL — wrong semantics -> false FAIL / false PASS.",
    "src/gws_auditor/checks/additional.py:1576 `enabled is not True` treats None/empty value as FAIL instead of MANUAL."
   ]
  },
@@ -3028,7 +3030,7 @@
    "Test archived-only members -> WARN."
   ],
   "suspected_bugs": [
-   "src/gws_auditor/checks/additional.py:1667-1673 groups=[] returns PASS even when list_groups_with_settings failed (api_errors) \u2014 unknown reported as PASS (inventory check, low impact)."
+   "src/gws_auditor/checks/additional.py:1667-1673 groups=[] returns PASS even when list_groups_with_settings failed (api_errors) — unknown reported as PASS (inventory check, low impact)."
   ]
  },
  {
@@ -3130,7 +3132,7 @@
   "pass_case": "token_logs=[{'event_name':'authorize','parameters':{'app_name':'Safe','scope':'https://www.googleapis.com/auth/userinfo.email'}}] -> PASS total_grants 1; only 'revoke' events -> PASS total_grants 0.",
   "fail_case": "scope 'https://mail.google.com/ https://www.googleapis.com/auth/drive' -> FAIL risk CRITICAL, granted_by actor; admin.directory.* scopes -> FAIL aggregated grant_count.",
   "other_cases": "token_logs=[] -> WARN 'No OAuth token log data' (also when collection failed).",
-  "edge_cases": "MEDIUM patterns: calendar.readonly / contacts.readonly / drive.file / documents.readonly -> FAIL (verified calendar.readonly) \u2014 common benign apps fail. Substring 'drive' matches any URL containing 'drive'; 'sites' matches e.g. '.../auth/sites'. scope as list (multiValue) vs comma/space string. app_name missing -> key client_id. Window = DEFAULT_TOKEN_LOG_LOOKBACK_DAYS so revoked grants still counted (historical). Risk ordering CRITICAL<HIGH<MEDIUM; MEDIUM-only app gets risk_level 'MEDIUM' but is still FAIL.",
+  "edge_cases": "MEDIUM patterns: calendar.readonly / contacts.readonly / drive.file / documents.readonly -> FAIL (verified calendar.readonly) — common benign apps fail. Substring 'drive' matches any URL containing 'drive'; 'sites' matches e.g. '.../auth/sites'. scope as list (multiValue) vs comma/space string. app_name missing -> key client_id. Window = DEFAULT_TOKEN_LOG_LOOKBACK_DAYS so revoked grants still counted (historical). Risk ordering CRITICAL<HIGH<MEDIUM; MEDIUM-only app gets risk_level 'MEDIUM' but is still FAIL.",
   "coverage_now": "tests/test_checks/test_additional.py::TestOauthDangerousApps (PASS, FAIL critical, WARN empty, PASS non-authorize, FAIL aggregation). Statuses: PASS, FAIL, WARN.",
   "gaps": [
    "Test MEDIUM-only scope (calendar.readonly) -> currently FAIL; decide threshold (HIGH+?).",
@@ -3244,7 +3246,7 @@
   "pass_case": "mobile_devices=[{'status':'APPROVED','firstSync': now-5d}] endpoint_devices=[] -> PASS; PENDING with firstSync now-5d -> PASS.",
   "fail_case": "Never FAILs; WARN: mobile PENDING firstSync now-60d -> WARN device_type Mobile; endpoint managementState PENDING createTime now-60d -> WARN device_type Endpoint.",
   "other_cases": "No MANUAL branch; both lists empty -> PASS total_devices 0.",
-  "edge_cases": "PENDING device with missing/unparseable firstSync -> never flagged (first_sync None skipped) \u2014 a stuck device without firstSync is invisible. Boundary 29/30/31 days. status 'pending' lowercase -> ignored. _options device_pending_days=0. owner key absent -> 'unknown'.",
+  "edge_cases": "PENDING device with missing/unparseable firstSync -> never flagged (first_sync None skipped) — a stuck device without firstSync is invisible. Boundary 29/30/31 days. status 'pending' lowercase -> ignored. _options device_pending_days=0. owner key absent -> 'unknown'.",
   "coverage_now": "tests/test_checks/test_additional.py::TestDevicesPending (PASS none, WARN mobile, WARN endpoint, PASS recent). Statuses: PASS, WARN.",
   "gaps": [
    "Test PENDING device with no firstSync -> currently PASS; decide (likely should WARN).",
@@ -3292,7 +3294,7 @@
   "pass_case": "roles={'roles':[...],'assignments':[{'roleId':'r1','assignedTo':'u1','assigneeType':'user'}]} -> PASS 'No admin role assigned to a group'.",
   "fail_case": "groups=[{'id':'g1','email':'helpdesk@x','settings':{'whoCanJoin':'ALL_IN_DOMAIN_CAN_JOIN'}}] + assignment assigneeType 'group' assignedTo 'g1' -> FAIL naming helpdesk@x; allowExternalMembers 'true' -> FAIL.",
   "other_cases": "roles missing or without 'assignments' -> make_manual ERROR; api_errors list_roles -> ERROR. Group assignment to INVITED_CAN_JOIN / CAN_REQUEST_TO_JOIN group -> WARN.",
-  "edge_cases": "assignedTo group id not present in data.groups (groups list truncated / settings fetch failed) -> settings {} -> WARN not FAIL (verified) \u2014 an open group can hide as WARN; should be MANUAL-ish. assigneeType 'GROUP' uppercase handled. allowExternalMembers boolean True (not string) -> str(True).lower()=='true' handled. whoCanJoin missing -> WARN. list_groups_with_settings error not consulted.",
+  "edge_cases": "assignedTo group id not present in data.groups (groups list truncated / settings fetch failed) -> settings {} -> WARN not FAIL (verified) — an open group can hide as WARN; should be MANUAL-ish. assigneeType 'GROUP' uppercase handled. allowExternalMembers boolean True (not string) -> str(True).lower()=='true' handled. whoCanJoin missing -> WARN. list_groups_with_settings error not consulted.",
   "coverage_now": "tests/test_checks/test_real_shapes_batch2.py::TestAdminRolesOnGroups (FAIL open, WARN restricted + PASS user-only, ERROR not collected). Statuses: FAIL, WARN, PASS, ERROR. Not in test_additional.py.",
   "gaps": [
    "Test allowExternalMembers 'true' with whoCanJoin INVITED_CAN_JOIN -> FAIL.",
@@ -3940,16 +3942,16 @@
   "check_id": "GWS.COMMONCONTROLS.7.1",
   "func": "check_conflicting_accounts",
   "module": "cisa_scuba",
-  "inputs": "OU: get_ou_values(security,'account_management') - NOT a real setting type (not in policy_api_shapes.json). Legacy: security.account_management.conflicting_accounts_managed - provider never creates it. Production result is always MANUAL (make_review).",
+  "inputs": "Policy API provisioning.conflicting_accounts_management.option (category 'provisioning', ScubaGoggles schema; absent on the 2026-11-07 tenant because never saved) via get_ou_values/ou_verdict. OU: get_ou_values(security,'account_management') - NOT a real setting type (not in policy_api_shapes.json). Legacy: security.account_management.conflicting_accounts_managed - provider never creates it. Production result is always MANUAL (make_review).",
   "paths": [
    "ou_policy",
    "legacy_fallback"
   ],
-  "pass_case": "Only with invented data: make_ou_policy('security','account_management',{'conflictingAccountsManaged': True}) -> PASS; legacy account_management.conflicting_accounts_managed True -> PASS.",
-  "fail_case": "Invented: {'conflictingAccountsManaged': False} -> FAIL. No real input can FAIL.",
-  "other_cases": "Default full_audit_data / any live tenant -> MANUAL (verified). No ERROR/NA.",
+  "pass_case": "option REPLACE_CONFLICTING_ACCOUNT on every OU -> PASS.",
+  "fail_case": "AUTOMATICALLY_SEND_INVITATIONS or PRESERVE_CONFLICTING_ACCOUNT -> FAIL.",
+  "other_cases": "Policy absent -> MANUAL (Google's default is to send invitations; the API does not return the default).",
   "edge_cases": "(1) ZERO tests exist; (2) invented OU path: value None -> FAIL; (3) status_rec has no entry; (4) a stale cache with the invented key would PASS/FAIL without evidence.",
-  "coverage_now": "No tests reference check_conflicting_accounts in tests/ (status_rec.json: null).",
+  "coverage_now": "tests/test_checks/test_cisa_scuba.py::TestConflictingAccountsPolicyApi.",
   "gaps": [
    "test: full_audit_data -> MANUAL with 'not exposed' details",
    "test: invented OU PASS/FAIL (pin current behaviour or remove dead path)",
@@ -4160,7 +4162,7 @@
   "check_id": "GWS.GEMINI.1.1",
   "func": "check_gemini_unlicensed_access",
   "module": "cisa_scuba",
-  "inputs": "OU: get_ou_values(policies.gemini,'access') - no 'gemini' Policy API category exists (provider only creates policies['gemini']['chrome']); dead. Admin-log: SETTING_NAME 'BardNonDuetEnablementProto enable_bard_non_duet_access', NEW_VALUE 'true' -> FAIL, anything else ('false') -> PASS, INHERIT_FROM_PARENT ignored, no event -> fall through. Legacy: gemini.access.unlicensed_access_enabled (never produced) -> MANUAL (make_review).",
+  "inputs": "Policy API gemini_app.unlicensed_user_access.enabled (live 2026-11-07) judged first via get_ou_values/ou_verdict (false -> PASS, true -> FAIL); the admin-log inference is the fallback. tests: TestCisaGeminiPolicyApi. OU: get_ou_values(policies.gemini,'access') - no 'gemini' Policy API category exists (provider only creates policies['gemini']['chrome']); dead. Admin-log: SETTING_NAME 'BardNonDuetEnablementProto enable_bard_non_duet_access', NEW_VALUE 'true' -> FAIL, anything else ('false') -> PASS, INHERIT_FROM_PARENT ignored, no event -> fall through. Legacy: gemini.access.unlicensed_access_enabled (never produced) -> MANUAL (make_review).",
   "paths": [
    "admin_log",
    "ou_policy",
@@ -4186,7 +4188,7 @@
   "check_id": "GWS.GEMINI.2.1",
   "func": "check_gemini_alpha_features",
   "module": "cisa_scuba",
-  "inputs": "OU: get_ou_values(policies.gemini,'features') - dead (no gemini category). Admin-log: SETTING_NAME 'Beta Gemini Features Beta Features enabled' (live, APPLICATION_NAME 'Gemini in Workspace'; flip test 2026-11-06: first save CREATE_APPLICATION_SETTING, later CHANGE_APPLICATION_SETTING, both with NEW_VALUE) or ScubaGoggles' 'GenAiAlphaSettingsProto alpha_enabled' as fallback; NEW_VALUE 'true' -> FAIL, else PASS; no event -> legacy gemini.features.alpha_features_enabled (never produced) -> MANUAL.",
+  "inputs": "Policy API gemini_for_workspace.beta_features.enabled (live 2026-11-07) judged first (false -> PASS, true -> FAIL), stale log events never override it; the admin-log inference is the fallback. tests: TestCisaGeminiPolicyApi. OU: get_ou_values(policies.gemini,'features') - dead (no gemini category). Admin-log: SETTING_NAME 'Beta Gemini Features Beta Features enabled' (live, APPLICATION_NAME 'Gemini in Workspace'; flip test 2026-11-06: first save CREATE_APPLICATION_SETTING, later CHANGE_APPLICATION_SETTING, both with NEW_VALUE) or ScubaGoggles' 'GenAiAlphaSettingsProto alpha_enabled' as fallback; NEW_VALUE 'true' -> FAIL, else PASS; no event -> legacy gemini.features.alpha_features_enabled (never produced) -> MANUAL.",
   "paths": [
    "admin_log",
    "ou_policy",

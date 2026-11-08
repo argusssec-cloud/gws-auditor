@@ -99,4 +99,5 @@ class TestPasswordAlert:
         raw["org_units"] = []
         raw["policies"] = {"security": []}
         raw["chrome_policies"] = {}
+        raw["api_errors"] = [{"operation": "resolve_policy(chrome.users.PasswordProtectionWarningTrigger)", "error": "403"}]
         assert check_password_alert(normalize_data(raw)).status == Status.MANUAL

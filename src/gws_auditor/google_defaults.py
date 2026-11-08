@@ -125,3 +125,21 @@ def defaults_for_setting(setting_key: str) -> dict:
         if setting_type.split(".", 1)[1] == setting_key:
             return fields
     return {}
+
+
+# Chrome user-policy defaults (Chrome Policy API, not the Cloud Identity Policy API). An unset policy
+# resolves to nothing; these are what Chrome and Google document for that case.
+CHROME_POLICY_DEFAULTS: dict[str, dict] = {
+    "chrome.users.PasswordProtectionWarningTrigger": {
+        "unset": "Chrome's password protection service protects Google passwords only: a warning is shown when the "
+                 "Google Account password is reused on another site. Set the policy to extend protection to enterprise passwords.",
+        "satisfies": True,  # the warning is active for the Workspace (Google) password
+        "source": "https://raw.githubusercontent.com/chromium/chromium/main/components/policy/resources/templates/policy_definitions/SafeBrowsing/PasswordProtectionWarningTrigger.yaml",
+    },
+    "chrome.users.BoundSessionCredentialsEnabled": {
+        "unset": "Device Bound Session Credentials are on by default for Google Workspace accounts (Chrome on Windows with a TPM, "
+                 "rolled out by Chrome); the policy only forces them on or off.",
+        "satisfies": True,
+        "source": "https://knowledge.workspace.google.com/admin/security/prevent-cookie-theft-with-session-binding",
+    },
+}

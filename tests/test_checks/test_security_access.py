@@ -214,6 +214,25 @@ class TestDomainWideDelegation:
 # CIS-4.2.2.1: Geo-blocking (no OU mapping, unchanged)
 # -----------------------------------------------------------------------
 
+class TestDbscDefault:
+    """CIS-4.2.4.1: unset BoundSessionCredentialsEnabled means Google's default (DBSC on for Workspace)."""
+
+    def test_unset_policy_is_google_default_pass(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_session_control
+        full_audit_data["chrome_policies"] = {}
+        full_audit_data["api_errors"] = []
+        result = check_session_control(full_audit_data)
+        assert result.status == Status.PASS and "default" in result.details
+
+    def test_explicit_false_fails_and_error_is_review(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_session_control
+        full_audit_data["chrome_policies"] = {"dbsc_enabled": False}
+        assert check_session_control(full_audit_data).status == Status.FAIL
+        full_audit_data["chrome_policies"] = {}
+        full_audit_data["api_errors"] = [{"operation": "get_chrome_policies", "error": "boom"}]
+        assert check_session_control(full_audit_data).status == Status.MANUAL
+
+
 class TestGeoBlocking:
     """Tests for CIS-4.2.2.1."""
 
@@ -403,8 +422,9 @@ class TestSessionControl:
         assert result.status == Status.FAIL
 
     def test_dbsc_unknown_manual(self, full_audit_data):
+        """Unknown only when Chrome policies were not collected; an empty collection is Google's default (TestDbscDefault)."""
         from gws_auditor.checks.security_access import check_session_control
-        full_audit_data["chrome_policies"] = {}
+        full_audit_data.pop("chrome_policies", None)
         result = check_session_control(full_audit_data)
         assert result.status == Status.MANUAL
 

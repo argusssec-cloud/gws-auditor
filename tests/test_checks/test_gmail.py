@@ -391,6 +391,22 @@ class TestOutboundGateway:
 class TestExternalRecipientWarning:
     """Tests for CIS-3.1.3.5.4 external recipient warning check."""
 
+    def test_external_recipient_warning_from_policy_api(self, full_audit_data):
+        """gmail.external_recipient_warning.enabled, seen live 2026-11-07; documented default enabled=true."""
+        from gws_auditor.checks.apps_gmail import check_gmail_external_recipient_warning
+        from tests.factories import make_ou_policy
+        full_audit_data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "external_recipient_warning", {"enabled": True})]}
+        assert check_gmail_external_recipient_warning(full_audit_data).status == Status.PASS
+        full_audit_data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "external_recipient_warning", {"enabled": False})]}
+        assert check_gmail_external_recipient_warning(full_audit_data).status == Status.FAIL
+        # absent with other gmail settings present -> Google's documented default (enabled) is injected
+        full_audit_data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "mail_delegation", {"enableMailDelegation": False})]}
+        result = check_gmail_external_recipient_warning(full_audit_data)
+        assert result.status == Status.PASS and "default" in result.details.lower()
+
     def test_external_recipient_warning_pass(self, full_audit_data):
         from gws_auditor.checks.apps_gmail import check_gmail_external_recipient_warning
         full_audit_data["policies"]["gmail"] = {

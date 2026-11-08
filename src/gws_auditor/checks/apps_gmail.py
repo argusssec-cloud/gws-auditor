@@ -1476,7 +1476,8 @@ def check_gmail_outbound_gateway(data: dict) -> CheckResult:
         "End User Access > Warn for external recipients. Enable 'Warn users when sending emails to "
         "external recipients'. https://knowledge.workspace.google.com/admin/gmail/advanced/control-gmail-external-recipient-warnings"
     ),
-    requires_license="enterprise_plus",
+    # No edition gate: the help article lists no supported-editions line, says the warning is on by
+    # default, and an Enterprise Standard tenant returns gmail.external_recipient_warning (2026-11-07).
 )
 def check_gmail_external_recipient_warning(data: dict) -> CheckResult:
     """Users should be warned when sending emails to external recipients."""
@@ -1484,6 +1485,23 @@ def check_gmail_external_recipient_warning(data: dict) -> CheckResult:
     gmail = policies.get("gmail", {})
     user_settings = gmail.get("user_settings", {})
     ext_warning = user_settings.get("external_recipient_warning_enabled", None)
+
+    # Policy API gmail.external_recipient_warning.enabled (seen live 2026-11-07; Google documents
+    # the default as enabled, which get_ou_values injects when the API returns nothing).
+    ou_values = get_ou_values(gmail, "external_recipient_warning")
+    if ou_values:
+        def _judge(entry):
+            enabled = field_value(entry, "enabled")
+            if enabled is None:
+                return None
+            return (enabled is True, enabled)
+        return ou_verdict(
+            ou_values, _judge, check_id="CIS-3.1.3.5.4", title="Ensure external recipient warnings are enabled",
+            level="L1", source="CIS", section="Gmail",
+            fail_text="have the external recipient warning turned off", pass_text="warn users when emailing external recipients",
+            expected_value="Enabled for all OUs",
+            remediation="Admin console > Apps > Google Workspace > Gmail > End User Access > Warn for external recipients. Enable the warning. https://knowledge.workspace.google.com/admin/gmail/advanced/control-gmail-external-recipient-warnings",
+        )
 
     if ext_warning is None:
         # Not exposed by the Policy API (SCuBA GWS.GMAIL.13.1): infer from the latest admin-log

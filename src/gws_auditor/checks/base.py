@@ -972,3 +972,99 @@ def advanced_protection_enrolment(data: dict) -> dict[str, tuple[str, str]]:
         if email and (email not in latest or when >= latest[email][1]):
             latest[email] = (event, when)
     return latest
+
+
+def has_api_error(data: dict, *operation_prefixes: str) -> bool:
+    """True when ``data["api_errors"]`` holds an error whose operation starts with any prefix."""
+    for err in data.get("api_errors", []) or []:
+        op = str(err.get("operation", "")) if isinstance(err, dict) else ""
+        if any(op.startswith(prefix) for prefix in operation_prefixes):
+            return True
+    return False
+
+
+def chrome_policy_unset(data: dict, schema: str) -> bool:
+    """True when Chrome policies were collected without error and *schema* resolved to nothing.
+
+    The Chrome Policy API returns no resolved policy for an unset user policy, so "absent" means
+    "Chrome default" only when the collection itself succeeded (``chrome_policies`` present, no
+    ``get_chrome_policies`` or ``resolve_policy(<schema>)`` error).
+    """
+    if not isinstance(data.get("chrome_policies"), dict):
+        return False
+    return not has_api_error(data, "get_chrome_policies", f"resolve_policy({schema})")
+
+
+def latest_service_toggles(data: dict, service_name: str) -> dict[str, str]:
+    """``{org_unit: latest NEW_VALUE}`` of ``TOGGLE_SERVICE_ENABLED`` events for *service_name*.
+
+    Service on/off switches (Apps > ... > Service status) log as ``TOGGLE_SERVICE_ENABLED`` with
+    ``SERVICE_NAME`` (display name, e.g. "Google Takeout", observed live 2026-11-06), ``NEW_VALUE``
+    "true"/"false" and ``ORG_UNIT_NAME``. Matching on the name is case-insensitive. Returns ``{}``
+    when the window has no event (unknown, not "on").
+    """
+    wanted = service_name.strip().lower()
+    latest: dict[str, tuple[str, str]] = {}
+    for log in data.get("admin_logs", []) or []:
+        if not isinstance(log, dict) or log.get("event_name") != "TOGGLE_SERVICE_ENABLED":
+            continue
+        params = log.get("parameters", {}) or {}
+        if str(params.get("SERVICE_NAME", "")).strip().lower() != wanted or "NEW_VALUE" not in params:
+            continue
+        ou = params.get("ORG_UNIT_NAME") or "/"
+        when = str(log.get("time", ""))
+        if ou not in latest or when > latest[ou][0]:
+            latest[ou] = (when, str(params["NEW_VALUE"]).lower())
+    return {ou: v for ou, (_, v) in latest.items()}
+
+
+def gmail_rule_settings(data: dict, setting_name: str) -> dict[str, dict]:
+    """Rule-type Gmail settings (TLS compliance, address lists, spam rules...) seen in the admin log.
+
+    They log as ``CREATE_GMAIL_SETTING`` / ``CHANGE_GMAIL_SETTING`` / ``DELETE_GMAIL_SETTING`` with
+    ``SETTING_NAME`` (rule family, e.g. "TLS_COMPLIANCE", observed live 2026-11-07),
+    ``USER_DEFINED_SETTING_NAME`` (the rule id), ``SETTING_DESCRIPTION`` and ``ORG_UNIT_NAME``.
+    Returns ``{rule_id: {"event": latest event name, "time", "org_unit", "description"}}``;
+    a rule whose latest event is a delete is gone. ``{}`` when the window holds no event.
+    """
+    latest: dict[str, dict] = {}
+    for log in data.get("admin_logs", []) or []:
+        if not isinstance(log, dict):
+            continue
+        name = str(log.get("event_name", ""))
+        if not name.endswith("_GMAIL_SETTING"):
+            continue
+        params = log.get("parameters", {}) or {}
+        if params.get("SETTING_NAME") != setting_name:
+            continue
+        rule_id = str(params.get("USER_DEFINED_SETTING_NAME") or "")
+        when = str(log.get("time", ""))
+        if rule_id not in latest or when > latest[rule_id]["time"]:
+            latest[rule_id] = {
+                "event": name, "time": when,
+                "org_unit": params.get("ORG_UNIT_NAME") or "/",
+                "description": params.get("SETTING_DESCRIPTION") or "",
+            }
+    return latest
+
+
+def latest_setting_changes_by_app(data: dict, setting_suffix: str) -> dict[tuple[str, str], str]:
+    """``{(APPLICATION_NAME, org_unit): latest NEW_VALUE}`` for setting names ending in *setting_suffix*.
+
+    For per-service settings that share one proto field across applications, e.g. the Gemini in
+    Workspace feature switches, which log as APPLICATION_NAME "calendar_genai" with SETTING_NAME
+    "CalendarGenAiEnablementSettingsProto genai_features_enabled" (observed live 2026-11-07).
+    """
+    latest: dict[tuple[str, str], tuple[str, str]] = {}
+    for log in data.get("admin_logs", []) or []:
+        if not isinstance(log, dict):
+            continue
+        params = log.get("parameters", {}) or {}
+        name = str(params.get("SETTING_NAME", ""))
+        if not name.endswith(setting_suffix) or "NEW_VALUE" not in params:
+            continue
+        key = (str(params.get("APPLICATION_NAME", "")), params.get("ORG_UNIT_NAME") or "/")
+        when = str(log.get("time", ""))
+        if key not in latest or when > latest[key][0]:
+            latest[key] = (when, str(params["NEW_VALUE"]))
+    return {k: v for k, (_, v) in latest.items()}

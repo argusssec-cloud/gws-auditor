@@ -461,6 +461,63 @@ class TestCisaClassroom:
         assert result.status == Status.FAIL
 
 
+class TestConflictingAccountsPolicyApi:
+    """GWS.COMMONCONTROLS.7.1 from provisioning.conflicting_accounts_management.option (ScubaGoggles schema)."""
+
+    def test_option_values(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_conflicting_accounts
+        from tests.factories import make_ou_policy
+        for value, status in (("REPLACE_CONFLICTING_ACCOUNT", Status.PASS), ("AUTOMATICALLY_SEND_INVITATIONS", Status.FAIL),
+                              ("PRESERVE_CONFLICTING_ACCOUNT", Status.FAIL)):
+            full_audit_data["policies"]["provisioning"] = {"_ou_policies": [
+                make_ou_policy("provisioning", "conflicting_accounts_management", {"option": value})]}
+            assert check_conflicting_accounts(full_audit_data).status == status, value
+
+    def test_absent_is_review(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_conflicting_accounts
+        full_audit_data["policies"].pop("provisioning", None)
+        result = check_conflicting_accounts(full_audit_data)
+        assert result.status == Status.MANUAL and "provisioning.conflicting_accounts_management" in result.details
+
+
+class TestCisaGeminiPolicyApi:
+    """Policy API paths seen live 2026-11-07: gemini_app.unlicensed_user_access.enabled and
+    gemini_for_workspace.beta_features.enabled (+ feedbackAndTestingEnabled)."""
+
+    def test_unlicensed_access_from_policy_api(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_gemini_unlicensed_access
+        from tests.factories import make_ou_policy
+        full_audit_data["admin_logs"] = []
+        full_audit_data["policies"]["gemini_app"] = {"_ou_policies": [
+            make_ou_policy("gemini_app", "unlicensed_user_access", {"enabled": False})]}
+        assert check_gemini_unlicensed_access(full_audit_data).status == Status.PASS
+        full_audit_data["policies"]["gemini_app"] = {"_ou_policies": [
+            make_ou_policy("gemini_app", "unlicensed_user_access", {"enabled": True})]}
+        assert check_gemini_unlicensed_access(full_audit_data).status == Status.FAIL
+
+    def test_beta_features_from_policy_api(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_gemini_alpha_features
+        from tests.factories import make_ou_policy
+        full_audit_data["admin_logs"] = []
+        full_audit_data["policies"]["gemini_for_workspace"] = {"_ou_policies": [
+            make_ou_policy("gemini_for_workspace", "beta_features", {"enabled": False, "feedbackAndTestingEnabled": False})]}
+        assert check_gemini_alpha_features(full_audit_data).status == Status.PASS
+        full_audit_data["policies"]["gemini_for_workspace"] = {"_ou_policies": [
+            make_ou_policy("gemini_for_workspace", "beta_features", {"enabled": True, "feedbackAndTestingEnabled": False})]}
+        assert check_gemini_alpha_features(full_audit_data).status == Status.FAIL
+
+    def test_policy_api_wins_over_stale_log(self, full_audit_data):
+        """A Policy API value is the state in force; an older contradicting log event must not override it."""
+        from gws_auditor.checks.cisa_scuba import check_gemini_alpha_features
+        from tests.factories import make_ou_policy, make_admin_event
+        full_audit_data["admin_logs"] = [make_admin_event("CHANGE_APPLICATION_SETTING", {
+            "APPLICATION_NAME": "Gemini in Workspace", "SETTING_NAME": "Beta Gemini Features Beta Features enabled",
+            "NEW_VALUE": "true", "ORG_UNIT_NAME": "example.com"}, "2026-11-01T00:00:00.000Z")]
+        full_audit_data["policies"]["gemini_for_workspace"] = {"_ou_policies": [
+            make_ou_policy("gemini_for_workspace", "beta_features", {"enabled": False})]}
+        assert check_gemini_alpha_features(full_audit_data).status == Status.PASS
+
+
 class TestCisaGemini:
     """Tests for CISA SCuBA Gemini checks."""
 

@@ -28,7 +28,7 @@ The GWS Security Auditor implements **231 security checks** across four framewor
 | **MEDIUM** | 83 |
 | **LOW** | 42 |
 
-43 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
+39 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
 
 ## Check Statuses
 
@@ -177,7 +177,7 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 |----|-------|-------|--------|----------|-------|
 | ADD-13 | Ensure Gemini features in Workspace apps are controlled | L1 | GOOGLE | LOW | unscored |
 | ADD-14 | Ensure Gemini in Chrome is disabled | L2 | GOOGLE | LOW |  |
-| ADD-15 | Ensure Google Workspace Studio access is controlled | L2 | GOOGLE | LOW | unscored |
+| ADD-15 | Ensure Google Workspace Studio access is controlled | L2 | GOOGLE | LOW |  |
 | GWS.GEMINI.1.1 | Ensure Gemini app access is restricted to licensed users | L1 | CISA | LOW |  |
 | GWS.GEMINI.2.1 | Ensure alpha Gemini features are disabled | L1 | CISA | LOW |  |
 
@@ -185,7 +185,7 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 
 | ID | Title | Level | Source | Severity | Notes |
 |----|-------|-------|--------|----------|-------|
-| ADD-02 | Ensure Security Sandbox is enabled for Gmail | L1 | OTHER | HIGH | unscored, Business Standard+ |
+| ADD-02 | Ensure Security Sandbox is enabled for Gmail | L1 | OTHER | HIGH | Business Standard+ |
 | ADD-05 | Ensure MX records point to Google | L1 | GOOGLE | HIGH |  |
 | ADD-06 | Ensure inbound gateway SPF configuration is correct | L2 | GOOGLE | MEDIUM |  |
 | ADD-07 | Ensure TLS is enforced for partner domains | L2 | GOOGLE | HIGH | unscored |
@@ -214,7 +214,7 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 | CIS-3.1.3.5.1 | Ensure POP and IMAP access is disabled | L1 | CIS | HIGH |  |
 | CIS-3.1.3.5.2 | Ensure automatic email forwarding is disabled | L1 | CIS | CRITICAL |  |
 | CIS-3.1.3.5.3 | Ensure per-user outbound gateways are disabled | L1 | CIS | MEDIUM |  |
-| CIS-3.1.3.5.4 | Ensure external recipient warnings are enabled | L1 | CIS | MEDIUM | Enterprise Plus |
+| CIS-3.1.3.5.4 | Ensure external recipient warnings are enabled | L1 | CIS | MEDIUM |  |
 | CIS-3.1.3.6.1 | Ensure enhanced pre-delivery message scanning is enabled | L1 | CIS | HIGH |  |
 | CIS-3.1.3.6.2 | Ensure spam filters are not bypassed for internal senders | L1 | CIS | HIGH | Enterprise Plus |
 | CIS-3.1.3.7.1 | Ensure comprehensive mail storage is enabled | L2 | CIS | MEDIUM |  |
@@ -303,8 +303,8 @@ Some settings are not exposed by the Cloud Identity Policy API. Where Google rec
 | ADD-08 | Ensure password protection warning is enabled | L2 | GOOGLE | HIGH |  |
 | ADD-09 | Ensure Google Takeout is restricted | L1 | GOOGLE | MEDIUM |  |
 | ADD-11 | Ensure client-side encryption is enabled | L2 | GOOGLE | MEDIUM | unscored, Enterprise Plus |
-| ADD-16 | Ensure Apple Intelligence Writing Tools are disabled for Workspace | L2 | GOOGLE | LOW | unscored |
-| ADD-18 | Ensure passkeys are enforced as primary authentication | L2 | GOOGLE | CRITICAL | unscored |
+| ADD-16 | Ensure Apple Intelligence Writing Tools are disabled for Workspace | L2 | GOOGLE | LOW |  |
+| ADD-18 | Ensure passkeys are enforced as primary authentication | L2 | GOOGLE | CRITICAL |  |
 | ADD-20 | Ensure Context-Aware Access is applied to OIDC apps | L2 | GOOGLE | MEDIUM | Enterprise Standard+ |
 | ADD-21 | Ensure Multi-Party Approval covers Vault exports | L2 | GOOGLE | MEDIUM | unscored, Enterprise Standard+ |
 | ADD-32 | Users without 2-Step Verification by OU inventory | L1 | OTHER | LOW | unscored |

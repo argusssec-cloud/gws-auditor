@@ -22,14 +22,37 @@ from .base import (
     make_not_applicable,
     get_ou_values,
     format_ou_values_readable,
+    field_value,
+    ou_verdict,
+    chrome_policy_unset,
+    result_from_setting_changes,
+    latest_setting_changes,
+    latest_setting_changes_by_app,
+    latest_service_toggles,
+    gmail_rule_settings,
 )
+from ..google_defaults import CHROME_POLICY_DEFAULTS
 from ..models import CheckResult, Status
 from ..constants import DANGEROUS_OAUTH_SCOPES, OAUTH_SCOPE_RISK_LEVELS
 
 
+# Admin-log SETTING_NAME for the Gmail Security sandbox toggle, as read by CISA ScubaGoggles
+# (GWS.GMAIL.16.1: AttachmentDeepScanningSettingsProto deep_scanning_enabled, NEW_VALUE true/false).
+# Not yet observed on this tenant; a wrong name leaves the check MANUAL, never wrong.
+_SECURITY_SANDBOX_SETTING_NAME = "AttachmentDeepScanningSettingsProto deep_scanning_enabled"
+# Admin-log names confirmed by live flips on 2026-11-07 (see check-correctness-test-plan.md).
+_TLS_COMPLIANCE_SETTING_NAME = "TLS_COMPLIANCE"  # CREATE/CHANGE/DELETE_GMAIL_SETTING rule family
+_GENAI_FEATURES_SETTING_SUFFIX = "GenAiEnablementSettingsProto genai_features_enabled"  # per <service>_genai app
+_SKIP_PASSWORD_SETTING_NAME = "Skip password enrollment state"  # APPLICATION_NAME "Security", "allow"
+_GEMINI_WS_REMED = (
+    "Admin console > Generative AI > Gemini in Workspace > Feature access. "
+    "Turn Gemini features off for services that must not process content with AI, or keep them on only "
+    "after review. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/manage-access-to-gemini-features-in-workspace-services"
+)
+
+
 @check(
     check_id="ADD-02",
-    scored=False,  # P3: Security Sandbox is not exposed by the Policy API; MANUAL by design
     title="Ensure Security Sandbox is enabled for Gmail",
     level="L1",
     source="OTHER",
@@ -48,6 +71,18 @@ def check_security_sandbox(data: dict) -> CheckResult:
     safety = gmail.get("safety", {})
     sandbox_enabled = safety.get("security_sandbox_enabled", None)
 
+    if sandbox_enabled is None:
+        # Not in the Policy API: the latest admin-log change per OU decides (mechanism A).
+        inferred = result_from_setting_changes(
+            data, _SECURITY_SANDBOX_SETTING_NAME, ("false",),
+            check_id="ADD-02", title="Ensure Security Sandbox is enabled for Gmail",
+            level="L1", source="OTHER", section="Gmail", what="Gmail Security sandbox",
+            remediation=("Admin console > Apps > Google Workspace > Gmail > Spam, Phishing and Malware > Security sandbox. "
+                         "Enable Security Sandbox. https://knowledge.workspace.google.com/admin/gmail/advanced/gmail-security-sandbox-overview"),
+        )
+        if inferred is not None:
+            return inferred
+
     if sandbox_enabled is True:
         return make_pass(
             check_id="ADD-02",
@@ -64,8 +99,8 @@ def check_security_sandbox(data: dict) -> CheckResult:
             title="Ensure Security Sandbox is enabled for Gmail",
             level="L1", source="OTHER", section="Gmail",
             details=(
-                "Security Sandbox status is not exposed by the Cloud Identity "
-                "Policy API — verify in Admin console."
+                "Security Sandbox is not exposed by the Cloud Identity Policy API and no change to it "
+                "appears in the admin-log window — verify in Admin console."
             ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Gmail > Spam, Phishing and Malware > "
@@ -272,7 +307,7 @@ def check_inbound_gateway_spf(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-07",
-    scored=False,  # P3: partner TLS compliance rules are not exposed by the Policy API; MANUAL by design
+    scored=False,  # Log evidence can prove a TLS rule exists, never that none exists: PASS or MANUAL only
     title="Ensure TLS is enforced for partner domains",
     level="L2",
     source="GOOGLE",
@@ -313,13 +348,34 @@ def check_partner_tls(data: dict) -> CheckResult:
         )
 
     if partner_tls is None and tls_required_default is None:
+        # Secure transport (TLS) compliance rules log as CREATE/CHANGE/DELETE_GMAIL_SETTING with
+        # SETTING_NAME "TLS_COMPLIANCE" and the rule id in USER_DEFINED_SETTING_NAME (observed live
+        # 2026-11-07). A rule created or changed in the window and not deleted since proves at least
+        # one TLS rule exists. The window cannot prove that none exists (older rules log nothing), so
+        # the only other outcome is MANUAL.
+        rules = gmail_rule_settings(data, _TLS_COMPLIANCE_SETTING_NAME)
+        alive = {rid: r for rid, r in rules.items() if not r["event"].startswith("DELETE_")}
+        if alive:
+            return make_pass(
+                check_id="ADD-07",
+                title="Ensure TLS is enforced for partner domains",
+                level="L2", source="GOOGLE", section="Gmail",
+                details=(f"{len(alive)} secure transport (TLS) compliance rule(s) created or changed in the "
+                         f"admin-log window and not deleted since: "
+                         + "; ".join(f"{rid} ({r['description'] or 'no description'}, {r['org_unit']})"
+                                     for rid, r in sorted(alive.items()))),
+                actual_value={"tls_compliance_rules": alive},
+                expected_value="At least one TLS compliance rule for partner domains",
+            )
         return make_review(
             check_id="ADD-07",
             title="Ensure TLS is enforced for partner domains",
             level="L2", source="GOOGLE", section="Gmail",
             details=(
-                "Partner domain TLS compliance rules are not exposed by the Cloud Identity "
-                "Policy API — verify in Admin console."
+                "Partner domain TLS compliance rules are not exposed by the Cloud Identity Policy API and "
+                + ("the only TLS compliance rule(s) touched in the admin-log window were deleted"
+                   if rules else "no TLS compliance rule was created or changed in the admin-log window")
+                + "; rules older than the window are invisible. Verify in Admin console."
             ),
             remediation=(
                 "Admin console > Apps > Google Workspace > Gmail > Compliance. "
@@ -395,12 +451,21 @@ def check_password_alert(data: dict) -> CheckResult:
             remediation=_REMED,
         )
 
+    if chrome_policy_unset(data, "chrome.users.PasswordProtectionWarningTrigger"):
+        default = CHROME_POLICY_DEFAULTS["chrome.users.PasswordProtectionWarningTrigger"]
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=("Password protection warning is not set by policy, so Chrome's default applies: " + default["unset"]
+                     + f" (source: {default['source']})"),
+            actual_value={"trigger": None, "source": "chrome default"},
+            expected_value="Password reuse warning or higher",
+        )
     return make_review(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details=(
             "Password protection warning status could not be determined "
-            "from Chrome policies. Verify in Admin console > Devices > "
-            "Chrome > Settings > Users & browsers > Password Alert."
+            "(Chrome policies were not collected or the resolve call failed). Verify in Admin console > Devices > "
+            "Chrome > Settings > User & browser settings > Password Alert."
         ),
         remediation=_REMED,
     )
@@ -657,7 +722,7 @@ def check_gmail_dlp(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-13",
-    scored=False,  # P3: Gemini Workspace features are not exposed by any API; MANUAL by design
+    scored=False,  # Log evidence covers only services an admin touched; PASS/FAIL are informational
     title="Ensure Gemini features in Workspace apps are controlled",
     level="L1",
     source="GOOGLE",
@@ -669,11 +734,47 @@ def check_gmail_dlp(data: dict) -> CheckResult:
     ),
 )
 def check_gemini_workspace_features(data: dict) -> CheckResult:
-    """Gemini features within Workspace apps (Docs, Sheets, Gmail) should be controlled."""
+    """Gemini features within Workspace apps (Docs, Sheets, Gmail) should be controlled.
+
+    Generative AI > Gemini in Workspace > Feature access has one switch per service. Saving one logs
+    CREATE/CHANGE_APPLICATION_SETTING with APPLICATION_NAME "<service>_genai" (e.g. "calendar_genai")
+    and SETTING_NAME "<Service>GenAiEnablementSettingsProto genai_features_enabled" (observed live
+    2026-11-07). Google's default is on for every service, so a logged "false" is the only evidence of
+    control; a logged "true" re-enables a service. Services without an event in the window are unknown.
+    """
     policies = data.get("policies", {})
     gemini = policies.get("gemini", {})
     workspace_features = gemini.get("workspace_features", {})
     enabled = workspace_features.get("enabled", None)
+
+    if enabled is None:
+        toggles = latest_setting_changes_by_app(data, _GENAI_FEATURES_SETTING_SUFFIX)
+        if toggles:
+            def _svc(app: str) -> str:
+                return app[:-len("_genai")] if app.endswith("_genai") else app
+            on = sorted(f"{_svc(app)} ({ou})" for (app, ou), v in toggles.items() if v.lower() == "true")
+            off = sorted(f"{_svc(app)} ({ou})" for (app, ou), v in toggles.items() if v.lower() == "false")
+            if on:
+                return make_fail(
+                    check_id="ADD-13",
+                    title="Ensure Gemini features in Workspace apps are controlled",
+                    level="L1", source="GOOGLE", section="Gemini",
+                    details=(f"Gemini features were turned on per the latest admin-log change for {len(on)} "
+                             f"service(s): {', '.join(on)}"
+                             + (f"; turned off for: {', '.join(off)}" if off else "")
+                             + ". Services without a logged change keep Google's default (on)."),
+                    actual_value={"on": on, "off": off}, expected_value="Gemini features off, or on only for reviewed services",
+                    remediation=_GEMINI_WS_REMED,
+                )
+            return make_pass(
+                check_id="ADD-13",
+                title="Ensure Gemini features in Workspace apps are controlled",
+                level="L1", source="GOOGLE", section="Gemini",
+                details=(f"Gemini features are turned off per the latest admin-log change for {len(off)} "
+                         f"service(s): {', '.join(off)}. Services without a logged change keep Google's "
+                         "default (on); review them."),
+                actual_value={"off": off}, expected_value="Gemini features off, or on only for reviewed services",
+            )
 
     if enabled is False:
         return make_pass(
@@ -776,7 +877,6 @@ def check_gemini_chrome(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-15",
-    scored=False,  # P3: Workspace Studio is not exposed by any API; MANUAL by design
     title="Ensure Google Workspace Studio access is controlled",
     level="L2",
     source="GOOGLE",
@@ -794,6 +894,29 @@ def check_workspace_studio(data: dict) -> CheckResult:
     studio = gemini.get("workspace_studio", {})
     enabled = studio.get("enabled", None)
 
+    if enabled is None:
+        # Workspace Studio is a core app (Apps > Google Workspace > Workspace Studio); its on/off switch
+        # logs as TOGGLE_SERVICE_ENABLED with SERVICE_NAME "Workspace Studio" and NEW_VALUE "false"/"true"
+        # (observed live 2026-11-07). Latest toggle per OU decides; no event -> MANUAL.
+        toggles = latest_service_toggles(data, "Workspace Studio")
+        if toggles:
+            on = sorted(ou for ou, v in toggles.items() if v == "true")
+            if on:
+                return make_fail(
+                    check_id="ADD-15", title="Ensure Google Workspace Studio access is controlled",
+                    level="L2", source="GOOGLE", section="Gemini",
+                    details=f"Workspace Studio is turned on per the latest admin-log service toggle in {len(on)} OU(s): {', '.join(on)}.",
+                    actual_value={"toggles": toggles}, expected_value="Service off, or on only for a reviewed OU",
+                    remediation=("Admin console > Apps > Google Workspace > Workspace Studio. Turn the service off, or on only for "
+                                 "the OUs that need it. https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/manage-access-to-gemini-features-in-workspace-services"),
+                )
+            return make_pass(
+                check_id="ADD-15", title="Ensure Google Workspace Studio access is controlled",
+                level="L2", source="GOOGLE", section="Gemini",
+                details=f"Workspace Studio is turned off per the latest admin-log service toggle in {len(toggles)} OU(s).",
+                actual_value={"toggles": toggles}, expected_value="Service off, or on only for a reviewed OU",
+            )
+
     if enabled is False:
         return make_pass(
             check_id="ADD-15",
@@ -810,8 +933,8 @@ def check_workspace_studio(data: dict) -> CheckResult:
             title="Ensure Google Workspace Studio access is controlled",
             level="L2", source="GOOGLE", section="Gemini",
             details=(
-                "Workspace Studio setting requires manual verification. "
-                "No programmatic API is available for this control."
+                "Workspace Studio is not in the Policy API and no service toggle for it appears in the "
+                "admin-log window; verify its Service status in Admin console."
             ),
             remediation=(
                 "Admin console > Apps > Google Workspace > "
@@ -837,7 +960,6 @@ def check_workspace_studio(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-16",
-    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure Apple Intelligence Writing Tools are disabled for Workspace",
     level="L2",
     source="GOOGLE",
@@ -852,8 +974,10 @@ def check_workspace_studio(data: dict) -> CheckResult:
 def check_apple_writing_tools(data: dict) -> CheckResult:
     """Apple Intelligence Writing Tools on iOS should be disabled for Workspace.
 
-    This is a mobile device management setting not available via the Cloud
-    Identity Policy API.  The check always requires manual verification.
+    The Policy API returns ``devices.ios_apple_intelligence.writingToolsAllowed`` (seen live
+    2026-11-07 on an Enterprise Standard tenant; the setting lives under Devices > Mobile &
+    endpoints > Settings > iOS > Data sharing). PASS when every OU has it false, FAIL when any OU
+    allows it, MANUAL only when the API returned nothing for the setting.
     """
     _ID = "ADD-16"
     _TITLE = "Ensure Apple Intelligence Writing Tools are disabled for Workspace"
@@ -865,12 +989,26 @@ def check_apple_writing_tools(data: dict) -> CheckResult:
         "iOS devices'. https://knowledge.workspace.google.com/admin/devices/prevent-accidental-data-leaks-on-ios-devices"
     )
 
+    ou_values = get_ou_values(data.get("policies", {}).get("devices", {}), "ios_apple_intelligence")
+    if ou_values:
+        def _judge(entry):
+            allowed = field_value(entry, "writingToolsAllowed")
+            if allowed is None:
+                return None
+            return (allowed is False, allowed)
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="allow Apple Intelligence Writing Tools in Workspace apps on iOS",
+            pass_text="block Apple Intelligence Writing Tools in Workspace apps on iOS",
+            expected_value="writingToolsAllowed false for all OUs", remediation=_REMED,
+        )
     return make_review(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details=(
-            "Apple Intelligence Writing Tools setting is managed under "
-            "mobile device settings and is not available via the Cloud "
-            "Identity Policy API. Verify manually in Admin console."
+            "The Policy API returned no devices.ios_apple_intelligence setting for this tenant "
+            "(it is returned once the iOS data-sharing settings have been saved, or on editions with "
+            "advanced mobile management). Verify in Admin console > Devices > Mobile & endpoints > "
+            "Settings > iOS > Data sharing > Apple Intelligence."
         ),
         remediation=_REMED,
     )
@@ -878,7 +1016,6 @@ def check_apple_writing_tools(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-18",
-    scored=False,  # Admin-console-only control: no API or audit-log signal (plan Decision C)
     title="Ensure passkeys are enforced as primary authentication",
     level="L2",
     source="GOOGLE",
@@ -892,9 +1029,11 @@ def check_apple_writing_tools(data: dict) -> CheckResult:
 def check_passkeys_enforced(data: dict) -> CheckResult:
     """Passkeys should be enforced as primary authentication method.
 
-    The 'Skip passwords' setting (passwordless authentication) is not
-    available via the Cloud Identity Policy API.  This check always
-    requires manual verification.
+    The 'Skip passwords' setting is not in the Cloud Identity Policy API. Saving it logs
+    CHANGE/CREATE_APPLICATION_SETTING with APPLICATION_NAME "Security" and SETTING_NAME
+    "Skip password enrollment state", NEW_VALUE "allow" when users may skip their password
+    (observed live 2026-11-07; one event per edition for the same OU). The latest value per OU
+    decides; no event in the log window means the state is unknown (MANUAL).
     """
     _ID = "ADD-18"
     _TITLE = "Ensure passkeys are enforced as primary authentication"
@@ -905,11 +1044,29 @@ def check_passkeys_enforced(data: dict) -> CheckResult:
         "with a passkey' to enforce passkeys as primary authentication. https://knowledge.workspace.google.com/admin/users/allow-users-to-skip-passwords-at-sign-in"
     )
 
+    changes = {ou: v for ou, v in latest_setting_changes(data, _SKIP_PASSWORD_SETTING_NAME).items()
+               if v.upper() != "INHERIT_FROM_PARENT"}
+    if changes:
+        bad = sorted(ou for ou, v in changes.items() if v.lower() != "allow")
+        if bad:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=(f"Skip passwords (passkey-only sign-in) is not allowed in {len(bad)} OU(s) per the "
+                         f"latest admin-log change: {', '.join(bad)}"),
+                actual_value=", ".join(f"{ou} → {changes[ou]}" for ou in bad),
+                expected_value="allow for all OUs", remediation=_REMED,
+            )
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=f"Users may skip their password and sign in with a passkey in all {len(changes)} OU(s) with a logged change.",
+            actual_value=changes, expected_value="allow for all OUs",
+        )
+
     return make_review(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details=(
-            "Passkey enforcement (Skip passwords) setting is not available "
-            "via the Cloud Identity Policy API. Verify manually in "
+            "The Skip passwords setting is not in the Cloud Identity Policy API and no change to it "
+            "appears in the admin-log window. Verify manually in "
             "Admin console > Security > Authentication > Passwordless."
         ),
         remediation=_REMED,

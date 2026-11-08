@@ -1,5 +1,5 @@
 {
- "_comment": "Cloud Identity Policy API setting types and the field names they return. Field names only (no tenant values). Sources: a real tenant capture and the CISA ScubaGoggles policy_api.py schema. Used by test_policy_field_names.py.",
+ "_comment": "Cloud Identity Policy API setting types and the field names they return. Field names only (no tenant values). Sources: a real tenant capture and the CISA ScubaGoggles policy_api.py schema. Used by test_policy_field_names.py. 21 types added 2026-11-07 from a live per-prefix policies.list probe (devices.*, gemini_app.*, gemini_for_workspace.*, gmail.external_recipient_warning, chat.chat_and_space_restrictions and ten service_status types).",
  "settings": {
   "access_management.user_scoping": [
    "accessManagementRegime"
@@ -466,6 +466,76 @@
   ],
   "youtube.user_takeout": [
    "takeoutStatus"
+  ],
+  "ai_studio.service_status": [
+   "serviceState"
+  ],
+  "appsheet.service_status": [
+   "serviceState"
+  ],
+  "chat.chat_and_space_restrictions": [
+   "restrictionLevel"
+  ],
+  "cloud_search.service_status": [
+   "serviceState"
+  ],
+  "devices.android_periodic_secure_authentication": [
+   "expirationPeriod",
+   "required"
+  ],
+  "devices.ios_apple_intelligence": [
+   "writingToolsAllowed"
+  ],
+  "devices.ios_date_time": [
+   "automaticDateTimeEnforced"
+  ],
+  "devices.ios_files_app": [
+   "networkDrivesConnectionAllowed",
+   "usbDrivesConnectionAllowed"
+  ],
+  "gemini_app.conversation_history": [
+   "conversationHistoryState",
+   "conversationRetention"
+  ],
+  "gemini_app.conversation_sharing": [
+   "conversationSharingOption"
+  ],
+  "gemini_app.service_status": [
+   "serviceState"
+  ],
+  "gemini_app.unlicensed_user_access": [
+   "enabled"
+  ],
+  "gemini_for_workspace.beta_features": [
+   "enabled",
+   "feedbackAndTestingEnabled"
+  ],
+  "gmail.external_recipient_warning": [
+   "enabled"
+  ],
+  "groups.service_status": [
+   "serviceState"
+  ],
+  "keep.service_status": [
+   "serviceState"
+  ],
+  "migrate.service_status": [
+   "serviceState"
+  ],
+  "notebooklm.service_status": [
+   "serviceState"
+  ],
+  "tasks.service_status": [
+   "serviceState"
+  ],
+  "vault.service_status": [
+   "serviceState"
+  ],
+  "voice.service_status": [
+   "serviceState"
+  ],
+  "provisioning.conflicting_accounts_management": [
+   "option"
   ]
  },
  "enum_values_seen_live": {
@@ -549,6 +619,11 @@
   "rule.system_defined_alerts.state": [
    "ACTIVE",
    "INACTIVE"
+  ],
+  "provisioning.conflicting_accounts_management.option": [
+   "(ScubaGoggles schema, not yet seen live) AUTOMATICALLY_SEND_INVITATIONS",
+   "PRESERVE_CONFLICTING_ACCOUNT",
+   "REPLACE_CONFLICTING_ACCOUNT"
   ]
  }
 }

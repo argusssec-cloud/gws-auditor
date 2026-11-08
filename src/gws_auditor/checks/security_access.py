@@ -710,11 +710,22 @@ def check_session_control(data: dict) -> CheckResult:
             remediation=_REMED,
         )
 
+    from .base import chrome_policy_unset
+    from ..google_defaults import CHROME_POLICY_DEFAULTS
+    if chrome_policy_unset(data, "chrome.users.BoundSessionCredentialsEnabled"):
+        default = CHROME_POLICY_DEFAULTS["chrome.users.BoundSessionCredentialsEnabled"]
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details=("DBSC is not forced by policy, so Google's default applies: " + default["unset"]
+                     + f" Set the policy to true to force it on every managed browser (source: {default['source']})."),
+            actual_value={"dbsc_enabled": None, "source": "google default"},
+            expected_value="Enabled for all OUs",
+        )
     return make_review(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details=(
-            "Could not determine DBSC setting. Verify manually in "
-            "Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
+            "Could not determine DBSC setting (Chrome policies were not collected or the resolve call failed). "
+            "Verify manually in Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
             "Device Bound Session Credentials."
         ),
         remediation=_REMED,

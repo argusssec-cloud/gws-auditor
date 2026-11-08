@@ -52,6 +52,15 @@ POLICY_CATEGORIES = {
     "early_access_apps": "early_access_apps",
     # Takeout: takeout.service_status plus the per-service <service>.user_takeout settings
     "takeout": "takeout",
+    # Seen live 2026-11-07 (Enterprise Standard): mobile device settings and the two Gemini families
+    # are Policy API setting types (devices.ios_apple_intelligence, gemini_app.unlicensed_user_access,
+    # gemini_for_workspace.beta_features, ...).
+    "devices": "devices",
+    "gemini_app": "gemini_app",
+    "gemini_for_workspace": "gemini_for_workspace",
+    # provisioning.conflicting_accounts_management (read by CISA ScubaGoggles; returned only once the
+    # setting has been saved, absent on the 2026-11-07 tenant).
+    "provisioning": "provisioning",
 }
 
 # Categories whose setting types do not share a single "<prefix>." — full type regex instead.
@@ -82,6 +91,19 @@ REQUIRED_SETTINGS: dict[str, list[str]] = {
         "gmail.workspace_sync_for_outlook",
         "gmail.spam_override_lists",
         "gmail.email_spam_filter_ip_allowlist",
+        "gmail.external_recipient_warning",  # live 2026-11-07; documented default enabled=true
+    ],
+    "devices": [
+        "devices.ios_apple_intelligence",  # ADD-16, live 2026-11-07
+    ],
+    "gemini_app": [
+        "gemini_app.unlicensed_user_access",  # GWS.GEMINI.1.1, live 2026-11-07
+    ],
+    "gemini_for_workspace": [
+        "gemini_for_workspace.beta_features",  # GWS.GEMINI.2.1, live 2026-11-07
+    ],
+    "provisioning": [
+        "provisioning.conflicting_accounts_management",  # GWS.COMMONCONTROLS.7.1 (ScubaGoggles)
     ],
     "drive": [
         "drive_and_docs.shared_drive_creation",

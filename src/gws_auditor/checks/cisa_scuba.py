@@ -2400,20 +2400,25 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
     policies = data.get("policies", {})
     security = policies.get("security", {})
 
-    # OU-aware path
-    ou_values = []  # P3: "security.account_management" is not a Cloud Identity Policy API setting type; nothing to look up
+    # Policy API provisioning.conflicting_accounts_management.option (the setting CISA ScubaGoggles
+    # reads): REPLACE_CONFLICTING_ACCOUNT is compliant; AUTOMATICALLY_SEND_INVITATIONS (Google's
+    # default) and PRESERVE_CONFLICTING_ACCOUNT are not. The API returns it only once the setting has
+    # been saved; absent -> MANUAL below.
+    ou_values = get_ou_values(policies.get("provisioning", {}), "conflicting_accounts_management")
     if ou_values:
         def _judge(entry):
-            val = field_value(entry, "conflictingAccountsManaged", "conflicting_accounts_managed")
+            val = field_value(entry, "option", "conflictingAccountsManaged", "conflicting_accounts_managed")
             if val is None:
                 return None
-            return (val is True, val)
+            if val is True:
+                return (True, val)
+            return (str(val).upper() == "REPLACE_CONFLICTING_ACCOUNT", val)
 
         return ou_verdict(
             ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="lack conflicting account management",
-            pass_text="have conflicting account management configured",
-            expected_value="Enabled for all OUs", remediation=_REMED,
+            fail_text="do not replace conflicting accounts automatically",
+            pass_text="replace conflicting accounts automatically",
+            expected_value="REPLACE_CONFLICTING_ACCOUNT for all OUs", remediation=_REMED,
         )
 
     # Fallback: mapped root-level value
@@ -2436,8 +2441,9 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
             title="Ensure conflicting account management is configured",
             level="L1", source="CISA", section="Security",
             details=(
-                "Conflicting account management is not exposed by the Cloud "
-                "Identity Policy API — verify in Admin console."
+                "The Policy API returned no provisioning.conflicting_accounts_management policy (it appears "
+                "only once the setting has been saved; Google's default is to send invitations). Verify in "
+                "Admin console > Account > Account settings > Account management > Conflicting accounts management."
             ),
             remediation=(
                 "Admin console > Account > Account settings > Account management > Conflicting accounts management. Configure "
@@ -3240,10 +3246,12 @@ def check_gemini_unlicensed_access(data: dict) -> CheckResult:
     gemini = policies.get("gemini", {})
 
     # OU-aware path
-    ou_values = []  # P3: "gemini.access" is not a Cloud Identity Policy API setting type; nothing to look up
+    # Policy API gemini_app.unlicensed_user_access.enabled (seen live 2026-11-07); the admin-log
+    # inference below stays as the fallback for tenants that do not return it.
+    ou_values = get_ou_values(policies.get("gemini_app", {}), "unlicensed_user_access")
     if ou_values:
         def _judge(entry):
-            val = field_value(entry, "unlicensedAccessEnabled", "unlicensed_access_enabled")
+            val = field_value(entry, "enabled", "unlicensedAccessEnabled", "unlicensed_access_enabled")
             if val is None:
                 return None
             return (val is False, val)
@@ -3341,10 +3349,12 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
     gemini = policies.get("gemini", {})
 
     # OU-aware path
-    ou_values = []  # P3: "gemini.features" is not a Cloud Identity Policy API setting type; nothing to look up
+    # Policy API gemini_for_workspace.beta_features.enabled (seen live 2026-11-07); the admin-log
+    # inference below stays as the fallback.
+    ou_values = get_ou_values(policies.get("gemini_for_workspace", {}), "beta_features")
     if ou_values:
         def _judge(entry):
-            val = field_value(entry, "alphaFeaturesEnabled", "alpha_features_enabled")
+            val = field_value(entry, "enabled", "alphaFeaturesEnabled", "alpha_features_enabled")
             if val is None:
                 return None
             return (val is False, val)
