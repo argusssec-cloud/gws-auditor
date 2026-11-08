@@ -102,12 +102,12 @@ class TestCalendarDlpFromRealRules:
 class TestManualByDesignAreUnscored:
     """Controls with no API or audit-log signal only ask for review and do not score."""
 
-    IDS = ["CIS-3.1.1.2.2", "CIS-3.1.2.2.1", "CIS-3.1.3.7.2", "CIS-4.2.2.1", "CIS-4.2.5.1",
+    IDS = ["CIS-3.1.2.2.1", "CIS-3.1.3.7.2", "CIS-4.2.2.1", "CIS-4.2.5.1",
            "GWS.COMMONCONTROLS.3.1", "GWS.COMMONCONTROLS.3.2", "GWS.COMMONCONTROLS.7.1", "GWS.CHAT.5.2",
            "GWS.CALENDAR.3.2", "ADD-07", "ADD-11", "ADD-13", "ADD-21", "ADD-22", "ADD-24", "ADD-26"]
-    # ADD-02, ADD-15 and ADD-18 left this list on 2026-11-07: live flips confirmed their admin-log names
-    # (security sandbox setting, Workspace Studio service toggle, Skip password enrollment state) and they
-    # are scored. ADD-07 and ADD-13 also read the log but stay unscored: a TLS rule can be proven present,
+    # ADD-02, ADD-15, ADD-18 and CIS-3.1.1.2.2 left this list on 2026-11-07/08: live flips confirmed their
+    # admin-log names (security sandbox setting, Workspace Studio service toggle, Skip password enrollment
+    # state, SHARING_INSIDE_DOMAIN_FOR_SECONDARY_CALENDAR) and they are scored. ADD-07 and ADD-13 also read the log but stay unscored: a TLS rule can be proven present,
     # never absent, and Gemini feature switches are only seen for services an admin touched.
     # GWS.COMMONCONTROLS.7.1 reads the Policy API type when a tenant returns it and stays unscored.
 

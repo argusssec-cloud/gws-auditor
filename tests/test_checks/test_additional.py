@@ -424,7 +424,7 @@ class TestSkipPasswordsLog:
 
     def test_latest_non_allow_fails(self, full_audit_data):
         from gws_auditor.checks.additional import check_passkeys_enforced
-        full_audit_data["admin_logs"] = [self._ev("allow"), self._ev("disallow", time="2026-11-06T11:00:00.000Z")]
+        full_audit_data["admin_logs"] = [self._ev("allow"), self._ev("deny", time="2026-11-06T11:00:00.000Z")]
         result = check_passkeys_enforced(full_audit_data)
         assert result.status == Status.FAIL and "example.com" in result.details
 

@@ -8,6 +8,7 @@ CIS Google Workspace Benchmark v1.3.0 - Calendar controls.
 """
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
+                   latest_setting_changes,
                    format_ou_values_readable, field_value, ou_verdict)
 from ..models import CheckResult, Status
 
@@ -343,9 +344,13 @@ def check_secondary_cal_external_sharing(data: dict) -> CheckResult:
     )
 
 
+_SECONDARY_INTERNAL_SHARING_SETTING = "SHARING_INSIDE_DOMAIN_FOR_SECONDARY_CALENDAR"  # CHANGE_CALENDAR_SETTING, live 2026-11-07
+_LOG_SAFE = {"SHOW_ONLY_FREE_BUSY_INFORMATION"}
+_LOG_UNSAFE = {"READ_ONLY_ACCESS"}
+
+
 @check(
     check_id="CIS-3.1.1.2.2",
-    scored=False,  # P3: secondary-calendar internal sharing is not exposed by the Policy API; MANUAL by design
     title="Ensure internal sharing for secondary calendars is configured",
     level="L2",
     source="CIS",
@@ -385,6 +390,39 @@ def check_secondary_cal_internal_sharing(data: dict) -> CheckResult:
             expected_value="Free/busy information only for all OUs", remediation=_REMED,
         )
 
+    # Admin-log path. The Policy API has no type for this setting; the console save logs
+    # CHANGE_CALENDAR_SETTING with SETTING_NAME "SHARING_INSIDE_DOMAIN_FOR_SECONDARY_CALENDAR",
+    # OLD_VALUE/NEW_VALUE "READ_ONLY_ACCESS" (Share all information) or
+    # "SHOW_ONLY_FREE_BUSY_INFORMATION", and an empty ORG_UNIT_NAME (domain-wide), observed live in
+    # both directions on 2026-11-07/08. "No sharing" has no observed value, so an unknown value is
+    # reported for review rather than guessed.
+    changes = {ou: v for ou, v in latest_setting_changes(data, _SECONDARY_INTERNAL_SHARING_SETTING).items()
+               if v.upper() != "INHERIT_FROM_PARENT"}
+    if changes:
+        unsafe = sorted(ou for ou, v in changes.items() if v.upper() in _LOG_UNSAFE)
+        unknown = sorted(ou for ou, v in changes.items() if v.upper() not in _LOG_UNSAFE | _LOG_SAFE)
+        if unsafe:
+            return make_fail(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=(f"Secondary calendars default to sharing all event details inside the domain in "
+                         f"{len(unsafe)} scope(s) per the latest admin-log change: {', '.join(unsafe)}"),
+                actual_value=", ".join(f"{ou} → {changes[ou]}" for ou in unsafe),
+                expected_value="SHOW_ONLY_FREE_BUSY_INFORMATION", remediation=_REMED,
+            )
+        if unknown:
+            return make_review(
+                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+                details=(f"The latest admin-log change sets secondary calendar internal sharing to an "
+                         f"unrecognised value: {', '.join(f'{ou} → {changes[ou]}' for ou in unknown)}. "
+                         "Verify it is at most free/busy in Admin console > Apps > Google Workspace > Calendar > General settings."),
+                remediation=_REMED,
+            )
+        return make_pass(
+            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            details="Secondary calendar internal sharing defaults to free/busy only per the latest admin-log change.",
+            actual_value=changes, expected_value="SHOW_ONLY_FREE_BUSY_INFORMATION",
+        )
+
     # Fallback
     secondary = cal.get("secondary_calendar", {})
     int_sharing = secondary.get("internal_sharing", "")
@@ -405,8 +443,8 @@ def check_secondary_cal_internal_sharing(data: dict) -> CheckResult:
         return make_review(
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
             details=(
-                "Could not determine secondary calendar internal sharing setting. "
-                "The Policy API does not expose this setting. Verify manually in "
+                "Could not determine secondary calendar internal sharing: the Policy API does not expose it "
+                "and no change to it appears in the admin-log window. Verify manually in "
                 "Admin console > Apps > Google Workspace > Calendar > General settings."
             ),
             remediation=_REMED,

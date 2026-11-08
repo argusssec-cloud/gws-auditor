@@ -196,16 +196,16 @@
   "check_id": "CIS-3.1.1.2.2",
   "func": "check_secondary_cal_internal_sharing",
   "module": "checks/apps_calendar.py",
-  "inputs": "get_ou_values(policies.calendar,'secondary_calendar_max_allowed_internal_sharing') field maxAllowedInternalSharing - setting type NOT in policy_api_shapes.json (not returned by the API). Fallback calendar.secondary_calendar.internal_sharing (never produced in prod). calendar_acls deliberately ignored.",
+  "inputs": "admin_logs CHANGE_CALENDAR_SETTING with SETTING_NAME 'SHARING_INSIDE_DOMAIN_FOR_SECONDARY_CALENDAR', NEW_VALUE 'READ_ONLY_ACCESS' (Share all information) or 'SHOW_ONLY_FREE_BUSY_INFORMATION', ORG_UNIT_NAME '' (domain-wide; observed live in both directions 2026-11-07/08) via base.latest_setting_changes; then the dead Policy API path and the legacy calendar.secondary_calendar.internal_sharing fallback.",
   "paths": [
-   "ou_policy",
+   "log_setting_changes",
    "legacy_fallback"
   ],
-  "pass_case": "Only via non-existent data: make_ou_policy('calendar','secondary_calendar_max_allowed_internal_sharing',{'maxAllowedInternalSharing':'FREE_BUSY_ONLY'}) -> PASS; fallback secondary_calendar.internal_sharing='only_free_busy' -> PASS. In production the check can only return MANUAL.",
-  "fail_case": "Only via non-existent data: maxAllowedInternalSharing='ALL_INFO_READ_WRITE' -> FAIL; fallback 'all_information' -> FAIL.",
-  "other_cases": "MANUAL (make_review): no OU entries and no mapped value (the production case), regardless of calendar_acls.",
+  "pass_case": "Latest value SHOW_ONLY_FREE_BUSY_INFORMATION -> PASS.",
+  "fail_case": "Latest value READ_ONLY_ACCESS -> FAIL.",
+  "other_cases": "Unrecognised value (e.g. the unobserved 'No sharing' option) -> MANUAL quoting it; no event -> MANUAL. Scored since 2026-11-08.",
   "edge_cases": "Invented setting type means PASS/FAIL are only reachable from hand-built or stale cache data; a forged cache entry would produce a scored PASS. calendar_acls with role 'reader' must still be MANUAL (tests assert). Level L2.",
-  "coverage_now": "test_calendar.py::TestSecondaryCalInternalSharing (PASS/FAIL/MANUAL on mapped), TestSecondaryCalInternalSharingACL (MANUAL x4, PASS when OU policy present). status_rec: PASS, FAIL, MANUAL.",
+  "coverage_now": "tests/test_checks/test_calendar.py::TestSecondaryCalInternalSharingLog. Statuses: PASS, FAIL, MANUAL.",
   "gaps": [
    "decide: drop the OU/mapped PASS-FAIL paths (or mark scored=False) since the setting is not exposed; add a test asserting MANUAL from a full real-shaped calendar policy set",
    "test: e2e normalize_data with all real calendar setting types -> MANUAL"
@@ -2826,7 +2826,7 @@
   "check_id": "ADD-18",
   "func": "check_passkeys_enforced",
   "module": "additional",
-  "inputs": "admin_logs CREATE/CHANGE_APPLICATION_SETTING with APPLICATION_NAME 'Security' and SETTING_NAME 'Skip password enrollment state', NEW_VALUE 'allow' (observed live 2026-11-07; one event per APPLICATION_EDITION for the same OU) via base.latest_setting_changes.",
+  "inputs": "admin_logs CREATE/CHANGE_APPLICATION_SETTING with APPLICATION_NAME 'Security' and SETTING_NAME 'Skip password enrollment state', NEW_VALUE 'allow' / 'deny' (observed live 2026-11-07; one event per APPLICATION_EDITION for the same OU) via base.latest_setting_changes.",
   "paths": [
    "log_setting_changes"
   ],

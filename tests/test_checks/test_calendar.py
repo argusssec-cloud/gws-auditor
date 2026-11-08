@@ -926,3 +926,36 @@ class TestCalendarUnknownValues:
         full_audit_data["policies"]["calendar"] = {"_ou_policies": [
             make_ou_policy("calendar", "primary_calendar_max_allowed_internal_sharing", {}, "/")]}
         assert check_primary_cal_internal_sharing(full_audit_data).status in (Status.MANUAL, Status.ERROR)
+
+
+class TestSecondaryCalInternalSharingLog:
+    """CIS-3.1.1.2.2 from CHANGE_CALENDAR_SETTING SHARING_INSIDE_DOMAIN_FOR_SECONDARY_CALENDAR (observed live 2026-11-07/08)."""
+
+    def _ev(self, value, time="2026-11-06T10:00:00.000Z"):
+        from tests.factories import make_admin_event
+        return make_admin_event("CHANGE_CALENDAR_SETTING", {
+            "SETTING_NAME": "SHARING_INSIDE_DOMAIN_FOR_SECONDARY_CALENDAR", "ORG_UNIT_NAME": "",
+            "NEW_VALUE": value, "DOMAIN_NAME": "example.com"}, time)
+
+    def test_latest_value_decides(self, full_audit_data):
+        from gws_auditor.checks.apps_calendar import check_secondary_cal_internal_sharing
+        full_audit_data["policies"]["calendar"] = {}
+        full_audit_data["admin_logs"] = [self._ev("READ_ONLY_ACCESS"),
+                                         self._ev("SHOW_ONLY_FREE_BUSY_INFORMATION", time="2026-11-06T11:00:00.000Z")]
+        assert check_secondary_cal_internal_sharing(full_audit_data).status == Status.PASS
+        full_audit_data["admin_logs"] = [self._ev("SHOW_ONLY_FREE_BUSY_INFORMATION"),
+                                         self._ev("READ_ONLY_ACCESS", time="2026-11-06T11:00:00.000Z")]
+        assert check_secondary_cal_internal_sharing(full_audit_data).status == Status.FAIL
+
+    def test_unknown_value_is_review(self, full_audit_data):
+        from gws_auditor.checks.apps_calendar import check_secondary_cal_internal_sharing
+        full_audit_data["policies"]["calendar"] = {}
+        full_audit_data["admin_logs"] = [self._ev("NO_SHARING")]
+        result = check_secondary_cal_internal_sharing(full_audit_data)
+        assert result.status == Status.MANUAL and "NO_SHARING" in result.details
+
+    def test_no_event_is_review(self, full_audit_data):
+        from gws_auditor.checks.apps_calendar import check_secondary_cal_internal_sharing
+        full_audit_data["policies"]["calendar"] = {}
+        full_audit_data["admin_logs"] = []
+        assert check_secondary_cal_internal_sharing(full_audit_data).status == Status.MANUAL
