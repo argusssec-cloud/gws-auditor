@@ -61,7 +61,7 @@ class CheckMetadata:
     section: str
     func: Any = None
     remediation: str = ""
-    requires_license: str = ""
+    requires_license: "str | tuple[str, ...]" = ""  # minimum tier key, or an explicit any-of edition set
     severity: "Severity" = Severity.MEDIUM
     critical_reason: str = ""
     scored: bool = True

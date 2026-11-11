@@ -2,8 +2,8 @@
  "enterprise_essentials_2026-05": {
   "ADD-02": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE",
-   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored."
+   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
+   "status": "NOT_APPLICABLE"
   },
   "ADD-05": {
    "confirmed": false,
@@ -36,7 +36,7 @@
   },
   "ADD-13": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-14": {
    "confirmed": false,
@@ -44,8 +44,8 @@
   },
   "ADD-15": {
    "confirmed": false,
-   "status": "MANUAL",
-   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending)."
+   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
+   "status": "NOT_APPLICABLE"
   },
   "ADD-16": {
    "confirmed": false,
@@ -53,7 +53,7 @@
   },
   "ADD-18": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-20": {
    "confirmed": false,
@@ -65,27 +65,27 @@
   },
   "ADD-22": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "ADD-23": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "FAIL"
   },
   "ADD-24": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-25": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-26": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-27": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "PASS"
   },
   "ADD-28": {
    "confirmed": false,
@@ -277,19 +277,19 @@
   },
   "CIS-3.1.2.1.2.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "FAIL"
   },
   "CIS-3.1.2.1.2.3": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "FAIL"
   },
   "CIS-3.1.2.1.2.4": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "FAIL"
   },
   "CIS-3.1.2.2.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.2.2.2": {
    "confirmed": false,
@@ -305,7 +305,7 @@
   },
   "CIS-3.1.3.1.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.3.2.1": {
    "confirmed": false,
@@ -321,7 +321,7 @@
   },
   "CIS-3.1.3.3.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.3.4.1.1": {
    "confirmed": false,
@@ -381,8 +381,8 @@
   },
   "CIS-3.1.3.5.4": {
    "confirmed": false,
-   "status": "PASS",
-   "note": "2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false."
+   "note": "2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false.",
+   "status": "PASS"
   },
   "CIS-3.1.3.6.1": {
    "confirmed": false,
@@ -390,7 +390,7 @@
   },
   "CIS-3.1.3.6.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "PASS"
   },
   "CIS-3.1.3.7.1": {
    "confirmed": false,
@@ -398,7 +398,7 @@
   },
   "CIS-3.1.3.7.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.4.2.1": {
    "confirmed": false,
@@ -579,7 +579,7 @@
   },
   "GWS.CHAT.2.1": {
    "confirmed": false,
-   "status": "FAIL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.CHAT.3.1": {
    "confirmed": false,
@@ -639,7 +639,7 @@
   },
   "GWS.COMMONCONTROLS.10.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.10.3": {
    "confirmed": false,
@@ -671,11 +671,11 @@
   },
   "GWS.COMMONCONTROLS.16.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "ERROR"
   },
   "GWS.COMMONCONTROLS.16.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "ERROR"
   },
   "GWS.COMMONCONTROLS.17.1": {
    "confirmed": false,
@@ -699,11 +699,11 @@
   },
   "GWS.COMMONCONTROLS.3.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.3.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.4.1": {
    "confirmed": false,
@@ -731,8 +731,8 @@
   },
   "GWS.COMMONCONTROLS.7.1": {
    "confirmed": false,
-   "status": "MANUAL",
-   "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL."
+   "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL.",
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.8.1": {
    "confirmed": false,
@@ -776,7 +776,7 @@
   },
   "GWS.DRIVEDOCS.1.5": {
    "confirmed": false,
-   "status": "PASS"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.DRIVEDOCS.1.6": {
    "confirmed": false,
@@ -788,7 +788,7 @@
   },
   "GWS.DRIVEDOCS.1.8": {
    "confirmed": false,
-   "status": "PASS"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.DRIVEDOCS.1.9": {
    "confirmed": false,
@@ -924,7 +924,7 @@
   },
   "GWS.MEET.6.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "GWS.MEET.6.2": {
    "confirmed": false,
@@ -938,8 +938,8 @@
  "enterprise_standard_2026-09": {
   "ADD-02": {
    "confirmed": false,
-   "status": "MANUAL",
-   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored."
+   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
+   "status": "MANUAL"
   },
   "ADD-05": {
    "confirmed": false,
@@ -982,8 +982,8 @@
   },
   "ADD-15": {
    "confirmed": false,
-   "status": "MANUAL",
-   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending)."
+   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
+   "status": "MANUAL"
   },
   "ADD-16": {
    "confirmed": false,
@@ -1014,7 +1014,7 @@
   },
   "ADD-24": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-25": {
    "confirmed": false,
@@ -1022,11 +1022,11 @@
   },
   "ADD-26": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-27": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "PASS"
   },
   "ADD-28": {
    "confirmed": false,
@@ -1246,7 +1246,7 @@
   },
   "CIS-3.1.2.2.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.2.2.2": {
    "confirmed": false,
@@ -1263,7 +1263,7 @@
   },
   "CIS-3.1.3.1.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "PASS"
   },
   "CIS-3.1.3.2.1": {
    "confirmed": false,
@@ -1279,7 +1279,7 @@
   },
   "CIS-3.1.3.3.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.3.4.1.1": {
    "confirmed": true,
@@ -1363,7 +1363,7 @@
   },
   "CIS-3.1.3.6.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "PASS"
   },
   "CIS-3.1.3.7.1": {
    "confirmed": true,
@@ -1372,7 +1372,7 @@
   },
   "CIS-3.1.3.7.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.4.2.1": {
    "confirmed": true,
@@ -1491,7 +1491,7 @@
   },
   "CIS-4.2.5.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-4.2.6.1": {
    "confirmed": true,
@@ -1651,7 +1651,7 @@
   },
   "GWS.COMMONCONTROLS.10.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "FAIL"
   },
   "GWS.COMMONCONTROLS.10.3": {
    "confirmed": false,
@@ -1681,15 +1681,15 @@
   },
   "GWS.COMMONCONTROLS.15.2": {
    "confirmed": false,
-   "status": "FAIL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.COMMONCONTROLS.16.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "FAIL"
   },
   "GWS.COMMONCONTROLS.16.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "PASS"
   },
   "GWS.COMMONCONTROLS.17.1": {
    "confirmed": true,
@@ -1703,7 +1703,7 @@
   },
   "GWS.COMMONCONTROLS.18.3": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "PASS"
   },
   "GWS.COMMONCONTROLS.18.4": {
    "confirmed": true,
@@ -1717,11 +1717,11 @@
   },
   "GWS.COMMONCONTROLS.3.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.3.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.4.1": {
    "confirmed": true,
@@ -1754,8 +1754,8 @@
   },
   "GWS.COMMONCONTROLS.7.1": {
    "confirmed": false,
-   "status": "MANUAL",
-   "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL."
+   "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL.",
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.8.1": {
    "confirmed": false,
@@ -1992,8 +1992,8 @@
  "enterprise_starter_2026-04": {
   "ADD-02": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE",
-   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored."
+   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
+   "status": "NOT_APPLICABLE"
   },
   "ADD-05": {
    "confirmed": false,
@@ -2026,7 +2026,7 @@
   },
   "ADD-13": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-14": {
    "confirmed": false,
@@ -2034,8 +2034,8 @@
   },
   "ADD-15": {
    "confirmed": false,
-   "status": "MANUAL",
-   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending)."
+   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
+   "status": "NOT_APPLICABLE"
   },
   "ADD-16": {
    "confirmed": false,
@@ -2043,7 +2043,7 @@
   },
   "ADD-18": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-20": {
    "confirmed": false,
@@ -2063,15 +2063,15 @@
   },
   "ADD-24": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-25": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-26": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "ADD-27": {
    "confirmed": false,
@@ -2279,7 +2279,7 @@
   },
   "CIS-3.1.2.2.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.2.2.2": {
    "confirmed": false,
@@ -2295,7 +2295,7 @@
   },
   "CIS-3.1.3.1.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.3.2.1": {
    "confirmed": false,
@@ -2311,7 +2311,7 @@
   },
   "CIS-3.1.3.3.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.3.4.1.1": {
    "confirmed": false,
@@ -2371,8 +2371,8 @@
   },
   "CIS-3.1.3.5.4": {
    "confirmed": false,
-   "status": "PASS",
-   "note": "2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false."
+   "note": "2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false.",
+   "status": "PASS"
   },
   "CIS-3.1.3.6.1": {
    "confirmed": false,
@@ -2380,7 +2380,7 @@
   },
   "CIS-3.1.3.6.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "PASS"
   },
   "CIS-3.1.3.7.1": {
    "confirmed": false,
@@ -2388,11 +2388,11 @@
   },
   "CIS-3.1.3.7.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "CIS-3.1.4.2.1": {
    "confirmed": false,
-   "status": "PASS"
+   "status": "NOT_APPLICABLE"
   },
   "CIS-3.1.4.4.1": {
    "confirmed": false,
@@ -2569,7 +2569,7 @@
   },
   "GWS.CHAT.2.1": {
    "confirmed": false,
-   "status": "FAIL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.CHAT.3.1": {
    "confirmed": false,
@@ -2629,7 +2629,7 @@
   },
   "GWS.COMMONCONTROLS.10.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "PASS"
   },
   "GWS.COMMONCONTROLS.10.3": {
    "confirmed": false,
@@ -2661,11 +2661,11 @@
   },
   "GWS.COMMONCONTROLS.16.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "ERROR"
   },
   "GWS.COMMONCONTROLS.16.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "ERROR"
   },
   "GWS.COMMONCONTROLS.17.1": {
    "confirmed": false,
@@ -2689,11 +2689,11 @@
   },
   "GWS.COMMONCONTROLS.3.1": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.3.2": {
    "confirmed": false,
-   "status": "NOT_APPLICABLE"
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.4.1": {
    "confirmed": false,
@@ -2721,8 +2721,8 @@
   },
   "GWS.COMMONCONTROLS.7.1": {
    "confirmed": false,
-   "status": "MANUAL",
-   "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL."
+   "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL.",
+   "status": "MANUAL"
   },
   "GWS.COMMONCONTROLS.8.1": {
    "confirmed": false,
@@ -2766,7 +2766,7 @@
   },
   "GWS.DRIVEDOCS.1.5": {
    "confirmed": false,
-   "status": "PASS"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.DRIVEDOCS.1.6": {
    "confirmed": false,
@@ -2778,7 +2778,7 @@
   },
   "GWS.DRIVEDOCS.1.8": {
    "confirmed": false,
-   "status": "PASS"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.DRIVEDOCS.1.9": {
    "confirmed": false,
@@ -2786,11 +2786,11 @@
   },
   "GWS.DRIVEDOCS.2.1": {
    "confirmed": false,
-   "status": "FAIL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.DRIVEDOCS.2.2": {
    "confirmed": false,
-   "status": "PASS"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.DRIVEDOCS.3.1": {
    "confirmed": false,

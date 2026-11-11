@@ -507,9 +507,72 @@ LICENSE_TIERS = {
     "education_standard": 6,
     "education_plus": 7,
     "education_teaching_&_learning": 4,
-    # Add-ons (level 99 = never auto-satisfied by any base license)
+    # Add-ons (level 99 = never auto-satisfied by any base license; detected from their own SKUs)
     "assured_controls": 99,
+    "assured_controls_plus": 99,
 }
+
+# Explicit edition sets for ``requires_license``. A tuple means "available on exactly these
+# editions" (any-of), which the single minimum-tier string cannot express: many Google features
+# reach Frontline, Essentials or Education editions that sit below Business Standard in the tier
+# order. Each set is Google's "Supported editions for this feature" line, read on 2026-11-10 from
+# the article each check links to. Cloud Identity Premium has no Workspace tier key; a tenant that
+# holds only Cloud Identity reports no tier and every gated check runs.
+_FRONTLINE_STD_PLUS = ("frontline_standard", "frontline_plus")
+_ENTERPRISE = ("enterprise_standard", "enterprise_plus")
+_EDU_STD_PLUS = ("education_standard", "education_plus")
+_EDU_ALL = ("education_fundamentals", "education_standard", "education_plus")
+_ESSENTIALS_ALL = ("essentials_starter", "enterprise_essentials", "enterprise_essentials_plus")
+
+# Context-Aware Access, Skip passwords (passkey-only sign-in)
+EDITIONS_CAA = _FRONTLINE_STD_PLUS + _ENTERPRISE + _EDU_STD_PLUS + ("enterprise_essentials_plus",)
+# Multi-party approval
+EDITIONS_MPA = _ENTERPRISE + _EDU_STD_PLUS + ("enterprise_essentials_plus",)
+# DLP for Gmail and Chat
+EDITIONS_DLP = _FRONTLINE_STD_PLUS + _ENTERPRISE + _EDU_ALL
+# DLP for Drive (also Enterprise Essentials Plus)
+EDITIONS_DLP_DRIVE = EDITIONS_DLP + ("enterprise_essentials_plus",)
+# DLP for Calendar (also Enterprise Essentials; Cloud Identity Premium has no tier key)
+EDITIONS_DLP_CALENDAR = EDITIONS_DLP + ("enterprise_essentials",)
+# Client-side encryption (Gmail, Drive...)
+EDITIONS_CSE = ("frontline_plus", "enterprise_plus") + _EDU_STD_PLUS
+# AI classification labels for Drive
+EDITIONS_AI_CLASSIFICATION = ("frontline_plus", "enterprise_plus")
+# Classification labels in Gmail
+EDITIONS_GMAIL_LABELS = (("frontline_starter",) + _FRONTLINE_STD_PLUS + ("business_standard", "business_plus")
+                         + _ENTERPRISE + _EDU_STD_PLUS + _ESSENTIALS_ALL)
+# Drive trust rules
+EDITIONS_TRUST_RULES = ("frontline_plus",) + _ENTERPRISE + _EDU_STD_PLUS + ("enterprise_essentials_plus",)
+# Gmail Security sandbox
+EDITIONS_SECURITY_SANDBOX = ("frontline_plus", "business_standard", "business_plus") + _ENTERPRISE
+# Gemini in Workspace feature access and Workspace Studio
+EDITIONS_GEMINI_WORKSPACE = _ENTERPRISE + ("education_plus", "education_teaching_&_learning")
+# Google session control (web session length, Google Cloud session)
+EDITIONS_SESSION_CONTROL = _FRONTLINE_STD_PLUS + ("business_plus",) + _ENTERPRISE + _EDU_ALL + ("enterprise_essentials_plus",)
+# Chat content reporting / moderation
+EDITIONS_CHAT_REPORTING = ("frontline_plus", "enterprise_plus") + _EDU_STD_PLUS
+# Chat file sharing controls
+EDITIONS_CHAT_FILE_SHARING = ("frontline_plus", "business_plus") + _ENTERPRISE + _EDU_STD_PLUS + ("enterprise_essentials_plus",)
+# External Chat with allowlisted domains
+EDITIONS_CHAT_EXTERNAL = ("business_standard", "business_plus") + _ENTERPRISE + ("enterprise_essentials", "enterprise_essentials_plus")
+# Drive general access (link sharing) options
+EDITIONS_DRIVE_GENERAL_ACCESS = ("business_standard", "business_plus") + _ENTERPRISE + _EDU_STD_PLUS
+# Shared drive default settings (Business Starter has shared drives but no admin defaults)
+EDITIONS_SHARED_DRIVE_SETTINGS = (("frontline_plus", "business_standard", "business_plus") + _ENTERPRISE + _EDU_ALL
+                                  + _ESSENTIALS_ALL)
+# Meet recording controls
+EDITIONS_MEET_RECORDING = ("business_standard", "business_plus") + _ENTERPRISE + ("education_plus",) + _ESSENTIALS_ALL
+# Meet transcription controls
+EDITIONS_MEET_TRANSCRIPTION = ("business_standard", "business_plus") + _ENTERPRISE + ("education_plus",)
+# Paid appointment schedules
+EDITIONS_PAID_APPOINTMENTS = ("business_standard", "business_plus") + _ENTERPRISE + _EDU_ALL
+# Data regions (storage location, customer-wide)
+EDITIONS_DATA_REGIONS = (("frontline_starter",) + _FRONTLINE_STD_PLUS + ("business_standard", "business_plus") + _ENTERPRISE
+                         + _EDU_STD_PLUS + ("enterprise_essentials_plus",))
+# Data processing region
+EDITIONS_DATA_PROCESSING_REGION = ("frontline_plus", "enterprise_plus", "enterprise_essentials_plus")
+# Assured Controls add-on (either SKU)
+EDITIONS_ASSURED_CONTROLS = ("assured_controls", "assured_controls_plus")
 
 # Human-readable license names
 LICENSE_TIER_NAMES = {
@@ -530,7 +593,8 @@ LICENSE_TIER_NAMES = {
     "education_standard": "Education Standard",
     "education_plus": "Education Plus",
     "education_teaching_&_learning": "Education Teaching & Learning",
-    "assured_controls": "the Assured Controls add-on (available with Enterprise Plus or Frontline Plus)",
+    "assured_controls": "Assured Controls add-on",
+    "assured_controls_plus": "Assured Controls Plus add-on",
 }
 
 # Remediation theme groupings for the AI analyst's smart remediation tool.

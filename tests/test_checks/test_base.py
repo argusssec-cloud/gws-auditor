@@ -378,3 +378,49 @@ class TestStaleInjectedDefaultsAreIgnored:
         dflt = make_ou_policy("gmail", "mail_delegation", {"enableMailDelegation": False})
         dflt["_raw"] = {"type": "DEFAULT"}; dflt["name"] = "policies/_default/gmail.mail_delegation"
         assert len(get_ou_values({"_ou_policies": [dflt]}, "mail_delegation")) == 1
+
+
+class TestEditionSets:
+    """requires_license as an explicit any-of tuple (constants.EDITIONS_*), 2026-11-10."""
+
+    def _data(self, *tiers, skus=None):
+        from gws_auditor.constants import LICENSE_TIER_NAMES
+        return {"subscription_info": {"tier_keys_present": list(tiers),
+                                      "edition": "Google Workspace " + LICENSE_TIER_NAMES.get(tiers[0], tiers[0]),
+                                      "skus": skus if skus is not None else [{"tier_key": t} for t in tiers]}}
+
+    def test_member_edition_runs(self):
+        from gws_auditor.constants import EDITIONS_CAA
+        assert _check_license_sufficient(EDITIONS_CAA, self._data("frontline_standard")) is True
+
+    def test_non_member_edition_is_not_applicable(self):
+        from gws_auditor.constants import EDITIONS_CAA
+        assert _check_license_sufficient(EDITIONS_CAA, self._data("business_plus")) is False
+
+    def test_mixed_tenant_with_one_member_runs(self):
+        from gws_auditor.constants import EDITIONS_CSE
+        assert _check_license_sufficient(EDITIONS_CSE, self._data("business_starter", "enterprise_plus")) is True
+
+    def test_unknown_sku_keeps_the_check_running(self):
+        from gws_auditor.constants import EDITIONS_CSE
+        data = self._data("business_starter", skus=[{"tier_key": "business_starter"}, {"tier_key": ""}])
+        assert _check_license_sufficient(EDITIONS_CSE, data) is True
+
+    def test_no_detection_runs(self):
+        from gws_auditor.constants import EDITIONS_CSE
+        assert _check_license_sufficient(EDITIONS_CSE, {}) is True
+        assert _check_license_sufficient(EDITIONS_CSE, {"subscription_type": "Google Workspace Enterprise Plus"}) is True
+        assert _check_license_sufficient(EDITIONS_CSE, {"subscription_type": "Business Starter"}) is False
+
+    def test_addon_sku_satisfies_only_its_own_set(self):
+        from gws_auditor.constants import EDITIONS_ASSURED_CONTROLS
+        data = self._data("enterprise_standard", "assured_controls")
+        assert _check_license_sufficient(EDITIONS_ASSURED_CONTROLS, data) is True
+        assert _check_license_sufficient("enterprise_plus", data) is False  # tier 99 never lifts a minimum-tier gate
+        assert _check_license_sufficient(EDITIONS_ASSURED_CONTROLS, self._data("enterprise_plus")) is False
+
+    def test_requirement_text(self):
+        from gws_auditor.checks.base import license_requirement_text
+        from gws_auditor.constants import EDITIONS_ASSURED_CONTROLS
+        assert license_requirement_text("enterprise_plus") == "Enterprise Plus or higher"
+        assert license_requirement_text(EDITIONS_ASSURED_CONTROLS).startswith("one of these editions: Assured Controls add-on")

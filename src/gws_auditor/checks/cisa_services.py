@@ -9,6 +9,9 @@ Only checks NOT already covered by CIS/OTHER/GOOGLE or the main cisa_scuba modul
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
                    format_ou_values_readable, latest_setting_changes, field_value, ou_verdict)
+from ..constants import (
+    EDITIONS_CHAT_REPORTING, EDITIONS_SHARED_DRIVE_SETTINGS,
+)
 from ..models import CheckResult, Status
 
 
@@ -890,6 +893,7 @@ def check_drive_ood_warning(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.DRIVEDOCS.2.1",
+    requires_license=EDITIONS_SHARED_DRIVE_SETTINGS,
     title="Ensure shared drive manager override is disabled",
     level="L2",
     source="CISA",
@@ -971,6 +975,7 @@ def check_drive_manager_override(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.DRIVEDOCS.2.2",
+    requires_license=EDITIONS_SHARED_DRIVE_SETTINGS,
     title="Ensure non-members can be added to shared drive files",
     level="L1",
     source="CISA",
@@ -1355,7 +1360,7 @@ def check_chat_space_history(data: dict) -> CheckResult:
         "Content reporting. Select all reporting categories to "
         "ensure comprehensive content monitoring. https://knowledge.workspace.google.com/admin/chat/chat-content-protection"
     ),
-    requires_license="enterprise_plus",
+    requires_license=EDITIONS_CHAT_REPORTING,
 )
 def check_chat_reporting_categories(data: dict) -> CheckResult:
     """All Chat content reporting categories should be selected."""

@@ -50,6 +50,11 @@ class TestResolveEdition:
         assert "Legacy" in label
         assert tier == "business_standard"
 
+    def test_assured_controls_skus(self):
+        # Product 101039 in Google's Licensing API SKU table (checked 2026-11-10).
+        assert Provider._resolve_edition("1010390001") == ("Assured Controls", "assured_controls")
+        assert Provider._resolve_edition("1010390002") == ("Assured Controls Plus", "assured_controls_plus")
+
     def test_unknown_sku(self):
         label, tier = Provider._resolve_edition("9999999999")
         assert label == "Unknown (SKU: 9999999999)"
@@ -99,6 +104,11 @@ class TestPickPrimaryEdition:
         )
         assert "Business Plus (Legacy)" in edition
         assert tier == "business_plus"
+
+    def test_assured_controls_addon_never_primary(self):
+        label, tier = Provider._pick_primary_edition(Counter({"1010020026": 10, "1010390001": 10}))
+        assert tier == "enterprise_standard"
+        assert Provider._pick_primary_edition(Counter({"1010390001": 10})) == ("", "")
 
     def test_only_cloud_identity_returns_empty(self):
         """Cloud Identity is not a Workspace edition — should not win."""

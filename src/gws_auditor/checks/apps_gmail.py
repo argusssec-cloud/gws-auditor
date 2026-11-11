@@ -95,7 +95,6 @@ def check_gmail_mail_delegation(data: dict) -> CheckResult:
         "Admin console > Apps > Google Workspace > Gmail > "
         "End User Access. Disable offline Gmail. https://knowledge.workspace.google.com/admin/gmail/use-gmail-offline-with-google-workspace"
     ),
-    requires_license="enterprise_plus",
 )
 def check_gmail_offline(data: dict) -> CheckResult:
     """Offline Gmail should be disabled to prevent cached data exposure."""
@@ -427,7 +426,6 @@ def check_gmail_dmarc(data: dict) -> CheckResult:
         "Admin console > Apps > Google Workspace > Gmail > "
         "Manage quarantines. Enable admin notification for quarantine events. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
     ),
-    requires_license="enterprise_plus",
 )
 def check_gmail_quarantine_notifications(data: dict) -> CheckResult:
     """Admins should be notified when messages are quarantined."""
@@ -1641,7 +1639,6 @@ def check_gmail_predelivery_scanning(data: dict) -> CheckResult:
         "Phishing and Malware. Uncheck 'Bypass spam filters for messages "
         "from internal senders'. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
     ),
-    requires_license="enterprise_plus",
 )
 def check_gmail_internal_spam_filter(data: dict) -> CheckResult:
     """Spam filtering should not be bypassed for messages from internal senders."""
@@ -1796,7 +1793,6 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
         "Admin console > Apps > Google Workspace > Gmail > Compliance. "
         "Add a compliance rule requiring TLS encryption for all mail. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
     ),
-    requires_license="enterprise_plus",
 )
 def check_gmail_tls_enforcement(data: dict) -> CheckResult:
     """TLS encryption should be enforced for email transmission."""

@@ -12,6 +12,9 @@ from .base import (
     get_ou_values, format_ou_values_readable, is_external_sharing_ou,
     field_value, ou_verdict,
 )
+from ..constants import (
+    EDITIONS_SHARED_DRIVE_SETTINGS,
+)
 from ..models import CheckResult, Status
 
 
@@ -696,7 +699,7 @@ def check_shared_drive_creation(data: dict) -> CheckResult:
         "Sharing settings > Shared drive creation. "
         "Disable 'Allow managers to override settings below'. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_SHARED_DRIVE_SETTINGS,
 )
 def check_shared_drive_manager_override(data: dict) -> CheckResult:
     """Shared Drive managers should not be able to override sharing settings."""
@@ -766,7 +769,7 @@ def check_shared_drive_manager_override(data: dict) -> CheckResult:
         "Sharing settings > Shared drive creation. "
         "Restrict access to shared drive members only. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_SHARED_DRIVE_SETTINGS,
 )
 def check_shared_drive_member_access(data: dict) -> CheckResult:
     """Shared drive content should only be accessible to members."""
@@ -836,7 +839,7 @@ def check_shared_drive_member_access(data: dict) -> CheckResult:
         "Sharing settings > Shared drive creation. "
         "Disable download, print, and copy for viewers and commenters. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_SHARED_DRIVE_SETTINGS,
 )
 def check_shared_drive_viewer_restrictions(data: dict) -> CheckResult:
     """Viewers and commenters should be prevented from downloading, printing, or copying."""
@@ -907,7 +910,6 @@ def check_shared_drive_viewer_restrictions(data: dict) -> CheckResult:
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Features and Applications. Disable 'Allow users to enable offline access'. https://knowledge.workspace.google.com/admin/drive/set-up-offline-access-to-docs-sheets-and-slides"
     ),
-    requires_license="enterprise_plus",
 )
 def check_drive_offline_access(data: dict) -> CheckResult:
     """Offline access to Google Drive should be disabled."""

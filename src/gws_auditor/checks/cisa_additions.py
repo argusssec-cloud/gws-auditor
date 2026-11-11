@@ -13,6 +13,9 @@ the result is MANUAL, never a guessed PASS or FAIL.
 from collections.abc import Callable
 
 from .base import check, make_review, get_ou_values, field_value, ou_verdict
+from ..constants import (
+    EDITIONS_CHAT_FILE_SHARING,
+)
 from ..models import CheckResult
 
 
@@ -60,6 +63,7 @@ _CHAT_2_1_REMED = (
 
 @check(
     check_id="GWS.CHAT.2.1",
+    requires_license=EDITIONS_CHAT_FILE_SHARING,
     title="Ensure external file sharing in Chat is disabled",
     level="L1", source="CISA", section="Google Chat", severity="HIGH",
     remediation=_CHAT_2_1_REMED,

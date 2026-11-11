@@ -16,6 +16,9 @@ Reference: https://github.com/cisagov/ScubaGoggles
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
                    field_value, ou_verdict, result_from_setting_changes, latest_setting_changes)
+from ..constants import (
+    EDITIONS_ASSURED_CONTROLS, EDITIONS_CHAT_REPORTING, EDITIONS_DATA_REGIONS, EDITIONS_DRIVE_GENERAL_ACCESS, EDITIONS_MEET_RECORDING, EDITIONS_MEET_TRANSCRIPTION, EDITIONS_MPA, EDITIONS_PAID_APPOINTMENTS,
+)
 from ..models import CheckResult, Status
 
 
@@ -466,7 +469,7 @@ def check_calendar_interop_disabled(data: dict) -> CheckResult:
         "Admin console > Apps > Google Workspace > Calendar > "
         "General settings. Turn off 'Appointment schedules with payments'. https://knowledge.workspace.google.com/admin/calendar/allow-paid-appointment-schedules-in-calendar"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_PAID_APPOINTMENTS,
 )
 def check_calendar_paid_appointments(data: dict) -> CheckResult:
     """Paid appointment scheduling should be disabled to reduce attack surface."""
@@ -718,7 +721,7 @@ def check_chat_history_user_control(data: dict) -> CheckResult:
         "Admin console > Apps > Google Workspace > Google Chat > "
         "Content reporting. Enable reporting for all conversation types. https://knowledge.workspace.google.com/admin/chat/chat-content-protection"
     ),
-    requires_license="enterprise_plus",
+    requires_license=EDITIONS_CHAT_REPORTING,
 )
 def check_chat_content_reporting(data: dict) -> CheckResult:
     """Chat content reporting should be enabled for all conversation types."""
@@ -996,6 +999,7 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.DRIVEDOCS.1.5",
+    requires_license=EDITIONS_DRIVE_GENERAL_ACCESS,
     title="Ensure 'anyone with the link' sharing is disabled",
     level="L1",
     source="CISA",
@@ -1089,6 +1093,7 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.DRIVEDOCS.1.8",
+    requires_license=EDITIONS_DRIVE_GENERAL_ACCESS,
     title="Ensure default access for new items is 'private to owner'",
     level="L1",
     source="CISA",
@@ -1713,7 +1718,7 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
         "Meet video settings > Automatic recording. Disable automatic recordings to prevent "
         "unauthorized capture of meeting content. https://knowledge.workspace.google.com/admin/meet/turn-meet-recording-on-or-off-for-your-organization"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_MEET_RECORDING,
 )
 def check_meet_auto_recording(data: dict) -> CheckResult:
     """Automatic meeting recording should be disabled."""
@@ -1817,7 +1822,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
         "Meet video settings > Automatic transcription. Disable automatic transcripts to mitigate "
         "sensitive data recording risks. https://knowledge.workspace.google.com/admin/meet/turn-meeting-transcription-on-or-off"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_MEET_TRANSCRIPTION,
 )
 def check_meet_auto_transcription(data: dict) -> CheckResult:
     """Automatic meeting transcription should be disabled."""
@@ -2526,7 +2531,7 @@ def check_audit_logging_enabled(data: dict) -> CheckResult:
         "Configure data storage locations to comply with data "
         "residency requirements. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_DATA_REGIONS,
 )
 def check_data_regions(data: dict) -> CheckResult:
     """Data region policies should be configured for data residency."""
@@ -2615,7 +2620,7 @@ def check_data_regions(data: dict) -> CheckResult:
         "Enable to require multiple admin approvals for "
         "sensitive operations like user deletion or settings changes. https://knowledge.workspace.google.com/admin/security/multi-party-approval-for-sensitive-actions"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_MPA,
 )
 def check_multi_party_approval(data: dict) -> CheckResult:
     """Multi-party approval should be enabled for sensitive admin actions."""
@@ -3438,7 +3443,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
         "Assured Controls. Enable access approvals to require "
         "explicit approval before Google support can access data. https://knowledge.workspace.google.com/admin/security/access-approvals-require-google-staff-to-request-approval-before-viewing-support-data"
     ),
-    requires_license="assured_controls",
+    requires_license=EDITIONS_ASSURED_CONTROLS,
 )
 def check_access_approvals_enabled(data: dict) -> CheckResult:
     """Access approvals should be enabled for sensitive operations."""
@@ -3532,7 +3537,7 @@ def check_access_approvals_enabled(data: dict) -> CheckResult:
         "'US only' to ensure only US-based personnel can "
         "provide support. https://knowledge.workspace.google.com/admin/security/access-management-limit-the-google-staff-who-can-take-support-actions-related-to-your-data"
     ),
-    requires_license="assured_controls",
+    requires_license=EDITIONS_ASSURED_CONTROLS,
 )
 def check_support_access_region(data: dict) -> CheckResult:
     """Support access should be restricted to US personnel only."""
@@ -3636,7 +3641,7 @@ def check_support_access_region(data: dict) -> CheckResult:
         "Assured Controls. Disable multi-region data processing "
         "to ensure data is processed only in the designated region. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
     ),
-    requires_license="assured_controls",
+    requires_license=EDITIONS_ASSURED_CONTROLS,
 )
 def check_multi_region_processing_disabled(data: dict) -> CheckResult:
     """Multi-region data processing should be disabled for data residency."""

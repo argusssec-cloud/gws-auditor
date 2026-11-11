@@ -8,6 +8,9 @@ CIS Google Workspace Benchmark v1.3.0 - Access and data control checks.
 """
 
 from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable, is_admin_configured
+from ..constants import (
+    EDITIONS_CAA, EDITIONS_DLP_DRIVE, EDITIONS_SESSION_CONTROL,
+)
 from ..models import CheckResult, Status
 
 
@@ -433,7 +436,7 @@ def check_domain_wide_delegation(data: dict) -> CheckResult:
         "Configure access levels to restrict sign-ins from "
         "countries where your organization does not operate. https://knowledge.workspace.google.com/admin/security/about-context-aware-access"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_CAA,
 )
 def check_geo_blocking(data: dict) -> CheckResult:
     """Context-aware access with geo-blocking should be configured."""
@@ -591,7 +594,7 @@ def check_geo_blocking(data: dict) -> CheckResult:
         "Create DLP rules to detect sensitive data (PII, financial data, etc.) "
         "and prevent unauthorized sharing from Drive. https://knowledge.workspace.google.com/admin/security/create-dlp-for-drive-rules-and-custom-content-detectors"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_DLP_DRIVE,
 )
 def check_drive_dlp(data: dict) -> CheckResult:
     """Data Loss Prevention policies should be configured for Google Drive."""
@@ -776,7 +779,7 @@ def _parse_session_duration_hours(duration) -> float | None:
         "Enable reauthentication policy and set an appropriate "
         "session duration for Google Cloud access. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
     ),
-    requires_license="enterprise_plus",
+    requires_license=EDITIONS_SESSION_CONTROL,
 )
 def check_cloud_session_control(data: dict) -> CheckResult:
     """Google Cloud session control should be configured for GCP access."""
@@ -804,11 +807,11 @@ def check_cloud_session_control(data: dict) -> CheckResult:
         )
 
     if cloud_control_enabled is None:
-        return make_manual(
+        return make_review(
             check_id="CIS-4.2.5.1",
             title="Ensure cloud session control is configured",
             level="L2", source="CIS", section="Access Control",
-            details="Could not determine cloud session control setting.",
+            details=("Google Cloud session control is not in the Cloud Identity Policy API (security.session_controls carries only the web session length) and no audit-log signal names it. Verify manually in Admin console > Security > Access and data control > Google Cloud session control."),
             remediation=(
                 "Admin console > Security > Access and data control > Google Cloud session control. "
                 "Enable and configure reauthentication policy for Google Cloud. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"

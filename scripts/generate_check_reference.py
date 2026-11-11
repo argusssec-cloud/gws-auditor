@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from gws_auditor.checks.registry import CheckRegistry  # noqa: E402
+from gws_auditor.constants import LICENSE_TIER_NAMES  # noqa: E402
 
 TARGETS = [ROOT / "docs" / "checks.md", ROOT / "wiki" / "Check-Reference.md"]
 
@@ -116,7 +117,9 @@ def render() -> str:
             notes = []
             if not m.scored:
                 notes.append("unscored")
-            if m.requires_license:
+            if isinstance(m.requires_license, tuple):
+                notes.append("editions: " + ", ".join(LICENSE_TIER_NAMES.get(k, k) for k in m.requires_license))
+            elif m.requires_license:
                 notes.append(LICENSES.get(m.requires_license, m.requires_license))
             title = m.title.replace("|", "\\|")
             out.append(f"| {m.check_id} | {title} | {m.level} | {m.source} | {sev(m)} | {', '.join(notes)} |")

@@ -93,8 +93,24 @@ def _normalize_license(raw: str) -> str:
     return name
 
 
-def _check_license_sufficient(requires_license: str, data: dict) -> bool:
+_ADDON_TIER_LEVEL = 99  # LICENSE_TIERS level of add-on SKUs (Assured Controls); never a base edition
+
+
+def license_requirement_text(requires_license) -> str:
+    """Human-readable form of a ``requires_license`` value for NOT_APPLICABLE details and docs."""
+    if isinstance(requires_license, (tuple, list, set, frozenset)):
+        names = [LICENSE_TIER_NAMES.get(k, k) for k in requires_license]
+        return "one of these editions: " + ", ".join(names)
+    return f"{LICENSE_TIER_NAMES.get(requires_license, requires_license)} or higher"
+
+
+def _check_license_sufficient(requires_license, data: dict) -> bool:
     """Return True if the tenant license meets the requirement.
+
+    ``requires_license`` is either a minimum tier key (``"enterprise_standard"``: that tier or any
+    higher one in ``LICENSE_TIERS``) or a tuple of tier keys (available on exactly those editions,
+    any of them; see the ``EDITIONS_*`` sets in constants.py). Add-on tiers (Assured Controls) never
+    satisfy a minimum-tier requirement and are matched only by an explicit set.
 
     Detection is *advisory*: when the answer is uncertain (unknown
     edition, multiple distinct editions in the tenant, or any other
@@ -106,14 +122,27 @@ def _check_license_sufficient(requires_license: str, data: dict) -> bool:
         return True
 
     sub_info = data.get("subscription_info", {}) or {}
+    tier_keys_present = sub_info.get("tier_keys_present", []) or []
+
+    if isinstance(requires_license, (tuple, list, set, frozenset)):
+        allowed = set(requires_license)
+        if tier_keys_present:
+            if allowed & set(tier_keys_present):
+                return True
+            if any(s.get("tier_key", "") == "" for s in sub_info.get("skus", [])):
+                return True  # an unrecognised SKU may be the one that carries the feature
+            return False
+        raw = data.get("subscription_type") or sub_info.get("edition", "") or ""
+        tenant = _normalize_license(raw)
+        return not tenant or tenant in allowed
 
     # Mixed-edition tenant: if ANY assigned SKU meets the requirement,
     # the feature is available somewhere in the org. Don't short-circuit.
-    tier_keys_present = sub_info.get("tier_keys_present", []) or []
     required_level = LICENSE_TIERS.get(requires_license, 0)
     if tier_keys_present:
         max_present = max(
-            (LICENSE_TIERS.get(tk, 0) for tk in tier_keys_present),
+            (LICENSE_TIERS.get(tk, 0) for tk in tier_keys_present
+             if LICENSE_TIERS.get(tk, 0) < _ADDON_TIER_LEVEL),
             default=0,
         )
         if max_present >= required_level:
@@ -155,7 +184,7 @@ def _resolve_critical_reason(check_id: str) -> str:
 
 
 def check(check_id: str, title: str, level: str, source: str, section: str,
-          remediation: str = "", requires_license: str = "",
+          remediation: str = "", requires_license="",
           severity: str = "", critical_reason: str = "",
           scored: bool = True,
           docs_url: str = "", console_link: str = "", gam_command: str = ""):
@@ -199,15 +228,13 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
                 # license is known and below the required tier.
                 if (requires_license
                         and not _check_license_sufficient(requires_license, data)):
-                    tier_name = LICENSE_TIER_NAMES.get(
-                        requires_license, requires_license)
                     return CheckResult(
                         check_id=check_id, title=title,
                         status=Status.NOT_APPLICABLE,
                         level=level, source=source, section=section,
                         details=(
                             f"Not applicable — this feature requires "
-                            f"{tier_name} or higher."
+                            f"{license_requirement_text(requires_license)}."
                         ),
                         remediation=remediation,
                         severity=resolved_severity,

@@ -42,11 +42,13 @@ class TestInternalSpamFilterBypass:
             "orgUnit": "/", "_raw": {"type": "ADMIN"}}]}
         assert check_gmail_internal_spam_filter(normalize_data(raw)).status == status
 
-    def test_below_enterprise_plus_is_not_applicable(self, full_audit_data):
+    def test_business_starter_is_evaluated(self, full_audit_data):
+        # Gmail spam settings exist in every edition (Google's quarantine and spam articles carry no
+        # edition restriction), so the former Enterprise Plus gate was wrong and is gone (2026-11-10).
         from gws_auditor.checks.apps_gmail import check_gmail_internal_spam_filter
         d = self._data(full_audit_data, True)
         d["subscription_type"] = "Business Starter"
-        assert check_gmail_internal_spam_filter(d).status == Status.NOT_APPLICABLE
+        assert check_gmail_internal_spam_filter(d).status == Status.FAIL
 
 
 class TestTlsEnforcement:

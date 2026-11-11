@@ -32,6 +32,9 @@ from .base import (
     gmail_rule_settings,
 )
 from ..google_defaults import CHROME_POLICY_DEFAULTS
+from ..constants import (
+    EDITIONS_AI_CLASSIFICATION, EDITIONS_CAA, EDITIONS_CSE, EDITIONS_DLP, EDITIONS_DLP_CALENDAR, EDITIONS_GEMINI_WORKSPACE, EDITIONS_GMAIL_LABELS, EDITIONS_MEET_RECORDING, EDITIONS_MPA, EDITIONS_SECURITY_SANDBOX, EDITIONS_TRUST_RULES,
+)
 from ..models import CheckResult, Status
 from ..constants import DANGEROUS_OAUTH_SCOPES, OAUTH_SCOPE_RISK_LEVELS
 
@@ -62,7 +65,7 @@ _GEMINI_WS_REMED = (
         "Security sandbox. Enable Security Sandbox to scan attachments "
         "in a virtual environment. Note: requires Business Standard or higher license. https://knowledge.workspace.google.com/admin/gmail/advanced/gmail-security-sandbox-overview"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_SECURITY_SANDBOX,
 )
 def check_security_sandbox(data: dict) -> CheckResult:
     """Gmail Security Sandbox should be enabled for advanced threat protection."""
@@ -584,7 +587,7 @@ def check_takeout_restriction(data: dict) -> CheckResult:
         "and Meet. Configure an external key management service. "
         "Note: requires Enterprise Plus license. https://knowledge.workspace.google.com/admin/security/about-client-side-encryption"
     ),
-    requires_license="enterprise_plus",
+    requires_license=EDITIONS_CSE,
 )
 def check_client_side_encryption(data: dict) -> CheckResult:
     """Client-side encryption (CSE) should be enabled for sensitive data protection."""
@@ -646,7 +649,7 @@ def check_client_side_encryption(data: dict) -> CheckResult:
         "Create DLP rules to detect PII, financial data, and other "
         "sensitive content in outbound emails. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_DLP,
 )
 def check_gmail_dlp(data: dict) -> CheckResult:
     """Data Loss Prevention rules should be configured for Gmail."""
@@ -722,6 +725,7 @@ def check_gmail_dlp(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-13",
+    requires_license=EDITIONS_GEMINI_WORKSPACE,
     scored=False,  # Log evidence covers only services an admin touched; PASS/FAIL are informational
     title="Ensure Gemini features in Workspace apps are controlled",
     level="L1",
@@ -877,6 +881,7 @@ def check_gemini_chrome(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-15",
+    requires_license=EDITIONS_GEMINI_WORKSPACE,
     title="Ensure Google Workspace Studio access is controlled",
     level="L2",
     source="GOOGLE",
@@ -1016,6 +1021,7 @@ def check_apple_writing_tools(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-18",
+    requires_license=EDITIONS_CAA,
     title="Ensure passkeys are enforced as primary authentication",
     level="L2",
     source="GOOGLE",
@@ -1435,7 +1441,7 @@ def _caa_assigned_level_titles(admin_logs: list) -> dict[str, set[str]]:
         "Context-Aware Access. Enable context-aware policies for "
         "OIDC third-party apps to enforce device and location-based access. https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_CAA,
 )
 def check_caa_oidc(data: dict) -> CheckResult:
     """Context-Aware Access policies should cover OIDC third-party apps.
@@ -1567,7 +1573,7 @@ def check_caa_oidc(data: dict) -> CheckResult:
         "without specific assignments inherit a secure baseline. "
         "https://knowledge.workspace.google.com/admin/security/apply-caa-policy-for-all-saml-apps"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_CAA,
 )
 def check_caa_saml_default(data: dict) -> CheckResult:
     """Default CAA policy should be enabled for all SAML applications.
@@ -1755,7 +1761,7 @@ def _caa_level_enforcement(data: dict, predicate) -> dict:
         "other admins' access, and keep a level you yourself satisfy, or you can be locked out. "
         "https://knowledge.workspace.google.com/admin/security/assign-context-aware-access-levels-to-apps"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_CAA,
 )
 def check_caa_admin_console(data: dict) -> CheckResult:
     """The Admin console is the highest-value target in the tenant. Google supports assigning access
@@ -1861,7 +1867,7 @@ def check_caa_admin_console(data: dict) -> CheckResult:
         "Block mode; deploy Endpoint Verification so devices report their posture. "
         "https://knowledge.workspace.google.com/admin/security/about-context-aware-access"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_CAA,
 )
 def check_caa_device_level(data: dict) -> CheckResult:
     """Geographic and IP conditions are defeated by any VPN; only device conditions make Context-Aware
@@ -1954,7 +1960,7 @@ def check_caa_device_level(data: dict) -> CheckResult:
         "Admin console > Security > Access and data control > Context-Aware Access. Assign each listed level to the apps it "
         "is meant to protect (Assign access levels), or delete it. A level with no condition is always satisfied and protects nothing."
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_CAA,
 )
 def check_caa_unassigned_levels(data: dict) -> CheckResult:
     """Dangling access levels: defined (Access Context Manager or admin log) but never seen assigned
@@ -2017,7 +2023,7 @@ def check_caa_unassigned_levels(data: dict) -> CheckResult:
         "Admin console > Security > Investigation tool (or Reporting > Audit and investigation), data source 'Context Aware Access log events'; the Assign access levels page also offers Actions > View logs per app. Confirm each denial is "
         "legitimate (user, app, region, unsatisfied level); tune the level rather than removing it when real users are blocked."
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_CAA,
 )
 def check_caa_denials(data: dict) -> CheckResult:
     """ACCESS_DENY_EVENT entries of the Context-Aware Access log, summarised per app, actor, region and
@@ -2083,7 +2089,7 @@ def check_caa_denials(data: dict) -> CheckResult:
         "Add Vault exports to the MPA-covered actions to prevent "
         "unauthorized export of eDiscovery data. https://knowledge.workspace.google.com/admin/security/multi-party-approval-for-sensitive-actions"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_MPA,
 )
 def check_mpa_vault_exports(data: dict) -> CheckResult:
     """Multi-Party Approval should cover Vault exports to protect sensitive data."""
@@ -2144,7 +2150,7 @@ def check_mpa_vault_exports(data: dict) -> CheckResult:
         "Enable classification labels for Gmail to categorize emails by "
         "sensitivity and apply DLP rules accordingly. https://knowledge.workspace.google.com/admin/security/create-classification-labels-for-your-organization"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_GMAIL_LABELS,
 )
 def check_gmail_classification_labels(data: dict) -> CheckResult:
     """Data classification labels should be enabled for Gmail."""
@@ -2205,7 +2211,7 @@ def check_gmail_classification_labels(data: dict) -> CheckResult:
         "Create DLP rules for Calendar to detect sensitive information "
         "in event titles, descriptions, and attachments. https://knowledge.workspace.google.com/admin/security/about-dlp-for-calendar"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_DLP_CALENDAR,
 )
 def check_calendar_dlp(data: dict) -> CheckResult:
     """DLP rules should be configured for Calendar event details."""
@@ -2267,6 +2273,7 @@ def check_calendar_dlp(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-24",
+    requires_license=EDITIONS_AI_CLASSIFICATION,
     scored=False,  # P3: Drive AI classification is not exposed by any API; MANUAL by design
     title="Ensure AI-powered data classification is enabled for Drive",
     level="L2",
@@ -2328,6 +2335,7 @@ def check_drive_ai_classification(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-25",
+    requires_license=EDITIONS_TRUST_RULES,
     title="Ensure Drive trust rules are configured",
     level="L2",
     source="GOOGLE",
@@ -2387,6 +2395,7 @@ def check_drive_trust_rules(data: dict) -> CheckResult:
 
 @check(
     check_id="ADD-26",
+    requires_license=EDITIONS_CSE,
     scored=False,  # P3: Gmail CSE is not exposed by the Policy API; MANUAL by design
     title="Ensure CSE is enabled for Gmail",
     level="L2",
@@ -2454,7 +2463,7 @@ def check_gmail_cse(data: dict) -> CheckResult:
     level="L2",
     source="GOOGLE",
     section="Google Meet",
-    requires_license="assured_controls",
+    requires_license=EDITIONS_MEET_RECORDING,
     remediation=(
         "Admin console > Apps > Google Workspace > Google Meet > "
         "Meet video settings > Recording. Enable compliance recording for "

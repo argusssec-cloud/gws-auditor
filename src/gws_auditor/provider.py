@@ -655,7 +655,7 @@ class Provider:
     #
     # Source: https://developers.google.com/workspace/admin/licensing/v1/how-tos/products
     # (Google's authoritative SKU reference; last cross-checked 2026-05-17)
-    _GWS_PRODUCT_IDS = ("Google-Apps", "Google-Apps-For-Education")
+    _GWS_PRODUCT_IDS = ("Google-Apps", "Google-Apps-For-Education", "101039")  # 101039 = Assured Controls add-on
     _SKU_EDITION_MAP: dict[str, tuple[str, str]] = {
         # --- Legacy G Suite (Google-Apps product) ---
         "Google-Apps-Lite":         ("Business Starter (Legacy)", "business_starter"),
@@ -683,6 +683,9 @@ class Provider:
         "1010310008": ("Google Workspace for Education Teaching & Learning",   "education_teaching_&_learning"),
         "1010310009": ("Google Workspace for Education Fundamentals",          "education_fundamentals"),
         "1010310010": ("Google Workspace for Education Standard",              "education_standard"),
+        # --- Assured Controls add-on (product 101039; tier 99, never a primary edition) ---
+        "1010390001": ("Assured Controls",      "assured_controls"),
+        "1010390002": ("Assured Controls Plus", "assured_controls_plus"),
         # --- Cloud Identity (informational; not a Workspace edition) ---
         "1010010001": ("Cloud Identity",                            ""),
         "1010050001": ("Cloud Identity Premium",                    ""),
@@ -716,6 +719,8 @@ class Provider:
             tier = LICENSE_TIERS.get(tier_key, 0) if tier_key else 0
             if tier_key == "":
                 continue  # Cloud Identity / unknown — not a Workspace tier
+            if tier >= 99:
+                continue  # add-on (Assured Controls) — never the primary edition
             better = (
                 tier > best_tier
                 or (tier == best_tier and count > best_count)

@@ -262,7 +262,8 @@
    "apps_chat.py:67 requires len(allowed_domains)>0 but provider never populates external_chat.allowed_domains, so any fallback tenant in allowlist mode FAILs (verified with the default fixture and an e2e chat_external_spaces ALLOWLISTED_DOMAINS policy).",
    "provider._map_chat ~2084 derives external_chat.restriction_mode from chat_external_spaces.domainAllowlistMode (external spaces), so the fallback judges a different control than the title (1:1 external chat).",
    "apps_chat.py:43-47 UNSPECIFIED enum -> FAIL."
-  ]
+  ],
+  "license_gate": "EDITIONS_CHAT_EXTERNAL (Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Enterprise Essentials, Enterprise Essentials Plus); before 2026-11-10: none. Source: Supported editions for this feature: Business Standard and Business Plus; Enterprise Standard and Enterprise Plus; Enterprise Essentials and Enterprise Essentials Plus; Nonprofits."
  },
  {
   "check_id": "CIS-3.1.4.4.1",
@@ -964,7 +965,8 @@
    "absent field",
    "DEFAULT-only entry"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "none: available in all editions; before 2026-11-10: business_standard. Source: Supported editions for this feature: Frontline Plus; Business Starter (except as noted), Business Standard, and Business Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Educatio"
  },
  {
   "check_id": "CIS-3.1.2.1.2.3",
@@ -987,7 +989,8 @@
    "absent field",
    "DEFAULT-only entry"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_SHARED_DRIVE_SETTINGS (Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus); before 2026-11-10: business_standard. Source: Supported editions for this feature: Frontline Plus; Business Starter (except as noted), Business Standard, and Business Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Educatio"
  },
  {
   "check_id": "CIS-3.1.2.1.2.4",
@@ -1013,7 +1016,8 @@
   ],
   "suspected_bugs": [
    "apps_drive.py:951-953 missing or UNSPECIFIED allowedPartiesForDownloadPrintCopy is counted as safe -> PASS on unknown data (false PASS)"
-  ]
+  ],
+  "license_gate": "EDITIONS_SHARED_DRIVE_SETTINGS (Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus); before 2026-11-10: business_standard. Source: Supported editions for this feature: Frontline Plus; Business Starter (except as noted), Business Standard, and Business Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Educatio"
  },
  {
   "check_id": "CIS-3.1.2.2.1",
@@ -1038,7 +1042,8 @@
   "suspected_bugs": [
    "apps_drive.py:1016 looks up setting type 'drive_offline' which the Cloud Identity Policy API does not expose; combined with no provider mapping the check can never PASS/FAIL in production (dead code, always MANUAL)",
    "decorator requires_license='enterprise_plus' is questionable for a setting available in all editions"
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "CIS-3.1.2.2.2",
@@ -1130,7 +1135,8 @@
   "suspected_bugs": [
    "apps_gmail.py check_gmail_offline (~L108-111) ignores the real gmail.web_offline.enabled setting -> permanently MANUAL in production (missed detection)",
    "requires_license='enterprise_plus' likely wrong for this setting"
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "CIS-3.1.3.2.1",
@@ -1230,7 +1236,8 @@
    "empty gmail -> MANUAL",
    "N/A on Business Standard"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "CIS-3.1.3.4.1.1",
@@ -1615,7 +1622,8 @@
   ],
   "suspected_bugs": [
    "apps_gmail.py:1728-1734 + provider.py:1757-1762: only the root-precedence spam_override_lists entry is evaluated; a bypassInternalSenders rule on a child OU is missed (false PASS); rule_states ignored (disabled rule -> false FAIL)"
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "CIS-3.1.3.7.1",
@@ -1661,7 +1669,8 @@
   ],
   "suspected_bugs": [
    "decorator requires_license='enterprise_plus' is doubtful for TLS compliance (all editions); not a status bug in the function body"
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "CIS-4.1.1.1",
@@ -1996,7 +2005,8 @@
    "License gating: Business Starter -> NOT_APPLICABLE, Enterprise Standard -> runs",
    "UPDATE_ACCESS_LEVEL_V2 shape assumed (not observed)"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_DLP_DRIVE (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "CIS-4.2.3.1",
@@ -2019,7 +2029,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/security_access.py:486-489 reads provider-invented security.dlp.drive_* keys that are never populated, while real rule.dlp policies are collected (provider.py:2831) -> check is always MANUAL in production, so a tenant with no Drive DLP never FAILs"
-  ]
+  ],
+  "license_gate": "EDITIONS_SESSION_CONTROL (Frontline Standard, Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Education Standard, and Education Plus; Enterprise Essentia"
  },
  {
   "check_id": "CIS-4.2.4.1",
@@ -2058,7 +2069,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/security_access.py:682-692 unknown state returns ERROR (make_manual) rather than MANUAL review; keys are never populated by the provider so every production run reports ERROR"
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Business Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Education Standard, and Education Plus; Ente"
  },
  {
   "check_id": "ADD-42",
@@ -2325,7 +2337,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/cisa_additions.py:69 (and _evaluate_setting generally) treats ..._UNSPECIFIED enums as unsafe -> FAIL instead of MANUAL"
-  ]
+  ],
+  "license_gate": "EDITIONS_CHAT_FILE_SHARING (Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: none. Source: Supported editions for this feature: Frontline Plus; Business Plus; Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; Enterprise Essentials Plus."
  },
  {
   "check_id": "GWS.GMAIL.5.4",
@@ -2583,7 +2596,8 @@
    "Test that a fully provider-normalized gmail category with every REQUIRED gmail setting present still yields MANUAL (documents that PASS/FAIL are dead paths).",
    "Test tier_keys_present=['business_starter'] + skus with unknown tier_key -> check runs (ambiguity rule)."
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_CSE (Frontline Plus, Enterprise Plus, Education Standard, Education Plus); before 2026-11-10: business_standard. Source: Supported editions for this feature: Frontline Plus; Business Standard and Business Plus; Enterprise Standard and Enterprise Plus."
  },
  {
   "check_id": "ADD-05",
@@ -2724,7 +2738,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/additional.py:532-545 uses make_manual (ERROR) for an un-exposed setting; should be make_review (MANUAL) like ADD-26, otherwise every Enterprise Plus tenant shows an ERROR."
-  ]
+  ],
+  "license_gate": "EDITIONS_DLP (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus); before 2026-11-10: enterprise_plus. Source: Supported editions for this feature: Frontline Plus; Enterprise Plus; Education Standard and Education Plus."
  },
  {
   "check_id": "ADD-12",
@@ -2745,7 +2760,8 @@
    "MANUAL test: no rules category, no compliance keys -> MANUAL.",
    "Test gmail_dlp_enabled True with dlp_rules None -> PASS without exception (details uses dlp.get('gmail_dlp_rules') or [])."
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_GEMINI_WORKSPACE (Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Education Standard, and Education Plus."
  },
  {
   "check_id": "ADD-13",
@@ -2764,7 +2780,8 @@
   "gaps": [
    "Test full provider normalize_data output (chrome_policies with gemini_in_chrome_disabled) still yields MANUAL for ADD-13 (documents dead PASS/FAIL paths)."
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_GEMINI_WORKSPACE (Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning); before 2026-11-10: none. Source: Supported editions for this feature: Enterprise Standard and Enterprise Plus; Teaching and Learning add-on and Education Plus; and Google AI Pro for Education ."
  },
  {
   "check_id": "ADD-14",
@@ -2806,7 +2823,8 @@
   "gaps": [
    "Document/assert that normalize_data never populates gemini.workspace_studio (MANUAL in production)."
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_CAA (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: none. Source: Supported editions for this feature: Enterprise Standard and Enterprise Plus; Teaching and Learning add-on and Education Plus; and Google AI Pro for Education ."
  },
  {
   "check_id": "ADD-16",
@@ -2838,7 +2856,8 @@
   "gaps": [
    "Test check_passkeys_enforced({}) -> MANUAL."
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "none: available in all editions; before 2026-11-10: none. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; Enterprise Essentials Plus; Cloud Identity P"
  },
  {
   "check_id": "ADD-20",
@@ -2862,7 +2881,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/additional.py:1050 token_logs empty due to collection error (api_errors get_token_activities) returns NOT_APPLICABLE instead of MANUAL."
-  ]
+  ],
+  "license_gate": "EDITIONS_CAA (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; Enterprise Essentials Plus; Cloud Identity P"
  },
  {
   "check_id": "ADD-21",
@@ -2883,7 +2903,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/additional.py:1200-1213 None (never populated) -> FAIL; combined with src/gws_auditor/provider.py:2779-2785 reading non-existent fields coveredActions/actions, every Enterprise Standard+ tenant receives a false FAIL. Should be make_review MANUAL; test_mpa_vault_not_configured_fail locks in the wrong behaviour."
-  ]
+  ],
+  "license_gate": "EDITIONS_GMAIL_LABELS (Frontline Starter, Frontline Standard, Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; Enterprise Essentials Plus."
  },
  {
   "check_id": "ADD-22",
@@ -2901,7 +2922,8 @@
   "gaps": [
    "License test: subscription_type='Business Starter' -> NOT_APPLICABLE."
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_DLP_CALENDAR (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials); before 2026-11-10: business_standard. Source: Supported editions for this feature: Frontline Starter, Frontline Standard, and Frontline Plus; Business Standard and Business Plus; Enterprise Standard and Enterprise Plus; Education Standard and Edu"
  },
  {
   "check_id": "ADD-23",
@@ -2924,7 +2946,8 @@
   "suspected_bugs": [
    "src/gws_auditor/checks/additional.py:1329-1342 None/None -> FAIL: unknown data reported as failing; should be MANUAL.",
    "src/gws_auditor/provider.py:2803-2823 _map_rules iterates the flattened category (one value per setting name) instead of rules['_ou_policies'], so only the last rule.dlp policy is inspected for calendar triggers -> calendar DLP rules are missed when any other DLP rule is listed after them."
-  ]
+  ],
+  "license_gate": "EDITIONS_AI_CLASSIFICATION (Frontline Plus, Enterprise Plus); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Education Standard, and Education Plus; Enterprise Essentia"
  },
  {
   "check_id": "ADD-24",
@@ -2944,7 +2967,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/additional.py:1408-1420 FAIL result expected_value='Disabled for all OUs' contradicts the check intent (cosmetic, reporting only)."
-  ]
+  ],
+  "license_gate": "EDITIONS_TRUST_RULES (Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: none. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "ADD-25",
@@ -2964,7 +2988,8 @@
    "Provider test: trust_rules_file with [] -> key not set -> MANUAL (document).",
    "Provider test: trust_rules_file with 2 rules -> PASS with trust_rule_count 2."
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_CSE (Frontline Plus, Enterprise Plus, Education Standard, Education Plus); before 2026-11-10: none. Source: Supported editions for this feature: Frontline Plus; Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; Enterprise Essentials Plus."
  },
  {
   "check_id": "ADD-26",
@@ -2982,7 +3007,8 @@
   "gaps": [
    "Decide/test license gating: subscription_type='Business Standard' -> expect N/A (currently MANUAL)."
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_MEET_RECORDING (Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus); before 2026-11-10: none. Source: Supported editions for this feature: Frontline Plus; Enterprise Plus; Education Standard and Education Plus."
  },
  {
   "check_id": "ADD-27",
@@ -3007,7 +3033,8 @@
   "suspected_bugs": [
    "src/gws_auditor/checks/additional.py:1572-1582 reads meet.video_recording.enableRecording (user recording permission) as proxy for 'compliance recording'; disabling user recording yields FAIL — wrong semantics -> false FAIL / false PASS.",
    "src/gws_auditor/checks/additional.py:1576 `enabled is not True` treats None/empty value as FAIL instead of MANUAL."
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: assured_controls. Source: Supported editions for this feature: Business Standard and Business Plus; Enterprise Standard and Enterprise Plus; Education Plus; Essentials, Enterprise Essentials, and Enterprise Essentials Plus. / "
  },
  {
   "check_id": "ADD-28",
@@ -3279,7 +3306,8 @@
   "suspected_bugs": [
    "src/gws_auditor/checks/additional.py:958 inventory uses login_type=='saml' from the login audit, which records sign-ins to Google through an external IdP, not usage of SAML apps for which Google is the IdP (those live in applicationName=saml). Inventory step is measuring the wrong population -> false N/A / spurious MANUAL.",
    "src/gws_auditor/checks/additional.py:998 `or not app_type` -> any CAA denial counts as SAML enforcement -> false PASS."
-  ]
+  ],
+  "license_gate": "EDITIONS_CAA (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; Enterprise Essentials Plus; Cloud Identity P"
  },
  {
   "check_id": "ADD-41",
@@ -3467,7 +3495,8 @@
    "test: ERROR when no data",
    "test: entry missing field -> decide MANUAL vs FAIL"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_CHAT_REPORTING (Frontline Plus, Enterprise Plus, Education Standard, Education Plus); before 2026-11-10: business_standard. Source: Supported editions for this feature: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Nonprofits and Workspace Indivi"
  },
  {
   "check_id": "GWS.CHAT.1.1",
@@ -3539,7 +3568,8 @@
   "suspected_bugs": [
    "src/gws_auditor/checks/cisa_scuba.py:790 reads setting key 'chat_reporting' which is not in policy_api_shapes.json; real type is chat.content_reporting -> OU path is dead in production",
    "src/gws_auditor/checks/cisa_scuba.py:816-817 + provider.py:2126-2131 legacy path reads content_reporting.enabled which never exists for the real payload -> check always returns ERROR on live tenants (never PASS/FAIL)"
-  ]
+  ],
+  "license_gate": "EDITIONS_DRIVE_GENERAL_ACCESS (Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus); before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.DRIVEDOCS.1.2",
@@ -3610,7 +3640,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/cisa_scuba.py:1074-1078 absent allowPublishingFiles -> FAIL (unknown treated as insecure)"
-  ]
+  ],
+  "license_gate": "EDITIONS_DRIVE_GENERAL_ACCESS (Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus); before 2026-11-10: none. Source: Supported editions for this feature: Business Standard and Business Plus; Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; G Suite Business; Nonprofits."
  },
  {
   "check_id": "GWS.DRIVEDOCS.1.8",
@@ -3634,7 +3665,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/cisa_scuba.py:1172-1175 empty/absent defaultFileAccess is in the safe tuple ('') -> PASS on unknown value; UNSPECIFIED -> FAIL"
-  ]
+  ],
+  "license_gate": "EDITIONS_MEET_RECORDING (Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus); before 2026-11-10: none. Source: Supported editions for this feature: Business Standard and Business Plus; Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; G Suite Business; Nonprofits."
  },
  {
   "check_id": "GWS.DRIVEDOCS.3.1",
@@ -3794,7 +3826,8 @@
    "test: NOT_APPLICABLE on Business Starter",
    "test: multi-OU automatic_recording child True -> FAIL"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_MEET_TRANSCRIPTION (Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus); before 2026-11-10: business_standard. Source: Supported editions for this feature: Business Standard and Business Plus; Enterprise Standard and Enterprise Plus; Education Plus; Essentials, Enterprise Essentials, and Enterprise Essentials Plus. / "
  },
  {
   "check_id": "GWS.MEET.6.2",
@@ -3815,7 +3848,8 @@
    "test: NOT_APPLICABLE on Business Starter",
    "test: multi-OU child True -> FAIL"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_DATA_REGIONS (Frontline Starter, Frontline Standard, Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: business_standard. Source: Supported editions for this feature: Business Standard; Business Plus; Enterprise Standard and Enterprise Plus; Education Plus."
  },
  {
   "check_id": "GWS.GROUPS.1.3",
@@ -4004,7 +4038,8 @@
   ],
   "suspected_bugs": [
    "provider.py:2478 `dr_out['configured'] = bool(dr)` when data_at_rest_region is absent -> any other data_regions policy (e.g. data_processing_region) makes src/gws_auditor/checks/cisa_scuba.py:2754 legacy path PASS (verified false PASS)"
-  ]
+  ],
+  "license_gate": "EDITIONS_MPA (Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: business_standard. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.COMMONCONTROLS.17.1",
@@ -4030,7 +4065,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/cisa_scuba.py:2826-2827 any state other than ENABLED, including MULTI_PARTY_APPROVAL_STATE_UNSPECIFIED, is reported FAIL"
-  ]
+  ],
+  "license_gate": "EDITIONS_ASSURED_CONTROLS (Assured Controls add-on, Assured Controls Plus add-on); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; Enterprise Essentials Plus."
  },
  {
   "check_id": "GWS.CLASSROOM.1.1",
@@ -4232,7 +4268,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/cisa_scuba.py:3710 reads setting key 'assured_controls' which is not in the Policy API catalogue (dead path); verdicts come only from admin logs or NA"
-  ]
+  ],
+  "license_gate": "EDITIONS_ASSURED_CONTROLS (Assured Controls add-on, Assured Controls Plus add-on); before 2026-11-10: assured_controls. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.ASSUREDCONTROLS.1.2",
@@ -4256,7 +4293,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/cisa_scuba.py:3817-3819 *_UNSPECIFIED regime -> FAIL"
-  ]
+  ],
+  "license_gate": "EDITIONS_ASSURED_CONTROLS (Assured Controls add-on, Assured Controls Plus add-on); before 2026-11-10: assured_controls. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.ASSUREDCONTROLS.2.1",
@@ -4281,7 +4319,8 @@
   ],
   "suspected_bugs": [
    "src/gws_auditor/checks/cisa_scuba.py:3951-3966 an INHERIT_FROM_PARENT or single-app DISABLED event makes the check PASS for every app (unknown apps treated as compliant)"
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: assured_controls. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.SITES.1.1",
@@ -4328,7 +4367,8 @@
   ],
   "suspected_bugs": [
    "cisa_commoncontrols.py:53-64 only 'ENABLED' passes; any other NEW_VALUE (e.g. 'true') reports FAIL. Real Reports API value unverified -> possible false FAIL."
-  ]
+  ],
+  "license_gate": "EDITIONS_SESSION_CONTROL (Frontline Standard, Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; Enterprise Essentials Plus; Cloud Identity P"
  },
  {
   "check_id": "GWS.COMMONCONTROLS.3.1",
@@ -4351,7 +4391,8 @@
   ],
   "suspected_bugs": [
    "cisa_commoncontrols.py:167-187 reads setting type 'sso' that the Policy API does not expose; in production the check can only return ERROR -> finding: unverifiable control presented as ERROR rather than MANUAL/review."
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.COMMONCONTROLS.3.2",
@@ -4374,7 +4415,8 @@
   ],
   "suspected_bugs": [
    "cisa_commoncontrols.py:259-279 same unreal 'sso' setting as 3.1; production can never PASS/FAIL."
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.COMMONCONTROLS.4.1",
@@ -4401,7 +4443,8 @@
    "cisa_commoncontrols.py:366 integer-divides seconds so 12h<d<13h passes (45000s -> PASS)",
    "cisa_commoncontrols.py:376-392 when every entry is a skipped DEFAULT, unsafe_ous is empty and PASS is reported for 'All N OU(s)'",
    "'0s' evaluates to 0 hours -> PASS; needs verification of how 'never expire' is encoded"
-  ]
+  ],
+  "license_gate": "EDITIONS_DATA_PROCESSING_REGION (Frontline Plus, Enterprise Plus, Enterprise Essentials Plus); before 2026-11-10: business_plus. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Business Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Education Standard, and Education Plus; Ente"
  },
  {
   "check_id": "GWS.COMMONCONTROLS.6.1",
@@ -4550,7 +4593,8 @@
   ],
   "suspected_bugs": [
    "cisa_commoncontrols.py:934-958 reads non-existent setting 'app_access'; production always ERROR although accessLevel of api_controls.unconfigured_third_party_apps could decide it."
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.COMMONCONTROLS.10.3",
@@ -4658,7 +4702,8 @@
   ],
   "suspected_bugs": [
    "cisa_commoncontrols.py:1284 get_ou_values(security,'data_regions') can never match a real setting (key is 'data_processing_region'); per-OU values are ignored and only the root merged value is judged."
-  ]
+  ],
+  "license_gate": "EDITIONS_DLP (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus); before 2026-11-10: business_standard. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.COMMONCONTROLS.16.1",
@@ -4683,7 +4728,8 @@
   ],
   "suspected_bugs": [
    "cisa_commoncontrols.py:1391-1392 any serviceState other than ENABLED (including *_UNSPECIFIED) is FAIL."
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.COMMONCONTROLS.16.2",
@@ -4707,7 +4753,8 @@
   ],
   "suspected_bugs": [
    "cisa_commoncontrols.py:1506-1507 *_UNSPECIFIED serviceState reported as FAIL."
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.COMMONCONTROLS.18.2",
@@ -4730,7 +4777,8 @@
    "rules category absent -> MANUAL",
    "trigger-based chat rule without chatAction -> currently FAIL (decide)"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_DLP (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Education Standard, and Education Plus."
  },
  {
   "check_id": "GWS.COMMONCONTROLS.18.3",
@@ -4753,7 +4801,8 @@
   ],
   "suspected_bugs": [
    "cisa_commoncontrols.py:1754-1765 uses make_manual (ERROR) where 18.2/18.4 use make_review (MANUAL) for the same 'rules not fetched' condition - inconsistent status."
-  ]
+  ],
+  "license_gate": "EDITIONS_DLP_DRIVE (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_plus. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Education Standard, and Education Plus."
  },
  {
   "check_id": "GWS.COMMONCONTROLS.18.4",
@@ -4776,7 +4825,8 @@
    "mixed block+warn -> document PASS",
    "rules absent -> MANUAL"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Education Standard, and Education Plus; Enterprise Essentia"
  },
  {
   "check_id": "GWS.GMAIL.4.1",
@@ -5031,7 +5081,8 @@
    "no data -> ERROR",
    "DEFAULT-only -> documented verdict"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_SHARED_DRIVE_SETTINGS (Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus); before 2026-11-10: none. Source: Supported editions for this feature: Frontline Plus; Business Starter (except as noted), Business Standard, and Business Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Educatio"
  },
  {
   "check_id": "GWS.DRIVEDOCS.2.2",
@@ -5052,7 +5103,8 @@
    "absent field -> MANUAL",
    "mixed OUs root True child False -> FAIL names child"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_CHAT_REPORTING (Frontline Plus, Enterprise Plus, Education Standard, Education Plus); before 2026-11-10: none. Source: Supported editions for this feature: Frontline Plus; Business Starter (except as noted), Business Standard, and Business Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Educatio"
  },
  {
   "check_id": "GWS.DRIVEDOCS.5.1",
@@ -5146,7 +5198,8 @@
   ],
   "suspected_bugs": [
    "cisa_services.py:1488 and provider.py:2125 use setting name 'chat_reporting' which the Policy API does not return (real: chat.content_reporting) -> production always ERROR."
-  ]
+  ],
+  "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "GWS.CALENDAR.3.2",
@@ -5258,7 +5311,8 @@
   "edge_cases": "Evaluations for GMAIL/DRIVE are never Admin console evidence (MANUAL, not PASS); CAA disabled but an evaluation newer than the toggle -> PASS; ACM not collected and nothing logged -> MANUAL (unknown, never FAIL); app-code match is case-insensitive. CHANGE_CAA_APP_ASSIGNMENTS is scoped by TARGET_ENTITY_NAME (root OU or sub-OU, observed 2026-11-06 23:35Z): state is kept per app, target and mode, so a sub-OU removal never clears the root assignment; MODE WARN observed live.",
   "coverage_now": "tests/test_checks/test_additional.py::TestCaaAdminConsole (7 tests: PASS via evaluation and via assignment, FAIL via disable/monitor/removal/empty ACM, MANUAL via other-app evaluations and unrecognised mode, N/A on lower edition). Live 2026-11-06 (audit cache 190032): MANUAL, Admin console not among the 19 assigned apps; after the 23:23Z flip (geo level assigned to ADMIN_CONSOLE in BLOCK mode): PASS via the assignment event. CAA user log 23:24Z: ACCESS_LEVELS_EVALUATED CAA_APPLICATION ADMIN_CONSOLE, so PASS also via evaluation.",
   "gaps": [],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_CAA (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: Supported editions for this feature: Frontline Standard and Frontline Plus; Enterprise Standard and Enterprise Plus; Education Standard and Education Plus; Enterprise Essentials Plus; Cloud Identity P"
  },
  {
   "check_id": "ADD-54",
@@ -5275,7 +5329,8 @@
   "edge_cases": "devicePolicy {} or requireScreenlock false is not device-based; geo-only CEL expr is not device-based; nested requiredAccessLevels resolved up to depth 3; details append '<n> of <m> evaluation(s) carried device signals' and a deploy-Endpoint-Verification hint when none did.",
   "coverage_now": "tests/test_checks/test_additional.py::TestCaaDeviceLevel (7 tests). Live 2026-11-06 (audit cache 190032): FAIL ('1 access level(s) (Geo restriction), none of which requires device posture', 0 of 7 evaluations with device signals). Flip 23:30Z: live ACM devicePolicy shape, UPDATE_ACCESS_LEVEL_V2 and MONITOR_MODE_ACCESS_EVALUATED_EVENT captured in tests (test_live_update_event_feeds_the_admin_log_inventory, test_live_ou_scoped_sequence_and_monitor_evaluations).",
   "gaps": [],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_CAA (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "ADD-55",
@@ -5292,7 +5347,8 @@
   "edge_cases": "Deleted levels (DELETE_ACCESS_LEVEL_V2) are ignored; a monitor-mode assignment counts as 'seen' (hygiene, not enforcement); assignments older than the admin-log window are invisible, hence unscored and stated in details. CHANGE_CAA_APP_ASSIGNMENTS is scoped by TARGET_ENTITY_NAME (root OU or sub-OU, observed 2026-11-06 23:35Z): state is kept per app, target and mode, so a sub-OU removal never clears the root assignment; MODE WARN observed live.",
   "coverage_now": "tests/test_checks/test_additional.py::TestCaaUnassignedLevels (4 tests: PASS, MANUAL with unassigned + condition-less, admin-log inventory, N/A). Live 2026-11-06 (audit cache 190032): PASS (1 level, assigned and evaluated).",
   "gaps": [],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_CAA (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
   "check_id": "ADD-56",
@@ -5310,6 +5366,7 @@
   "gaps": [
    "monitor-mode denial event name assumed (MONITOR_MODE_ACCESS_DENY_EVENT); the active-mode ACCESS_DENY_EVENT shape was captured live 2026-11-06 23:59Z"
   ],
-  "suspected_bugs": []
+  "suspected_bugs": [],
+  "license_gate": "EDITIONS_CAA (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: article has no editions line (see analysis-license-gates.md)"
  }
 ]

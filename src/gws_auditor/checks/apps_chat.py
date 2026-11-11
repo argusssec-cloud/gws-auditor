@@ -9,11 +9,15 @@ CIS Google Workspace Benchmark v1.3.0 - Google Chat controls.
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
                    format_ou_values_readable, field_value, ou_verdict)
+from ..constants import (
+    EDITIONS_CHAT_EXTERNAL,
+)
 from ..models import CheckResult, Status
 
 
 @check(
     check_id="CIS-3.1.4.2.1",
+    requires_license=EDITIONS_CHAT_EXTERNAL,
     title="Ensure external chat is restricted to allowed domains",
     level="L1",
     source="CIS",

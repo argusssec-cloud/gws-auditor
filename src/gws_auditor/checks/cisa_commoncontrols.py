@@ -11,6 +11,9 @@ Only checks NOT already covered by CIS/OTHER/GOOGLE or the main CISA module.
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified,
                    admin_emails, user_usage_by_email, advanced_protection_enrolment, make_not_applicable,
                    format_ou_values_readable, is_default_policy, is_admin_configured, field_value, ou_verdict)
+from ..constants import (
+    EDITIONS_CAA, EDITIONS_DATA_PROCESSING_REGION, EDITIONS_DLP, EDITIONS_DLP_DRIVE, EDITIONS_SESSION_CONTROL,
+)
 from ..models import CheckResult, Status
 
 
@@ -48,7 +51,7 @@ def _is_default_allow(entry: dict) -> bool:
         "Configure device policies to enforce endpoint trust "
         "requirements such as screen lock, encryption, and OS version. https://knowledge.workspace.google.com/admin/security/deploy-context-aware-access"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_CAA,
 )
 def check_context_aware_access(data: dict) -> CheckResult:
     """Context-aware access device policies should be configured."""
@@ -209,7 +212,6 @@ def check_context_aware_access(data: dict) -> CheckResult:
         "Enable post-SSO verification so that users must re-authenticate with "
         "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
     ),
-    requires_license="enterprise_plus",
 )
 def check_sso_verification(data: dict) -> CheckResult:
     """Post-SSO verification should be enabled for the organization SSO profile."""
@@ -251,11 +253,11 @@ def check_sso_verification(data: dict) -> CheckResult:
         )
 
     if post_sso is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.COMMONCONTROLS.3.1",
             title="Ensure SSO verification is enabled for organization SSO profile",
             level="L2", source="CISA", section="Security",
-            details="Could not determine post-SSO verification setting.",
+            details=("Post-SSO verification for the organization SSO profile is not in the Cloud Identity Policy API and no audit-log signal names it. Verify manually in Admin console > Security > Authentication > Login challenges > Post-SSO verification."),
             remediation=(
                 "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
                 "Enable post-SSO verification to require additional Google authentication "
@@ -290,7 +292,6 @@ def check_sso_verification(data: dict) -> CheckResult:
         "Enable post-SSO verification for third-party SSO profiles to ensure "
         "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
     ),
-    requires_license="enterprise_plus",
 )
 def check_third_party_sso_verification(data: dict) -> CheckResult:
     """Post-SSO verification should be enabled for third-party SSO profiles."""
@@ -333,11 +334,11 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
         )
 
     if third_party is None:
-        return make_manual(
+        return make_review(
             check_id="GWS.COMMONCONTROLS.3.2",
             title="Ensure post-SSO verification is enabled for third-party SSO",
             level="L2", source="CISA", section="Security",
-            details="Could not determine third-party SSO verification setting.",
+            details=("Post-SSO verification for third-party SSO profiles is not in the Cloud Identity Policy API and no audit-log signal names it. Verify manually in Admin console > Security > Authentication > Login challenges > Post-SSO verification."),
             remediation=(
                 "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
                 "Enable post-SSO verification for all third-party SSO profiles to add "
@@ -375,7 +376,7 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
         "Reduce session duration to 12 hours or less. Longer sessions "
         "increase the risk of session hijacking and unauthorized access. https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
     ),
-    requires_license="business_plus",
+    requires_license=EDITIONS_SESSION_CONTROL,
 )
 def check_session_duration(data: dict) -> CheckResult:
     """Session duration should be 12 hours or less to force re-authentication."""
@@ -839,7 +840,6 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
         "Even low-risk scopes can leak data if the requesting app "
         "is malicious or compromised. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
     ),
-    requires_license="enterprise_plus",
 )
 def check_user_consent_low_risk(data: dict) -> CheckResult:
     """Users should not be able to consent to low-risk OAuth scopes."""
@@ -1183,7 +1183,7 @@ def check_audit_log_retention(data: dict) -> CheckResult:
         "and in processing remains within the designated geographic region "
         "for compliance with data sovereignty requirements. https://knowledge.workspace.google.com/admin/security/about-assured-controls-and-assured-controls-plus"
     ),
-    requires_license="business_standard",
+    requires_license=EDITIONS_DATA_PROCESSING_REGION,
 )
 def check_data_processing_in_region(data: dict) -> CheckResult:
     """Data processing should be restricted to the configured storage region."""
@@ -1275,7 +1275,6 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
         "service expands the attack surface and may introduce "
         "unmonitored data flows. https://knowledge.workspace.google.com/admin/users/advanced/turn-a-service-on-or-off-for-google-workspace-users"
     ),
-    requires_license="enterprise_plus",
 )
 def check_unused_services_disabled(data: dict) -> CheckResult:
     """Unused Google Workspace services should be disabled to reduce attack surface."""
@@ -1373,7 +1372,6 @@ def check_unused_services_disabled(data: dict) -> CheckResult:
         "have not completed full security review and may introduce "
         "vulnerabilities or unexpected data handling behavior. https://knowledge.workspace.google.com/admin/users/access/turn-early-access-apps-on-or-off-for-users"
     ),
-    requires_license="enterprise_plus",
 )
 def check_early_access_disabled(data: dict) -> CheckResult:
     """Early access (pre-release) apps should be disabled."""
@@ -1483,7 +1481,7 @@ def _rule_list_judge(*names: str):
         "from being shared in chat conversations. Chat is a common "
         "vector for accidental data exposure. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-from-chat-messages-and-attachments"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_DLP,
 )
 def check_dlp_chat(data: dict) -> CheckResult:
     """DLP rules should be configured for Google Chat."""
@@ -1569,7 +1567,7 @@ def check_dlp_chat(data: dict) -> CheckResult:
         "being emailed externally. Email is the primary channel for "
         "both accidental and intentional data exfiltration. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
     ),
-    requires_license="enterprise_plus",
+    requires_license=EDITIONS_DLP,
 )
 def check_dlp_gmail(data: dict) -> CheckResult:
     """DLP rules should be configured for Gmail."""
@@ -1652,7 +1650,7 @@ def check_dlp_gmail(data: dict) -> CheckResult:
         "Warn-only or audit-only actions do not prevent data loss and "
         "should only be used during initial policy tuning. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
     ),
-    requires_license="enterprise_standard",
+    requires_license=EDITIONS_DLP_DRIVE,
 )
 def check_dlp_block_external(data: dict) -> CheckResult:
     """DLP default action should block or block external sharing of sensitive data."""
