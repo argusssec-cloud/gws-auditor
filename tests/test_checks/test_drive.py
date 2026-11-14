@@ -61,11 +61,18 @@ class TestDriveSharing:
 class TestSharedDrives:
     """Tests for CIS-3.1.2.1.2.x Shared Drive checks."""
 
-    def test_shared_drive_creation_controlled_pass(self, full_audit_data):
+    def test_shared_drive_creation_prevented_fails(self, full_audit_data):
+        """CIS 3.1.2.1.2.1 audit step: 'Prevent users from creating new shared drives' un-checked."""
         from gws_auditor.checks.apps_drive import check_shared_drive_creation
         _set_drive_shared(full_audit_data, "creation_restricted", True)
         result = check_shared_drive_creation(full_audit_data)
-        assert result.status == Status.PASS
+        assert result.status == Status.FAIL
+        assert "override" in result.details
+
+    def test_shared_drive_creation_allowed_passes(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_shared_drive_creation
+        _set_drive_shared(full_audit_data, "creation_restricted", False)
+        assert check_shared_drive_creation(full_audit_data).status == Status.PASS
 
     def test_shared_drive_members_only_pass(self, full_audit_data):
         from gws_auditor.checks.apps_drive import check_shared_drive_member_access
@@ -490,46 +497,63 @@ class TestDriveExternalDistributionOU:
 
 
 class TestSharedDriveCreationOU:
-    """OU-aware tests for CIS-3.1.2.1.2.1: shared drive creation."""
+    """OU-aware tests for CIS-3.1.2.1.2.1 (v1.4.1): creation allowed is the audited state."""
 
-    def test_all_ous_safe(self, full_audit_data):
+    def test_all_ous_allow_creation_pass(self, full_audit_data):
         from gws_auditor.checks.apps_drive import check_shared_drive_creation
 
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "shared_drive_creation",
-                                {"allowSharedDriveCreation": False}, "/"),
+                                {"allowSharedDriveCreation": True}, "/"),
                 make_ou_policy("drive", "shared_drive_creation",
-                                {"allowSharedDriveCreation": False}, "/Engineering"),
+                                {"allowSharedDriveCreation": True}, "/Engineering"),
             ],
         }
         result = check_shared_drive_creation(full_audit_data)
         assert result.status == Status.PASS
         assert "2 OU(s)" in result.details
 
-    def test_child_ou_unsafe(self, full_audit_data):
+    def test_child_ou_prevents_creation_fails(self, full_audit_data):
+        from gws_auditor.checks.apps_drive import check_shared_drive_creation
+
+        full_audit_data["policies"]["drive"] = {
+            "_ou_policies": [
+                make_ou_policy("drive", "shared_drive_creation",
+                                {"allowSharedDriveCreation": True}, "/"),
+                make_ou_policy("drive", "shared_drive_creation",
+                                {"allowSharedDriveCreation": False}, "/Temp"),
+            ],
+        }
+        result = check_shared_drive_creation(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "/Temp" in result.details
+        assert "/Temp" in result.actual_value["prevented"]
+
+    def test_all_ous_prevent_creation_fails(self, full_audit_data):
         from gws_auditor.checks.apps_drive import check_shared_drive_creation
 
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "shared_drive_creation",
                                 {"allowSharedDriveCreation": False}, "/"),
-                make_ou_policy("drive", "shared_drive_creation",
-                                {"allowSharedDriveCreation": True}, "/Temp"),
             ],
         }
         result = check_shared_drive_creation(full_audit_data)
         assert result.status == Status.FAIL
-        assert "/Temp" in result.details
+        assert "organisation" in result.details
 
     def test_fallback(self, full_audit_data):
         from gws_auditor.checks.apps_drive import check_shared_drive_creation
 
         full_audit_data["policies"]["drive"] = {
+            "shared_drive_settings": {"creation_restricted": False},
+        }
+        assert check_shared_drive_creation(full_audit_data).status == Status.PASS
+        full_audit_data["policies"]["drive"] = {
             "shared_drive_settings": {"creation_restricted": True},
         }
-        result = check_shared_drive_creation(full_audit_data)
-        assert result.status == Status.PASS
+        assert check_shared_drive_creation(full_audit_data).status == Status.FAIL
 
 
 class TestSharedDriveManagerOverrideOU:
@@ -651,17 +675,18 @@ class TestSharedDriveViewerRestrictionsOU:
         assert result.status == Status.FAIL
         assert "/Contractors" in result.details
 
-    def test_child_ou_editors_unsafe(self, full_audit_data):
+    def test_editors_only_passes(self, full_audit_data):
+        """CIS 3.1.2.1.2.4 (v1.4.1) fails only 'Everyone' (ALL); EDITORS_ONLY keeps viewers out."""
         from gws_auditor.checks.apps_drive import check_shared_drive_viewer_restrictions
 
         full_audit_data["policies"]["drive"] = {
             "_ou_policies": [
                 make_ou_policy("drive", "shared_drive_creation",
-                                {"allowedPartiesForDownloadPrintCopy": "EDITORS_AND_ABOVE"}, "/"),
+                                {"allowedPartiesForDownloadPrintCopy": "EDITORS_ONLY"}, "/"),
             ],
         }
         result = check_shared_drive_viewer_restrictions(full_audit_data)
-        assert result.status == Status.FAIL
+        assert result.status == Status.PASS
 
     def test_fallback(self, full_audit_data):
         from gws_auditor.checks.apps_drive import check_shared_drive_viewer_restrictions
@@ -674,7 +699,7 @@ class TestSharedDriveViewerRestrictionsOU:
 
 
 class TestDriveDesktopAccessOU:
-    """OU-aware tests for CIS-3.1.2.2.2: Drive for Desktop."""
+    """OU-aware tests for CIS-3.1.2.3.1 (3.1.2.2.2 in v1.3.0): Drive for Desktop."""
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.apps_drive import check_drive_desktop_access
@@ -794,7 +819,7 @@ class TestDriveSnakeCaseNormalization:
         )
         result = normalize_data(raw)
         check_result = check_shared_drive_creation(result)
-        assert check_result.status == Status.PASS
+        assert check_result.status == Status.FAIL  # prevented: the CIS audit step expects creation allowed
 
     def test_drive_for_desktop_snake_case(self, full_audit_data):
         """API returns allow_drive_for_desktop (snake_case) → mapped correctly."""

@@ -361,6 +361,33 @@ def check_third_party_sso_verification(data: dict) -> CheckResult:
     )
 
 
+
+def web_session_judge(entry: dict):
+    """``ou_verdict`` judge for ``security.session_controls``: web session of 12 hours or less.
+
+    Shared by GWS.COMMONCONTROLS.4.1 and CIS-4.2.4.1. Returns ``None`` when the duration is not
+    reported, else ``(verdict, hours)``.
+    """
+    hours = None
+    # Real field: webSessionDuration as a seconds string, e.g. "1209600s"
+    web_dur = field_value(entry, "webSessionDuration")
+    if isinstance(web_dur, str) and web_dur.endswith("s"):
+        try:
+            hours = float(web_dur[:-1]) / 3600
+        except (ValueError, TypeError):
+            hours = None
+    if hours is None:
+        legacy = field_value(entry, "sessionDurationHours", "duration")
+        try:
+            hours = None if legacy is None else float(legacy)
+        except (ValueError, TypeError):
+            hours = None
+    if hours is None:
+        return None  # duration not reported: cannot judge
+    shown = int(hours) if hours == int(hours) else round(hours, 2)
+    return hours <= 12, shown
+
+
 # ===========================================================================
 # Common Controls 4 - Session Management
 # ===========================================================================
@@ -395,25 +422,7 @@ def check_session_duration(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "session_controls")
     if ou_values:
-        def judge(entry: dict):
-            hours = None
-            # Real field: webSessionDuration as a seconds string, e.g. "1209600s"
-            web_dur = field_value(entry, "webSessionDuration")
-            if isinstance(web_dur, str) and web_dur.endswith("s"):
-                try:
-                    hours = float(web_dur[:-1]) / 3600
-                except (ValueError, TypeError):
-                    hours = None
-            if hours is None:
-                legacy = field_value(entry, "sessionDurationHours", "duration")
-                try:
-                    hours = None if legacy is None else float(legacy)
-                except (ValueError, TypeError):
-                    hours = None
-            if hours is None:
-                return None  # duration not reported: cannot judge
-            shown = int(hours) if hours == int(hours) else round(hours, 2)
-            return hours <= 12, shown
+        judge = web_session_judge
 
         return ou_verdict(
             ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,

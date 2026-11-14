@@ -4,7 +4,7 @@
 
 """Section 3.1.3: Gmail checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Gmail controls.
+CIS Google Workspace Benchmark v1.4.1 - Gmail controls.
 """
 
 from .base import (
@@ -88,7 +88,7 @@ def check_gmail_mail_delegation(data: dict) -> CheckResult:
 @check(
     check_id="CIS-3.1.3.1.2",
     title="Ensure offline Gmail is disabled",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Gmail",
     remediation=(
@@ -109,7 +109,7 @@ def check_gmail_offline(data: dict) -> CheckResult:
             return None if enabled is None else (enabled is False, enabled)
         return ou_verdict(
             ou_values, _judge, check_id="CIS-3.1.3.1.2", title="Ensure offline Gmail is disabled",
-            level="L2", source="CIS", section="Gmail",
+            level="L1", source="CIS", section="Gmail",
             fail_text="have offline Gmail enabled", pass_text="have offline Gmail disabled",
             expected_value="Disabled for all OUs",
             remediation=("Admin console > Apps > Google Workspace > Gmail > User settings. "
@@ -123,7 +123,7 @@ def check_gmail_offline(data: dict) -> CheckResult:
         return make_pass(
             check_id="CIS-3.1.3.1.2",
             title="Ensure offline Gmail is disabled",
-            level="L2", source="CIS", section="Gmail",
+            level="L1", source="CIS", section="Gmail",
             details="Offline Gmail is disabled.",
             actual_value=offline_enabled,
             expected_value="Disabled for all OUs",
@@ -133,7 +133,7 @@ def check_gmail_offline(data: dict) -> CheckResult:
         return make_review(
             check_id="CIS-3.1.3.1.2",
             title="Ensure offline Gmail is disabled",
-            level="L2", source="CIS", section="Gmail",
+            level="L1", source="CIS", section="Gmail",
             details=(
                 "Could not determine offline Gmail setting. "
                 "The Policy API does not expose this setting. Verify manually in "
@@ -148,7 +148,7 @@ def check_gmail_offline(data: dict) -> CheckResult:
     return make_fail(
         check_id="CIS-3.1.3.1.2",
         title="Ensure offline Gmail is disabled",
-        level="L2", source="CIS", section="Gmail",
+        level="L1", source="CIS", section="Gmail",
         details="Offline Gmail is enabled, risking cached email data exposure.",
         actual_value=offline_enabled,
         expected_value="Disabled for all OUs",
@@ -419,7 +419,7 @@ def check_gmail_dmarc(data: dict) -> CheckResult:
 @check(
     check_id="CIS-3.1.3.3.1",
     title="Ensure quarantine admin notifications are enabled",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Gmail",
     remediation=(
@@ -438,7 +438,7 @@ def check_gmail_quarantine_notifications(data: dict) -> CheckResult:
         return make_pass(
             check_id="CIS-3.1.3.3.1",
             title="Ensure quarantine admin notifications are enabled",
-            level="L2", source="CIS", section="Gmail",
+            level="L1", source="CIS", section="Gmail",
             details="Quarantine admin notifications are enabled.",
             actual_value=notify_enabled,
             expected_value="Enabled for all OUs",
@@ -448,7 +448,7 @@ def check_gmail_quarantine_notifications(data: dict) -> CheckResult:
         return make_review(
             check_id="CIS-3.1.3.3.1",
             title="Ensure quarantine admin notifications are enabled",
-            level="L2", source="CIS", section="Gmail",
+            level="L1", source="CIS", section="Gmail",
             details=(
                 "Could not determine quarantine notification setting. "
                 "Google does not expose this setting through any public API. "
@@ -464,7 +464,7 @@ def check_gmail_quarantine_notifications(data: dict) -> CheckResult:
     return make_fail(
         check_id="CIS-3.1.3.3.1",
         title="Ensure quarantine admin notifications are enabled",
-        level="L2", source="CIS", section="Gmail",
+        level="L1", source="CIS", section="Gmail",
         details="Quarantine admin notifications are not enabled.",
         actual_value=notify_enabled,
         expected_value="Enabled for all OUs",
@@ -1241,7 +1241,7 @@ def check_gmail_groups_spoofing(data: dict) -> CheckResult:
 @check(
     check_id="CIS-3.1.3.5.1",
     title="Ensure POP and IMAP access is disabled",
-    level="L1",
+    level="L2",
     source="CIS",
     section="Gmail",
     remediation=(
@@ -1253,7 +1253,7 @@ def check_gmail_pop_imap(data: dict) -> CheckResult:
     """POP and IMAP access should be disabled to force use of secure clients."""
     _ID = "CIS-3.1.3.5.1"
     _TITLE = "Ensure POP and IMAP access is disabled"
-    _L, _S, _SEC = "L1", "CIS", "Gmail"
+    _L, _S, _SEC = "L2", "CIS", "Gmail"
     _REMED = (
         "Admin console > Apps > Google Workspace > Gmail > "
         "End User Access. Disable POP and IMAP access. https://knowledge.workspace.google.com/admin/gmail/control-gmail-access-for-your-organizations-users"
@@ -1697,7 +1697,7 @@ def check_gmail_internal_spam_filter(data: dict) -> CheckResult:
 @check(
     check_id="CIS-3.1.3.7.1",
     title="Ensure comprehensive mail storage is enabled",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Gmail",
     remediation=(
@@ -1709,7 +1709,7 @@ def check_gmail_comprehensive_storage(data: dict) -> CheckResult:
     """Comprehensive mail storage should be enabled to capture all sent mail."""
     _ID = "CIS-3.1.3.7.1"
     _TITLE = "Ensure comprehensive mail storage is enabled"
-    _L, _S, _SEC = "L2", "CIS", "Gmail"
+    _L, _S, _SEC = "L1", "CIS", "Gmail"
     _REMED = (
         "Admin console > Apps > Google Workspace > Gmail > Compliance. "
         "Enable 'Comprehensive mail storage'. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"

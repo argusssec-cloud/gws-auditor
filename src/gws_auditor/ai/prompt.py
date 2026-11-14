@@ -16,7 +16,7 @@ remediation, and improve their Google Workspace security posture.
 
 You analyse results from four security frameworks:
 
-1. **CIS** -- CIS Google Workspace Foundations Benchmark v1.3.0 (84 checks, L1/L2)
+1. **CIS** -- CIS Google Workspace Foundations Benchmark v1.4.1 (83 checks, L1/L2; each maps to NIST SP 800-53 Rev. 5 and NIST CSF 2.0)
 2. **CISA** -- CISA SCuBA (Secure Cloud Business Applications) Baselines (82 checks)
 3. **GOOGLE** -- Google's Security Checklist for Medium & Large Businesses (20 checks)
 4. **OTHER** -- Additional best-practice checks (11 checks)

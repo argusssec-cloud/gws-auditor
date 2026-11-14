@@ -15,11 +15,20 @@ def _ou(data, category, setting_key, value, org_unit="/"):
 
 
 class TestSuperAdminUsage:
-    """CIS-1.1.3 read actor.email but normalized login_logs carry actor_email."""
+    """CIS-1.1.2 (CIS-1.1.3 before 1.6.0) read actor.email but normalized login_logs carry actor_email."""
+
+    @staticmethod
+    def _with_roles(full_audit_data):
+        # Role assignments collected, no super admin holds a delegated role.
+        full_audit_data["roles"] = {
+            "roles": [{"roleId": "sa", "roleName": "_SEED_ADMIN_ROLE", "isSystemRole": True, "isSuperAdminRole": True}],
+            "assignments": [],
+        }
 
     def test_heavy_super_admin_login_warns(self, full_audit_data):
         from gws_auditor.checks.directory import check_super_admin_usage
 
+        self._with_roles(full_audit_data)
         full_audit_data["login_logs"] = [
             make_log_entry(event_name="login_success", event_type="login", actor_email="admin1@example.com")
             for _ in range(11)
@@ -31,20 +40,22 @@ class TestSuperAdminUsage:
     def test_ten_logins_is_the_boundary(self, full_audit_data):
         from gws_auditor.checks.directory import check_super_admin_usage
 
+        self._with_roles(full_audit_data)
         full_audit_data["login_logs"] = [
             make_log_entry(event_name="login_success", event_type="login", actor_email="admin1@example.com")
             for _ in range(10)
         ]
-        assert check_super_admin_usage(full_audit_data).status == Status.MANUAL
+        assert check_super_admin_usage(full_audit_data).status == Status.PASS
 
     def test_failed_logins_do_not_count(self, full_audit_data):
         from gws_auditor.checks.directory import check_super_admin_usage
 
+        self._with_roles(full_audit_data)
         full_audit_data["login_logs"] = [
             make_log_entry(event_name="login_failure", event_type="login", actor_email="admin1@example.com")
             for _ in range(30)
         ]
-        assert check_super_admin_usage(full_audit_data).status == Status.MANUAL
+        assert check_super_admin_usage(full_audit_data).status == Status.PASS
 
 
 class TestDmarcWithoutRecord:

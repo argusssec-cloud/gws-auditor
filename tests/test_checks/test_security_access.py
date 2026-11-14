@@ -215,22 +215,22 @@ class TestDomainWideDelegation:
 # -----------------------------------------------------------------------
 
 class TestDbscDefault:
-    """CIS-4.2.4.1: unset BoundSessionCredentialsEnabled means Google's default (DBSC on for Workspace)."""
+    """ADD-59: unset BoundSessionCredentialsEnabled means Google's default (DBSC on for Workspace)."""
 
     def test_unset_policy_is_google_default_pass(self, full_audit_data):
-        from gws_auditor.checks.security_access import check_session_control
+        from gws_auditor.checks.security_access import check_dbsc
         full_audit_data["chrome_policies"] = {}
         full_audit_data["api_errors"] = []
-        result = check_session_control(full_audit_data)
+        result = check_dbsc(full_audit_data)
         assert result.status == Status.PASS and "default" in result.details
 
     def test_explicit_false_fails_and_error_is_review(self, full_audit_data):
-        from gws_auditor.checks.security_access import check_session_control
+        from gws_auditor.checks.security_access import check_dbsc
         full_audit_data["chrome_policies"] = {"dbsc_enabled": False}
-        assert check_session_control(full_audit_data).status == Status.FAIL
+        assert check_dbsc(full_audit_data).status == Status.FAIL
         full_audit_data["chrome_policies"] = {}
         full_audit_data["api_errors"] = [{"operation": "get_chrome_policies", "error": "boom"}]
-        assert check_session_control(full_audit_data).status == Status.MANUAL
+        assert check_dbsc(full_audit_data).status == Status.MANUAL
 
 
 class TestGeoBlocking:
@@ -403,30 +403,83 @@ class TestGeoBlocking:
 
 
 # -----------------------------------------------------------------------
-# CIS-4.2.4.1: Device Bound Session Credentials (DBSC)
+# ADD-59: Device Bound Session Credentials (DBSC) -- CIS-4.2.4.1 before 1.6.0
 # -----------------------------------------------------------------------
 
-class TestSessionControl:
-    """Tests for CIS-4.2.4.1: DBSC."""
+class TestDbsc:
+    """Tests for ADD-59: DBSC."""
 
     def test_dbsc_enabled_pass(self, full_audit_data):
-        from gws_auditor.checks.security_access import check_session_control
+        from gws_auditor.checks.security_access import check_dbsc
         full_audit_data["chrome_policies"] = {"dbsc_enabled": True}
-        result = check_session_control(full_audit_data)
+        result = check_dbsc(full_audit_data)
         assert result.status == Status.PASS
 
     def test_dbsc_disabled_fail(self, full_audit_data):
-        from gws_auditor.checks.security_access import check_session_control
+        from gws_auditor.checks.security_access import check_dbsc
         full_audit_data["chrome_policies"] = {"dbsc_enabled": False}
-        result = check_session_control(full_audit_data)
+        result = check_dbsc(full_audit_data)
         assert result.status == Status.FAIL
 
     def test_dbsc_unknown_manual(self, full_audit_data):
         """Unknown only when Chrome policies were not collected; an empty collection is Google's default (TestDbscDefault)."""
-        from gws_auditor.checks.security_access import check_session_control
+        from gws_auditor.checks.security_access import check_dbsc
         full_audit_data.pop("chrome_policies", None)
-        result = check_session_control(full_audit_data)
+        result = check_dbsc(full_audit_data)
         assert result.status == Status.MANUAL
+
+
+# -----------------------------------------------------------------------
+# CIS-4.2.4.1: Google session control (web session <= 12 hours) since 1.6.0
+# -----------------------------------------------------------------------
+
+class TestWebSessionControl:
+    """CIS 4.2.4.1 (v1.4.1): 'Verify Web session duration is 12 hours or less'."""
+
+    def test_twelve_hours_passes(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_session_control
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [make_ou_policy("security", "session_controls", {"webSessionDuration": "43200s"}, "/")],
+        }
+        result = check_session_control(full_audit_data)
+        assert result.status == Status.PASS
+        assert result.check_id == "CIS-4.2.4.1"
+
+    def test_fourteen_days_fails(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_session_control
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [
+                make_ou_policy("security", "session_controls", {"webSessionDuration": "43200s"}, "/"),
+                make_ou_policy("security", "session_controls", {"webSessionDuration": "1209600s"}, "/Sales"),
+            ],
+        }
+        result = check_session_control(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "/Sales" in result.details
+        assert "336h" in str(result.actual_value)
+
+    def test_twelve_and_a_half_hours_fails(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_session_control
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [make_ou_policy("security", "session_controls", {"webSessionDuration": "45000s"}, "/")],
+        }
+        assert check_session_control(full_audit_data).status == Status.FAIL
+
+    def test_absent_duration_is_manual(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_session_control
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [make_ou_policy("security", "session_controls", {}, "/")],
+        }
+        assert check_session_control(full_audit_data).status == Status.MANUAL
+
+    def test_fallback_mapped_value(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_session_control
+        full_audit_data["policies"]["security"] = {"session_management": {"web_session_duration_hours": 8}}
+        assert check_session_control(full_audit_data).status == Status.PASS
+        full_audit_data["policies"]["security"] = {"session_management": {"session_duration_hours": 24}}
+        assert check_session_control(full_audit_data).status == Status.FAIL
+        full_audit_data["policies"]["security"] = {}
+        assert check_session_control(full_audit_data).status == Status.ERROR
 
 
 # -----------------------------------------------------------------------

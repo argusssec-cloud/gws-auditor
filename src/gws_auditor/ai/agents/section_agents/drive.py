@@ -31,8 +31,8 @@ BENCHMARK_REQUIREMENTS: dict[str, str] = {
         "when this key is None because the policy mapping in provider.py "
         "does not extract the offline access setting from raw API data."
     ),
-    "CIS-3.1.2.2.3": (
-        "Ensure Drive SDK is disabled. The check reads "
+    "ADD-57": (
+        "Ensure Drive SDK is disabled (CIS-3.1.2.2.3 before 1.6.0; CIS v1.4.1 dropped the recommendation). The check reads "
         "policies.drive.features.drive_sdk_enabled. Returns MANUAL when "
         "this key is None because the Policy API may not expose the "
         "Drive SDK setting."

@@ -7,98 +7,153 @@ import pytest
 from gws_auditor.models import Status
 
 
+def _super_admin(email, *, uid=None, suspended=False, delegated=False):
+    return {
+        "id": uid or email.split("@")[0], "primaryEmail": email, "primary_email": email,
+        "isAdmin": True, "is_super_admin": True, "is_admin": True,
+        "isDelegatedAdmin": delegated, "is_delegated_admin": delegated,
+        "suspended": suspended, "isEnrolledIn2Sv": True, "isEnforcedIn2Sv": True,
+        "name": {"fullName": email.split("@")[0]},
+    }
+
+
+def _roles(*assignments, extra_roles=()):
+    """Directory roles payload: one super admin role (id 'sa') plus the given delegated roles."""
+    roles = [{"roleId": "sa", "roleName": "_SEED_ADMIN_ROLE", "isSystemRole": True, "isSuperAdminRole": True}]
+    roles += [{"roleId": rid, "roleName": name, "isSystemRole": True, "isSuperAdminRole": False} for rid, name in extra_roles]
+    return {"roles": roles,
+            "assignments": [{"roleId": rid, "assignedTo": uid, "assigneeType": "user", "scopeType": "CUSTOMER"}
+                            for rid, uid in assignments]}
+
+
 class TestSuperAdminCount:
-    """Tests for CIS-1.1.1 and CIS-1.1.2."""
+    """CIS-1.1.1 (v1.4.1): between two and four Super Admin accounts."""
 
     def test_pass_with_two_super_admins(self, full_audit_data):
-        from gws_auditor.checks.directory import check_super_admin_count_min
-        result = check_super_admin_count_min(full_audit_data)
+        from gws_auditor.checks.directory import check_super_admin_count
+        result = check_super_admin_count(full_audit_data)
         assert result.status == Status.PASS
         assert result.actual_value == 2
 
     def test_fail_with_one_super_admin(self, full_audit_data):
-        from gws_auditor.checks.directory import check_super_admin_count_min
+        from gws_auditor.checks.directory import check_super_admin_count
         full_audit_data["users"] = [
             u for u in full_audit_data["users"]
             if u["primaryEmail"] != "admin2@example.com"
         ]
-        result = check_super_admin_count_min(full_audit_data)
+        result = check_super_admin_count(full_audit_data)
         assert result.status == Status.FAIL
         assert result.actual_value == 1
+        assert "at least two" in result.details
 
     def test_fail_with_no_super_admins(self, full_audit_data):
-        from gws_auditor.checks.directory import check_super_admin_count_min
+        from gws_auditor.checks.directory import check_super_admin_count
         full_audit_data["users"] = [
             u for u in full_audit_data["users"]
             if not u.get("is_super_admin")
         ]
-        result = check_super_admin_count_min(full_audit_data)
+        result = check_super_admin_count(full_audit_data)
         assert result.status == Status.FAIL
         assert result.actual_value == 0
 
-    def test_fail_too_many_super_admins(self, full_audit_data):
-        from gws_auditor.checks.directory import check_super_admin_count_max
-        # Add extra super admins
-        for i in range(3, 8):
-            full_audit_data["users"].append({
-                "primaryEmail": f"admin{i}@example.com",
-                "isAdmin": True,
-                "is_super_admin": True,
-                "suspended": False,
-                "isEnrolledIn2Sv": True,
-                "isEnforcedIn2Sv": True,
-                "name": {"fullName": f"Admin {i}"},
-            })
-        result = check_super_admin_count_max(full_audit_data)
-        assert result.status == Status.FAIL
-
-    def test_pass_three_super_admins(self, full_audit_data):
-        from gws_auditor.checks.directory import check_super_admin_count_max
-        # Add 1 more super admin (total 3) — still under the maximum.
-        full_audit_data["users"].append({
-            "primaryEmail": "admin3@example.com",
-            "isAdmin": True,
-            "is_super_admin": True,
-            "suspended": False,
-            "isEnrolledIn2Sv": True,
-            "isEnforcedIn2Sv": True,
-            "name": {"fullName": "Admin 3"},
-        })
-        result = check_super_admin_count_max(full_audit_data)
+    def test_pass_four_super_admins_is_the_upper_bound(self, full_audit_data):
+        """CIS says 'no more than four': four is compliant (the old CIS-1.1.2 failed at four)."""
+        from gws_auditor.checks.directory import check_super_admin_count
+        full_audit_data["users"] += [_super_admin(f"admin{i}@example.com") for i in (3, 4)]
+        result = check_super_admin_count(full_audit_data)
         assert result.status == Status.PASS
-        assert result.actual_value == 3
-
-    def test_fail_four_super_admins(self, full_audit_data):
-        """4 is the boundary: CIS-1.1.2 requires *fewer than* 4."""
-        from gws_auditor.checks.directory import check_super_admin_count_max
-        # Add 2 more super admins (total 4)
-        for i in range(3, 5):
-            full_audit_data["users"].append({
-                "primaryEmail": f"admin{i}@example.com",
-                "isAdmin": True,
-                "is_super_admin": True,
-                "suspended": False,
-                "isEnrolledIn2Sv": True,
-                "isEnforcedIn2Sv": True,
-                "name": {"fullName": f"Admin {i}"},
-            })
-        result = check_super_admin_count_max(full_audit_data)
-        assert result.status == Status.FAIL
         assert result.actual_value == 4
+
+    def test_fail_five_super_admins(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_count
+        full_audit_data["users"] += [_super_admin(f"admin{i}@example.com") for i in (3, 4, 5)]
+        result = check_super_admin_count(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "maximum of four" in result.details
+        assert result.actual_value == 5
+
+    def test_suspended_super_admin_gives_no_redundancy(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_count
+        full_audit_data["users"] = [_super_admin("a@example.com"), _super_admin("b@example.com", suspended=True)]
+        result = check_super_admin_count(full_audit_data)
+        assert result.status == Status.FAIL
+        assert result.actual_value == 1
+        assert "suspended" in result.details
+
+    def test_suspended_super_admin_counts_toward_the_maximum(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_count
+        full_audit_data["users"] += [_super_admin(f"admin{i}@example.com") for i in (3, 4)]
+        full_audit_data["users"].append(_super_admin("dormant@example.com", suspended=True))
+        result = check_super_admin_count(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "5 accounts hold the Super Admin role" in result.details
 
 
 class TestSuperAdminUsage:
-    """Tests for CIS-1.1.3: Super admin accounts only for admin tasks."""
+    """CIS-1.1.2 (v1.4.1; 1.1.3 in v1.3.0): no super admin also holds a delegated admin role."""
 
-    def test_super_admin_low_activity_manual(self, full_audit_data):
+    def _two_admins(self, full_audit_data):
+        full_audit_data["users"] = [_super_admin("admin1@example.com", uid="u1"), _super_admin("admin2@example.com", uid="u2")]
+        full_audit_data["login_logs"] = []
+
+    def test_error_when_roles_not_collected(self, full_audit_data):
         from gws_auditor.checks.directory import check_super_admin_usage
-        # Super admins exist but with <= 10 logins → MANUAL (needs human review)
+        self._two_admins(full_audit_data)
+        full_audit_data.pop("roles", None)
+        result = check_super_admin_usage(full_audit_data)
+        assert result.status == Status.ERROR
+        assert "not collected" in result.details
+
+    def test_pass_when_no_super_admin_holds_a_delegated_role(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_usage
+        self._two_admins(full_audit_data)
+        full_audit_data["roles"] = _roles(("sa", "u1"), ("sa", "u2"))
+        result = check_super_admin_usage(full_audit_data)
+        assert result.status == Status.PASS
+        assert result.actual_value == {"super_admins": 2, "with_delegated_roles": 0}
+
+    def test_fail_when_a_super_admin_also_holds_a_delegated_role(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_usage
+        self._two_admins(full_audit_data)
+        full_audit_data["roles"] = _roles(("sa", "u1"), ("sa", "u2"), ("hd", "u2"),
+                                          extra_roles=[("hd", "_HELP_DESK_ADMIN_ROLE")])
+        result = check_super_admin_usage(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "admin2@example.com (_HELP_DESK_ADMIN_ROLE)" in result.details
+        assert "admin1" not in result.details
+
+    def test_delegated_admin_flag_also_fails(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_usage
+        self._two_admins(full_audit_data)
+        full_audit_data["users"][0]["is_delegated_admin"] = True
+        full_audit_data["roles"] = _roles(("sa", "u1"), ("sa", "u2"))
+        result = check_super_admin_usage(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "admin1@example.com" in result.details
+
+    def test_group_assignments_are_ignored(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_usage
+        self._two_admins(full_audit_data)
+        roles = _roles(("sa", "u1"), ("sa", "u2"), extra_roles=[("hd", "_HELP_DESK_ADMIN_ROLE")])
+        roles["assignments"].append({"roleId": "hd", "assignedTo": "u1", "assigneeType": "group", "scopeType": "CUSTOMER"})
+        full_audit_data["roles"] = roles
+        assert check_super_admin_usage(full_audit_data).status == Status.PASS
+
+    def test_heavy_login_activity_warns_when_roles_are_clean(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_usage
+        self._two_admins(full_audit_data)
+        full_audit_data["roles"] = _roles(("sa", "u1"), ("sa", "u2"))
         full_audit_data["login_logs"] = [
-            {"actor": {"email": "admin1@example.com"}, "event_name": "login_success"},
+            {"actor_email": "admin1@example.com", "event_name": "login_success"} for _ in range(11)
         ]
         result = check_super_admin_usage(full_audit_data)
-        assert result.status == Status.MANUAL
-        assert "appears low" in result.details
+        assert result.status == Status.WARN
+        assert "admin1@example.com (11 logins)" in result.details
+
+    def test_no_super_admins_is_error(self, full_audit_data):
+        from gws_auditor.checks.directory import check_super_admin_usage
+        full_audit_data["users"] = [u for u in full_audit_data["users"] if not u.get("is_super_admin")]
+        assert check_super_admin_usage(full_audit_data).status == Status.ERROR
 
 
 class TestDirectorySharing:

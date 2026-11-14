@@ -4,7 +4,7 @@
 
 """Section 3.1.8-3.1.9: Groups (external) and Marketplace checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - External Groups and Marketplace controls.
+CIS Google Workspace Benchmark v1.4.1 - External Groups and Marketplace controls.
 """
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, get_ou_values,
@@ -15,7 +15,7 @@ from ..models import CheckResult, Status
 @check(
     check_id="CIS-3.1.8.1",
     title="Ensure external Google Groups is disabled",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Groups",
     remediation=(
@@ -27,7 +27,7 @@ def check_external_groups_disabled(data: dict) -> CheckResult:
     """External Google Groups access should be disabled."""
     _ID = "CIS-3.1.8.1"
     _TITLE = "Ensure external Google Groups is disabled"
-    _L, _S, _SEC = "L2", "CIS", "Groups"
+    _L, _S, _SEC = "L1", "CIS", "Groups"
     _REMED = (
         "Admin console > Apps > Google Workspace > Groups for Business > "
         "Sharing settings. Disable access to external groups. https://knowledge.workspace.google.com/admin/groups/set-organization-wide-policies-for-using-groups"

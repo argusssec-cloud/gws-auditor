@@ -4,7 +4,7 @@
 
 """Section 4.3: Security Center checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Security Center controls.
+CIS Google Workspace Benchmark v1.4.1 - Security Center controls.
 
 Note: Security Center checks are typically manual reviews that require
 human inspection of the Security Center dashboard. These cannot be fully

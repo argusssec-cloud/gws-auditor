@@ -4,10 +4,10 @@
 
 """Section 4.2: Access and Data Control checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Access and data control checks.
+CIS Google Workspace Benchmark v1.4.1 - Access and data control checks.
 """
 
-from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable, is_admin_configured
+from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified, format_ou_values_readable, is_admin_configured, ou_verdict, field_value
 from ..constants import (
     EDITIONS_CAA, EDITIONS_DLP_DRIVE, EDITIONS_SESSION_CONTROL,
 )
@@ -28,7 +28,7 @@ def _is_default_allow(entry: dict) -> bool:
 @check(
     check_id="CIS-4.2.1.1",
     title="Ensure third-party app access is restricted",
-    level="L1",
+    level="L2",
     source="CIS",
     section="Access Control",
     remediation=(
@@ -42,7 +42,7 @@ def check_third_party_app_access(data: dict) -> CheckResult:
     """Third-party app access to Google Workspace data should be restricted."""
     _ID = "CIS-4.2.1.1"
     _TITLE = "Ensure third-party app access is restricted"
-    _L, _S, _SEC = "L1", "CIS", "Access Control"
+    _L, _S, _SEC = "L2", "CIS", "Access Control"
     _REMED = (
         "Admin console > Security > Access and data control > API controls > "
         "Settings > Unconfigured third-party apps. "
@@ -267,7 +267,7 @@ def check_third_party_app_review(data: dict) -> CheckResult:
 @check(
     check_id="CIS-4.2.1.3",
     title="Ensure internal app API access is controlled",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Access Control",
     remediation=(
@@ -287,7 +287,7 @@ def check_internal_api_access(data: dict) -> CheckResult:
         return make_pass(
             check_id="CIS-4.2.1.3",
             title="Ensure internal app API access is controlled",
-            level="L2", source="CIS", section="Access Control",
+            level="L1", source="CIS", section="Access Control",
             details="Internal app API access is controlled.",
             actual_value=internal_apps_controlled,
             expected_value="Enabled for all OUs",
@@ -297,7 +297,7 @@ def check_internal_api_access(data: dict) -> CheckResult:
         return make_manual(
             check_id="CIS-4.2.1.3",
             title="Ensure internal app API access is controlled",
-            level="L2", source="CIS", section="Access Control",
+            level="L1", source="CIS", section="Access Control",
             details="Could not determine internal app API access control settings.",
             remediation=(
                 "Admin console > Security > Access and data control > API controls. "
@@ -308,7 +308,7 @@ def check_internal_api_access(data: dict) -> CheckResult:
     return make_fail(
         check_id="CIS-4.2.1.3",
         title="Ensure internal app API access is controlled",
-        level="L2", source="CIS", section="Access Control",
+        level="L1", source="CIS", section="Access Control",
         details="Internal app API access is not properly controlled.",
         actual_value=internal_apps_controlled,
         expected_value="Enabled for all OUs",
@@ -428,7 +428,7 @@ def check_domain_wide_delegation(data: dict) -> CheckResult:
     check_id="CIS-4.2.2.1",
     scored=False,  # P3: Context-Aware Access policies are not exposed by the Policy API; MANUAL by design
     title="Ensure geo-blocking is configured",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Access Control",
     remediation=(
@@ -441,7 +441,7 @@ def check_domain_wide_delegation(data: dict) -> CheckResult:
 def check_geo_blocking(data: dict) -> CheckResult:
     """Context-aware access with geo-blocking should be configured."""
     _ID, _TITLE = "CIS-4.2.2.1", "Ensure geo-blocking is configured"
-    _L, _S, _SEC = "L2", "CIS", "Access Control"
+    _L, _S, _SEC = "L1", "CIS", "Access Control"
     _REMED = (
         "Admin console > Security > Access and data control > Context-Aware Access. "
         "Configure access levels to restrict sign-ins from "
@@ -549,7 +549,7 @@ def check_geo_blocking(data: dict) -> CheckResult:
         return make_pass(
             check_id="CIS-4.2.2.1",
             title="Ensure geo-blocking is configured",
-            level="L2", source="CIS", section="Access Control",
+            level="L1", source="CIS", section="Access Control",
             details=f"Geo-blocking is configured with {len(blocked_regions)} region(s) blocked.",
             actual_value={"enabled": True, "blocked_count": len(blocked_regions)},
             expected_value="Geo-blocking enabled with regions configured",
@@ -559,7 +559,7 @@ def check_geo_blocking(data: dict) -> CheckResult:
         return make_review(
             check_id="CIS-4.2.2.1",
             title="Ensure geo-blocking is configured",
-            level="L2", source="CIS", section="Access Control",
+            level="L1", source="CIS", section="Access Control",
             details=(
                 "Context-Aware Access policies are not exposed by the Cloud Identity Policy API and "
                 "no access level with a geographic condition was created, updated or assigned within "
@@ -571,7 +571,7 @@ def check_geo_blocking(data: dict) -> CheckResult:
     return make_fail(
         check_id="CIS-4.2.2.1",
         title="Ensure geo-blocking is configured",
-        level="L2", source="CIS", section="Access Control",
+        level="L1", source="CIS", section="Access Control",
         details="Geo-blocking is not configured or no regions are blocked.",
         actual_value={"enabled": geo_blocking, "blocked_count": len(blocked_regions)},
         expected_value="Geo-blocking enabled with regions configured",
@@ -672,45 +672,115 @@ def check_drive_dlp(data: dict) -> CheckResult:
     )
 
 
+_SESSION_ID = "CIS-4.2.4.1"
+_SESSION_TITLE = "Ensure Google session control limits web sessions to 12 hours or less"
+_SESSION_REMED = (
+    "Admin console > Security > Access and data control > Google session control. Set 'Web session "
+    "duration' to 12 hours or less (CIS 4.2.4.1; Google's default is 14 days). "
+    "https://knowledge.workspace.google.com/admin/security/set-session-length-for-google-services"
+)
+
+
 @check(
-    check_id="CIS-4.2.4.1",
-    title="Ensure Device Bound Session Credentials (DBSC) are enabled",
-    level="L2",
+    check_id=_SESSION_ID,
+    title=_SESSION_TITLE,
+    level="L1",
     source="CIS",
     section="Access Control",
-    remediation=(
-        "Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
-        "Device Bound Session Credentials. Enable \'Device Bound Session "
-        "Credentials (DBSC)' to bind sessions to the device. https://knowledge.workspace.google.com/admin/security/prevent-cookie-theft-with-session-binding"
-    ),
+    remediation=_SESSION_REMED,
+    requires_license=EDITIONS_SESSION_CONTROL,
 )
 def check_session_control(data: dict) -> CheckResult:
-    """Device Bound Session Credentials (DBSC) should be enabled."""
-    _ID = "CIS-4.2.4.1"
-    _TITLE = "Ensure Device Bound Session Credentials (DBSC) are enabled"
-    _L, _S, _SEC = "L2", "CIS", "Access Control"
-    _REMED = (
-        "Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
-        "Device Bound Session Credentials. Enable \'Device Bound Session "
-        "Credentials (DBSC)' to bind sessions to the device. https://knowledge.workspace.google.com/admin/security/prevent-cookie-theft-with-session-binding"
+    """CIS 4.2.4.1 Google session control: web session duration of 12 hours or less.
+
+    Reads ``security.session_controls.webSessionDuration`` with the judge shared with
+    GWS.COMMONCONTROLS.4.1. (Until 1.6.0 this id audited Device Bound Session Credentials,
+    which is now ADD-59.)
+    """
+    from .cisa_commoncontrols import web_session_judge
+
+    _L, _S, _SEC = "L1", "CIS", "Access Control"
+    common = dict(check_id=_SESSION_ID, title=_SESSION_TITLE, level=_L, source=_S, section=_SEC)
+
+    policies = data.get("policies", {})
+    security = policies.get("security", {})
+
+    ou_values = get_ou_values(security, "session_controls")
+    if ou_values:
+        def judge(entry: dict):
+            # Real field: webSessionDuration (seconds string); legacy shapes carry sessionDurationHours.
+            if field_value(entry, "webSessionDuration", "sessionDurationHours", "duration") is None:
+                return None
+            return web_session_judge(entry)
+
+        return ou_verdict(
+            ou_values, judge, **common,
+            fail_text="allow web sessions longer than 12 hours",
+            pass_text="limit web sessions to 12 hours or less",
+            expected_value="<= 12 hours", remediation=_SESSION_REMED,
+            humanizer=lambda hours: f"{hours}h",
+        )
+
+    # Fallback: provider-mapped value
+    session_mgmt = security.get("session_management", {})
+    duration = session_mgmt.get("web_session_duration_hours", session_mgmt.get("session_duration_hours"))
+    if duration is None:
+        return make_manual(
+            **common,
+            details="Could not determine the web session duration.",
+            remediation=_SESSION_REMED,
+        )
+    if duration <= 12:
+        return make_pass(
+            **common,
+            details=f"Web session duration is {duration} hour(s).",
+            actual_value=duration, expected_value="<= 12 hours",
+        )
+    return make_fail(
+        **common,
+        details=f"Web session duration is {duration} hour(s), longer than 12 hours.",
+        actual_value=duration, expected_value="<= 12 hours", remediation=_SESSION_REMED,
     )
+
+
+_DBSC_ID = "ADD-59"
+_DBSC_TITLE = "Ensure Device Bound Session Credentials (DBSC) are enabled"
+_DBSC_REMED = (
+    "Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
+    "Device Bound Session Credentials. Enable 'Device Bound Session "
+    "Credentials (DBSC)' to bind sessions to the device. https://knowledge.workspace.google.com/admin/security/prevent-cookie-theft-with-session-binding"
+)
+
+
+@check(
+    check_id=_DBSC_ID,
+    title=_DBSC_TITLE,
+    level="L2",
+    source="OTHER",
+    section="Access Control",
+    remediation=_DBSC_REMED,
+)
+def check_dbsc(data: dict) -> CheckResult:
+    """Device Bound Session Credentials (DBSC) should be enabled (was CIS-4.2.4.1 until 1.6.0)."""
+    _L, _S, _SEC = "L2", "OTHER", "Access Control"
+    common = dict(check_id=_DBSC_ID, title=_DBSC_TITLE, level=_L, source=_S, section=_SEC)
 
     chrome_policies = data.get("chrome_policies", {})
     dbsc_enabled = chrome_policies.get("dbsc_enabled", None)
 
     if dbsc_enabled is True:
         return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            **common,
             details="Device Bound Session Credentials (DBSC) are enabled.",
             actual_value=True, expected_value="Enabled for all OUs",
         )
 
     if dbsc_enabled is False:
         return make_fail(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            **common,
             details="Device Bound Session Credentials (DBSC) are not enabled.",
             actual_value=False, expected_value="Enabled for all OUs",
-            remediation=_REMED,
+            remediation=_DBSC_REMED,
         )
 
     from .base import chrome_policy_unset
@@ -718,20 +788,20 @@ def check_session_control(data: dict) -> CheckResult:
     if chrome_policy_unset(data, "chrome.users.BoundSessionCredentialsEnabled"):
         default = CHROME_POLICY_DEFAULTS["chrome.users.BoundSessionCredentialsEnabled"]
         return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            **common,
             details=("DBSC is not forced by policy, so Google's default applies: " + default["unset"]
                      + f" Set the policy to true to force it on every managed browser (source: {default['source']})."),
             actual_value={"dbsc_enabled": None, "source": "google default"},
             expected_value="Enabled for all OUs",
         )
     return make_review(
-        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        **common,
         details=(
             "Could not determine DBSC setting (Chrome policies were not collected or the resolve call failed). "
             "Verify manually in Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
             "Device Bound Session Credentials."
         ),
-        remediation=_REMED,
+        remediation=_DBSC_REMED,
     )
 
 

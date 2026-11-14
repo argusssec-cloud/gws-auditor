@@ -338,10 +338,10 @@ class TestMiscRealEnums:
         assert "open@example.com" in str(result.details) + str(result.actual_value)
 
     def test_suspended_super_admin_gives_no_redundancy(self, full_audit_data):
-        from gws_auditor.checks.directory import check_super_admin_count_min
+        from gws_auditor.checks.directory import check_super_admin_count
 
         full_audit_data["users"] = [
             {"primary_email": "a@example.com", "is_super_admin": True, "suspended": False},
             {"primary_email": "b@example.com", "is_super_admin": True, "suspended": True},
         ]
-        assert check_super_admin_count_min(full_audit_data).status == Status.FAIL
+        assert check_super_admin_count(full_audit_data).status == Status.FAIL

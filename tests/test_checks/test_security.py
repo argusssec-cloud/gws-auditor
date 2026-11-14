@@ -81,7 +81,7 @@ class TestPasswordPolicy:
 
 
 class TestLessSecureApps:
-    """Tests for CIS-4.2.6.1 less secure apps."""
+    """Tests for ADD-58 (was CIS-4.2.6.1) less secure apps."""
 
     def test_less_secure_apps_disabled_pass(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_less_secure_apps
@@ -217,19 +217,19 @@ class TestGeoBlocking:
         assert result.status == Status.FAIL
 
 
-class TestSessionControl:
-    """Tests for CIS-4.2.4.1 DBSC check."""
+class TestDbsc:
+    """Tests for ADD-59 (DBSC; CIS-4.2.4.1 before 1.6.0)."""
 
     def test_dbsc_enabled_pass(self, full_audit_data):
-        from gws_auditor.checks.security_access import check_session_control
+        from gws_auditor.checks.security_access import check_dbsc
         full_audit_data["chrome_policies"] = {"dbsc_enabled": True}
-        result = check_session_control(full_audit_data)
+        result = check_dbsc(full_audit_data)
         assert result.status == Status.PASS
 
     def test_dbsc_disabled_fail(self, full_audit_data):
-        from gws_auditor.checks.security_access import check_session_control
+        from gws_auditor.checks.security_access import check_dbsc
         full_audit_data["chrome_policies"] = {"dbsc_enabled": False}
-        result = check_session_control(full_audit_data)
+        result = check_dbsc(full_audit_data)
         assert result.status == Status.FAIL
 
 

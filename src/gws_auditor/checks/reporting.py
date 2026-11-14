@@ -4,7 +4,7 @@
 
 """Section 5: Reporting checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Reporting controls.
+CIS Google Workspace Benchmark v1.4.1 - Reporting controls.
 """
 
 from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, admin_emails, user_usage_by_email

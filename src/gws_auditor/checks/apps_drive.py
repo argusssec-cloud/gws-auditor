@@ -4,7 +4,7 @@
 
 """Section 3.1.2: Drive and Docs checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Drive and Docs controls.
+CIS Google Workspace Benchmark v1.4.1 - Drive and Docs controls.
 """
 
 from .base import (
@@ -548,7 +548,7 @@ def check_drive_access_checker(data: dict) -> CheckResult:
 @check(
     check_id="CIS-3.1.2.1.1.6",
     title="Ensure only internal users can distribute content externally",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Drive and Docs",
     remediation=(
@@ -560,7 +560,7 @@ def check_drive_external_distribution(data: dict) -> CheckResult:
     """Only internal users should be able to distribute content outside the org."""
     _ID = "CIS-3.1.2.1.1.6"
     _TITLE = "Ensure only internal users can distribute content externally"
-    _L, _S, _SEC = "L2", "CIS", "Drive and Docs"
+    _L, _S, _SEC = "L1", "CIS", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Sharing settings. Restrict external content distribution to internal users only. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
@@ -621,26 +621,40 @@ def check_drive_external_distribution(data: dict) -> CheckResult:
 
 @check(
     check_id="CIS-3.1.2.1.2.1",
-    title="Ensure Shared Drive creation is controlled",
+    title="Audit users' ability to create new shared drives",
     level="L1",
     source="CIS",
     section="Drive and Docs",
     remediation=(
-        "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Sharing settings > Shared drive creation. "
-        "Restrict who can create shared drives. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
+        "Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > "
+        "Shared drive creation. CIS 3.1.2.1.2.1 (v1.4.1) leaves the decision to the organisation; "
+        "its audit step expects 'Prevent users in <organisation> from creating new shared drives' "
+        "unchecked. If creation is restricted, transfer departing users' files (Drive and Docs > "
+        "Transfer ownership). https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     ),
 )
 def check_shared_drive_creation(data: dict) -> CheckResult:
-    """Shared Drive creation should be restricted to admins or specific groups."""
+    """Report whether users may create shared drives.
+
+    CIS v1.3.0 wanted creation allowed (shared drives survive the deletion of the creator's
+    account); v1.4.1 retitles the recommendation "Audit ..." and makes it an organisational
+    decision while keeping the same audit step ("Prevent users ... from creating new shared
+    drives" is un-checked). The check follows the audit step: creation allowed in every OU ->
+    PASS; an OU that prevents creation -> FAIL, with the organisational caveat in the details
+    so a deliberate restriction can be overridden in the dashboard.
+    """
     _ID = "CIS-3.1.2.1.2.1"
-    _TITLE = "Ensure Shared Drive creation is controlled"
+    _TITLE = "Audit users' ability to create new shared drives"
     _L, _S, _SEC = "L1", "CIS", "Drive and Docs"
     _REMED = (
-        "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Sharing settings > Shared drive creation. "
-        "Restrict who can create shared drives. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
+        "Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings > "
+        "Shared drive creation. CIS 3.1.2.1.2.1 (v1.4.1) leaves the decision to the organisation; "
+        "its audit step expects 'Prevent users in <organisation> from creating new shared drives' "
+        "unchecked. If creation is restricted, transfer departing users' files (Drive and Docs > "
+        "Transfer ownership). https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     )
+    _EXPECTED = "Creation not prevented (CIS audit step; organisation may decide otherwise)"
+    common = dict(check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC)
 
     policies = data.get("policies", {})
     drive = policies.get("drive", {})
@@ -648,50 +662,65 @@ def check_shared_drive_creation(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(drive, "shared_drive_creation")
     if ou_values:
-        def _judge(entry: dict):
+        allowed, prevented, unknown = [], [], []
+        for entry in ou_values:
             value = field_value(entry, "allowSharedDriveCreation")
-            return None if value is None else value is False
-
-        return ou_verdict(
-            ou_values, _judge,
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="allow unrestricted shared drive creation",
-            pass_text="restrict shared drive creation",
-            expected_value="Disabled for all OUs", remediation=_REMED,
+            ou = entry.get("org_unit", "/")
+            (unknown if value is None else allowed if value else prevented).append(ou)
+        if prevented:
+            return make_fail(
+                **common,
+                details=(f"{len(prevented)} OU(s) prevent users from creating shared drives: {', '.join(prevented)}. "
+                         "The CIS audit step expects creation allowed so that shared files survive the deletion "
+                         "of their creator's account. CIS 3.1.2.1.2.1 (v1.4.1) leaves the decision to the "
+                         "organisation: if the restriction is deliberate and departing users' files are "
+                         "transferred to another owner, record that as an override."
+                         + (f" Undetermined in OU(s): {', '.join(unknown)}." if unknown else "")),
+                actual_value={"prevented": prevented, "allowed": allowed},
+                expected_value=_EXPECTED, remediation=_REMED,
+            )
+        if unknown:
+            return make_review(
+                **common,
+                details=(f"Shared drive creation could not be determined (value absent or unspecified) for OU(s): "
+                         f"{', '.join(unknown)}. Verify in the Admin console."),
+                expected_value=_EXPECTED, remediation=_REMED,
+            )
+        return make_pass(
+            **common,
+            details=f"All {len(ou_values)} OU(s) allow users to create shared drives (the state the CIS audit step expects).",
+            actual_value=f"{len(ou_values)} OU(s) allow creation", expected_value=_EXPECTED,
         )
 
     # Fallback: existing mapped value logic
     shared_drive = drive.get("shared_drive_settings", {})
     creation_restricted = shared_drive.get("creation_restricted", None)
 
-    if creation_restricted is True:
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details="Shared Drive creation is restricted.",
-            actual_value=creation_restricted,
-            expected_value="Enabled for all OUs",
-        )
-
     if creation_restricted is None:
         return make_manual(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            **common,
             details="Could not determine Shared Drive creation setting.",
             remediation=_REMED,
         )
-
-    return make_fail(
-        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-        details="Shared Drive creation is not restricted. Any user can create shared drives.",
-        actual_value=creation_restricted,
-        expected_value="Enabled for all OUs",
-        remediation=_REMED,
+    if creation_restricted:
+        return make_fail(
+            **common,
+            details=("Users are prevented from creating shared drives; the CIS audit step expects creation allowed. "
+                     "CIS 3.1.2.1.2.1 (v1.4.1) leaves the decision to the organisation: if the restriction is "
+                     "deliberate and departing users' files are transferred, record that as an override."),
+            actual_value=creation_restricted, expected_value=_EXPECTED, remediation=_REMED,
+        )
+    return make_pass(
+        **common,
+        details="Users may create shared drives (the state the CIS audit step expects).",
+        actual_value=creation_restricted, expected_value=_EXPECTED,
     )
 
 
 @check(
     check_id="CIS-3.1.2.1.2.2",
     title="Ensure manager cannot override shared drive settings",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Drive and Docs",
     remediation=(
@@ -705,7 +734,7 @@ def check_shared_drive_manager_override(data: dict) -> CheckResult:
     """Shared Drive managers should not be able to override sharing settings."""
     _ID = "CIS-3.1.2.1.2.2"
     _TITLE = "Ensure manager cannot override shared drive settings"
-    _L, _S, _SEC = "L2", "CIS", "Drive and Docs"
+    _L, _S, _SEC = "L1", "CIS", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Sharing settings > Shared drive creation. "
@@ -830,28 +859,35 @@ def check_shared_drive_member_access(data: dict) -> CheckResult:
 
 @check(
     check_id="CIS-3.1.2.1.2.4",
-    title="Ensure viewers cannot download, print, or copy files",
+    title="Ensure 'Download, print, and copy' on shared drives is not enabled for everyone",
     level="L2",
     source="CIS",
     section="Drive and Docs",
     remediation=(
         "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Sharing settings > Shared drive creation. "
-        "Disable download, print, and copy for viewers and commenters. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
+        "Sharing settings > Shared drive creation. Set 'Download, print, and copy is enabled for' "
+        "to a value other than 'Everyone (Managers, content managers, contributors, commenters and viewers)' "
+        "(CIS 3.1.2.1.2.4). https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     ),
     requires_license=EDITIONS_SHARED_DRIVE_SETTINGS,
 )
 def check_shared_drive_viewer_restrictions(data: dict) -> CheckResult:
-    """Viewers and commenters should be prevented from downloading, printing, or copying."""
+    """The shared-drive default for download, print and copy must not include viewers and commenters.
+
+    Policy API enum ``allowedPartiesForDownloadPrintCopy``: ``ALL`` (everyone, the console's
+    "Everyone (Managers, content managers, contributors, commenters and viewers)"), ``EDITORS_ONLY``
+    and ``MANAGERS_ONLY``. CIS v1.4.1 fails only ``ALL``.
+    """
     _ID = "CIS-3.1.2.1.2.4"
-    _TITLE = "Ensure viewers cannot download, print, or copy files"
+    _TITLE = "Ensure 'Download, print, and copy' on shared drives is not enabled for everyone"
     _L, _S, _SEC = "L2", "CIS", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
-        "Sharing settings > Shared drive creation. "
-        "Disable download, print, and copy for viewers and commenters. https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
+        "Sharing settings > Shared drive creation. Set 'Download, print, and copy is enabled for' "
+        "to a value other than 'Everyone (Managers, content managers, contributors, commenters and viewers)' "
+        "(CIS 3.1.2.1.2.4). https://knowledge.workspace.google.com/admin/drive/set-up-shared-drives-for-your-organization"
     )
-    _UNSAFE = ("ALL", "EDITORS_AND_ABOVE")
+    _UNSAFE = ("ALL",)
 
     policies = data.get("policies", {})
     drive = policies.get("drive", {})
@@ -866,9 +902,9 @@ def check_shared_drive_viewer_restrictions(data: dict) -> CheckResult:
         return ou_verdict(
             ou_values, _judge,
             check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="allow viewers to download/print/copy",
-            pass_text="restrict viewer download/print/copy",
-            expected_value="Not ALL or EDITORS_AND_ABOVE", remediation=_REMED,
+            fail_text="let everyone, viewers and commenters included, download, print and copy shared drive files",
+            pass_text="limit download, print and copy to contributors or managers",
+            expected_value="Not ALL (Everyone)", remediation=_REMED,
         )
 
     # Fallback: existing mapped value logic
@@ -903,7 +939,7 @@ def check_shared_drive_viewer_restrictions(data: dict) -> CheckResult:
     check_id="CIS-3.1.2.2.1",
     scored=False,  # P3: Drive offline access is not exposed by the Policy API; MANUAL by design
     title="Ensure offline access to Drive is disabled",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Drive and Docs",
     remediation=(
@@ -915,7 +951,7 @@ def check_drive_offline_access(data: dict) -> CheckResult:
     """Offline access to Google Drive should be disabled."""
     _ID = "CIS-3.1.2.2.1"
     _TITLE = "Ensure offline access to Drive is disabled"
-    _L, _S, _SEC = "L2", "CIS", "Drive and Docs"
+    _L, _S, _SEC = "L1", "CIS", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Features and Applications. Disable 'Allow users to enable offline access'. https://knowledge.workspace.google.com/admin/drive/set-up-offline-access-to-docs-sheets-and-slides"
@@ -973,9 +1009,9 @@ def check_drive_offline_access(data: dict) -> CheckResult:
 
 
 @check(
-    check_id="CIS-3.1.2.2.2",
+    check_id="CIS-3.1.2.3.1",
     title="Ensure Desktop access to Drive is disabled",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Drive and Docs",
     remediation=(
@@ -984,10 +1020,10 @@ def check_drive_offline_access(data: dict) -> CheckResult:
     ),
 )
 def check_drive_desktop_access(data: dict) -> CheckResult:
-    """Google Drive for Desktop should be disabled to prevent local syncing."""
-    _ID = "CIS-3.1.2.2.2"
+    """Google Drive for Desktop should be disabled to prevent local syncing (CIS 3.1.2.3.1; 3.1.2.2.2 in v1.3.0)."""
+    _ID = "CIS-3.1.2.3.1"
     _TITLE = "Ensure Desktop access to Drive is disabled"
-    _L, _S, _SEC = "L2", "CIS", "Drive and Docs"
+    _L, _S, _SEC = "L1", "CIS", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Google Drive for desktop. Disable 'Allow Google Drive for Desktop'. https://knowledge.workspace.google.com/admin/drive/set-up-drive-for-desktop-for-your-organization"
@@ -1040,10 +1076,10 @@ def check_drive_desktop_access(data: dict) -> CheckResult:
 
 
 @check(
-    check_id="CIS-3.1.2.2.3",
+    check_id="ADD-57",
     title="Ensure Drive SDK is disabled",
     level="L2",
-    source="CIS",
+    source="OTHER",
     section="Drive and Docs",
     remediation=(
         "Admin console > Apps > Google Workspace > Drive and Docs > "
@@ -1052,10 +1088,14 @@ def check_drive_desktop_access(data: dict) -> CheckResult:
     ),
 )
 def check_drive_sdk(data: dict) -> CheckResult:
-    """Drive SDK should be disabled to prevent third-party API access to Drive files."""
-    _ID = "CIS-3.1.2.2.3"
+    """Drive SDK should be disabled to prevent third-party API access to Drive files.
+
+    Carried CIS-3.1.2.2.3 until 1.6.0; the benchmark recommendation of that number was Docs
+    add-ons (now GWS.DRIVEDOCS.5.1) and v1.4.1 removed it, so this is an additional check.
+    """
+    _ID = "ADD-57"
     _TITLE = "Ensure Drive SDK is disabled"
-    _L, _S, _SEC = "L2", "CIS", "Drive and Docs"
+    _L, _S, _SEC = "L2", "OTHER", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Features and Applications > Drive SDK. Disable the Drive SDK "

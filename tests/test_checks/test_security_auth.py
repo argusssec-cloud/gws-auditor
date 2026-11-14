@@ -552,22 +552,38 @@ class TestAdvancedProtectionOU:
 # CIS-4.1.4.1: Login challenges
 # -----------------------------------------------------------------------
 
-class TestLoginChallenges:
-    """Tests for CIS-4.1.4.1 (fallback path)."""
+def _saml_login(email="user@example.com"):
+    return {"actor_email": email, "event_name": "login_success", "event_type": "login",
+            "parameters": {"login_type": "saml", "saml_idp": "idp.example.com"}}
 
-    def test_pass_enabled(self, full_audit_data):
+
+class TestLoginChallenges:
+    """CIS-4.1.4.1 (fallback path): employee ID challenge must be OFF (CIS v1.4.1 direction)."""
+
+    def test_employee_id_on_fails(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_login_challenges
         _make_security_data(full_audit_data,
             **{"login_challenges.enabled": True})
         result = check_login_challenges(full_audit_data)
-        assert result.status == Status.PASS
+        assert result.status == Status.FAIL
+        assert "employee ID" in result.details
 
-    def test_fail_disabled(self, full_audit_data):
+    def test_employee_id_off_passes_without_sso(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_login_challenges
         _make_security_data(full_audit_data,
             **{"login_challenges.enabled": False})
+        full_audit_data["login_logs"] = []
         result = check_login_challenges(full_audit_data)
-        assert result.status == Status.FAIL
+        assert result.status == Status.PASS
+
+    def test_employee_id_off_with_sso_logins_is_manual(self, full_audit_data):
+        from gws_auditor.checks.security_auth import check_login_challenges
+        _make_security_data(full_audit_data,
+            **{"login_challenges.enabled": False})
+        full_audit_data["login_logs"] = [_saml_login()]
+        result = check_login_challenges(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "Post-SSO verification" in result.details
 
     def test_manual_when_none(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_login_challenges
@@ -580,38 +596,48 @@ class TestLoginChallenges:
 class TestLoginChallengesOU:
     """OU-aware tests for CIS-4.1.4.1."""
 
-    def test_all_ous_safe(self, full_audit_data):
+    def test_all_ous_off_pass(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_login_challenges
+        full_audit_data["login_logs"] = []
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
-                # Real Policy API field is enableEmployeeIdChallenge.
                 make_ou_policy("security", "login_challenges",
-                                {"enableEmployeeIdChallenge": True}, "/"),
+                                {"enableEmployeeIdChallenge": False}, "/"),
                 make_ou_policy("security", "login_challenges",
-                                {"enableEmployeeIdChallenge": True}, "/Engineering"),
+                                {"enableEmployeeIdChallenge": False}, "/Engineering"),
             ],
         }
         result = check_login_challenges(full_audit_data)
         assert result.status == Status.PASS
         assert "2 OU(s)" in result.details
 
-    def test_child_ou_unsafe(self, full_audit_data):
+    def test_all_ous_off_but_sso_in_use_is_manual(self, full_audit_data):
+        from gws_auditor.checks.security_auth import check_login_challenges
+        full_audit_data["login_logs"] = [_saml_login(), _saml_login("b@example.com")]
+        full_audit_data["policies"]["security"] = {
+            "_ou_policies": [make_ou_policy("security", "login_challenges", {"enableEmployeeIdChallenge": False}, "/")],
+        }
+        result = check_login_challenges(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "2 sign-in(s)" in result.details
+
+    def test_child_ou_on_fails(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_login_challenges
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [
-                # Real Policy API field is enableEmployeeIdChallenge.
                 make_ou_policy("security", "login_challenges",
-                                {"enableEmployeeIdChallenge": True}, "/"),
+                                {"enableEmployeeIdChallenge": False}, "/"),
                 make_ou_policy("security", "login_challenges",
-                                {"enableEmployeeIdChallenge": False}, "/Marketing"),
+                                {"enableEmployeeIdChallenge": True}, "/Marketing"),
             ],
         }
         result = check_login_challenges(full_audit_data)
         assert result.status == Status.FAIL
         assert "/Marketing" in result.details
+        assert "/Marketing" in result.actual_value
 
     def test_absent_field_is_manual(self, full_audit_data):
-        """No documented default for enableEmployeeIdChallenge: an empty value is unknown, not FAIL."""
+        """No documented default for enableEmployeeIdChallenge: an empty value is unknown, not a verdict."""
         from gws_auditor.checks.security_auth import check_login_challenges
         full_audit_data["policies"]["security"] = {
             "_ou_policies": [make_ou_policy("security", "login_challenges", {}, "/")],
@@ -623,12 +649,8 @@ class TestLoginChallengesOU:
         _make_security_data(full_audit_data,
             **{"login_challenges.enabled": True})
         result = check_login_challenges(full_audit_data)
-        assert result.status == Status.PASS
+        assert result.status == Status.FAIL
 
-
-# -----------------------------------------------------------------------
-# CIS-4.1.5.1: Password policy
-# -----------------------------------------------------------------------
 
 class TestPasswordPolicy:
     """Tests for CIS-4.1.5.1 (fallback path)."""
@@ -741,7 +763,7 @@ class TestPasswordPolicyOU:
 # -----------------------------------------------------------------------
 
 class TestLessSecureApps:
-    """Tests for CIS-4.2.6.1 (fallback path)."""
+    """Tests for ADD-58 (CIS-4.2.6.1 before 1.6.0; fallback path)."""
 
     def test_pass_disabled(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_less_secure_apps
@@ -759,7 +781,7 @@ class TestLessSecureApps:
 
 
 class TestLessSecureAppsOU:
-    """OU-aware tests for CIS-4.2.6.1."""
+    """OU-aware tests for ADD-58 (less secure apps)."""
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.security_auth import check_less_secure_apps

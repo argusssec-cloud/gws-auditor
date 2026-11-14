@@ -280,3 +280,50 @@ class TestSuperAdminRecovery:
         result = check_super_admin_recovery_disabled(full_audit_data)
         assert result.status == status
         assert result.severity.value == "CRITICAL"  # resolved from CRITICAL_CHECKS
+
+
+class TestCisChatAdditions:
+    """CIS-3.1.4.1.2 (internal Chat file sharing) and CIS-3.1.4.3.1 (external spaces) added for CIS v1.4.1."""
+
+    @pytest.mark.parametrize("value, status", [("NO_FILES", Status.PASS), ("ALL_FILES", Status.FAIL), ("IMAGES_ONLY", Status.FAIL)])
+    def test_internal_file_sharing(self, full_audit_data, value, status):
+        from gws_auditor.checks.apps_chat import check_chat_internal_file_sharing
+
+        _set(full_audit_data, "chat", "chat_file_sharing", {"externalFileSharing": "NO_FILES", "internalFileSharing": value})
+        result = check_chat_internal_file_sharing(full_audit_data)
+        assert result.status == status
+        assert result.check_id == "CIS-3.1.4.1.2"
+
+    def test_internal_file_sharing_unknown_is_manual(self, full_audit_data):
+        from gws_auditor.checks.apps_chat import check_chat_internal_file_sharing
+
+        _set(full_audit_data, "chat", "chat_file_sharing", {"externalFileSharing": "NO_FILES"})
+        assert check_chat_internal_file_sharing(full_audit_data).status == Status.MANUAL
+        full_audit_data["policies"]["chat"] = {}
+        assert check_chat_internal_file_sharing(full_audit_data).status == Status.MANUAL
+
+    @pytest.mark.parametrize("value, status", [
+        ({"enabled": True, "domainAllowlistMode": "ALL_DOMAINS"}, Status.FAIL),
+        ({"enabled": True, "domainAllowlistMode": "ALLOWLISTED_DOMAINS"}, Status.PASS),
+        ({"enabled": False, "domainAllowlistMode": "ALL_DOMAINS"}, Status.PASS),
+        ({"enabled": True}, Status.MANUAL),
+        ({"domainAllowlistMode": "ALL_DOMAINS"}, Status.MANUAL),
+    ])
+    def test_external_spaces(self, full_audit_data, value, status):
+        from gws_auditor.checks.apps_chat import check_chat_external_spaces
+
+        _set(full_audit_data, "chat", "chat_external_spaces", value)
+        result = check_chat_external_spaces(full_audit_data)
+        assert result.status == status
+        assert result.check_id == "CIS-3.1.4.3.1"
+
+    def test_external_spaces_child_ou_named(self, full_audit_data):
+        from gws_auditor.checks.apps_chat import check_chat_external_spaces
+
+        full_audit_data["policies"]["chat"] = {"_ou_policies": [
+            make_ou_policy("chat", "chat_external_spaces", {"enabled": True, "domainAllowlistMode": "ALLOWLISTED_DOMAINS"}, "/"),
+            make_ou_policy("chat", "chat_external_spaces", {"enabled": True, "domainAllowlistMode": "ALL_DOMAINS"}, "/Sales"),
+        ]}
+        result = check_chat_external_spaces(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "/Sales" in result.details

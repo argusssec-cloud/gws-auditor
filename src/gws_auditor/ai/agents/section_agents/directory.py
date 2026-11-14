@@ -14,14 +14,13 @@ from ..models import CheckAnalysis
 
 BENCHMARK_REQUIREMENTS: dict[str, str] = {
     "CIS-1.1.1": (
-        "Ensure more than one super admin account exists (at least 2)."
+        "Ensure that between two and four super admin accounts are designated "
+        "(CIS v1.4.1 merged the former 1.1.1 and 1.1.2)."
     ),
     "CIS-1.1.2": (
-        "Ensure fewer than 4 super admin accounts exist (3 or fewer)."
-    ),
-    "CIS-1.1.3": (
-        "Ensure that super admin accounts are not used for "
-        "day-to-day operations."
+        "Ensure super admin accounts are used only for super admin activities: "
+        "no account holds both the Super admin role and a delegated admin role "
+        "(1.1.3 in CIS v1.3.0)."
     ),
     "CIS-1.2.1": (
         "Ensure external directory sharing is restricted."

@@ -12,6 +12,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
+from gws_auditor.constants import NIST_CSF_NAME, NIST_SP800_53_NAME
 from gws_auditor.models import AuditReport, AuditSummary, Severity, Status
 from gws_auditor._frozen import resolve_package_path
 
@@ -101,6 +102,18 @@ def format_value(value) -> str:
     # Scalar
     return _humanize_value(value)
 
+
+
+def format_standards(check) -> str:
+    """One line naming the NIST SP 800-53 Rev. 5 controls and NIST CSF 2.0 subcategories a check maps to."""
+    parts = []
+    sp = list(getattr(check, "nist_sp800_53", []) or [])
+    csf = list(getattr(check, "nist_csf", []) or [])
+    if sp:
+        parts.append(f"{NIST_SP800_53_NAME}: {', '.join(sp)}")
+    if csf:
+        parts.append(f"{NIST_CSF_NAME}: {', '.join(csf)}")
+    return " | ".join(parts)
 
 class HTMLReporter:
     """Generates a self-contained HTML report from a Jinja2 template."""
@@ -280,6 +293,7 @@ class HTMLReporter:
                 "expected_value": format_value(check.expected_value),
                 "remediation": check.remediation,
                 "org_unit": check.org_unit,
+                "standards": format_standards(check),
                 "ou_fail_data": self._extract_ou_fail_data(check),
             }
             groups.setdefault(section, []).append(entry)

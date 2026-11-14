@@ -27,7 +27,6 @@ NEGATIVE = {"FAIL", "WARN", "PARTIAL"}
 # can never PASS only ever warns or asks for review; a check that can never FAIL rewards
 # evidence and otherwise asks for review. Each entry names the side and the reason.
 BY_DESIGN: dict[str, str] = {
-    "CIS-1.1.3": "never PASS: login-count heuristic, WARN or MANUAL review only",
     "CIS-4.2.1.2": "never PASS: third-party app review always ends in MANUAL or FAIL",
     "CIS-4.2.1.4": "never PASS: the audit log cannot prove the delegation inventory is complete (WARN/MANUAL)",
     "ADD-40": "never FAIL: evidence-only (CAA denial events) -> PASS, else MANUAL",

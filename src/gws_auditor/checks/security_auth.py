@@ -4,14 +4,14 @@
 
 """Section 4.1: Authentication checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Authentication and security controls.
+CIS Google Workspace Benchmark v1.4.1 - Authentication and security controls.
 """
 
 from datetime import datetime, timezone
 
 from .base import (
     check, make_pass, make_fail, make_warn, make_manual, make_partial, make_review,
-    get_ou_values, field_value, ou_verdict,
+    get_ou_values, field_value, ou_verdict, format_ou_values_readable,
 )
 from ..models import CheckResult, Status
 
@@ -392,7 +392,7 @@ def check_2sv_all_users(data: dict) -> CheckResult:
 @check(
     check_id="CIS-4.1.2.1",
     title="Ensure super admin account recovery is disabled",
-    level="L1",
+    level="L2",
     source="CIS",
     section="Security",
     remediation=(
@@ -405,7 +405,7 @@ def check_super_admin_recovery(data: dict) -> CheckResult:
     """Super admin self-service account recovery should be disabled."""
     _ID = "CIS-4.1.2.1"
     _TITLE = "Ensure super admin account recovery is disabled"
-    _L, _S, _SEC = "L1", "CIS", "Security"
+    _L, _S, _SEC = "L2", "CIS", "Security"
     _REMED = (
         "Admin console > Security > Authentication > Account recovery. "
         "Disable 'Allow super admins to recover their account' to prevent "
@@ -593,28 +593,78 @@ def check_advanced_protection(data: dict) -> CheckResult:
     )
 
 
+_LC_ID = "CIS-4.1.4.1"
+_LC_TITLE = "Ensure login challenges are enforced"
+_LC_REMED = (
+    "Admin console > Security > Authentication > Login challenges. Under Post-SSO verification, "
+    "enable 'Ask users for additional verifications from Google if a sign-in or session behavior "
+    "looks suspicious, and always apply 2-Step Verification policies (if configured)' for the legacy "
+    "SSO profile and for other SSO profiles. Under Login challenges, leave 'Use employee ID to keep "
+    "my users more secure' unchecked (CIS 4.1.4.1: employee IDs are susceptible to information-"
+    "gathering attacks). https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
+)
+_LC_EXPECTED = "Employee ID challenge off; post-SSO verification on for every SSO profile"
+_LC_POST_SSO = (
+    "Post-SSO verification for the legacy and other SSO profiles is not exposed by any Google API: "
+    "confirm it in Admin console > Security > Authentication > Login challenges > Post-SSO verification."
+)
+
+
+def _saml_sso_logins(data: dict) -> int:
+    """Sign-ins through a third-party identity provider (login audit ``login_type == "saml"``)."""
+    count = 0
+    for log in data.get("login_logs", []) or []:
+        params = log.get("parameters") if isinstance(log, dict) else None
+        if isinstance(params, dict) and params.get("login_type") == "saml":
+            count += 1
+    return count
+
+
+def _employee_id_off_result(common: dict, data: dict, ou_count: int | None) -> CheckResult:
+    """Verdict once the employee ID challenge is known to be off everywhere.
+
+    Post-SSO verification only applies to users who sign in through a third-party IdP. With no
+    SAML sign-in in the login log the setting has nothing to act on, so the readable half decides:
+    PASS. With SAML sign-ins the setting matters and no API exposes it: MANUAL.
+    """
+    where = f"All {ou_count} OU(s) leave" if ou_count else "The organisation leaves"
+    saml = _saml_sso_logins(data)
+    if saml:
+        return make_review(
+            **common,
+            details=(f"{where} the employee ID challenge off (compliant), but {saml} sign-in(s) in the login log "
+                     f"came through a third-party SSO identity provider, so post-SSO verification matters. {_LC_POST_SSO}"),
+            actual_value={"employee_id_challenge": False, "saml_sso_logins": saml},
+            expected_value=_LC_EXPECTED, remediation=_LC_REMED,
+        )
+    return make_pass(
+        **common,
+        details=(f"{where} the employee ID challenge off, as CIS 4.1.4.1 requires. No sign-in in the login log "
+                 "came through a third-party SSO identity provider, so post-SSO verification has no users to apply "
+                 "to; Google applies risk-based login challenges to Google-authenticated users itself."),
+        actual_value={"employee_id_challenge": False, "saml_sso_logins": 0},
+        expected_value=_LC_EXPECTED,
+    )
+
+
 @check(
-    check_id="CIS-4.1.4.1",
-    title="Ensure login challenges are enforced",
-    level="L1",
+    check_id=_LC_ID,
+    title=_LC_TITLE,
+    level="L2",
     source="CIS",
     section="Security",
-    remediation=(
-        "Admin console > Security > Authentication > Login challenges. "
-        "Enable login challenges for suspicious sign-in attempts. "
-        "Do not disable employee ID challenges. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-    ),
+    remediation=_LC_REMED,
 )
 def check_login_challenges(data: dict) -> CheckResult:
-    """Login challenges should be used to verify suspicious sign-in attempts."""
-    _ID = "CIS-4.1.4.1"
-    _TITLE = "Ensure login challenges are enforced"
-    _L, _S, _SEC = "L1", "CIS", "Security"
-    _REMED = (
-        "Admin console > Security > Authentication > Login challenges. "
-        "Enable login challenges for suspicious sign-in attempts. "
-        "Do not disable employee ID challenges. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-    )
+    """CIS 4.1.4.1: post-SSO verification on, employee ID challenge off.
+
+    Only the employee ID half is readable (``security.login_challenges.enableEmployeeIdChallenge``).
+    On in any OU -> FAIL. Off everywhere -> PASS when the login log shows no third-party SSO
+    sign-in (post-SSO verification then has nobody to apply to), else MANUAL because no API
+    exposes the post-SSO verification setting.
+    """
+    _L, _S, _SEC = "L2", "CIS", "Security"
+    common = dict(check_id=_LC_ID, title=_LC_TITLE, level=_L, source=_S, section=_SEC)
 
     policies = data.get("policies", {})
     security = policies.get("security", {})
@@ -622,44 +672,48 @@ def check_login_challenges(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "login_challenges")
     if ou_values:
-        def judge(entry):
-            # No documented default for this field: absent means unknown, not disabled.
-            enabled = field_value(entry, "enableEmployeeIdChallenge", "enableLoginChallenge", "enabled")
-            return None if enabled is None else enabled is True
+        on, off, unknown = [], [], []
+        for entry in ou_values:
+            enabled = field_value(entry, "enableEmployeeIdChallenge")
+            ou = entry.get("org_unit", "/")
+            (unknown if enabled is None else on if enabled else off).append(ou)
+        if on:
+            return make_fail(
+                **common,
+                details=(f"{len(on)} OU(s) use the employee ID as a login challenge: {', '.join(on)}. CIS 4.1.4.1 "
+                         "requires 'Use employee ID to keep my users more secure' unchecked because a leaked "
+                         "list of employee IDs defeats the challenge."
+                         + (f" Undetermined in OU(s): {', '.join(unknown)}." if unknown else "")),
+                actual_value=format_ou_values_readable([{"org_unit": ou, "value": True} for ou in on]),
+                expected_value=_LC_EXPECTED, remediation=_LC_REMED,
+            )
+        if unknown:
+            return make_review(
+                **common,
+                details=(f"Employee ID challenge could not be determined (value absent or unspecified) for OU(s): "
+                         f"{', '.join(unknown)}. {_LC_POST_SSO}"),
+                expected_value=_LC_EXPECTED, remediation=_LC_REMED,
+            )
+        return _employee_id_off_result(common, data, len(ou_values))
 
-        return ou_verdict(
-            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="do not have login challenges enabled",
-            pass_text="have login challenges enabled",
-            expected_value="Login challenges enabled for all OUs", remediation=_REMED,
-        )
-
-    # Fallback: existing mapped value logic
+    # Fallback: provider-mapped value (enabled = enableEmployeeIdChallenge)
     login = security.get("login_challenges", {})
     enabled = login.get("enabled", None)
 
-    if enabled is True:
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details="Login challenges are enabled for suspicious sign-in attempts.",
-            actual_value=enabled,
-            expected_value="Enabled for all OUs",
-        )
-
     if enabled is None:
         return make_manual(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details="Could not determine login challenge setting.",
-            remediation=_REMED,
+            **common,
+            details="Could not determine the login challenge settings.",
+            remediation=_LC_REMED,
         )
-
-    return make_fail(
-        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-        details="Login challenges are not enabled.",
-        actual_value=enabled,
-        expected_value="Enabled for all OUs",
-        remediation=_REMED,
-    )
+    if enabled:
+        return make_fail(
+            **common,
+            details=("The employee ID is used as a login challenge. CIS 4.1.4.1 requires it unchecked because a "
+                     "leaked list of employee IDs defeats the challenge."),
+            actual_value={"employee_id_challenge": True}, expected_value=_LC_EXPECTED, remediation=_LC_REMED,
+        )
+    return _employee_id_off_result(common, data, None)
 
 
 @check(
@@ -768,10 +822,10 @@ def check_password_policy(data: dict) -> CheckResult:
 
 
 @check(
-    check_id="CIS-4.2.6.1",
+    check_id="ADD-58",
     title="Ensure less secure app access is disabled",
     level="L1",
-    source="CIS",
+    source="OTHER",
     section="Security",
     remediation=(
         "Admin console > Security > Less secure apps. "
@@ -780,10 +834,14 @@ def check_password_policy(data: dict) -> CheckResult:
     ),
 )
 def check_less_secure_apps(data: dict) -> CheckResult:
-    """Less secure app access should be disabled for all users."""
-    _ID = "CIS-4.2.6.1"
+    """Less secure app access should be disabled for all users.
+
+    Carried CIS-4.2.6.1 until 1.6.0; CIS v1.4.1 removed the recommendation, the setting still
+    exists in the Admin console, so this stays as an additional check.
+    """
+    _ID = "ADD-58"
     _TITLE = "Ensure less secure app access is disabled"
-    _L, _S, _SEC = "L1", "CIS", "Security"
+    _L, _S, _SEC = "L1", "OTHER", "Security"
     _REMED = (
         "Admin console > Security > Less secure apps. "
         "Select 'Disable access to less secure apps (Recommended)'. "

@@ -12,7 +12,7 @@ import threading
 from typing import Callable
 
 from ..constants import (
-    LICENSE_TIERS, LICENSE_TIER_NAMES, CRITICAL_CHECKS, HIGH_CHECKS, LOW_CHECKS,
+    LICENSE_TIERS, LICENSE_TIER_NAMES, CRITICAL_CHECKS, HIGH_CHECKS, LOW_CHECKS, NIST_MAPPINGS,
     CONSOLE_SECTION_LINKS,
 )
 from ..models import CheckMetadata, CheckResult, Severity, Status
@@ -187,7 +187,8 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
           remediation: str = "", requires_license="",
           severity: str = "", critical_reason: str = "",
           scored: bool = True,
-          docs_url: str = "", console_link: str = "", gam_command: str = ""):
+          docs_url: str = "", console_link: str = "", gam_command: str = "",
+          nist_sp800_53: "tuple[str, ...] | None" = None, nist_csf: "tuple[str, ...] | None" = None):
     """Decorator to register a security check function.
 
     The decorated function should accept a single `data` dict argument
@@ -219,6 +220,10 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
     resolved_reason = critical_reason or _resolve_critical_reason(check_id)
     resolved_docs_url = docs_url or _extract_docs_url(remediation)
     resolved_console_link = console_link or CONSOLE_SECTION_LINKS.get(section, "")
+    # Standards: explicit on the decorator, otherwise the CIS v1.4.1 References table.
+    _nist = NIST_MAPPINGS.get(check_id, {})
+    resolved_sp800_53 = list(nist_sp800_53 if nist_sp800_53 is not None else _nist.get("sp800_53", ()))
+    resolved_csf = list(nist_csf if nist_csf is not None else _nist.get("csf", ()))
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -242,6 +247,7 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
                         docs_url=resolved_docs_url,
                         console_link=resolved_console_link,
                         gam_command=gam_command,
+                        nist_sp800_53=list(resolved_sp800_53), nist_csf=list(resolved_csf),
                     )
                 _lookups.entries = []
                 try:
@@ -272,6 +278,8 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
                     result.console_link = resolved_console_link
                 if not result.gam_command and gam_command:
                     result.gam_command = gam_command
+                result.nist_sp800_53 = list(resolved_sp800_53)
+                result.nist_csf = list(resolved_csf)
                 return result
             except Exception as e:
                 logger.exception("Check %s raised an exception: %s", check_id, e)
@@ -288,6 +296,7 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
                     docs_url=resolved_docs_url,
                     console_link=resolved_console_link,
                     gam_command=gam_command,
+                    nist_sp800_53=list(resolved_sp800_53), nist_csf=list(resolved_csf),
                 )
 
         metadata = CheckMetadata(
@@ -305,6 +314,7 @@ def check(check_id: str, title: str, level: str, source: str, section: str,
             docs_url=resolved_docs_url,
             console_link=resolved_console_link,
             gam_command=gam_command,
+            nist_sp800_53=list(resolved_sp800_53), nist_csf=list(resolved_csf),
         )
         _registered_checks.append(metadata)
 

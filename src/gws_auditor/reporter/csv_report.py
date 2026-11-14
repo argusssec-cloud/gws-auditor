@@ -25,6 +25,8 @@ _FIELDNAMES = [
     "Expected Value",
     "Remediation",
     "Org Unit",
+    "NIST SP 800-53 Rev. 5",
+    "NIST CSF 2.0",
 ]
 
 
@@ -72,4 +74,6 @@ class CSVReporter:
             "Expected Value": str(check.expected_value) if check.expected_value is not None else "",
             "Remediation": check.remediation,
             "Org Unit": check.org_unit,
+            "NIST SP 800-53 Rev. 5": ", ".join(getattr(check, "nist_sp800_53", []) or []),
+            "NIST CSF 2.0": ", ".join(getattr(check, "nist_csf", []) or []),
         }

@@ -4,7 +4,7 @@
 
 """Section 6: Alert Rules checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Alert rule configuration checks.
+CIS Google Workspace Benchmark v1.4.1 - Alert rule configuration checks.
 """
 
 from .base import check, make_pass, make_fail, make_warn, make_manual, make_review

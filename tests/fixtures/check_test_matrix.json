@@ -1,72 +1,41 @@
 [
  {
   "check_id": "CIS-1.1.1",
-  "func": "check_super_admin_count_min",
+  "func": "check_super_admin_count",
   "module": "checks/directory.py",
-  "inputs": "data['users'][*].is_super_admin (bool, normalized from isAdmin), users[*].suspended",
+  "inputs": "data['users'][*].is_super_admin (normalized from isAdmin), users[*].suspended, primary_email. CIS v1.4.1 1.1.1 merges the v1.3.0 1.1.1 (more than one) and 1.1.2 (no more than four).",
   "paths": [
    "users"
   ],
-  "pass_case": "users=[make_user('a@x',is_admin=True), make_user('b@x',is_admin=True)] -> PASS (count 2). Also 3 active + 1 suspended super admin -> PASS.",
-  "fail_case": "users=[make_user('a@x',is_admin=True)] -> FAIL (1). users=[] -> FAIL (0). Two super admins where one has suspended=True -> FAIL (suspended gives no redundancy).",
-  "other_cases": "None. Check never returns MANUAL/ERROR/N_A; data['users'] missing -> count 0 -> FAIL (arguably should be ERROR when users list is absent due to API error).",
-  "edge_cases": "is_super_admin missing on user dicts (raw isAdmin only, unnormalized cache) -> counted 0 -> false FAIL; is_super_admin as string 'true'; archived users (archived=True) still counted as redundancy; delegated admins (is_delegated_admin) must not count; users=[] due to API error -> FAIL not ERROR; exactly 2 with one suspended = boundary.",
-  "coverage_now": "tests/test_checks/test_directory.py::TestSuperAdminCount::test_pass_with_two_super_admins (PASS), test_fail_with_one_super_admin, test_fail_with_no_super_admins (FAIL); test_policy_api_real_shapes.py::TestMiscRealEnums::test_suspended_super_admin_gives_no_redundancy (FAIL). status_rec: PASS, FAIL. Only the users path exists.",
+  "pass_case": "2 active super admins -> PASS (actual 2). 4 active -> PASS (four is the upper bound). 3 active + 1 suspended -> PASS (4 hold the role).",
+  "fail_case": "1 active -> FAIL 'at least two'. 0 -> FAIL. 5 active -> FAIL 'maximum of four'. 2 where one is suspended -> FAIL (active 1, suspended gives no redundancy). 4 active + 1 suspended -> FAIL (5 hold the role).",
+  "other_cases": "None. Never MANUAL/ERROR/N_A; data['users'] missing -> count 0 -> FAIL.",
+  "edge_cases": "Lower bound counts active accounts only; upper bound counts every holder of the role, suspended included (the role can be reactivated). Boundaries 1/2 and 4/5. Delegated admins never count.",
+  "coverage_now": "tests/test_checks/test_directory.py::TestSuperAdminCount (PASS 2, PASS 4, FAIL 1, FAIL 0, FAIL 5, suspended both ways); test_policy_api_real_shapes.py::TestMiscRealEnums::test_suspended_super_admin_gives_no_redundancy. status_rec: PASS, FAIL.",
   "gaps": [
-   "test: users key absent / api_errors contains get_users -> expect ERROR rather than FAIL (currently FAIL)",
-   "test: 3 super admins one suspended one archived -> PASS with count 2 and details listing",
-   "test: raw camelCase-only user dicts (isAdmin=True, no is_super_admin) after normalize_data -> PASS (end-to-end through _normalize_users)"
+   "users key absent due to an API error -> FAIL rather than ERROR (pre-existing)"
   ],
-  "suspected_bugs": [
-   "directory.py:28-31 empty users list (e.g. Directory API failure, users=[]) yields FAIL 'Only 0 super admin' instead of ERROR; a data-collection failure is reported as a security failure."
-  ]
+  "suspected_bugs": []
  },
  {
   "check_id": "CIS-1.1.2",
-  "func": "check_super_admin_count_max",
-  "module": "checks/directory.py",
-  "inputs": "data['users'][*].is_super_admin; primary_email for details. Suspended NOT excluded here (unlike CIS-1.1.1).",
-  "paths": [
-   "users"
-  ],
-  "pass_case": "3 users with is_admin=True -> PASS (count 3, '<4'). 0 super admins -> PASS (count 0).",
-  "fail_case": "4 users with is_admin=True -> FAIL listing the 4 emails. 10 -> FAIL.",
-  "other_cases": "None; never MANUAL/ERROR.",
-  "edge_cases": "Boundary 3 vs 4. Suspended super admins ARE counted (4 total, 1 suspended -> FAIL) - inconsistent with CIS-1.1.1 which excludes suspended; decide intended semantics (suspended accounts cannot sign in but still hold the role). users=[] -> PASS (vacuous, hides collection failure). Duplicate user entries would double count.",
-  "coverage_now": "test_directory.py::TestSuperAdminCount::test_pass_three_super_admins (PASS), test_fail_four_super_admins, test_fail_too_many_super_admins (FAIL). status_rec: PASS, FAIL.",
-  "gaps": [
-   "test: 4 super admins where 1 is suspended -> document expected status (currently FAIL)",
-   "test: users=[] -> PASS today; assert ERROR if collection failed (api_errors)",
-   "test: actual_value==count and details lists all emails when FAIL"
-  ],
-  "suspected_bugs": [
-   "directory.py:72 counts suspended super admins while CIS-1.1.1 (line 30) excludes them; a tenant with 2 active + 2 suspended super admins gets CIS-1.1.1 PASS and CIS-1.1.2 FAIL on contradictory populations. Low severity but inconsistent."
-  ]
- },
- {
-  "check_id": "CIS-1.1.3",
   "func": "check_super_admin_usage",
   "module": "checks/directory.py",
-  "inputs": "data['users'][*].is_super_admin/primary_email; data['login_logs'][*]['actor']['email'] (nested actor dict). Threshold: >10 events per super admin.",
+  "inputs": "data['users'][*].is_super_admin/id/is_delegated_admin/primary_email; data['roles']['roles'] (isSuperAdminRole) and data['roles']['assignments'] (assignedTo user id, roleId, assigneeType user); data['login_logs'][*].actor_email + event_name for the sign-in heuristic (>10 login_success). CIS v1.4.1 1.1.2 (1.1.3 in v1.3.0): no user holds both the Super admin and a Delegated admin role.",
   "paths": [
    "users",
+   "roles",
    "logs"
   ],
-  "pass_case": "Never PASS. Best outcome is MANUAL (make_review): >=1 super admin and every super admin has <=10 matching login_logs entries.",
-  "fail_case": "Never FAIL. WARN: users=[{primary_email:'admin1@x',is_super_admin:True}], login_logs=[{'actor':{'email':'admin1@x'},'event_name':'login_success'}]*11 -> WARN with 'admin1@x (11 logins)'. (Only reachable with the nested actor shape.)",
-  "other_cases": "ERROR (make_manual): no super admins (users=[] or none with is_super_admin). MANUAL: super admins present, all counts <=10 (incl. login_logs=[]). WARN: any count >10.",
-  "edge_cases": "Boundary 10 (MANUAL) vs 11 (WARN). Production login_logs are flattened by provider._normalize_activity_logs into {'actor_email':..} with NO 'actor' key, so count is always 0 -> never WARN (verified: 12 normalized login_success events -> MANUAL). Counts every event type (login_failure, logout, login_challenge) not just login_success. Window length assumed ~30d but not checked. Email case sensitivity.",
-  "coverage_now": "test_directory.py::TestSuperAdminUsage::test_super_admin_low_activity_manual (MANUAL only, uses a hand-built log with nested actor and 1 event). status_rec: MANUAL only; WARN and ERROR paths untested.",
+  "pass_case": "2 super admins, roles collected, only the super admin role assigned, <=10 logins -> PASS actual {'super_admins': 2, 'with_delegated_roles': 0}.",
+  "fail_case": "A super admin with an assignment to a non-super role (e.g. _HELP_DESK_ADMIN_ROLE) -> FAIL naming 'email (role)'. is_delegated_admin True on a super admin -> FAIL.",
+  "other_cases": "ERROR (make_manual): no super admins; or data['roles']['roles'] empty/absent (role assignments not collected). WARN: roles clean but a super admin has >10 login_success events in the window.",
+  "edge_cases": "Group assignments (assigneeType group) are ignored. Boundary 10 (PASS) vs 11 (WARN). login_failure never counts. Super admin without 'id' cannot be matched to assignments (only the flag can fail it).",
+  "coverage_now": "tests/test_checks/test_directory.py::TestSuperAdminUsage (ERROR no roles, PASS, FAIL role, FAIL flag, group ignored, WARN heavy, ERROR no admins); tests/test_checks/test_p0_regressions.py::TestSuperAdminUsage (actor_email shape, boundary, failures ignored). status_rec: PASS, FAIL, WARN, ERROR.",
   "gaps": [
-   "test: 11 events with nested actor -> WARN; 10 -> MANUAL (boundary)",
-   "test: no super admins -> ERROR",
-   "test: production shape: raw login_logs through normalize_data (actor_email) with 12 login_success -> must WARN (currently MANUAL = false negative)",
-   "test: only login_success/login_verification events counted, login_failure ignored"
+   "super admin whose delegated role comes only through a group membership"
   ],
-  "suspected_bugs": [
-   "directory.py:129 reads log['actor']['email'] but normalized login_logs carry 'actor_email' (provider.py _normalize_activity_logs); in production the login count is always 0 so heavy super-admin use is never flagged (WARN unreachable) - systematic false negative.",
-   "directory.py:127-131 counts all login_logs events, not login_success only; with the key fixed, 11 login_failure events would WARN."
-  ]
+  "suspected_bugs": []
  },
  {
   "check_id": "CIS-1.2.1.1",
@@ -924,23 +893,17 @@
   "check_id": "CIS-3.1.2.1.2.1",
   "func": "check_shared_drive_creation",
   "module": "apps_drive",
-  "inputs": "drive_and_docs.shared_drive_creation.allowSharedDriveCreation (bool; safe False); legacy shared_drive_settings.creation_restricted (= not allowSharedDriveCreation, mapped incl. DEFAULT entries).",
+  "inputs": "drive_and_docs.shared_drive_creation.allowSharedDriveCreation (bool; audited state True = creation not prevented); legacy shared_drive_settings.creation_restricted (= not allowSharedDriveCreation). CIS v1.4.1 retitles the recommendation 'Audit users ability to create new shared drives' and keeps the audit step 'Prevent users ... is un-checked'.",
   "paths": [
    "ou_policy",
    "legacy_fallback"
   ],
-  "pass_case": "make_ou_policy('drive','shared_drive_creation',{'allowSharedDriveCreation':False}) -> PASS; two OUs False -> PASS '2 OU(s)'; legacy creation_restricted True -> PASS; raw snake_case allow_shared_drive_creation False through normalize_data -> PASS.",
-  "fail_case": "{'allowSharedDriveCreation':True} -> FAIL; root False + '/Temp' True -> FAIL naming '/Temp'; legacy creation_restricted False -> FAIL.",
-  "other_cases": "ERROR: no _ou_policies and legacy None. No MANUAL/PARTIAL/N/A.",
-  "edge_cases": "Absent field -> None -> FAIL (should be MANUAL). DEFAULT-only entry (Google default allows creation) -> legacy creation_restricted False -> FAIL decided by a default. Exception OU not exempt. CIS allows restricting to specific groups; check only accepts fully disabled. Root True + child False -> FAIL naming '/'.",
-  "coverage_now": "TestSharedDrives legacy PASS; TestSharedDriveCreationOU PASS/FAIL/fallback PASS; TestDriveSnakeCaseNormalization::test_shared_drive_creation_snake_case PASS. Statuses: PASS, FAIL.",
-  "gaps": [
-   "legacy False -> FAIL",
-   "legacy None -> ERROR",
-   "absent field",
-   "DEFAULT-only entry -> expect MANUAL",
-   "root unsafe, child safe -> FAIL names '/'"
-  ],
+  "pass_case": "make_ou_policy('drive','shared_drive_creation',{'allowSharedDriveCreation':True}) in every OU -> PASS '2 OU(s)'; legacy creation_restricted False -> PASS.",
+  "fail_case": "allowSharedDriveCreation False in any OU -> FAIL naming the OU, details explain the organisational caveat (override if deliberate); legacy creation_restricted True -> FAIL; snake_case allow_shared_drive_creation False via normalize_data -> FAIL.",
+  "other_cases": "MANUAL (make_review): field absent/unspecified in an OU and no OU prevents creation. ERROR: no _ou_policies and legacy None.",
+  "edge_cases": "Direction inverted versus releases before 1.6.0 (they failed creation allowed). Exception OU not exempt. Google default allows creation.",
+  "coverage_now": "tests/test_checks/test_drive.py::TestSharedDrives, TestSharedDriveCreationOU (PASS, FAIL child, FAIL all, fallback both), TestDriveSnakeCaseNormalization, TestDriveUnknownValues (MANUAL). status_rec: PASS, FAIL, MANUAL.",
+  "gaps": [],
   "suspected_bugs": []
  },
  {
@@ -996,7 +959,7 @@
   "check_id": "CIS-3.1.2.1.2.4",
   "func": "check_shared_drive_viewer_restrictions",
   "module": "apps_drive",
-  "inputs": "drive_and_docs.shared_drive_creation.allowedPartiesForDownloadPrintCopy, real enum ALL | EDITORS_ONLY | MANAGERS_ONLY; check's unsafe set ('ALL','EDITORS_AND_ABOVE'); legacy shared_drive_settings.viewer_download_print_copy_disabled; requires_license='business_standard'.",
+  "inputs": "drive_and_docs.shared_drive_creation.allowedPartiesForDownloadPrintCopy, real enum ALL | EDITORS_ONLY | MANAGERS_ONLY; unsafe set ('ALL',) = the console's 'Everyone (Managers, content managers, contributors, commenters and viewers)' (CIS v1.4.1 wording); legacy shared_drive_settings.viewer_download_print_copy_disabled; requires_license=EDITIONS_SHARED_DRIVE_SETTINGS.",
   "paths": [
    "ou_policy",
    "legacy_fallback",
@@ -1005,8 +968,8 @@
   "pass_case": "make_ou_policy('drive','shared_drive_creation',{'allowedPartiesForDownloadPrintCopy':'EDITORS_ONLY'}) -> PASS; 'MANAGERS_ONLY' -> PASS; legacy viewer_download_print_copy_disabled True -> PASS.",
   "fail_case": "{'allowedPartiesForDownloadPrintCopy':'ALL'} -> FAIL; root EDITORS_ONLY + '/Contractors' ALL -> FAIL naming '/Contractors'; legacy False -> FAIL.",
   "other_cases": "NOT_APPLICABLE on Business Starter. ERROR: no _ou_policies and legacy None.",
-  "edge_cases": "Absent field -> '' -> treated SAFE -> PASS (false PASS; siblings treat absent as unsafe). '..._UNSPECIFIED' -> PASS. 'EDITORS_AND_ABOVE' used by tests is not a real value. null value -> AttributeError. 'all' lower-case -> FAIL (upper()). DEFAULT-only -> legacy.",
-  "coverage_now": "TestSharedDriveViewerRestrictionsOU (values NONE, MANAGERS_ONLY, ALL, EDITORS_AND_ABOVE): PASS, FAIL x2, fallback PASS. Statuses: PASS, FAIL.",
+  "edge_cases": "Absent field or *_UNSPECIFIED -> MANUAL. 'all' lower-case -> FAIL (upper()). DEFAULT-only -> legacy.",
+  "coverage_now": "TestSharedDriveViewerRestrictionsOU (NONE/MANAGERS_ONLY PASS, ALL FAIL, EDITORS_ONLY PASS, fallback PASS); TestDriveUnknownValues (absent -> MANUAL). status_rec: PASS, FAIL, MANUAL, NOT_APPLICABLE.",
   "gaps": [
    "real EDITORS_ONLY -> PASS",
    "absent field -> expect MANUAL (currently PASS)",
@@ -1014,9 +977,7 @@
    "legacy False -> FAIL, None -> ERROR",
    "N/A on Business Starter"
   ],
-  "suspected_bugs": [
-   "apps_drive.py:951-953 missing or UNSPECIFIED allowedPartiesForDownloadPrintCopy is counted as safe -> PASS on unknown data (false PASS)"
-  ],
+  "suspected_bugs": [],
   "license_gate": "EDITIONS_SHARED_DRIVE_SETTINGS (Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus); before 2026-11-10: business_standard. Source: Supported editions for this feature: Frontline Plus; Business Starter (except as noted), Business Standard, and Business Plus; Enterprise Standard and Enterprise Plus; Education Fundamentals, Educatio"
  },
  {
@@ -1046,10 +1007,10 @@
   "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
-  "check_id": "CIS-3.1.2.2.2",
+  "check_id": "CIS-3.1.2.3.1",
   "func": "check_drive_desktop_access",
   "module": "apps_drive",
-  "inputs": "drive_and_docs.drive_for_desktop.allowDriveForDesktop (safe False); legacy drive.features.desktop_access_enabled (mapped from same field incl. DEFAULT entries).",
+  "inputs": "drive_and_docs.drive_for_desktop.allowDriveForDesktop (safe False); legacy drive.features.desktop_access_enabled (mapped from same field incl. DEFAULT entries). Renumbered from CIS-3.1.2.2.2 by CIS v1.4.1 (new sub-section 3.1.2.3).",
   "paths": [
    "ou_policy",
    "legacy_fallback"
@@ -1067,10 +1028,10 @@
   "suspected_bugs": []
  },
  {
-  "check_id": "CIS-3.1.2.2.3",
+  "check_id": "ADD-57",
   "func": "check_drive_sdk",
   "module": "apps_drive",
-  "inputs": "drive_and_docs.drive_sdk.enableDriveSdkApiAccess (safe False; invented aliases driveSdkEnabled/enabled); legacy drive.features.drive_sdk_enabled (provider maps same field incl. DEFAULT); data['drive_sdk_enabled'] Drive API probe (False = 403 domainPolicy, True = about.get succeeded, None = indeterminate/no delegation).",
+  "inputs": "drive_and_docs.drive_sdk.enableDriveSdkApiAccess (safe False; invented aliases driveSdkEnabled/enabled); legacy drive.features.drive_sdk_enabled (provider maps same field incl. DEFAULT); data['drive_sdk_enabled'] Drive API probe (False = 403 domainPolicy, True = about.get succeeded, None = indeterminate/no delegation). Re-sourced from CIS-3.1.2.2.3 (OTHER) in 1.6.0: the benchmark's 3.1.2.2.3 was Docs add-ons (GWS.DRIVEDOCS.5.1) and v1.4.1 removed it.",
   "paths": [
    "ou_policy",
    "legacy_fallback",
@@ -1827,23 +1788,21 @@
   "check_id": "CIS-4.1.4.1",
   "func": "check_login_challenges",
   "module": "security_auth",
-  "inputs": "security.login_challenges field enableEmployeeIdChallenge (real; enableLoginChallenge/enabled invented). Legacy security.login_challenges.enabled (provider.py:2319 adds it from the real field).",
+  "inputs": "security.login_challenges.enableEmployeeIdChallenge (real) per OU; legacy security.login_challenges.enabled (provider maps the same field); data['login_logs'][*].parameters.login_type == 'saml' (third-party SSO sign-ins). CIS v1.4.1: post-SSO verification on for every SSO profile (no API) and 'Use employee ID to keep my users more secure' unchecked.",
   "paths": [
    "ou_policy",
-   "legacy_fallback"
+   "legacy_fallback",
+   "logs"
   ],
-  "pass_case": "make_ou_policy('security','login_challenges',{'enableEmployeeIdChallenge':True}) -> PASS.",
-  "fail_case": "enableEmployeeIdChallenge False in any OU -> FAIL.",
-  "other_cases": "ERROR only legacy enabled None. OU field absent -> FAIL.",
-  "edge_cases": "Field absent -> FAIL not MANUAL. Note legacy and OU data live under the same key 'login_challenges': a provider-mapped dict {'enableEmployeeIdChallenge':..,'enabled':..} plus _ou_policies -> OU path wins. DEFAULT-only entry.",
-  "coverage_now": "tests/test_checks/test_security_auth.py::TestLoginChallenges (legacy), tests/test_checks/test_security_auth.py::TestLoginChallengesOU (OU path with INVENTED field enableLoginChallenge). status_rec: PASS, FAIL, ERROR.",
+  "pass_case": "enableEmployeeIdChallenge False in every OU and no login_type 'saml' event -> PASS (post-SSO verification has no SSO users to apply to). Legacy enabled False + no SAML logins -> PASS.",
+  "fail_case": "enableEmployeeIdChallenge True in any OU -> FAIL naming the OU; legacy enabled True -> FAIL.",
+  "other_cases": "MANUAL: all OUs off but SAML sign-ins exist (post-SSO verification not exposed by any API); or field absent/unspecified. ERROR: legacy enabled None.",
+  "edge_cases": "Direction inverted versus releases before 1.6.0 (they passed employee ID on). Level L2 per the benchmark.",
+  "coverage_now": "tests/test_checks/test_security_auth.py::TestLoginChallenges (FAIL on, PASS off, MANUAL off+SAML, ERROR none), TestLoginChallengesOU (PASS, MANUAL SAML, FAIL child, MANUAL absent, fallback FAIL). status_rec: PASS, FAIL, MANUAL, ERROR.",
   "gaps": [
-   "OU test with real field enableEmployeeIdChallenge True/False",
-   "Field absent -> expected MANUAL"
+   "admin-log inference for post-SSO verification (SETTING_NAME still to be confirmed by a flip)"
   ],
-  "suspected_bugs": [
-   "src/gws_auditor/checks/security_auth.py:632-636 missing field -> FAIL instead of MANUAL"
-  ]
+  "suspected_bugs": []
  },
  {
   "check_id": "CIS-4.1.5.1",
@@ -1871,10 +1830,10 @@
   ]
  },
  {
-  "check_id": "CIS-4.2.6.1",
+  "check_id": "ADD-58",
   "func": "check_less_secure_apps",
   "module": "security_auth",
-  "inputs": "security.less_secure_apps field allowLessSecureApps (real) per OU; users[].less_secure_apps_enabled (never populated by provider -> dead). Legacy security.less_secure_apps.allowed.",
+  "inputs": "security.less_secure_apps field allowLessSecureApps (real) per OU; users[].less_secure_apps_enabled (never populated by provider -> dead). Legacy security.less_secure_apps.allowed. Re-sourced from CIS-4.2.6.1 (OTHER) in 1.6.0: CIS v1.4.1 removed the recommendation; the setting still exists.",
   "paths": [
    "ou_policy",
    "legacy_fallback",
@@ -2036,18 +1995,18 @@
   "check_id": "CIS-4.2.4.1",
   "func": "check_session_control",
   "module": "security_access",
-  "inputs": "chrome_policies.dbsc_enabled (bool from Chrome Policy API chrome.users.BoundSessionCredentialsEnabled, root OU only).",
+  "inputs": "security.session_controls.webSessionDuration (seconds string, e.g. '43200s'; Google default 14 days) per OU via the judge shared with GWS.COMMONCONTROLS.4.1; legacy security.session_management.web_session_duration_hours / session_duration_hours; requires_license=EDITIONS_SESSION_CONTROL. CIS 4.2.4.1: 'Verify Web session duration is 12 hours or less'.",
   "paths": [
-   "chrome_policies"
+   "ou_policy",
+   "legacy_fallback",
+   "license_gate"
   ],
-  "pass_case": "chrome_policies {'dbsc_enabled': True} -> PASS.",
-  "fail_case": "chrome_policies {'dbsc_enabled': False} -> FAIL.",
-  "other_cases": "Chrome policies collected without error and BoundSessionCredentialsEnabled unset -> PASS by Google's documented default (DBSC on by default for Workspace accounts, prevent-cookie-theft article); explicit false -> FAIL; not collected / resolve error -> MANUAL. MANUAL (make_review) when key absent/None or non-bool (string 'true' -> MANUAL, probe Z2).",
-  "edge_cases": "Chrome policy resolved for root only; child OU override ignored. String 'true' -> MANUAL (is True check). chrome_policies None -> AttributeError -> ERROR.",
-  "coverage_now": "tests/test_checks/test_security_access.py::TestSessionControl (PASS/FAIL/MANUAL), tests/test_checks/test_security.py::TestSessionControl. status_rec: PASS, FAIL, MANUAL. Complete for the data shape.",
-  "gaps": [
-   "chrome_policies None (collection failed) -> graceful MANUAL, currently ERROR"
-  ],
+  "pass_case": "make_ou_policy('security','session_controls',{'webSessionDuration':'43200s'}) -> PASS; legacy web_session_duration_hours 8 -> PASS.",
+  "fail_case": "'1209600s' (14 days) in any OU -> FAIL naming the OU with '336h'; '45000s' (12.5 h) -> FAIL; legacy session_duration_hours 24 -> FAIL.",
+  "other_cases": "MANUAL: duration absent in an OU. ERROR: no OU data and no legacy value. NOT_APPLICABLE below EDITIONS_SESSION_CONTROL.",
+  "edge_cases": "Boundary exactly 43200s PASS, 43201s FAIL (float hours, no integer division).",
+  "coverage_now": "tests/test_checks/test_security_access.py::TestWebSessionControl (PASS, FAIL 14d, FAIL 12.5h, MANUAL absent, fallback PASS/FAIL/ERROR). status_rec: PASS, FAIL, MANUAL, ERROR.",
+  "gaps": [],
   "suspected_bugs": []
  },
  {
@@ -5368,5 +5327,57 @@
   ],
   "suspected_bugs": [],
   "license_gate": "EDITIONS_CAA (Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus); before 2026-11-10: enterprise_standard. Source: article has no editions line (see analysis-license-gates.md)"
+ },
+ {
+  "check_id": "ADD-59",
+  "func": "check_dbsc",
+  "module": "security_access",
+  "inputs": "chrome_policies.dbsc_enabled (bool from Chrome Policy API chrome.users.BoundSessionCredentialsEnabled, root OU only). Was CIS-4.2.4.1 until 1.6.0; the benchmark's 4.2.4.1 is web session duration.",
+  "paths": [
+   "chrome_policies"
+  ],
+  "pass_case": "chrome_policies {'dbsc_enabled': True} -> PASS.",
+  "fail_case": "chrome_policies {'dbsc_enabled': False} -> FAIL.",
+  "other_cases": "Chrome policies collected without error and BoundSessionCredentialsEnabled unset -> PASS by Google's documented default (DBSC on by default for Workspace accounts, prevent-cookie-theft article); explicit false -> FAIL; not collected / resolve error -> MANUAL. MANUAL (make_review) when key absent/None or non-bool (string 'true' -> MANUAL, probe Z2).",
+  "edge_cases": "Chrome policy resolved for root only; child OU override ignored. String 'true' -> MANUAL (is True check). chrome_policies None -> AttributeError -> ERROR.",
+  "coverage_now": "tests/test_checks/test_security_access.py::TestDbsc, TestDbscDefault; tests/test_checks/test_security.py::TestDbsc. status_rec: PASS, FAIL, MANUAL.",
+  "gaps": [
+   "chrome_policies None (collection failed) -> graceful MANUAL, currently ERROR"
+  ],
+  "suspected_bugs": []
+ },
+ {
+  "gaps": [],
+  "suspected_bugs": [],
+  "check_id": "CIS-3.1.4.1.2",
+  "func": "check_chat_internal_file_sharing",
+  "module": "apps_chat",
+  "inputs": "chat.chat_file_sharing.internalFileSharing == 'NO_FILES' per OU (externalFileSharing is GWS.CHAT.2.1); requires_license=EDITIONS_CHAT_FILE_SHARING. CIS v1.4.1 3.1.4.1.2 (L2).",
+  "paths": [
+   "ou_policy",
+   "license_gate"
+  ],
+  "pass_case": "make_ou_policy('chat','chat_file_sharing',{'internalFileSharing':'NO_FILES','externalFileSharing':'ALL_FILES'}) -> PASS.",
+  "fail_case": "internalFileSharing 'ALL_FILES' or 'IMAGES_ONLY' in any OU -> FAIL naming the OU and value.",
+  "other_cases": "MANUAL: setting not returned, or field absent/unspecified in every OU. NOT_APPLICABLE below the edition set.",
+  "edge_cases": "Mixed OUs name only the unsafe OU. Google default (ALL_FILES, SYSTEM policy) -> FAIL with provenance.",
+  "coverage_now": "tests/test_checks/test_new_coverage_checks.py::TestCisChatAdditions. status_rec: PASS, FAIL, MANUAL."
+ },
+ {
+  "gaps": [],
+  "suspected_bugs": [],
+  "check_id": "CIS-3.1.4.3.1",
+  "func": "check_chat_external_spaces",
+  "module": "apps_chat",
+  "inputs": "chat.chat_external_spaces: enabled (bool) and domainAllowlistMode ('ALL_DOMAINS' seen live = any domain; any other member = allowlisted domains only); requires_license=EDITIONS_CHAT_EXTERNAL. CIS v1.4.1 3.1.4.3.1: external spaces ON with 'Only allow users to add people from allowlisted domains' checked.",
+  "paths": [
+   "ou_policy",
+   "license_gate"
+  ],
+  "pass_case": "{'enabled': True, 'domainAllowlistMode': 'ALLOWLISTED_DOMAINS'} -> PASS; {'enabled': False, ...} -> PASS (external spaces off, stricter than the benchmark).",
+  "fail_case": "{'enabled': True, 'domainAllowlistMode': 'ALL_DOMAINS'} in any OU -> FAIL naming the OU.",
+  "other_cases": "MANUAL: setting not returned; enabled True with domainAllowlistMode absent or *_UNSPECIFIED. NOT_APPLICABLE below the edition set.",
+  "edge_cases": "Only ALL_DOMAINS has been observed live; the allowlist member name is not documented, so any other known member passes. enabled absent -> MANUAL.",
+  "coverage_now": "tests/test_checks/test_new_coverage_checks.py::TestCisChatAdditions. status_rec: PASS, FAIL, MANUAL."
  }
 ]

@@ -157,7 +157,7 @@ CRITICAL_CHECKS: dict[str, str] = {
         "Domain-wide delegation gives a service account the ability to impersonate "
         "any user. An unreviewed delegation is equivalent to a master key."
     ),
-    "CIS-4.2.6.1": (
+    "ADD-58": (  # was CIS-4.2.6.1 until CIS v1.4.1 dropped the recommendation
         "Less secure apps bypass OAuth and accept plain-text passwords. "
         "Enabling them creates a credential interception attack surface."
     ),
@@ -234,12 +234,12 @@ CRITICAL_CHECK_IDS: frozenset[str] = frozenset(CRITICAL_CHECKS.keys())
 # ---------------------------------------------------------------------------
 HIGH_CHECKS: frozenset[str] = frozenset({
     # Password & session security
-    "CIS-1.1.2",           # Ensure fewer than 4 Super Admin accounts exist
     "CIS-4.1.2.2",         # Ensure user account recovery is enabled
     "CIS-4.1.5.1",         # Ensure password policy is enhanced
     "CIS-4.2.5.1",         # Ensure cloud session control is configured
     "CIS-4.1.3.1",         # Ensure Advanced Protection Program is available
     "CIS-4.1.4.1",         # Ensure login challenges are enforced
+    "ADD-59",              # Ensure Device Bound Session Credentials (DBSC) are enabled (was CIS-4.2.4.1)
     # Third-party app access
     "CIS-4.2.1.2",         # Ensure third-party apps are reviewed
     "CIS-4.2.1.3",         # Ensure internal app API access is controlled
@@ -341,7 +341,6 @@ LOW_CHECKS: frozenset[str] = frozenset({
     # Review/monitoring checks (manual review items)
     "CIS-5.1.1.1",        # Ensure App Usage Activity Report is reviewed
     "CIS-5.1.1.2",        # Ensure the Security Report is reviewed regularly for anomalies
-    "CIS-1.1.3",          # Ensure Super Admin accounts are only used for admin tasks
     # Inventory checks
     "ADD-28",              # Ensure groups have active members
     "ADD-29",              # Ensure Chat spaces have recent activity
@@ -384,8 +383,105 @@ DEFAULT_CHAT_INACTIVE_DAYS = 90
 DEFAULT_DEVICE_INACTIVE_DAYS = 90
 
 # CIS Benchmark version
-CIS_BENCHMARK_VERSION = "1.3.0"
+CIS_BENCHMARK_VERSION = "1.4.1"
 CIS_BENCHMARK_TITLE = "CIS Google Workspace Foundations Benchmark"
+
+# ---------------------------------------------------------------------------
+# Standards mapping: NIST SP 800-53 Rev. 5 controls and NIST CSF 2.0 subcategories
+# per CIS recommendation, copied from the References section of the CIS Google
+# Workspace Foundations Benchmark v1.4.1 (every recommendation maps to both).
+# Keyed by check id; the @check decorator attaches them to results and metadata.
+# ---------------------------------------------------------------------------
+NIST_SP800_53_NAME = "NIST SP 800-53 Rev. 5"
+NIST_CSF_NAME = "NIST CSF 2.0"
+NIST_MAPPINGS: dict[str, dict[str, tuple[str, ...]]] = {
+    "CIS-1.1.1": {"sp800_53": ('AC-6(5)',), "csf": ('PR.AA-05',)},
+    "CIS-1.1.2": {"sp800_53": ('AC-6(2)',), "csf": ('PR.AA-05',)},
+    "CIS-1.2.1.1": {"sp800_53": ('AC-3(11)',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.1.1.1": {"sp800_53": ('AC-4',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.1.1.2": {"sp800_53": ('AC-6',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.1.1.3": {"sp800_53": ('AC-21b',), "csf": ('PR.DS-02',)},
+    "CIS-3.1.1.2.1": {"sp800_53": ('AC-3(11)',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.1.2.2": {"sp800_53": ('AC-6',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.1.3.1": {"sp800_53": ('CM-7b',), "csf": ('PR.PS-01',)},
+    "CIS-3.1.2.1.1.1": {"sp800_53": ('AC-21b',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.2.1.1.2": {"sp800_53": ('AC-22a',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.2.1.1.3": {"sp800_53": ('AC-4',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.2.1.1.4": {"sp800_53": ('AC-21b',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.2.1.1.5": {"sp800_53": ('AC-6',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.2.1.1.6": {"sp800_53": ('AC-4',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.2.1.2.1": {"sp800_53": ('SI-12',), "csf": ('PR.DS-01',)},
+    "CIS-3.1.2.1.2.2": {"sp800_53": ('AC-6(1)',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.2.1.2.3": {"sp800_53": ('AC-3',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.2.1.2.4": {"sp800_53": ('AC-6',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.2.2.1": {"sp800_53": ('AC-20(3)',), "csf": ('PR.DS-01',)},
+    "CIS-3.1.2.3.1": {"sp800_53": ('CM-7b',), "csf": ('PR.PS-01',)},
+    "CIS-3.1.3.1.1": {"sp800_53": ('AC-3',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.3.1.2": {"sp800_53": ('CM-7b',), "csf": ('PR.PS-01',)},
+    "CIS-3.1.3.2.1": {"sp800_53": ('SC-8(1)',), "csf": ('PR.DS-02',)},
+    "CIS-3.1.3.2.2": {"sp800_53": ('AC-4',), "csf": ('PR.AA-03',)},
+    "CIS-3.1.3.2.3": {"sp800_53": ('AC-4(17)',), "csf": ('PR.DS-02',)},
+    "CIS-3.1.3.3.1": {"sp800_53": ('SI-4(5)',), "csf": ('DE.AE-06',)},
+    "CIS-3.1.3.4.1.1": {"sp800_53": ('SI-3a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.1.2": {"sp800_53": ('SI-3a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.1.3": {"sp800_53": ('SI-3a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.2.1": {"sp800_53": ('SI-8a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.2.2": {"sp800_53": ('SI-3c',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.2.3": {"sp800_53": ('SI-8a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.3.1": {"sp800_53": ('SI-8a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.3.2": {"sp800_53": ('SI-8a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.3.3": {"sp800_53": ('AC-4',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.3.4": {"sp800_53": ('SI-8a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.4.3.5": {"sp800_53": ('AC-4',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.5.1": {"sp800_53": ('CM-7b',), "csf": ('PR.PS-01',)},
+    "CIS-3.1.3.5.2": {"sp800_53": ('SC-7(10)',), "csf": ('PR.DS-02',)},
+    "CIS-3.1.3.5.3": {"sp800_53": ('AC-4',), "csf": ('PR.PS-01',)},
+    "CIS-3.1.3.5.4": {"sp800_53": ('AC-21b',), "csf": ('PR.DS-02',)},
+    "CIS-3.1.3.6.1": {"sp800_53": ('SI-8a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.6.2": {"sp800_53": ('SI-8a',), "csf": ('DE.CM-09',)},
+    "CIS-3.1.3.7.1": {"sp800_53": ('SI-12',), "csf": ('PR.DS-01',)},
+    "CIS-3.1.3.7.2": {"sp800_53": ('SC-8(1)',), "csf": ('PR.DS-02',)},
+    "CIS-3.1.4.1.1": {"sp800_53": ('AC-4',), "csf": ('PR.DS-02',)},
+    "CIS-3.1.4.1.2": {"sp800_53": ('CM-7b',), "csf": ('PR.PS-01',)},
+    "CIS-3.1.4.2.1": {"sp800_53": ('AC-4',), "csf": ('PR.DS-02',)},
+    "CIS-3.1.4.3.1": {"sp800_53": ('AC-3',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.4.4.1": {"sp800_53": ('CM-11b',), "csf": ('PR.PS-05',)},
+    "CIS-3.1.4.4.2": {"sp800_53": ('CM-7b',), "csf": ('PR.PS-01',)},
+    "CIS-3.1.6.1": {"sp800_53": ('AC-3',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.6.2": {"sp800_53": ('AC-2c',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.6.3": {"sp800_53": ('AC-6',), "csf": ('PR.AA-05',)},
+    "CIS-3.1.7.1": {"sp800_53": ('CM-7b',), "csf": ('PR.PS-01',)},
+    "CIS-3.1.8.1": {"sp800_53": ('CM-7b',), "csf": ('PR.PS-01',)},
+    "CIS-3.1.9.1.1": {"sp800_53": ('CM-11b',), "csf": ('PR.PS-05',)},
+    "CIS-4.1.1.1": {"sp800_53": ('IA-2(1)',), "csf": ('PR.AA-03',)},
+    "CIS-4.1.1.2": {"sp800_53": ('IA-2(6)',), "csf": ('PR.AA-03',)},
+    "CIS-4.1.1.3": {"sp800_53": ('IA-2(2)',), "csf": ('PR.AA-03',)},
+    "CIS-4.1.2.1": {"sp800_53": ('IA-5d',), "csf": ('PR.AA-01',)},
+    "CIS-4.1.2.2": {"sp800_53": ('IA-5(1)',), "csf": ('PR.AA-01',)},
+    "CIS-4.1.3.1": {"sp800_53": ('IA-2(6)',), "csf": ('PR.AA-03',)},
+    "CIS-4.1.4.1": {"sp800_53": ('IA-10',), "csf": ('PR.AA-03',)},
+    "CIS-4.1.5.1": {"sp800_53": ('IA-5(1)',), "csf": ('PR.AA-03',)},
+    "CIS-4.2.1.1": {"sp800_53": ('AC-3(12)',), "csf": ('PR.AA-05',)},
+    "CIS-4.2.1.2": {"sp800_53": ('AC-3(12)',), "csf": ('PR.AA-05',)},
+    "CIS-4.2.1.3": {"sp800_53": ('CM-7b',), "csf": ('PR.PS-01',)},
+    "CIS-4.2.1.4": {"sp800_53": ('AC-6(7)',), "csf": ('PR.AA-05',)},
+    "CIS-4.2.2.1": {"sp800_53": ('AC-3(13)',), "csf": ('PR.AA-05',)},
+    "CIS-4.2.3.1": {"sp800_53": ('AC-4(15)',), "csf": ('DE.CM-09',)},
+    "CIS-4.2.4.1": {"sp800_53": ('AC-12',), "csf": ('PR.AA-03',)},
+    "CIS-4.2.5.1": {"sp800_53": ('IA-11',), "csf": ('PR.AA-03',)},
+    "CIS-4.3.1": {"sp800_53": ('AU-6a',), "csf": ('DE.CM-03',)},
+    "CIS-4.3.2": {"sp800_53": ('CM-6d',), "csf": ('DE.CM-09',)},
+    "CIS-5.1.1.1": {"sp800_53": ('AC-2(12)',), "csf": ('DE.CM-03',)},
+    "CIS-5.1.1.2": {"sp800_53": ('CA-7d',), "csf": ('DE.CM-03',)},
+    "CIS-6.1": {"sp800_53": ('SI-4(5)',), "csf": ('DE.AE-06',)},
+    "CIS-6.2": {"sp800_53": ('SI-4(5)',), "csf": ('DE.AE-06',)},
+    "CIS-6.3": {"sp800_53": ('SI-4(5)',), "csf": ('DE.AE-06',)},
+    "CIS-6.4": {"sp800_53": ('AC-2(7)',), "csf": ('DE.AE-06',)},
+    "CIS-6.5": {"sp800_53": ('AC-2(12)',), "csf": ('DE.AE-06',)},
+    "CIS-6.6": {"sp800_53": ('AC-2(12)',), "csf": ('DE.AE-06',)},
+    "CIS-6.7": {"sp800_53": ('SI-4(5)',), "csf": ('DE.AE-06',)},
+    "CIS-6.8": {"sp800_53": ('SI-4(5)',), "csf": ('DE.AE-06',)},
+}
 
 # OAuth scopes considered dangerous when granted to third-party apps
 DANGEROUS_OAUTH_SCOPES = [
@@ -638,7 +734,7 @@ REMEDIATION_THEMES = {
         "CIS-4.2.1.1", "CIS-4.2.1.2", "CIS-4.2.1.3", "CIS-4.2.1.4",
         "GWS.COMMONCONTROLS.10.1", "GWS.COMMONCONTROLS.10.2",
         "GWS.COMMONCONTROLS.10.3", "GWS.COMMONCONTROLS.10.4",
-        "CIS-4.2.6.1", "ADD-33", "ADD-36",
+        "ADD-57", "ADD-58", "ADD-33", "ADD-36",
     ],
     "Gmail Access Controls": [
         "CIS-3.1.3.1.1", "CIS-3.1.3.1.2", "CIS-3.1.3.5.1",
@@ -654,7 +750,7 @@ REMEDIATION_THEMES = {
         "ADD-35",
     ],
     "Session & Access Control": [
-        "CIS-4.2.2.1", "CIS-4.2.4.1", "CIS-4.2.5.1",
+        "CIS-4.2.2.1", "CIS-4.2.4.1", "CIS-4.2.5.1", "ADD-59",
         "GWS.COMMONCONTROLS.2.1", "GWS.COMMONCONTROLS.4.1",
         "ADD-20",
         "ADD-47",
@@ -666,7 +762,7 @@ REMEDIATION_THEMES = {
         "GWS.CALENDAR.3.1", "GWS.CALENDAR.3.2", "GWS.CALENDAR.4.1",
     ],
     "Chat Security": [
-        "CIS-3.1.4.2.1", "CIS-3.1.4.4.1", "CIS-3.1.4.4.2",
+        "CIS-3.1.4.1.2", "CIS-3.1.4.2.1", "CIS-3.1.4.3.1", "CIS-3.1.4.4.1", "CIS-3.1.4.4.2",
         "GWS.CHAT.1.1", "GWS.CHAT.1.2", "GWS.CHAT.3.1",
         "GWS.CHAT.5.1", "GWS.CHAT.5.2",
         "GWS.CHAT.2.1", "ADD-45",
@@ -683,7 +779,7 @@ REMEDIATION_THEMES = {
         "ADD-46",
     ],
     "Account & Directory Security": [
-        "CIS-1.1.1", "CIS-1.1.2", "CIS-1.1.3", "CIS-1.2.1.1",
+        "CIS-1.1.1", "CIS-1.1.2", "CIS-1.2.1.1",
         "CIS-4.1.2.1", "CIS-4.1.2.2", "CIS-4.1.3.1", "CIS-4.1.4.1", "CIS-4.1.5.1",
         "GWS.COMMONCONTROLS.6.1", "GWS.COMMONCONTROLS.7.1",
         "GWS.COMMONCONTROLS.8.1", "GWS.COMMONCONTROLS.8.2", "GWS.COMMONCONTROLS.8.3",

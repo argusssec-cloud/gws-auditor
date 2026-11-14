@@ -25,7 +25,7 @@ from gws_auditor.constants import LICENSE_TIER_NAMES  # noqa: E402
 TARGETS = [ROOT / "docs" / "checks.md", ROOT / "wiki" / "Check-Reference.md"]
 
 FRAMEWORKS = [
-    ("CIS", "CIS Google Workspace Foundations Benchmark v1.3.0"),
+    ("CIS", "CIS Google Workspace Foundations Benchmark v1.4.1"),
     ("CISA", "CISA SCuBA Baselines for Google Workspace"),
     ("GOOGLE", "Google Security Checklist for Medium & Large Businesses"),
     ("OTHER", "Additional best-practice checks"),
@@ -103,6 +103,10 @@ def render() -> str:
         "audit log, the auditor infers the current value from the most recent change event; with no event inside the log "
         "window the result is MANUAL.",
         "",
+        "Every CIS check also carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.0** subcategories "
+        "that the benchmark's References section maps it to; they appear in the JSON and CSV reports, in the HTML "
+        "detail view and in the tables below.",
+        "",
         "---",
         "",
     ]
@@ -111,8 +115,8 @@ def render() -> str:
     for m in checks:
         sections[m.section].append(m)
     for section in sorted(sections):
-        out += [f"## {section}", "", "| ID | Title | Level | Source | Severity | Notes |",
-                "|----|-------|-------|--------|----------|-------|"]
+        out += [f"## {section}", "", "| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |",
+                "|----|-------|-------|--------|----------|-------------------|--------------|-------|"]
         for m in sorted(sections[section], key=lambda m: _id_key(m.check_id)):
             notes = []
             if not m.scored:
@@ -122,7 +126,9 @@ def render() -> str:
             elif m.requires_license:
                 notes.append(LICENSES.get(m.requires_license, m.requires_license))
             title = m.title.replace("|", "\\|")
-            out.append(f"| {m.check_id} | {title} | {m.level} | {m.source} | {sev(m)} | {', '.join(notes)} |")
+            sp = ", ".join(getattr(m, "nist_sp800_53", []) or [])
+            csf = ", ".join(getattr(m, "nist_csf", []) or [])
+            out.append(f"| {m.check_id} | {title} | {m.level} | {m.source} | {sev(m)} | {sp} | {csf} | {', '.join(notes)} |")
         out.append("")
     return "\n".join(out).rstrip() + "\n"
 

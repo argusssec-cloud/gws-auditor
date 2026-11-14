@@ -1458,7 +1458,7 @@
               <tbody>
                 {% for check in checks %}
                 <tr class="check-row" data-status="{{ check.status }}" data-check-id="{{ check.check_id }}" data-source="{{ check.source }}" data-ou-fails="{{ check.ou_fail_data }}"
-                    data-title="{{ check.title }}" data-details="{{ check.details }}" data-actual="{{ check.actual_value }}" data-expected="{{ check.expected_value }}" data-remediation="{{ check.remediation }}" data-org-unit="{{ check.org_unit }}" data-level="{{ check.level }}" data-section="{{ section }}">
+                    data-title="{{ check.title }}" data-details="{{ check.details }}" data-actual="{{ check.actual_value }}" data-expected="{{ check.expected_value }}" data-remediation="{{ check.remediation }}" data-org-unit="{{ check.org_unit }}" data-level="{{ check.level }}" data-section="{{ section }}" data-standards="{{ check.standards }}">
                   <td><code>{{ check.check_id }}</code><span class="source-tag source-tag--{{ check.source }}">{{ check.source }}</span></td>
                   <td>{{ check.title }}</td>
                   <td><span class="badge badge--{{ check.status }}">{{ check.status | replace('_', ' ') }}</span></td>
@@ -1541,6 +1541,7 @@
         <span id="modal-status-wrap"></span>
         <span><strong>Level:</strong> <span id="modal-level"></span></span>
         <span><strong>Section:</strong> <span id="modal-section"></span></span>
+        <span id="modal-standards-wrap" style="display:none;"><strong>Standards:</strong> <span id="modal-standards"></span></span>
       </div>
       <div class="modal-section"><div class="modal-section-label">Details</div><div class="modal-section-content" id="modal-details"></div></div>
       <div class="modal-section"><div class="modal-section-label">Actual Value</div><div class="modal-section-content" id="modal-actual"></div></div>
@@ -2476,6 +2477,9 @@
         document.getElementById('modal-status-wrap').innerHTML = '<strong>Status:</strong> <span class="badge badge--' + escAttr(status) + '">' + escHtml(status.replace('_', ' ')) + '</span>';
         document.getElementById('modal-level').textContent = row.getAttribute('data-level') || '';
         document.getElementById('modal-section').textContent = row.getAttribute('data-section') || '';
+        var standards = row.getAttribute('data-standards') || '';
+        document.getElementById('modal-standards').textContent = standards;
+        document.getElementById('modal-standards-wrap').style.display = standards ? '' : 'none';
         document.getElementById('modal-details').textContent = row.getAttribute('data-details') || '';
         document.getElementById('modal-actual').textContent = row.getAttribute('data-actual') || 'N/A';
         document.getElementById('modal-expected').textContent = row.getAttribute('data-expected') || 'N/A';

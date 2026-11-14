@@ -4,7 +4,7 @@
 
 """Section 3.1.6: Groups checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Groups controls.
+CIS Google Workspace Benchmark v1.4.1 - Groups controls.
 """
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
@@ -184,7 +184,7 @@ def check_groups_creation_restriction(data: dict) -> CheckResult:
 @check(
     check_id="CIS-3.1.6.3",
     title="Ensure group conversation viewing is restricted",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Groups",
     remediation=(
@@ -197,7 +197,7 @@ def check_groups_conversation_visibility(data: dict) -> CheckResult:
     """Group conversations should not be visible to non-members."""
     _ID = "CIS-3.1.6.3"
     _TITLE = "Ensure group conversation viewing is restricted"
-    _L, _S, _SEC = "L2", "CIS", "Groups"
+    _L, _S, _SEC = "L1", "CIS", "Groups"
     _REMED = (
         "Admin console > Apps > Google Workspace > Groups for Business > "
         "Sharing settings. Set default conversation viewing to 'Members only'. "

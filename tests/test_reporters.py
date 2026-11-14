@@ -141,6 +141,7 @@ class TestCSVReporter:
             "Check ID", "Title", "Status", "Severity", "Level", "Source",
             "Section", "Details", "Critical Reason", "Actual Value",
             "Expected Value", "Remediation", "Org Unit",
+            "NIST SP 800-53 Rev. 5", "NIST CSF 2.0",
         ]
         assert headers == expected_headers
 

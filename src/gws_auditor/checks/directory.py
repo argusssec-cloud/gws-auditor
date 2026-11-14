@@ -4,126 +4,132 @@
 
 """Section 1: Directory checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Directory controls.
+CIS Google Workspace Benchmark v1.4.1 - Directory controls.
 """
 
 from .base import check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values
 from ..models import CheckResult, Status
 
 
-@check(
-    check_id="CIS-1.1.1",
-    title="Ensure more than one Super Admin account exists",
-    level="L1",
-    source="CIS",
-    section="Directory",
-    remediation=(
-        "Create at least 2 super admin accounts for redundancy. "
-        "Admin console > Account > Admin roles > Super Admin. "
-        "https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
-    ),
+_SA_ID = "CIS-1.1.1"
+_SA_TITLE = "Ensure that between two and four Super Admin accounts are designated"
+_SA_REMED = (
+    "Admin console > Directory > Users, filter Admin role = Super admin. Keep between two and "
+    "four Super Admin accounts: create a second dedicated admin account if there is only one, "
+    "and demote accounts to delegated admin roles if there are more than four. "
+    "https://knowledge.workspace.google.com/admin/users/make-a-user-an-admin"
 )
-def check_super_admin_count_min(data: dict) -> CheckResult:
-    """At least 2 super admin accounts should exist for redundancy."""
-    users = data.get("users", [])
-    # A suspended super admin cannot sign in, so it provides no redundancy
-    super_admins = [u for u in users if u.get("is_super_admin", False) and not u.get("suspended", False)]
-    count = len(super_admins)
-
-    if count >= 2:
-        return make_pass(
-            check_id="CIS-1.1.1",
-            title="Ensure more than one Super Admin account exists",
-            level="L1", source="CIS", section="Directory",
-            details=f"Found {count} super admin accounts.",
-            actual_value=count,
-            expected_value=">=2",
-        )
-    return make_fail(
-        check_id="CIS-1.1.1",
-        title="Ensure more than one Super Admin account exists",
-        level="L1", source="CIS", section="Directory",
-        details=f"Only {count} super admin account(s) found. At least 2 are required.",
-        actual_value=count,
-        expected_value=">=2",
-        remediation=(
-            "Create at least 2 super admin accounts for redundancy. "
-            "Admin console > Account > Admin roles > Super Admin. "
-            "https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
-        ),
-    )
 
 
 @check(
-    check_id="CIS-1.1.2",
-    title="Ensure fewer than 4 Super Admin accounts exist",
+    check_id=_SA_ID,
+    title=_SA_TITLE,
     level="L1",
     source="CIS",
     section="Directory",
-    remediation=(
-        "Reduce super admin accounts to fewer than 4. "
-        "Details: https://knowledge.workspace.google.com/admin/users/make-a-user-an-admin | "
-        "Remediation: https://admin.google.com/ac/list/roles"
-    ),
+    remediation=_SA_REMED,
 )
-def check_super_admin_count_max(data: dict) -> CheckResult:
-    """No more than 3 super admin accounts should exist to limit exposure."""
+def check_super_admin_count(data: dict) -> CheckResult:
+    """CIS 1.1.1 (v1.4.1, merges the former 1.1.1 and 1.1.2): more than one and no more than
+    four Super Admin accounts.
+
+    The lower bound counts active accounts only (a suspended super admin cannot sign in, so it
+    gives no redundancy); the upper bound counts every account that holds the role, suspended
+    included, because the role can be reactivated with a click.
+    """
     users = data.get("users", [])
     super_admins = [u for u in users if u.get("is_super_admin", False)]
-    count = len(super_admins)
-    sa_emails = [u.get("primary_email", "unknown") for u in super_admins]
+    active = [u for u in super_admins if not u.get("suspended", False)]
+    suspended = [u for u in super_admins if u.get("suspended", False)]
+    emails = sorted(u.get("primary_email", "unknown") for u in active)
+    note = ""
+    if suspended:
+        note = (f" {len(suspended)} suspended super admin account(s) hold the role but cannot sign in: "
+                f"{', '.join(sorted(u.get('primary_email', 'unknown') for u in suspended))}.")
+    common = dict(check_id=_SA_ID, title=_SA_TITLE, level="L1", source="CIS", section="Directory")
 
-    if count < 4:
-        return make_pass(
-            check_id="CIS-1.1.2",
-            title="Ensure fewer than 4 Super Admin accounts exist",
-            level="L1", source="CIS", section="Directory",
-            details=f"Found {count} super admin accounts (within acceptable range).",
-            actual_value=count,
-            expected_value="<4",
+    if len(active) < 2:
+        return make_fail(
+            **common,
+            details=(f"Only {len(active)} active super admin account(s) found; at least two are required so "
+                     f"that a single account is not a single point of failure.{note}"),
+            actual_value=len(active), expected_value="2 to 4", remediation=_SA_REMED,
         )
-    return make_fail(
-        check_id="CIS-1.1.2",
-        title="Ensure fewer than 4 Super Admin accounts exist",
-        level="L1", source="CIS", section="Directory",
-        details=(
-            f"Found {count} super admin accounts, which exceeds the maximum "
-            f"of 3: {', '.join(sa_emails)}"
-        ),
-        actual_value=count,
-        expected_value="<4",
-        remediation=(
-            "Reduce super admin accounts to fewer than 4. "
-            "Details: https://knowledge.workspace.google.com/admin/users/make-a-user-an-admin | "
-            "Remediation: https://admin.google.com/ac/list/roles"
-        ),
+    if len(super_admins) > 4:
+        return make_fail(
+            **common,
+            details=(f"{len(super_admins)} accounts hold the Super Admin role, more than the maximum of four: "
+                     f"{', '.join(sorted(u.get('primary_email', 'unknown') for u in super_admins))}. Assign "
+                     f"delegated admin roles with the least privilege needed instead."),
+            actual_value=len(super_admins), expected_value="2 to 4", remediation=_SA_REMED,
+        )
+    return make_pass(
+        **common,
+        details=f"{len(active)} active super admin account(s): {', '.join(emails)}.{note}",
+        actual_value=len(active), expected_value="2 to 4",
     )
 
 
+_SU_ID = "CIS-1.1.2"
+_SU_TITLE = "Ensure Super Admin accounts are used only for super admin activities"
+_SU_REMED = (
+    "Give every administrator a separate standard account for daily work and keep the Super "
+    "Admin account for super admin tasks only. Remove delegated admin roles from Super Admin "
+    "accounts: Admin console > Account > Admin roles, or Directory > Users > the user > Admin "
+    "roles and privileges. "
+    "https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
+)
+
+
 @check(
-    check_id="CIS-1.1.3",
-    title="Ensure Super Admin accounts are only used for admin tasks",
-    level="L2",
+    check_id=_SU_ID,
+    title=_SU_TITLE,
+    level="L1",
     source="CIS",
     section="Directory",
-    remediation=(
-        "Create separate standard user accounts for daily tasks. "
-        "Super admin accounts should only be used for administrative duties. "
-        "Admin console > Directory > Users. "
-        "https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
-    ),
+    remediation=_SU_REMED,
 )
 def check_super_admin_usage(data: dict) -> CheckResult:
-    """Super admin accounts should not be used for daily activities."""
+    """CIS 1.1.2 (v1.4.1; 1.1.3 in v1.3.0). The benchmark's audit step: no user holds both
+    the Super admin role and a delegated admin role. Judged from the Directory role
+    assignments; heavy sign-in activity on a super admin account is reported as a WARN
+    because it suggests the account doubles as a daily account.
+    """
     users = data.get("users", [])
     login_logs = data.get("login_logs", [])
+    roles = data.get("roles") or {}
+    role_list = roles.get("roles", []) or []
+    assignments = roles.get("assignments", []) or []
     super_admins = [u for u in users if u.get("is_super_admin", False)]
-    sa_emails = {u.get("primary_email", "") for u in super_admins}
+    common = dict(check_id=_SU_ID, title=_SU_TITLE, level="L1", source="CIS", section="Directory")
 
-    # Heuristic: check if any super admin has more than 10 login events
-    # in the available log window (roughly 30 days)
+    if not super_admins:
+        return make_manual(
+            **common,
+            details="No super admin accounts found to evaluate.",
+            remediation="Verify super admin accounts exist and review their roles. https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user",
+        )
+
+    role_names = {r.get("roleId"): r.get("roleName") or r.get("roleId") for r in role_list}
+    super_role_ids = {r.get("roleId") for r in role_list if r.get("isSuperAdminRole")}
+    by_id = {str(u.get("id")): u for u in super_admins if u.get("id")}
+    extra_roles: dict[str, list[str]] = {}
+    for a in assignments:
+        if a.get("assigneeType", "user") != "user":
+            continue
+        u = by_id.get(str(a.get("assignedTo")))
+        if u is None or a.get("roleId") in super_role_ids:
+            continue
+        extra_roles.setdefault(u.get("primary_email", "unknown"), []).append(
+            str(role_names.get(a.get("roleId"), a.get("roleId"))))
+    for u in super_admins:
+        email = u.get("primary_email", "unknown")
+        if u.get("is_delegated_admin", False) and email not in extra_roles:
+            extra_roles[email] = ["delegated admin role (isDelegatedAdmin)"]
+
+    # Sign-in volume: more than 10 successful logins in the window suggests daily use.
     heavy_users = []
-    for email in sa_emails:
+    for email in sorted(u.get("primary_email", "") for u in super_admins):
         login_count = sum(
             1 for log in login_logs
             if (log.get("actor_email") or (log.get("actor") or {}).get("email", "")) == email
@@ -131,51 +137,42 @@ def check_super_admin_usage(data: dict) -> CheckResult:
         )
         if login_count > 10:
             heavy_users.append(f"{email} ({login_count} logins)")
+    heavy_note = (f" Heavy sign-in activity suggests daily use: {'; '.join(heavy_users)}." if heavy_users else "")
 
-    if not sa_emails:
-        return make_manual(
-            check_id="CIS-1.1.3",
-            title="Ensure Super Admin accounts are only used for admin tasks",
-            level="L2", source="CIS", section="Directory",
-            details="No super admin accounts found to evaluate.",
-            remediation="Verify super admin accounts exist and review their usage. https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user",
+    if extra_roles:
+        listing = "; ".join(f"{e} ({', '.join(r)})" for e, r in sorted(extra_roles.items()))
+        return make_fail(
+            **common,
+            details=(f"{len(extra_roles)} super admin account(s) also hold delegated admin roles, so one "
+                     f"account mixes everyday administration with super admin privileges: {listing}.{heavy_note}"),
+            actual_value=extra_roles,
+            expected_value="No account holds both the Super admin role and a delegated admin role",
+            remediation=_SU_REMED,
         )
-
+    if not role_list:
+        return make_manual(
+            **common,
+            details=("Admin roles and role assignments were not collected (Directory API roles.list / "
+                     "roleAssignments.list), so it cannot be verified that no super admin also holds a "
+                     f"delegated admin role.{heavy_note}"),
+            remediation=_SU_REMED,
+        )
     if heavy_users:
         return make_warn(
-            check_id="CIS-1.1.3",
-            title="Ensure Super Admin accounts are only used for admin tasks",
-            level="L2", source="CIS", section="Directory",
-            details=(
-                "The following super admin accounts show heavy login activity, "
-                f"suggesting possible daily use: {'; '.join(heavy_users)}. "
-                "Manual review recommended."
-            ),
+            **common,
+            details=(f"No super admin holds a delegated admin role, but {len(heavy_users)} account(s) show heavy "
+                     f"sign-in activity, suggesting daily use: {'; '.join(heavy_users)}. Review whether these "
+                     "accounts double as everyday accounts."),
             actual_value=heavy_users,
-            expected_value="Super admins with <= 10 logins in 30 days",
-            remediation=(
-                "Create separate standard user accounts for daily tasks. "
-                "Super admin accounts should only be used for administrative duties. "
-                "Admin console > Directory > Users. "
-                "https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
-            ),
+            expected_value="Super admins with <= 10 logins in the window and no delegated roles",
+            remediation=_SU_REMED,
         )
-
-    return make_review(
-        check_id="CIS-1.1.3",
-        title="Ensure Super Admin accounts are only used for admin tasks",
-        level="L2", source="CIS", section="Directory",
-        details=(
-            f"Login activity for {len(sa_emails)} super admin account(s) appears low. "
-            "Manual review is still recommended to confirm accounts are not used "
-            "for routine tasks."
-        ),
-        remediation=(
-            "Review super admin activity in the Admin console > Reporting > "
-            "Audit and investigation tool. Ensure super admin accounts are "
-            "dedicated to administrative tasks only. "
-            "https://knowledge.workspace.google.com/admin/security/about-the-security-investigation-tool"
-        ),
+    return make_pass(
+        **common,
+        details=(f"None of the {len(super_admins)} super admin account(s) holds a delegated admin role "
+                 f"({len(assignments)} role assignment(s) reviewed) and sign-in activity is low."),
+        actual_value={"super_admins": len(super_admins), "with_delegated_roles": 0},
+        expected_value="No account holds both the Super admin role and a delegated admin role",
     )
 
 

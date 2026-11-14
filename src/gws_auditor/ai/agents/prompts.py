@@ -162,7 +162,7 @@ Focus on:
 - Access checker values need case normalization before comparison
 
 **ERROR checks due to missing policy mapping**: CIS-3.1.2.2.1 (Drive
-offline access), CIS-3.1.2.2.3 (Drive add-ons). The raw API data IS
+offline access), ADD-57 (Drive SDK). The raw API data IS
 collected but `_map_drive()` in provider.py does not extract these fields.
 """,
 

@@ -4,7 +4,7 @@
 
 """Section 3.1.1: Calendar checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Calendar controls.
+CIS Google Workspace Benchmark v1.4.1 - Calendar controls.
 """
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
@@ -114,7 +114,7 @@ def check_primary_cal_external_sharing(data: dict) -> CheckResult:
 @check(
     check_id="CIS-3.1.1.1.2",
     title="Ensure internal sharing for primary calendars is configured",
-    level="L1",
+    level="L2",
     source="CIS",
     section="Calendar",
     remediation=(
@@ -126,7 +126,7 @@ def check_primary_cal_internal_sharing(data: dict) -> CheckResult:
     """Internal sharing for primary calendars should share only free/busy info."""
     _ID = "CIS-3.1.1.1.2"
     _TITLE = "Ensure internal sharing for primary calendars is configured"
-    _L, _S, _SEC = "L1", "CIS", "Calendar"
+    _L, _S, _SEC = "L2", "CIS", "Calendar"
     _REMED = (
         "Admin console > Apps > Google Workspace > Calendar > Sharing settings. "
         "Set internal sharing for primary calendars to 'Only free/busy information'. https://knowledge.workspace.google.com/admin/calendar/set-google-calendar-sharing-options"

@@ -4,7 +4,7 @@
 
 """Section 3.1.7: Sites checks for GWS Security Auditor.
 
-CIS Google Workspace Benchmark v1.3.0 - Sites controls.
+CIS Google Workspace Benchmark v1.4.1 - Sites controls.
 """
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
@@ -15,7 +15,7 @@ from ..models import CheckResult, Status
 @check(
     check_id="CIS-3.1.7.1",
     title="Ensure Google Sites creation is disabled",
-    level="L2",
+    level="L1",
     source="CIS",
     section="Sites",
     remediation="Admin console > Apps > Google Workspace > Sites > New Sites. Disable 'Allow users to create new Sites'. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users",
@@ -24,7 +24,7 @@ def check_sites_creation_disabled(data: dict) -> CheckResult:
     """Google Sites creation should be disabled to prevent unmanaged web publishing."""
     _ID = "CIS-3.1.7.1"
     _TITLE = "Ensure Google Sites creation is disabled"
-    _L, _S, _SEC = "L2", "CIS", "Sites"
+    _L, _S, _SEC = "L1", "CIS", "Sites"
     _REMED = (
         "Admin console > Apps > Google Workspace > Sites > "
         "New Sites. Disable 'Allow users to create new Sites'. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users"

@@ -43,6 +43,8 @@ class CheckResult:
     remediation: str = ""
     org_unit: str = "Global"
     cis_controls: list = field(default_factory=list)
+    nist_sp800_53: list = field(default_factory=list)  # NIST SP 800-53 Rev. 5 controls (CIS v1.4.1 References)
+    nist_csf: list = field(default_factory=list)  # NIST CSF 2.0 subcategories (CIS v1.4.1 References)
     severity: "Severity" = Severity.MEDIUM
     critical_reason: str = ""
     scored: bool = True
@@ -68,6 +70,8 @@ class CheckMetadata:
     docs_url: str = ""
     console_link: str = ""
     gam_command: str = ""
+    nist_sp800_53: list = field(default_factory=list)
+    nist_csf: list = field(default_factory=list)
 
 
 @dataclass

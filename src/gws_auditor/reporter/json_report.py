@@ -82,5 +82,7 @@ class JSONReporter:
             "remediation": check.remediation,
             "org_unit": check.org_unit,
             "cis_controls": check.cis_controls,
+            "nist_sp800_53": list(getattr(check, "nist_sp800_53", []) or []),
+            "nist_csf": list(getattr(check, "nist_csf", []) or []),
             "scored": getattr(check, "scored", True),
         }
