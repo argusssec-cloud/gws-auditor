@@ -296,6 +296,20 @@ class Orchestrator:
             # Write back so Provider and other components pick it up.
             self.config.setdefault("auth", {})["customer_id"] = self._resolved_customer_id
         console.print("[green]Authentication successful[/green]")
+        missing = getattr(self.auth_manager, "unauthorized_scopes", None) or []
+        if missing:
+            console.print(
+                "[yellow]Domain-wide delegation does not authorize "
+                f"{len(missing)} scope(s); the data they protect is not collected and the dependent checks "
+                "report ERROR:[/yellow]"
+            )
+            for scope in missing:
+                console.print(f"  [yellow]- {scope}[/yellow]")
+            console.print(
+                "[yellow]Add them in Admin console > Security > Access and data control > API controls > "
+                "Manage domain-wide delegation (edit the client ID and paste the full scope list from "
+                "docs/SETUP_GUIDE.md), then re-run.[/yellow]"
+            )
 
     def _collect_data(self) -> dict:
         """Collect all configuration data from APIs."""

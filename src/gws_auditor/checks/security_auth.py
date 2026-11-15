@@ -850,7 +850,7 @@ def check_password_policy(data: dict) -> CheckResult:
     check_id="ADD-58",
     title="Ensure less secure app access is disabled",
     level="L1",
-    source="OTHER",
+    source="GOOGLE",
     section="Security",
     remediation=(
         "Admin console > Security > Less secure apps. "
@@ -866,7 +866,7 @@ def check_less_secure_apps(data: dict) -> CheckResult:
     """
     _ID = "ADD-58"
     _TITLE = "Ensure less secure app access is disabled"
-    _L, _S, _SEC = "L1", "OTHER", "Security"
+    _L, _S, _SEC = "L1", "GOOGLE", "Security"
     _REMED = (
         "Admin console > Security > Less secure apps. "
         "Select 'Disable access to less secure apps (Recommended)'. "

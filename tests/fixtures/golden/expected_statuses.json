@@ -20,7 +20,7 @@
   "ADD-08": {
    "confirmed": false,
    "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
-   "status": "PASS"
+   "status": "WARN"
   },
   "ADD-09": {
    "confirmed": false,
@@ -231,6 +231,38 @@
   "ADD-62": {
    "confirmed": false,
    "status": "PASS"
+  },
+  "ADD-63": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-64": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "ADD-65": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-66": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-67": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-68": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-69": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-70": {
+   "confirmed": false,
+   "status": "FAIL"
   },
   "CIS-1.1.1": {
    "confirmed": false,
@@ -1153,7 +1185,7 @@
   "ADD-08": {
    "confirmed": false,
    "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
-   "status": "PASS"
+   "status": "WARN"
   },
   "ADD-09": {
    "confirmed": true,
@@ -1373,6 +1405,38 @@
   "ADD-62": {
    "confirmed": false,
    "status": "PASS"
+  },
+  "ADD-63": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-64": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "ADD-65": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-66": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-67": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-68": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-69": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-70": {
+   "confirmed": false,
+   "status": "FAIL"
   },
   "CIS-1.1.1": {
    "confirmed": false,
@@ -2401,7 +2465,7 @@
   "ADD-08": {
    "confirmed": false,
    "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
-   "status": "PASS"
+   "status": "WARN"
   },
   "ADD-09": {
    "confirmed": false,
@@ -2612,6 +2676,38 @@
   "ADD-62": {
    "confirmed": false,
    "status": "PASS"
+  },
+  "ADD-63": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-64": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "ADD-65": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-66": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-67": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-68": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-69": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-70": {
+   "confirmed": false,
+   "status": "FAIL"
   },
   "CIS-1.1.1": {
    "confirmed": false,

@@ -4,10 +4,10 @@
 
 """Chrome Policy API client.
 
-Resolves Chrome browser policies via the Chrome Policy API (``chromepolicy``
-``v1``).  Used to check Gemini-in-Chrome and Device Bound Session Credentials
-(DBSC) settings that are managed through Chrome device policies rather than
-Cloud Identity.
+Resolves Chrome browser and ChromeOS policies via the Chrome Policy API (``chromepolicy``
+``v1``): Gemini in Chrome, Device Bound Session Credentials, Password Alert, Safe Browsing,
+the password manager, download restrictions, site isolation and update policies. These are
+managed through Chrome policies rather than the Cloud Identity Policy API.
 """
 
 import logging
@@ -16,6 +16,24 @@ from typing import Any
 from .base import BaseAPIClient
 
 logger = logging.getLogger(__name__)
+
+# Chrome Policy API schema -> (field read from the resolved value, key in data["chrome_policies"]).
+# Confirmed live against policySchemas.list / .get on 2026-11-15; see tests/fixtures/chrome_policy_schemas.json.
+CHROME_POLICY_FIELDS: dict[str, tuple[str, str]] = {
+    "chrome.users.GeminiSettings": ("geminiSettings", "gemini_settings"),
+    "chrome.users.GenAiDefaultSettings": ("genAiDefaultSettings", "gen_ai_default_settings"),
+    "chrome.users.BoundSessionCredentialsEnabled": ("boundSessionCredentialsEnabled", "bound_session_credentials"),
+    "chrome.users.PasswordAlert": ("passwordProtectionWarningTrigger", "password_protection_warning_trigger"),
+    "chrome.users.SafeBrowsingProtectionLevel": ("safeBrowsingProtectionLevel", "safe_browsing_protection_level"),
+    "chrome.users.DisableSafeBrowsingProceedAnyway": ("disableSafeBrowsingProceedAnyway", "disable_safe_browsing_proceed_anyway"),
+    "chrome.users.PasswordManager": ("passwordManagerEnabled", "password_manager_enabled"),
+    "chrome.users.DownloadRestrictions": ("safeBrowsingDownloadRestrictions", "download_restrictions"),
+    "chrome.users.SiteIsolationBrowser": ("sitePerProcess", "site_per_process"),
+    "chrome.users.ComponentUpdates": ("componentUpdatesEnabled", "component_updates_enabled"),
+    "chrome.users.AutoUpdateCheckPeriodNewV2": ("autoUpdateCheckPeriodMinutesNew", "auto_update_check_period_minutes"),
+    "chrome.users.RelaunchNotificationWithDurationV2": ("relaunchNotificationEnum", "relaunch_notification"),
+    "chrome.devices.AutoUpdateSettings": ("updateDisabled", "chromeos_update_disabled"),
+}
 
 
 class ChromePolicyClient(BaseAPIClient):
@@ -154,18 +172,9 @@ class ChromePolicyClient(BaseAPIClient):
             )
             return policies
         except Exception as exc:
-            # 404 = schema not available for this tenant (e.g. Chrome
-            # Browser Cloud Management not enabled, or edition doesn't
-            # support this policy).  This is expected — don't surface
-            # it as a user-visible API error.
-            from googleapiclient.errors import HttpError
-            if isinstance(exc, HttpError) and exc.resp.status == 404:
-                logger.debug(
-                    "Chrome policy schema %s not found (404) — "
-                    "not available for this tenant",
-                    schema_filter,
-                )
-                return []
+            # A 404 means the schema name does not exist for this tenant (a wrong name,
+            # or a policy Chrome has withdrawn). It is recorded like any other failure so
+            # the check reports MANUAL instead of mistaking the silence for "Chrome default".
             logger.warning(
                 "Chrome Policy resolve failed for %s: %s",
                 schema_filter,
@@ -175,56 +184,46 @@ class ChromePolicyClient(BaseAPIClient):
             return []
 
     def get_chrome_policies(self, customer_id: str) -> dict[str, Any]:
-        """Resolve key Chrome policies for security checks.
+        """Resolve the Chrome user and device policies the checks read, at the root OU.
 
-        Returns a dict with:
-        - ``gemini_in_chrome_disabled``: Whether Gemini in Chrome is disabled.
-        - ``dbsc_enabled``: Whether Device Bound Session Credentials are enabled.
+        Every schema name and field below was confirmed against the live
+        ``policySchemas`` catalogue on 2026-11-15 (``tests/fixtures/chrome_policy_schemas.json``).
+        Enum fields come back as the enum member name (for example
+        ``SAFE_BROWSING_PROTECTION_LEVEL_ENUM_STANDARD_PROTECTION``), booleans as JSON booleans
+        and counts as integers. An unset policy resolves to nothing and leaves its key absent,
+        which the checks read as "Chrome default" only when no resolve error was recorded.
 
-        Parameters
-        ----------
-        customer_id:
-            The customer ID (e.g. ``"my_customer"``).
+        Returned keys (raw values under ``CHROME_POLICY_FIELDS`` result keys) plus three derived
+        booleans kept for the existing checks:
+
+        - ``gemini_in_chrome_disabled``: GeminiSettings DISABLED, or UNSET/absent while
+          GenAiDefaultSettings is DISABLED.
+        - ``dbsc_enabled``: BoundSessionCredentialsEnabled TRUE/FALSE (absent when UNSET).
+        - ``password_protection_warning_trigger``: the PasswordAlert enum member.
         """
         result: dict[str, Any] = {}
+        for schema, (field, key) in CHROME_POLICY_FIELDS.items():
+            for policy in self.resolve_policy(customer_id, schema):
+                value = (policy.get("value") or {}).get("value") or {}
+                if isinstance(value, dict) and field in value and value[field] is not None:
+                    result[key] = value[field]
+                    break
 
-        # --- Gemini in Chrome ---
-        gemini_policies = self.resolve_policy(
-            customer_id, "chrome.users.GeminiSettings"
-        )
-        for policy in gemini_policies:
-            value = policy.get("value", {}).get("value", {})
-            # The API returns an integer enum: 0 = allow, 1 = disable
-            gemini_setting = value.get("geminiSetting")
-            if gemini_setting is not None:
-                result["gemini_in_chrome_disabled"] = gemini_setting == 1
-                break
+        gemini = result.get("gemini_settings")
+        genai_default = result.get("gen_ai_default_settings")
+        if gemini == "GEMINI_SETTINGS_ENUM_DISABLED":
+            result["gemini_in_chrome_disabled"] = True
+        elif gemini == "GEMINI_SETTINGS_ENUM_ENABLED":
+            result["gemini_in_chrome_disabled"] = False
+        elif genai_default is not None:
+            # UNSET or absent: Chrome falls back to the Generative AI policy default.
+            result["gemini_in_chrome_disabled"] = genai_default == "GEN_AI_DEFAULT_SETTINGS_ENUM_DISABLED"
 
-        # --- Device Bound Session Credentials ---
-        dbsc_policies = self.resolve_policy(
-            customer_id, "chrome.users.BoundSessionCredentialsEnabled"
-        )
-        for policy in dbsc_policies:
-            value = policy.get("value", {}).get("value", {})
-            dbsc_enabled = value.get("boundSessionCredentialsEnabled")
-            if dbsc_enabled is not None:
-                result["dbsc_enabled"] = bool(dbsc_enabled)
-                break
-
-        # --- Password Protection Warning ---
-        pw_policies = self.resolve_policy(
-            customer_id, "chrome.users.PasswordProtectionWarningTrigger"
-        )
-        for policy in pw_policies:
-            value = policy.get("value", {}).get("value", {})
-            # passwordProtectionWarningTrigger enum:
-            # 0 = PASSWORD_PROTECTION_WARNING_OFF
-            # 1 = PASSWORD_REUSE_WARNING (warn on reuse)
-            # 2 = PHISHING_REUSE_WARNING (warn on reuse + phishing)
-            trigger = value.get("passwordProtectionWarningTrigger")
-            if trigger is not None:
-                result["password_protection_warning_trigger"] = trigger
-                break
+        dbsc = result.get("bound_session_credentials")
+        if dbsc in ("TRUE", "FALSE"):
+            result["dbsc_enabled"] = dbsc == "TRUE"
+        elif isinstance(dbsc, bool):
+            result["dbsc_enabled"] = dbsc
 
         logger.info("Chrome policies resolved: %s", result)
         return result

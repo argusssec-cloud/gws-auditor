@@ -94,15 +94,16 @@
   "check_id": "ADD-08",
   "func": "check_password_alert",
   "module": "additional",
-  "inputs": "policies.security.password_alert.{deployed,trigger} <- provider._map_chrome_policies from data.chrome_policies.password_protection_warning_trigger <- api/chrome_policy.py resolve('chrome.users.PasswordProtectionWarningTrigger').value.value.passwordProtectionWarningTrigger (assumed int 0/1/2; deployed = trigger > 0).",
+  "inputs": "policies.security.password_alert {deployed: bool, trigger: chrome.users.PasswordAlert passwordProtectionWarningTrigger enum member}, derived by provider._map_chrome_policies from chrome_policies.password_protection_warning_trigger; chrome_policies + api_errors for chrome_policy_unset('chrome.users.PasswordAlert').",
   "paths": [
-   "legacy_fallback",
-   "chrome_policies"
+   "policies.security.password_alert",
+   "chrome_policies",
+   "api_errors"
   ],
-  "pass_case": "security['password_alert']={'deployed':True,'trigger':1} -> PASS 'Password reuse warning'; trigger 2 -> PASS. Via provider: chrome_policies={'password_protection_warning_trigger':1} -> PASS.",
-  "fail_case": "security['password_alert']={'deployed':False,'trigger':0} -> FAIL (chrome_policies={'password_protection_warning_trigger':0}).",
-  "other_cases": "Chrome policies collected without error and PasswordProtectionWarningTrigger unset (no security.password_alert) -> PASS by Chrome's documented default (protects Google passwords; chromium policy yaml, google_defaults.CHROME_POLICY_DEFAULTS); chrome_policies absent or resolve/get_chrome_policies in api_errors -> MANUAL. password_alert absent or deployed None -> make_review MANUAL (Chrome Policy API unavailable / 404 / not resolved).",
-  "edge_cases": "chrome_policy.py:224-226 + provider.py:2750: if the Chrome Policy API returns the enum as a string name (e.g. 'PASSWORD_REUSE_WARNING') `trigger > 0` raises TypeError inside normalize_data (outside the check wrapper). trigger as string '1' -> same. Resolve only for root OU; child OU override ignored. api_errors get_chrome_policies -> MANUAL (ok).",
+  "pass_case": "deployed True with trigger PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PASSWORD_REUSE (or any non-phishing trigger) -> PASS.",
+  "fail_case": "deployed False (trigger NO_WARNING) -> FAIL.",
+  "other_cases": "WARN: deployed True with trigger WARN_ON_PHISHING_REUSE (phishing pages only). WARN: password_alert absent, chrome_policies dict present, no get_chrome_policies / resolve_policy(chrome.users.PasswordAlert) error -> Google's default WARN_ON_PHISHING_REUSE, details 'Chrome's default'. MANUAL (make_review): chrome_policies missing or a resolve error recorded.",
+  "edge_cases": "deployed True without trigger -> PASS with label of the raw value. Live schema name is chrome.users.PasswordAlert (chrome.users.PasswordProtectionWarningTrigger does not exist, 404 on 2026-11-15).",
   "coverage_now": "tests/test_checks/test_additional.py::TestPasswordAlert (PASS with deployed True, MANUAL with deployed None). Statuses: PASS, MANUAL. FAIL never exercised; no provider-mapping test for trigger 0.",
   "gaps": [
    "FAIL test: password_alert={'deployed':False,'trigger':0} -> FAIL.",
@@ -207,15 +208,16 @@
   "check_id": "ADD-14",
   "func": "check_gemini_chrome",
   "module": "additional",
-  "inputs": "policies.gemini.chrome.enabled <- provider._map_chrome_policies: enabled = not chrome_policies.gemini_in_chrome_disabled <- api/chrome_policy.py resolve('chrome.users.GeminiSettings').value.value.geminiSetting == 1 (root OU only).",
+  "inputs": "policies.gemini.chrome.enabled (bool) derived by the provider from chrome_policies.gemini_in_chrome_disabled, which the client sets from chrome.users.GeminiSettings geminiSettings (GEMINI_SETTINGS_ENUM_ENABLED/DISABLED) or, when UNSET/absent, chrome.users.GenAiDefaultSettings genAiDefaultSettings == GEN_AI_DEFAULT_SETTINGS_ENUM_DISABLED; chrome_policies + api_errors for the default/unknown split.",
   "paths": [
-   "legacy_fallback",
-   "chrome_policies"
+   "policies.gemini.chrome.enabled",
+   "chrome_policies",
+   "api_errors"
   ],
-  "pass_case": "policies['gemini']={'chrome':{'enabled':False}} (chrome_policies={'gemini_in_chrome_disabled':True}) -> PASS.",
-  "fail_case": "policies['gemini']={'chrome':{'enabled':True}} (geminiSetting 0) -> FAIL 'enabled'.",
-  "other_cases": "gemini absent / chrome absent / enabled None -> FAIL 'not explicitly disabled' (no MANUAL branch at all). Occurs whenever Chrome Policy API is unavailable, 404 (no Chrome Browser Cloud Management), or api_errors has get_chrome_policies.",
-  "edge_cases": "Unknown -> FAIL contradicts the project rule (unknown -> MANUAL); default fixture yields FAIL (verified). chrome_policy.py:200 compares geminiSetting == 1 — if API returns enum string ('DISABLED'/'GEMINI_SETTING_DISABLED') the tenant is never seen as disabled -> permanent FAIL. Child-OU override not resolved. No license gate though Gemini features vary by edition.",
+  "pass_case": "policies.gemini.chrome.enabled False -> PASS.",
+  "fail_case": "enabled True -> FAIL. enabled absent with chrome_policies {} and no Chrome errors -> FAIL (Chrome default allows Gemini, details 'Chrome's default').",
+  "other_cases": "MANUAL (make_review): chrome_policies missing, or a get_chrome_policies / resolve_policy(chrome.users.GeminiSettings|GenAiDefaultSettings) error recorded.",
+  "edge_cases": "policies.gemini missing entirely with clean chrome collection -> FAIL by default. enabled None treated as absent.",
   "coverage_now": "tests/test_checks/test_additional.py::TestGeminiChrome: PASS (disabled), FAIL (enabled), FAIL (not configured), FAIL (None), FAIL (missing gemini key). Statuses: PASS, FAIL. tests/test_api/test_chrome_policy.py asserts int 0/1 shape.",
   "gaps": [
    "Test api_errors containing get_chrome_policies with gemini absent -> expect MANUAL/ERROR rather than FAIL.",
@@ -1147,14 +1149,15 @@
   "check_id": "ADD-59",
   "func": "check_dbsc",
   "module": "security_access",
-  "inputs": "chrome_policies.dbsc_enabled (bool from Chrome Policy API chrome.users.BoundSessionCredentialsEnabled, root OU only). Was CIS-4.2.4.1 until 1.6.0; the benchmark's 4.2.4.1 is web session duration.",
+  "inputs": "chrome_policies.dbsc_enabled (bool) derived by the client from chrome.users.BoundSessionCredentialsEnabled boundSessionCredentialsEnabled 'TRUE'/'FALSE' (absent when 'UNSET'); api_errors for chrome_policy_unset.",
   "paths": [
-   "chrome_policies"
+   "chrome_policies.dbsc_enabled",
+   "api_errors"
   ],
-  "pass_case": "chrome_policies {'dbsc_enabled': True} -> PASS.",
-  "fail_case": "chrome_policies {'dbsc_enabled': False} -> FAIL.",
-  "other_cases": "Chrome policies collected without error and BoundSessionCredentialsEnabled unset -> PASS by Google's documented default (DBSC on by default for Workspace accounts, prevent-cookie-theft article); explicit false -> FAIL; not collected / resolve error -> MANUAL. MANUAL (make_review) when key absent/None or non-bool (string 'true' -> MANUAL, probe Z2).",
-  "edge_cases": "Chrome policy resolved for root only; child OU override ignored. String 'true' -> MANUAL (is True check). chrome_policies None -> AttributeError -> ERROR.",
+  "pass_case": "dbsc_enabled True -> PASS. dbsc_enabled absent, chrome_policies dict present, no Chrome error -> PASS (Google default: DBSC on for Workspace accounts).",
+  "fail_case": "dbsc_enabled False -> FAIL.",
+  "other_cases": "MANUAL (make_review): chrome_policies missing or get_chrome_policies / resolve_policy(chrome.users.BoundSessionCredentialsEnabled) error.",
+  "edge_cases": "'UNSET' enum never reaches the check (client leaves the key absent).",
   "coverage_now": "tests/test_checks/test_security_access.py::TestDbsc, TestDbscDefault; tests/test_checks/test_security.py::TestDbsc. status_rec: PASS, FAIL, MANUAL.",
   "gaps": [
    "chrome_policies None (collection failed) -> graceful MANUAL, currently ERROR"
@@ -6048,5 +6051,117 @@
   "coverage_now": "test_cisa_equivalents.py::TestCisReviewControls. status_rec: see tests.",
   "gaps": [],
   "suspected_bugs": []
+ },
+ {
+  "check_id": "ADD-63",
+  "func": "check_group_spam_moderation",
+  "module": "additional_identity",
+  "inputs": "groups[].settings.spamModerationLevel (Groups Settings API: ALLOW | MODERATE | SILENTLY_MODERATE | REJECT); groups[].email.",
+  "paths": [
+   "groups"
+  ],
+  "pass_case": "Every group with settings has spamModerationLevel MODERATE / SILENTLY_MODERATE / REJECT -> PASS with level counts.",
+  "fail_case": "Any group spamModerationLevel 'ALLOW' -> FAIL listing it.",
+  "other_cases": "ERROR (make_manual): no group has a non-empty settings dict, or settings present but no group has spamModerationLevel.",
+  "edge_cases": "Some groups without the field while others have it -> PASS/FAIL on the others, count of groups without value noted. Case-insensitive match on ALLOW."
+ },
+ {
+  "check_id": "ADD-64",
+  "func": "check_super_admin_spare_key",
+  "module": "additional_identity",
+  "inputs": "users[].is_super_admin, users[].primary_email; user_usage rows (Reports API userUsageReport) parameter accounts:num_security_keys via user_usage_by_email().",
+  "paths": [
+   "users",
+   "user_usage"
+  ],
+  "pass_case": "Every super admin has accounts:num_security_keys >= 2 -> PASS.",
+  "fail_case": "Any super admin with 0 or 1 keys -> FAIL listing email and count.",
+  "other_cases": "MANUAL (make_review): a super admin has no usage row (others fine). ERROR (make_manual): user_usage empty/not collected, or no super admin in users.",
+  "edge_cases": "Non-admin rows ignored. Non-numeric parameter value treated as no row. Passkeys (accounts:num_passkeys_enrolled) are not counted."
+ },
+ {
+  "check_id": "ADD-65",
+  "func": "check_super_admin_recovery_info",
+  "module": "additional_identity",
+  "inputs": "users[].is_super_admin, users[].recovery_email, users[].recovery_phone (Directory API recoveryEmail/recoveryPhone, normalized; empty when not set).",
+  "paths": [
+   "users"
+  ],
+  "pass_case": "Every super admin has both recovery_email and recovery_phone non-empty -> PASS (details name the GWS.COMMONCONTROLS.8.3 conflict).",
+  "fail_case": "Any super admin missing email or phone -> FAIL naming which.",
+  "other_cases": "ERROR (make_manual): no super admin in users.",
+  "edge_cases": "Non-super-admin users never judged. Whitespace-only values count as missing. None values count as missing."
+ },
+ {
+  "check_id": "ADD-66",
+  "func": "check_group_admin_role_conditions",
+  "module": "additional_identity",
+  "inputs": "roles.roles[] (roleId, roleName, isSuperAdminRole, rolePrivileges[].privilegeName GROUPS_*), roles.assignments[] (roleId, assignedTo, condition CEL string); users[].id/primary_email, groups[].id/email for labels; subscription_info editions (requires_license EDITIONS_ADMIN_ROLE_CONDITIONS).",
+  "paths": [
+   "roles",
+   "users",
+   "groups",
+   "subscription_info"
+  ],
+  "pass_case": "Every assignment of a non-super-admin role with a GROUPS_* privilege has a condition (security groups 'groups.security', or the negated non-security form) -> PASS. No such assignment -> PASS ('only super admins manage groups').",
+  "fail_case": "Any such assignment without a condition -> FAIL listing assignee (email) and role name.",
+  "other_cases": "ERROR (make_manual): roles dict missing roles/assignments, or list_roles / list_role_assignments api error. NOT_APPLICABLE: editions outside Enterprise Standard/Plus, Education Standard/Plus.",
+  "edge_cases": "Super admin role excluded even though it carries GROUPS_ALL. Roles without GROUPS_* privileges ignored. Unknown condition text counted as conditioned ('other_condition')."
+ },
+ {
+  "check_id": "ADD-67",
+  "func": "check_chrome_safe_browsing",
+  "module": "chrome",
+  "inputs": "chrome_policies.safe_browsing_protection_level (chrome.users.SafeBrowsingProtectionLevel enum), chrome_policies.disable_safe_browsing_proceed_anyway (bool); absent + no resolve error = Google default (USER_CHOICE / false).",
+  "paths": [
+   "chrome_policies",
+   "api_errors"
+  ],
+  "pass_case": "level STANDARD_PROTECTION or ENHANCED_PROTECTION and disable_safe_browsing_proceed_anyway True -> PASS.",
+  "fail_case": "level NO_PROTECTION or USER_CHOICE, or bypass not disabled -> FAIL naming each problem. Both unset -> FAIL on Google's defaults.",
+  "other_cases": "MANUAL (make_review): chrome_policies missing, get_chrome_policies error, or resolve_policy error on either schema.",
+  "edge_cases": "Level set but bypass unset -> FAIL on bypass with default note. Level default note appended to PASS only when level unset (cannot happen: default fails)."
+ },
+ {
+  "check_id": "ADD-68",
+  "func": "check_chrome_password_manager",
+  "module": "chrome",
+  "inputs": "chrome_policies.password_manager_enabled (chrome.users.PasswordManager passwordManagerEnabled 'UNSET'|'TRUE'|'FALSE'); absent + no error = default UNSET.",
+  "paths": [
+   "chrome_policies",
+   "api_errors"
+  ],
+  "pass_case": "'TRUE' -> PASS. absent/UNSET -> PASS with default note (allowed by default).",
+  "fail_case": "'FALSE' -> FAIL.",
+  "other_cases": "MANUAL (make_review): not collected or resolve error.",
+  "edge_cases": "Comparison is case-insensitive on the enum string."
+ },
+ {
+  "check_id": "ADD-69",
+  "func": "check_chrome_downloads_and_isolation",
+  "module": "chrome",
+  "inputs": "chrome_policies.download_restrictions (chrome.users.DownloadRestrictions enum), chrome_policies.site_per_process (chrome.users.SiteIsolationBrowser bool); defaults NO_SPECIAL_RESTRICTIONS / false.",
+  "paths": [
+   "chrome_policies",
+   "api_errors"
+  ],
+  "pass_case": "download_restrictions BLOCK_ALL_MALICIOUS_DOWNLOAD or stronger, site_per_process True or unset -> PASS.",
+  "fail_case": "download_restrictions NO_SPECIAL_RESTRICTIONS (set or default) -> FAIL.",
+  "other_cases": "WARN: downloads restricted but site_per_process explicitly False. MANUAL (make_review): download policy not collected / resolve error.",
+  "edge_cases": "Site isolation resolve error with downloads fine -> PASS noting isolation unreadable. Unset isolation is PASS (desktop Chrome isolates by default since 67)."
+ },
+ {
+  "check_id": "ADD-70",
+  "func": "check_chrome_updates",
+  "module": "chrome",
+  "inputs": "chrome_policies.component_updates_enabled (bool), auto_update_check_period_minutes (int), relaunch_notification (chrome.users.RelaunchNotificationWithDurationV2 enum), chromeos_update_disabled (chrome.devices.AutoUpdateSettings updateDisabled bool); defaults true / None(295) / NO_NOTIFICATION / false.",
+  "paths": [
+   "chrome_policies",
+   "api_errors"
+  ],
+  "pass_case": "component true, period non-zero, relaunch REQUIRED, chromeos updateDisabled false (set or default) -> PASS.",
+  "fail_case": "component false, period 0, relaunch not REQUIRED (incl. default NO_NOTIFICATION and RECOMMENDED), or chromeos updateDisabled true -> FAIL listing problems.",
+  "other_cases": "MANUAL (make_review): all unknown, or some unknown while the known ones pass.",
+  "edge_cases": "A known failing value wins over unknown ones (FAIL, not MANUAL). Period None = default 295."
  }
 ]

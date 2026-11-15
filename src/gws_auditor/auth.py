@@ -60,6 +60,9 @@ class AuthManager:
         self.customer_id = self.config.get("customer_id", "my_customer")
         self._credentials = None
         self._network = config.get("network", {})
+        # Delegated scopes the Admin console grant does not cover (service_account only). Filled by
+        # _authenticate_service_account() when the token endpoint refuses the full scope list.
+        self.unauthorized_scopes: list[str] = []
 
     def authenticate(self):
         """Authenticate based on configured method."""
@@ -91,6 +94,37 @@ class AuthManager:
 
         if self.subject:
             self._credentials = self._credentials.with_subject(self.subject)
+            self._drop_unauthorized_scopes()
+
+    def _drop_unauthorized_scopes(self) -> None:
+        """Keep a scan running when domain-wide delegation lacks some of the requested scopes.
+
+        The token endpoint answers ``unauthorized_client`` for the *whole* request when any one
+        delegated scope is missing from the Admin console grant, so a new scope added by an upgrade
+        would otherwise stop every API call. On that answer each scope is probed on its own, the
+        unauthorized ones are recorded in ``self.unauthorized_scopes`` (the provider turns them
+        into ``api_errors`` and the dependent checks report ERROR) and the credential is rebuilt
+        with the authorized subset. Any other refresh failure, or no authorized scope at all,
+        is raised unchanged.
+        """
+        request = google_auth_httplib2.Request(self._build_http())
+        try:
+            self._credentials.refresh(request)
+            return
+        except Exception as exc:
+            if "unauthorized_client" not in str(exc).lower():
+                raise
+            probe = self._probe_dwd_scope_authorization()
+            if not probe["authorized"]:
+                raise
+        self.unauthorized_scopes = [scope for scope, _ in probe["unauthorized"]]
+        logger.warning(
+            "Domain-wide delegation does not authorize %d scope(s); continuing without them: %s",
+            len(self.unauthorized_scopes), ", ".join(self.unauthorized_scopes),
+        )
+        self._credentials = service_account.Credentials.from_service_account_file(
+            self.credentials_file, scopes=probe["authorized"]
+        ).with_subject(self.subject)
 
     def _authenticate_oauth(self):
         """Authenticate using OAuth 2.0 user consent flow."""

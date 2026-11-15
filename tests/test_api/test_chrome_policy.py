@@ -31,7 +31,7 @@ class TestChromePolicyClient:
             "resolvedPolicies": [
                 {
                     "value": {
-                        "value": {"geminiSetting": 1},
+                        "value": {"geminiSettings": "GEMINI_SETTINGS_ENUM_DISABLED"},
                     },
                 }
             ]
@@ -41,7 +41,7 @@ class TestChromePolicyClient:
             "my_customer", "chrome.users.GeminiSettings", org_unit_id="abc123"
         )
         assert len(result) == 1
-        assert result[0]["value"]["value"]["geminiSetting"] == 1
+        assert result[0]["value"]["value"]["geminiSettings"] == "GEMINI_SETTINGS_ENUM_DISABLED"
 
     def test_resolve_policy_empty(self):
         client = self._make_client()
@@ -108,13 +108,13 @@ class TestChromePolicyClient:
             if "GeminiSettings" in schema:
                 mock_request.execute.return_value = {
                     "resolvedPolicies": [
-                        {"value": {"value": {"geminiSetting": 1}}}
+                        {"value": {"value": {"geminiSettings": "GEMINI_SETTINGS_ENUM_DISABLED"}}}
                     ]
                 }
             elif "BoundSessionCredentials" in schema:
                 mock_request.execute.return_value = {
                     "resolvedPolicies": [
-                        {"value": {"value": {"boundSessionCredentialsEnabled": True}}}
+                        {"value": {"value": {"boundSessionCredentialsEnabled": "TRUE"}}}
                     ]
                 }
             else:
@@ -138,13 +138,13 @@ class TestChromePolicyClient:
             if "GeminiSettings" in schema:
                 mock_request.execute.return_value = {
                     "resolvedPolicies": [
-                        {"value": {"value": {"geminiSetting": 0}}}
+                        {"value": {"value": {"geminiSettings": "GEMINI_SETTINGS_ENUM_ENABLED"}}}
                     ]
                 }
             elif "BoundSessionCredentials" in schema:
                 mock_request.execute.return_value = {
                     "resolvedPolicies": [
-                        {"value": {"value": {"boundSessionCredentialsEnabled": False}}}
+                        {"value": {"value": {"boundSessionCredentialsEnabled": "FALSE"}}}
                     ]
                 }
             else:
@@ -184,7 +184,7 @@ class TestChromePolicyClient:
             if "GeminiSettings" in schema:
                 mock_request.execute.return_value = {
                     "resolvedPolicies": [
-                        {"value": {"value": {"geminiSetting": 1}}}
+                        {"value": {"value": {"geminiSettings": "GEMINI_SETTINGS_ENUM_DISABLED"}}}
                     ]
                 }
             else:
@@ -266,3 +266,93 @@ class TestChromePolicyClient:
 
         ou_id = client._get_root_org_unit_id("my_customer")
         assert ou_id == ""
+
+
+class TestChromePolicyShapes:
+    """The client reads only schema names and fields that exist in the live catalogue (2026-11-15)."""
+
+    def _client_with(self, values: dict):
+        """Client whose resolve returns *values* ({schema: {field: value}}) and {} for other schemas."""
+        client = TestChromePolicyClient._make_client(self) if hasattr(TestChromePolicyClient, "_make_client") else None
+        from unittest.mock import MagicMock
+        from gws_auditor.api.chrome_policy import ChromePolicyClient
+        auth = MagicMock()
+        client = ChromePolicyClient(auth)
+        client._root_ou_id = "root"
+        mock_service = MagicMock()
+        client._service = mock_service
+
+        def mock_resolve(customer, body):
+            schema = body["policySchemaFilter"]
+            req = MagicMock()
+            if schema in values:
+                req.execute.return_value = {"resolvedPolicies": [{"value": {"policySchema": schema, "value": values[schema]}}]}
+            else:
+                req.execute.return_value = {}
+            return req
+
+        mock_service.customers().policies().resolve.side_effect = mock_resolve
+        return client
+
+    def test_every_schema_and_field_is_in_the_live_catalogue(self):
+        import json
+        from pathlib import Path
+        from gws_auditor.api.chrome_policy import CHROME_POLICY_FIELDS
+        catalogue = json.loads(Path("tests/fixtures/chrome_policy_schemas.json").read_text())["schemas"]
+        for schema, (field, _key) in CHROME_POLICY_FIELDS.items():
+            assert schema in catalogue, schema
+            assert field in catalogue[schema]["fields"], (schema, field)
+
+    def test_defaults_table_matches_the_live_catalogue(self):
+        import json
+        from pathlib import Path
+        from gws_auditor.api.chrome_policy import CHROME_POLICY_FIELDS
+        from gws_auditor.google_defaults import CHROME_POLICY_DEFAULTS
+        catalogue = json.loads(Path("tests/fixtures/chrome_policy_schemas.json").read_text())["schemas"]
+        for schema, (field, _key) in CHROME_POLICY_FIELDS.items():
+            assert schema in CHROME_POLICY_DEFAULTS, schema
+            assert CHROME_POLICY_DEFAULTS[schema]["default_value"] == catalogue[schema]["fields"][field]["default"], schema
+        assert set(CHROME_POLICY_DEFAULTS) == set(CHROME_POLICY_FIELDS)
+
+    def test_raw_values_are_kept_under_their_keys(self):
+        client = self._client_with({
+            "chrome.users.SafeBrowsingProtectionLevel": {"safeBrowsingProtectionLevel": "SAFE_BROWSING_PROTECTION_LEVEL_ENUM_STANDARD_PROTECTION"},
+            "chrome.users.DisableSafeBrowsingProceedAnyway": {"disableSafeBrowsingProceedAnyway": True},
+            "chrome.users.PasswordAlert": {"passwordProtectionWarningTrigger": "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PASSWORD_REUSE"},
+            "chrome.users.AutoUpdateCheckPeriodNewV2": {"autoUpdateCheckPeriodMinutesNew": 0},
+            "chrome.devices.AutoUpdateSettings": {"updateDisabled": True, "rebootAfterUpdate": False},
+        })
+        result = client.get_chrome_policies("my_customer")
+        assert result["safe_browsing_protection_level"] == "SAFE_BROWSING_PROTECTION_LEVEL_ENUM_STANDARD_PROTECTION"
+        assert result["disable_safe_browsing_proceed_anyway"] is True
+        assert result["password_protection_warning_trigger"].endswith("WARN_ON_PASSWORD_REUSE")
+        assert result["auto_update_check_period_minutes"] == 0
+        assert result["chromeos_update_disabled"] is True
+        assert "gemini_in_chrome_disabled" not in result and "dbsc_enabled" not in result
+
+    def test_gemini_unset_follows_the_generative_ai_default(self):
+        client = self._client_with({
+            "chrome.users.GeminiSettings": {"geminiSettings": "GEMINI_SETTINGS_ENUM_UNSET"},
+            "chrome.users.GenAiDefaultSettings": {"genAiDefaultSettings": "GEN_AI_DEFAULT_SETTINGS_ENUM_DISABLED"},
+        })
+        assert client.get_chrome_policies("my_customer")["gemini_in_chrome_disabled"] is True
+        client = self._client_with({"chrome.users.GenAiDefaultSettings": {"genAiDefaultSettings": "GEN_AI_DEFAULT_SETTINGS_ENUM_ALLOWED"}})
+        assert client.get_chrome_policies("my_customer")["gemini_in_chrome_disabled"] is False
+
+    def test_dbsc_unset_enum_leaves_the_key_absent(self):
+        client = self._client_with({"chrome.users.BoundSessionCredentialsEnabled": {"boundSessionCredentialsEnabled": "UNSET"}})
+        result = client.get_chrome_policies("my_customer")
+        assert result["bound_session_credentials"] == "UNSET" and "dbsc_enabled" not in result
+
+    def test_schema_not_found_is_recorded_as_an_error(self):
+        from unittest.mock import MagicMock
+        from googleapiclient.errors import HttpError
+        from gws_auditor.api.chrome_policy import ChromePolicyClient
+        client = ChromePolicyClient(MagicMock())
+        client._root_ou_id = "root"
+        mock_service = MagicMock()
+        client._service = mock_service
+        resp = MagicMock(); resp.status = 404; resp.reason = "Not Found"
+        mock_service.customers().policies().resolve().execute.side_effect = HttpError(resp, b"schema not found")
+        assert client.resolve_policy("my_customer", "chrome.users.DoesNotExist") == []
+        assert any("resolve_policy(chrome.users.DoesNotExist)" in e.get("operation", "") for e in client.errors)

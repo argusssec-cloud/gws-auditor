@@ -1040,7 +1040,7 @@ def check_drive_non_member_access(data: dict) -> CheckResult:
     check_id="ADD-60",
     title="Ensure Google Drive Add-Ons are disabled",
     level="L2",
-    source="OTHER",
+    source="GOOGLE",
     section="Drive and Docs",
     remediation=(
         "Admin console > Apps > Google Workspace > Drive and Docs > "
@@ -1055,7 +1055,7 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
     """
     _ID = "ADD-60"
     _TITLE = "Ensure Google Drive Add-Ons are disabled"
-    _L, _S, _SEC = "L2", "OTHER", "Drive and Docs"
+    _L, _S, _SEC = "L2", "GOOGLE", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Features and Applications. Disable Google Drive Add-Ons. https://knowledge.workspace.google.com/admin/drive/allow-third-party-apps-for-drive-files"
@@ -1103,7 +1103,7 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
         return make_pass(
             check_id="ADD-60",
             title="Ensure Google Drive Add-Ons are disabled",
-            level="L2", source="OTHER", section="Drive and Docs",
+            level="L2", source="GOOGLE", section="Drive and Docs",
             details="Google Drive Add-Ons are disabled.",
             actual_value=add_ons_enabled,
             expected_value="Disabled for all OUs",
@@ -1113,7 +1113,7 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
         return make_review(
             check_id="ADD-60",
             title="Ensure Google Drive Add-Ons are disabled",
-            level="L2", source="OTHER", section="Drive and Docs",
+            level="L2", source="GOOGLE", section="Drive and Docs",
             details=(
                 "Drive Add-Ons availability is not exposed by the Cloud "
                 "Identity Policy API — verify in Admin console."
@@ -1127,7 +1127,7 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
     return make_fail(
         check_id="ADD-60",
         title="Ensure Google Drive Add-Ons are disabled",
-        level="L2", source="OTHER", section="Drive and Docs",
+        level="L2", source="GOOGLE", section="Drive and Docs",
         details="Google Drive Add-Ons are enabled.",
         actual_value=add_ons_enabled,
         expected_value="Disabled for all OUs",

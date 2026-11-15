@@ -272,6 +272,18 @@ class TestGeminiChrome:
         result = check_gemini_chrome(full_audit_data)
         assert result.status == Status.FAIL
 
+    def test_gemini_chrome_not_collected_is_review(self, full_audit_data):
+        """A failed Chrome collection is unknown, not 'allowed'."""
+        from gws_auditor.checks.additional import check_gemini_chrome
+        full_audit_data["policies"].pop("gemini", None)
+        full_audit_data["api_errors"] = [{"operation": "get_chrome_policies", "error": "403"}]
+        assert check_gemini_chrome(full_audit_data).status == Status.MANUAL
+        full_audit_data["api_errors"] = [{"operation": "resolve_policy(chrome.users.GenAiDefaultSettings)", "error": "500"}]
+        assert check_gemini_chrome(full_audit_data).status == Status.MANUAL
+        full_audit_data["api_errors"] = []
+        full_audit_data.pop("chrome_policies", None)
+        assert check_gemini_chrome(full_audit_data).status == Status.MANUAL
+
 
 class TestWorkspaceStudio:
     """Tests for ADD-15 Workspace Studio access."""
@@ -437,19 +449,29 @@ class TestSkipPasswordsLog:
 class TestPasswordAlertDefault:
     """ADD-08: an unset Chrome policy is Chrome's documented default, not unknown."""
 
-    def test_unset_policy_is_chrome_default_pass(self, full_audit_data):
+    def test_unset_policy_is_chrome_default_warn(self, full_audit_data):
+        """Google's default is 'Trigger on password reuse on phishing page' (live schema 2026-11-15): weaker than the checklist."""
         from gws_auditor.checks.additional import check_password_alert
         full_audit_data["policies"].get("security", {}).pop("password_alert", None)
         full_audit_data["chrome_policies"] = {}
         full_audit_data["api_errors"] = []
         result = check_password_alert(full_audit_data)
-        assert result.status == Status.PASS and "Chrome's default" in result.details
+        assert result.status == Status.WARN and "Chrome's default" in result.details
+
+    def test_reuse_anywhere_passes_phishing_only_warns(self, full_audit_data):
+        from gws_auditor.checks.additional import check_password_alert
+        pa = full_audit_data["policies"].setdefault("security", {})
+        pa["password_alert"] = {"deployed": True, "trigger": "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PASSWORD_REUSE"}
+        assert check_password_alert(full_audit_data).status == Status.PASS
+        pa["password_alert"] = {"deployed": True, "trigger": "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PHISHING_REUSE"}
+        result = check_password_alert(full_audit_data)
+        assert result.status == Status.WARN and "phishing" in result.details
 
     def test_resolve_error_or_not_collected_is_review(self, full_audit_data):
         from gws_auditor.checks.additional import check_password_alert
         full_audit_data["policies"].get("security", {}).pop("password_alert", None)
         full_audit_data["chrome_policies"] = {}
-        full_audit_data["api_errors"] = [{"operation": "resolve_policy(chrome.users.PasswordProtectionWarningTrigger)", "error": "403"}]
+        full_audit_data["api_errors"] = [{"operation": "resolve_policy(chrome.users.PasswordAlert)", "error": "403"}]
         assert check_password_alert(full_audit_data).status == Status.MANUAL
         full_audit_data["api_errors"] = []
         full_audit_data.pop("chrome_policies", None)
@@ -457,7 +479,7 @@ class TestPasswordAlertDefault:
 
     def test_explicit_off_fails(self, full_audit_data):
         from gws_auditor.checks.additional import check_password_alert
-        full_audit_data["policies"].setdefault("security", {})["password_alert"] = {"deployed": False, "trigger": 0}
+        full_audit_data["policies"].setdefault("security", {})["password_alert"] = {"deployed": False, "trigger": "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_NO_WARNING"}
         assert check_password_alert(full_audit_data).status == Status.FAIL
 
 

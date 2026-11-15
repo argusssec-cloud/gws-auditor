@@ -1,0 +1,374 @@
+{
+ "_comment": "Chrome Policy API policySchemas.get, read live 2026-11-15. Field names, documented defaults and enum members the client (api/chrome_policy.py CHROME_POLICY_FIELDS) may rely on. tests/test_check_contracts.py checks the client against this file.",
+ "schemas": {
+  "chrome.devices.AutoUpdateSettings": {
+   "description": "Auto-update settings.",
+   "fields": {
+    "autoUpdateAllowedConnectionType": {
+     "default": "AUTO_UPDATE_CONNECTION_TYPE_ENUM_WIFI_AND_ETHERNET",
+     "description": "Updates over cellular. Controls whether a managed ChromeOS device updates over Wi-Fi and Ethernet only or using any connection type, including cellular.",
+     "values": [
+      "AUTO_UPDATE_CONNECTION_TYPE_ENUM_WIFI_AND_ETHERNET",
+      "AUTO_UPDATE_CONNECTION_TYPE_ENUM_ALL_CONNECTIONS"
+     ]
+    },
+    "autoUpdateHttpDownloadsEnabled": {
+     "default": false,
+     "description": "Update downloads. Controls whether update downloads use HTTP or HTTPS.",
+     "values": [
+      "true",
+      "false"
+     ]
+    },
+    "autoUpdateRolloutPlan": {
+     "default": null,
+     "description": "Allows the admin to specify a timed rollout plan for automatic updates.",
+     "values": null
+    },
+    "autoUpdateTargetVersionLts": {
+     "default": {
+      "selectedVersion": {
+       "displayName": "No restriction"
+      }
+     },
+     "description": "Specifies the prefix of a target version Google ChromeOS should update to. If the device is running a version that's before the specified prefix, it will update to the latest version with the given prefix. If the device is already on a later version, effects depend on the value of DeviceRollbackToTa",
+     "values": null
+    },
+    "autoUpdateTimeRestrictions": {
+     "default": null,
+     "description": "Allows the admin to specify time restrictions for when automatic updates take place.",
+     "values": null
+    },
+    "deviceAutoUpdatePeerToPeerEnabled": {
+     "default": false,
+     "description": "Peer to peer. Controls whether peer to peer auto update downloads are allowed.",
+     "values": [
+      "true",
+      "false"
+     ]
+    },
+    "deviceMinimumVersion": {
+     "default": null,
+     "description": "Sets the minimum version of ChromeOS a device must be updated to.",
+     "values": null
+    },
+    "deviceMinimumVersionAueMessage": {
+     "default": null,
+     "description": "Final automatic update alert message. When a device reaches its last automatic update(https://support.google.com/chrome/a/answer/6220366)automatic , an alert is sent to the user. This text overrides the default message that will be shown on the device.",
+     "values": null
+    },
+    "deviceRollbackToTargetVersion": {
+     "default": "ROLLBACK_TO_TARGET_VERSION_ENUM_ROLLBACK_DISABLED",
+     "description": "Roll back to target version. To use a previous version, devices will need to be restarted. Devices will be wiped and all local data will be lost. Learn more about rolling back devices here: https://support.google.com/chrome/a?p=rollback.",
+     "values": [
+      "ROLLBACK_TO_TARGET_VERSION_ENUM_ROLLBACK_DISABLED",
+      "ROLLBACK_TO_TARGET_VERSION_ENUM_ROLLBACK_AND_RESTORE_IF_POSSIBLE"
+     ]
+    },
+    "rebootAfterUpdate": {
+     "default": false,
+     "description": "Auto reboot after updates. Controls whether a managed ChromeOS device reboots after it is updated.",
+     "values": [
+      "true",
+      "false"
+     ]
+    },
+    "releaseChannelWithLts": {
+     "default": "RELEASE_CHANNEL_WITH_LTS_ENUM_STABLE_CHANNEL",
+     "description": "Release channel. Changing the release channel can have drastic effects on the current organization and its children. Ensure any changes to this setting are intended. Learn more about release channels: https://support.google.com/chrome/a/answer/1375678#release_channel?hl={$languageCode}.",
+     "values": [
+      "RELEASE_CHANNEL_WITH_LTS_ENUM_ALLOW_USER_CHOICE",
+      "RELEASE_CHANNEL_WITH_LTS_ENUM_STABLE_CHANNEL",
+      "RELEASE_CHANNEL_WITH_LTS_ENUM_BETA_CHANNEL",
+      "RELEASE_CHANNEL_WITH_LTS_ENUM_LTS_CHANNEL",
+      "RELEASE_CHANNEL_WITH_LTS_ENUM_LTC_CHANNEL",
+      "RELEASE_CHANNEL_WITH_LTS_ENUM_DEV_CHANNEL"
+     ]
+    },
+    "updateDisabled": {
+     "default": false,
+     "description": "Allow devices to automatically update OS version. Controls whether managed ChromeOS devices install updates.",
+     "values": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/3168106?hl=en"
+  },
+  "chrome.users.AutoUpdateCheckPeriodNewV2": {
+   "description": "Auto-update check period.",
+   "fields": {
+    "autoUpdateCheckPeriodMinutesNew": {
+     "default": null,
+     "description": "Auto update check period (minutes). Set the value to 0 to disable all auto-update checks. Leave empty for a default of 295 minutes.",
+     "values": null
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/9838774?hl=en"
+  },
+  "chrome.users.BoundSessionCredentialsEnabled": {
+   "description": "Device Bound Session Credentials.",
+   "fields": {
+    "boundSessionCredentialsEnabled": {
+     "default": "UNSET",
+     "description": "Device Bound Session Credentials protect Google authentication cookies against cookie theft by regularly providing a cryptographic proof of device possession to Google servers.",
+     "values": [
+      "UNSET",
+      "TRUE",
+      "FALSE"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#bound_session_credentials_enabled"
+  },
+  "chrome.users.ComponentUpdates": {
+   "description": "Component updates.",
+   "fields": {
+    "componentUpdatesEnabled": {
+     "default": true,
+     "description": "Controls whether Chrome Component Updates are enabled or disabled.",
+     "values": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "support_uri": ""
+  },
+  "chrome.users.DisableSafeBrowsingProceedAnyway": {
+   "description": "Disable bypassing Safe Browsing warnings.",
+   "fields": {
+    "disableSafeBrowsingProceedAnyway": {
+     "default": false,
+     "description": "Option to disable bypassing of safe browsing warnings.",
+     "values": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#disable_safe_browsing_proceed_anyway"
+  },
+  "chrome.users.DownloadRestrictions": {
+   "description": "Download restrictions.",
+   "fields": {
+    "downloadRestrictionsPolicyMode": {
+     "default": "POLICY_MODE_MANDATORY",
+     "description": "Whether to allow users to override this policy.",
+     "values": [
+      "POLICY_MODE_MANDATORY",
+      "POLICY_MODE_RECOMMENDED"
+     ]
+    },
+    "safeBrowsingDownloadRestrictions": {
+     "default": "DOWNLOAD_RESTRICTION_ENUM_NO_SPECIAL_RESTRICTIONS",
+     "description": "Allow Google Chrome to prevent certain types of downloads (known to be dangerous or potentially dangerous).",
+     "values": [
+      "DOWNLOAD_RESTRICTION_ENUM_NO_SPECIAL_RESTRICTIONS",
+      "DOWNLOAD_RESTRICTION_ENUM_BLOCK_ALL_MALICIOUS_DOWNLOAD",
+      "DOWNLOAD_RESTRICTION_ENUM_BLOCK_DANGEROUS_DOWNLOAD",
+      "DOWNLOAD_RESTRICTION_ENUM_BLOCK_POTENTIALLY_DANGEROUS_DOWNLOAD",
+      "DOWNLOAD_RESTRICTION_ENUM_BLOCK_ALL_DOWNLOAD"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#safe_browsing_download_restrictions"
+  },
+  "chrome.users.GeminiSettings": {
+   "description": "Gemini integrations.",
+   "fields": {
+    "geminiActOnWebAllowedForUrls": {
+     "default": null,
+     "description": "Allowed URL patterns. Enter URL patterns, one per line, for sites where Gemini app integrations are allowed to act on web page content. This policy acts as a list of exceptions for sites when 'GeminiActOnWebSettings' is set to 'Disallow'. URLs matching neither the allowlist nor the disallowlist use ",
+     "values": null
+    },
+    "geminiActOnWebBlockedForUrls": {
+     "default": null,
+     "description": "Disallowed URL patterns. Enter URL patterns, one per line, for sites where Gemini app integrations are disallowed from acting on web page content. This policy acts as a list of exceptions for sites when 'GeminiActOnWebSettings' is set to 'Allow'. URLs matching neither the allowlist nor the disallowl",
+     "values": null
+    },
+    "geminiActOnWebSettings": {
+     "default": "GEMINI_ACT_ON_WEB_SETTINGS_ENUM_ENABLED",
+     "description": "Controls if the Gemini app is allowed to take action on web pages on behalf of the user. If this policy is unset, the Gemini app is allowed to take action on web pages. This policy has no effect when the Gemini app is disabled by the GeminiSettings policy. For more information, see https://support.g",
+     "values": [
+      "GEMINI_ACT_ON_WEB_SETTINGS_ENUM_ENABLED",
+      "GEMINI_ACT_ON_WEB_SETTINGS_ENUM_DISABLED"
+     ]
+    },
+    "geminiSettings": {
+     "default": "GEMINI_SETTINGS_ENUM_UNSET",
+     "description": "Controls the Gemini integrations in Chrome.",
+     "values": [
+      "GEMINI_SETTINGS_ENUM_ENABLED",
+      "GEMINI_SETTINGS_ENUM_DISABLED",
+      "GEMINI_SETTINGS_ENUM_UNSET"
+     ]
+    },
+    "geminiSparkSettings": {
+     "default": "GEMINI_SPARK_SETTINGS_ENUM_DISABLED",
+     "description": "Gemini Spark auto browse. Allows the Gemini Spark agent to perform multi-step actions on Chrome clients using the active browser session. Warning: Enabling this feature entails significant security risks, including credential risks, local network ingress, and loss of context-aware signals. Administr",
+     "values": [
+      "GEMINI_SPARK_SETTINGS_ENUM_ENABLED",
+      "GEMINI_SPARK_SETTINGS_ENUM_DISABLED"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#gemini_settings"
+  },
+  "chrome.users.GenAiDefaultSettings": {
+   "description": "Generative AI policy defaults.",
+   "fields": {
+    "genAiDefaultSettings": {
+     "default": "GEN_AI_DEFAULT_SETTINGS_ENUM_ALLOWED_WITHOUT_LOGGING",
+     "description": "Defines the default setting for all covered generative AI features. For example, if this policy is set to value 1, then 1 will be the default setting for all covered generative AI features. It will not impact any manually set policy values.",
+     "values": [
+      "GEN_AI_DEFAULT_SETTINGS_ENUM_ALLOWED",
+      "GEN_AI_DEFAULT_SETTINGS_ENUM_ALLOWED_WITHOUT_LOGGING",
+      "GEN_AI_DEFAULT_SETTINGS_ENUM_DISABLED"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#gen_ai_default_settings"
+  },
+  "chrome.users.PasswordAlert": {
+   "description": "Password alert.",
+   "fields": {
+    "passwordProtectionChangePasswordUrl": {
+     "default": null,
+     "description": "URL for password change. Enter the URL of the webpage where users can change their password.",
+     "values": null
+    },
+    "passwordProtectionLoginUrls": {
+     "default": null,
+     "description": "Login URLs. Enter list of enterprise login URLs where password protection service should capture fingerprint of password.",
+     "values": null
+    },
+    "passwordProtectionWarningTrigger": {
+     "default": "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PHISHING_REUSE",
+     "description": "Set password protection warning. Control the triggering of password protection warnings. Learn more at https://support.google.com/chrome/a/answer/9102482.",
+     "values": [
+      "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_NO_WARNING",
+      "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PASSWORD_REUSE",
+      "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PHISHING_REUSE"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#password_protection_warning_trigger"
+  },
+  "chrome.users.PasswordManager": {
+   "description": "Password manager.",
+   "fields": {
+    "passwordManagerEnabled": {
+     "default": "UNSET",
+     "description": "Controls whether managed users can use the Chrome password manager.",
+     "values": [
+      "UNSET",
+      "TRUE",
+      "FALSE"
+     ]
+    },
+    "passwordManagerPolicyMode": {
+     "default": "POLICY_MODE_MANDATORY",
+     "description": "Whether to allow users to override this policy.",
+     "values": [
+      "POLICY_MODE_MANDATORY",
+      "POLICY_MODE_RECOMMENDED"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#password_manager_enabled"
+  },
+  "chrome.users.RelaunchNotificationWithDurationV2": {
+   "description": "Relaunch notification.",
+   "fields": {
+    "relaunchFastIfOutdated": {
+     "default": null,
+     "description": "Release age (in days) beyond which relaunch notifications get more aggressive. Specifies the minimum release age (in days) beyond which relaunch notifications are more aggressive. The age is calculated from the time the currently-running version was last served to clients. If a browser relaunch or d",
+     "values": null
+    },
+    "relaunchInitialQuietPeriodDuration": {
+     "default": 96,
+     "description": "Initial quiet period (hours). To reduce user notifications, you might specify an initial quiet period on ChromeOS. Users who reboot their devices within the quiet period will not get notified of a required reboot. The quiet period should be set to a number less than the total time period. Note: This",
+     "values": null
+    },
+    "relaunchNotificationEnum": {
+     "default": "RELAUNCH_NOTIFICATION_ENUM_NO_NOTIFICATION",
+     "description": "Enables notifications to inform the user that a browser relaunch or device restart is recommended or required. The period may be configured below.",
+     "values": [
+      "RELAUNCH_NOTIFICATION_ENUM_NO_NOTIFICATION",
+      "RELAUNCH_NOTIFICATION_ENUM_RECOMMENDED",
+      "RELAUNCH_NOTIFICATION_ENUM_REQUIRED"
+     ]
+    },
+    "relaunchNotificationPeriodDuration": {
+     "default": 168,
+     "description": "Time period (hours). Allows you to set the time period over which users are notified that Google Chrome must be relaunched to apply a pending update. Over this time period, the user will be repeatedly informed of the need for an update.",
+     "values": null
+    },
+    "relaunchWindowDurationMin": {
+     "default": null,
+     "description": "Relaunch window duration (minutes). Relaunch would be scheduled within the time interval beginning at the previously specified start time, for the duration specified here, in minutes. This duration does take into account daylight savings time. The time period over which users are notified of a relau",
+     "values": null
+    },
+    "relaunchWindowStartTime": {
+     "default": null,
+     "description": "Relaunch window start time. The time of day, in 24-hour format (hh:mm), representing the start of the time interval within which the relaunch would be scheduled.",
+     "values": null
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#relaunch_notification"
+  },
+  "chrome.users.SafeBrowsingProtectionLevel": {
+   "description": "Safe Browsing protection.",
+   "fields": {
+    "safeBrowsingProtectionLevel": {
+     "default": "SAFE_BROWSING_PROTECTION_LEVEL_ENUM_USER_CHOICE",
+     "description": "Safe Browsing Protection Level. Sets the protection level for Safe Browsing: user-chosen, disabled, standard mode, or enhanced mode.",
+     "values": [
+      "SAFE_BROWSING_PROTECTION_LEVEL_ENUM_USER_CHOICE",
+      "SAFE_BROWSING_PROTECTION_LEVEL_ENUM_NO_PROTECTION",
+      "SAFE_BROWSING_PROTECTION_LEVEL_ENUM_STANDARD_PROTECTION",
+      "SAFE_BROWSING_PROTECTION_LEVEL_ENUM_ENHANCED_PROTECTION"
+     ]
+    },
+    "safeBrowsingProtectionLevelCategoryItemPolicyMode": {
+     "default": "POLICY_MODE_MANDATORY",
+     "description": "Whether to allow users to override this policy.",
+     "values": [
+      "POLICY_MODE_MANDATORY",
+      "POLICY_MODE_RECOMMENDED"
+     ]
+    },
+    "safeBrowsingProxiedRealTimeChecksAllowed": {
+     "default": true,
+     "description": "Safe Browsing standard protection real time proxied checks. This controls whether Safe Browsing's standard protection mode is allowed to send partial hashes of URLs to Google.",
+     "values": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#safe_browsing_protection_level"
+  },
+  "chrome.users.SiteIsolationBrowser": {
+   "description": "Site isolation.",
+   "fields": {
+    "isolateOrigins": {
+     "default": null,
+     "description": "Isolated origins. Enter a list of origins to isolate within a website, for instance https://login.example.com or https://[*.]example.com. .",
+     "values": null
+    },
+    "sitePerProcess": {
+     "default": false,
+     "description": "Specifies the default site isolation policy for all websites.",
+     "values": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "support_uri": "https://support.google.com/chrome/a/answer/2657289?hl=en#site_per_process"
+  }
+ }
+}

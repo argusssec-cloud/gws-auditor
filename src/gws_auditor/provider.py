@@ -126,6 +126,14 @@ class Provider:
     def collect_all(self) -> dict:
         """Collect all GWS configuration data from APIs."""
         logger.info("Starting data collection...")
+        for scope in getattr(self.auth, "unauthorized_scopes", None) or []:
+            # Recorded up front so the checks whose data lives behind the scope report ERROR
+            # with the cause instead of an unexplained empty collection.
+            self._api_errors.append({
+                "operation": f"scope:{scope}",
+                "error": "domain-wide delegation does not authorize this scope; the APIs behind it were not called",
+                "type": "unauthorized_client",
+            })
 
         groups = self._get_groups_with_settings()
 
@@ -2968,8 +2976,8 @@ def _map_chrome_policies(policies: dict, chrome_policies: dict) -> None:
         security = policies.setdefault("security", {})
         pa = security.setdefault("password_alert", {})
         trigger = chrome_policies["password_protection_warning_trigger"]
-        # 0 = off, 1 = password reuse warning, 2 = phishing + reuse warning
-        pa["deployed"] = trigger > 0
+        # chrome.users.PasswordAlert enum: NO_WARNING, WARN_ON_PASSWORD_REUSE, WARN_ON_PHISHING_REUSE
+        pa["deployed"] = str(trigger) != "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_NO_WARNING"
         pa["trigger"] = trigger
 
 

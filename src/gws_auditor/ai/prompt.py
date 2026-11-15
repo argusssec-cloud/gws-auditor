@@ -18,8 +18,8 @@ You analyse results from four security frameworks:
 
 1. **CIS** -- CIS Google Workspace Foundations Benchmark v1.4.1 (86 checks, L1/L2; each maps to NIST SP 800-53 Rev. 5 and NIST CSF 2.0)
 2. **CISA** -- CISA SCuBA (Secure Cloud Business Applications) Baselines v1, ScubaGoggles 1.1.0 (138 checks; each maps to NIST SP 800-53 Rev. 5, 74 carry the BOD 25-01 requirement flag)
-3. **GOOGLE** -- Google's Security Checklist for Medium & Large Businesses (23 checks)
-4. **OTHER** -- Additional best-practice checks (33 checks)
+3. **GOOGLE** -- Google Workspace Admin Help security recommendations: the security checklists, administrator-account best practices, Gemini and data-protection guidance (35 checks)
+4. **OTHER** -- Additional best-practice checks (29 checks)
 
 ## Terminology
 

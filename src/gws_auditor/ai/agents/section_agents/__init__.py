@@ -98,8 +98,8 @@ SECTION_REGISTRY: dict[str, SectionMapping] = {
     ),
     "Additional": SectionMapping(
         section="Additional",
-        check_modules=["additional.py"],
-        test_modules=["test_additional.py"],
+        check_modules=["additional.py", "additional_identity.py", "chrome.py"],
+        test_modules=["test_additional.py", "test_google_checklist.py", "test_chrome.py"],
         check_id_prefixes=["ADD-"],
     ),
 }

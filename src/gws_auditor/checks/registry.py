@@ -27,6 +27,7 @@ CHECK_MODULES = [
     "gws_auditor.checks.reporting",
     "gws_auditor.checks.rules",
     "gws_auditor.checks.additional",
+    "gws_auditor.checks.chrome",
     "gws_auditor.checks.cisa_scuba",
     "gws_auditor.checks.cisa_commoncontrols",
     "gws_auditor.checks.cisa_services",

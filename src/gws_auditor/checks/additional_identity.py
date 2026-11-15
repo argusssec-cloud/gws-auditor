@@ -13,7 +13,8 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
-                   field_value, ou_verdict)
+                   field_value, ou_verdict, user_usage_by_email)
+from ..constants import EDITIONS_ADMIN_ROLE_CONDITIONS
 from ..models import CheckResult
 
 _NEVER = datetime(1971, 1, 1, tzinfo=timezone.utc)  # Directory API reports "never" as 1970-01-01
@@ -213,7 +214,7 @@ def check_chat_external_spaces(data: dict) -> CheckResult:
 @check(
     check_id="ADD-46",
     title="Ensure groups cannot be joined by anyone on the internet",
-    level="L1", source="OTHER", section="Groups",
+    level="L1", source="GOOGLE", section="Groups",
     remediation=(
         "Google Groups > group > Group settings. Set 'Who can join group' to invited users or organization "
         "members, and turn off 'Allow external members' unless the group exists for outside collaboration. "
@@ -223,7 +224,7 @@ def check_chat_external_spaces(data: dict) -> CheckResult:
 def check_open_groups(data: dict) -> CheckResult:
     """Per-group join settings: open-to-the-internet groups fail; groups allowing external members are flagged."""
     common = dict(check_id="ADD-46", title="Ensure groups cannot be joined by anyone on the internet",
-                  level="L1", source="OTHER", section="Groups")
+                  level="L1", source="GOOGLE", section="Groups")
     with_settings = [g for g in data.get("groups", []) if isinstance(g.get("settings"), dict) and g["settings"]]
     if not with_settings:
         return make_manual(**common, details="No per-group settings were collected (Groups Settings API).")
@@ -359,7 +360,7 @@ def check_powerful_custom_roles(data: dict) -> CheckResult:
 @check(
     check_id="ADD-49",
     title="Review who holds Google Vault privileges",
-    level="L2", source="OTHER", section="Security", severity="LOW", scored=False,
+    level="L2", source="GOOGLE", section="Security", severity="LOW", scored=False,
     remediation=(
         "Admin console > Account > Admin roles. Vault privileges (matters, holds, searches, exports, retention) give "
         "access to every user's mail and files and can destroy data through retention rules — keep holders to the minimum."
@@ -368,7 +369,7 @@ def check_powerful_custom_roles(data: dict) -> CheckResult:
 def check_vault_privilege_holders(data: dict) -> CheckResult:
     """Inventory of assigned roles that carry Vault privileges."""
     common = dict(check_id="ADD-49", title="Review who holds Google Vault privileges",
-                  level="L2", source="OTHER", section="Security")
+                  level="L2", source="GOOGLE", section="Security")
     roles, problem = _roles(data, common)
     if problem:
         return problem
@@ -455,3 +456,214 @@ def check_mailbox_external_forwarding(data: dict) -> CheckResult:
                          actual_value={"external_forwarding": external}, expected_value="No mailbox forwards outside the organization")
     return make_pass(**common, details=f"None of {scope} forwards to an external address.",
                      actual_value={"external_forwarding": {}}, expected_value="No mailbox forwards outside the organization")
+
+
+# ── Google security checklist: groups and administrator accounts ─────────
+# Items of Google's "Security checklist for medium and large businesses" and "Security best
+# practices for administrator accounts" that no CIS or SCuBA control covers (analysis 2026-11-15).
+
+_CHECKLIST = "https://knowledge.workspace.google.com/admin/security/security-checklist-for-medium-and-large-businesses-100-users"
+_ADMIN_BEST_PRACTICES = "https://knowledge.workspace.google.com/admin/users/security-best-practices-for-administrator-accounts"
+
+
+def _super_admins(data: dict) -> list[dict]:
+    return [u for u in data.get("users", []) or [] if isinstance(u, dict) and u.get("is_super_admin")]
+
+
+@check(
+    check_id="ADD-63",
+    title="Ensure spam moderation is enabled for every group",
+    level="L1", source="GOOGLE", section="Groups",
+    severity="MEDIUM",
+    remediation=(
+        "Google Groups > group > Group settings > Posting policies > Spam message handling: 'Moderate and notify content "
+        "moderators', 'Moderate and silently' or 'Reject', never 'Post suspicious messages to the group'. Google's "
+        f"checklist: 'Enable spam moderation for your groups'. {_CHECKLIST}"
+    ),
+)
+def check_group_spam_moderation(data: dict) -> CheckResult:
+    """Groups Settings API ``spamModerationLevel``: ``ALLOW`` posts suspected spam straight to the members."""
+    common = dict(check_id="ADD-63", title="Ensure spam moderation is enabled for every group",
+                  level="L1", source="GOOGLE", section="Groups")
+    with_settings = [g for g in data.get("groups", []) or [] if isinstance(g.get("settings"), dict) and g["settings"]]
+    if not with_settings:
+        return make_manual(**common, details="No per-group settings were collected (Groups Settings API).")
+    levels: dict[str, int] = {}
+    allow, without_value = [], []
+    for g in with_settings:
+        email = g.get("email", "unknown")
+        level = g["settings"].get("spamModerationLevel")
+        if level in (None, ""):
+            without_value.append(email)
+            continue
+        levels[str(level)] = levels.get(str(level), 0) + 1
+        if str(level).upper() == "ALLOW":
+            allow.append(email)
+    expected = "spamModerationLevel MODERATE, SILENTLY_MODERATE or REJECT on every group"
+    value = {"allow": sorted(allow), "levels": levels, "without_value": sorted(without_value), "groups_checked": len(with_settings)}
+    if allow:
+        return make_fail(**common, details=(f"{len(allow)} of {len(with_settings)} group(s) post suspected spam straight to "
+                                            f"members (spamModerationLevel ALLOW): {', '.join(sorted(allow)[:15])}"),
+                         actual_value=value, expected_value=expected)
+    if not levels:
+        return make_manual(**common, details="Group settings were collected without spamModerationLevel; cannot judge spam moderation.")
+    note = f" {len(without_value)} group(s) returned no spamModerationLevel." if without_value else ""
+    return make_pass(**common, details=f"All {sum(levels.values())} group(s) moderate or reject suspected spam ({levels}).{note}",
+                     actual_value=value, expected_value=expected)
+
+
+@check(
+    check_id="ADD-64",
+    title="Ensure every super admin has a spare security key enrolled",
+    level="L2", source="GOOGLE", section="Security",
+    severity="HIGH",
+    remediation=(
+        "Each super admin: Google Account > Security > 2-Step Verification > Security keys: register a second hardware key "
+        f"and store it safely. Google: 'Enroll a spare security key' in {_ADMIN_BEST_PRACTICES}"
+    ),
+)
+def check_super_admin_spare_key(data: dict) -> CheckResult:
+    """Per-user usage report ``accounts:num_security_keys`` for every super admin: two or more keys."""
+    common = dict(check_id="ADD-64", title="Ensure every super admin has a spare security key enrolled",
+                  level="L2", source="GOOGLE", section="Security")
+    admins = _super_admins(data)
+    if not admins:
+        return make_manual(**common, details="No super admin account found in the collected users.")
+    if not data.get("user_usage"):
+        return make_manual(**common, details="The per-user usage report (accounts:num_security_keys) was not collected.")
+    usage = user_usage_by_email(data)
+    short, enough, unknown = [], [], []
+    for u in admins:
+        email = str(u.get("primary_email", "")).lower()
+        raw = (usage.get(email) or {}).get("accounts:num_security_keys")
+        try:
+            count = int(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            count = None
+        if count is None:
+            unknown.append(email)
+        elif count >= 2:
+            enough.append(email)
+        else:
+            short.append(f"{email} ({count} key{'s' if count != 1 else ''})")
+    expected = "At least two security keys enrolled per super admin (passkeys are counted separately)"
+    actual = {"fewer_than_two": short, "two_or_more": enough, "no_usage_row": unknown}
+    if short:
+        return make_fail(**common, details=(f"{len(short)} of {len(admins)} super admin(s) have fewer than two security keys, so "
+                                            f"a lost key locks the account out: {'; '.join(short)}"),
+                         actual_value=actual, expected_value=expected)
+    if unknown:
+        return make_review(**common, details=(f"{len(unknown)} super admin(s) have no row in the per-user usage report yet "
+                                              f"(new account or report lag): {', '.join(unknown)}. The others have two or more keys."),
+                           actual_value=actual, expected_value=expected)
+    return make_pass(**common, details=f"All {len(admins)} super admin(s) have two or more security keys enrolled.",
+                     actual_value=actual, expected_value=expected)
+
+
+_RECOVERY_CONFLICT = (
+    "Standards conflict: GWS.COMMONCONTROLS.8.3 asks that users be prevented from adding recovery information and "
+    "CIS-4.1.2.1 / GWS.COMMONCONTROLS.8.1 that super admin self-recovery be off; Google's administrator-account guidance "
+    "still wants a recovery phone and email on every super admin so Support can verify the admin when locked out. "
+    "Each check follows its own standard."
+)
+
+
+@check(
+    check_id="ADD-65",
+    title="Ensure super admin accounts have recovery email and phone set",
+    level="L2", source="GOOGLE", section="Directory",
+    severity="MEDIUM",
+    remediation=(
+        "Admin console > Directory > Users > the super admin > Security > Recovery information: add a recovery phone and a "
+        f"recovery email the admin controls. Google: 'Add recovery options to admin accounts' in {_ADMIN_BEST_PRACTICES}"
+    ),
+)
+def check_super_admin_recovery_info(data: dict) -> CheckResult:
+    """Directory API ``recoveryEmail`` / ``recoveryPhone`` (returned only when set) on every super admin."""
+    common = dict(check_id="ADD-65", title="Ensure super admin accounts have recovery email and phone set",
+                  level="L2", source="GOOGLE", section="Directory")
+    admins = _super_admins(data)
+    if not admins:
+        return make_manual(**common, details="No super admin account found in the collected users.")
+    missing, complete = [], []
+    for u in admins:
+        email = u.get("primary_email", "unknown")
+        lacks = [what for what, key in (("email", "recovery_email"), ("phone", "recovery_phone")) if not str(u.get(key) or "").strip()]
+        if lacks:
+            missing.append(f"{email} (no recovery {' or '.join(lacks)})")
+        else:
+            complete.append(email)
+    expected = "Recovery email and recovery phone on every super admin"
+    actual = {"missing": missing, "complete": complete}
+    if missing:
+        return make_fail(**common, details=(f"{len(missing)} of {len(admins)} super admin(s) lack recovery information: "
+                                            f"{'; '.join(missing)}. {_RECOVERY_CONFLICT}"),
+                         actual_value=actual, expected_value=expected)
+    return make_pass(**common, details=f"All {len(admins)} super admin(s) have a recovery email and phone. {_RECOVERY_CONFLICT}",
+                     actual_value=actual, expected_value=expected)
+
+
+@check(
+    check_id="ADD-66",
+    title="Ensure delegated Groups admin roles are conditioned on a group type",
+    level="L2", source="GOOGLE", section="Security",
+    severity="MEDIUM",
+    requires_license=EDITIONS_ADMIN_ROLE_CONDITIONS,
+    remediation=(
+        "Admin console > Account > Admin roles > the role > Admins > the assignment > Set conditions: limit Groups Editor, "
+        "Groups Reader and custom roles with Groups privileges to security groups or to non-security groups, so that only a "
+        "small set of admins can change the groups that grant access. Google: 'Add security conditions to admin roles'. "
+        f"{_CHECKLIST}"
+    ),
+)
+def check_group_admin_role_conditions(data: dict) -> CheckResult:
+    """``roleAssignments[].condition`` on every assignment of a non-super-admin role with ``GROUPS_*`` privileges."""
+    common = dict(check_id="ADD-66", title="Ensure delegated Groups admin roles are conditioned on a group type",
+                  level="L2", source="GOOGLE", section="Security")
+    roles_data = data.get("roles")
+    if not isinstance(roles_data, dict) or "assignments" not in roles_data or "roles" not in roles_data:
+        return make_manual(**common, details="Admin roles and role assignments were not collected.")
+    if _has_api_error(data, "list_roles", "list_role_assignments"):
+        return make_manual(**common, details="Admin roles could not be fully enumerated (API error).")
+    group_roles: dict[str, str] = {}
+    for role in roles_data.get("roles", []) or []:
+        if role.get("isSuperAdminRole"):
+            continue
+        privileges = {str(p.get("privilegeName", "")).upper() for p in role.get("rolePrivileges", []) or [] if isinstance(p, dict)}
+        if any(p.startswith("GROUPS_") for p in privileges):
+            group_roles[str(role.get("roleId"))] = role.get("roleName", str(role.get("roleId")))
+    assignments = [a for a in roles_data.get("assignments", []) or [] if str(a.get("roleId")) in group_roles]
+    expected = "Every assignment of a role with Groups privileges carries a security-group or non-security-group condition"
+    if not assignments:
+        return make_pass(**common, details="No delegated role with Groups privileges is assigned; only super admins manage groups.",
+                         actual_value={"group_role_assignments": 0}, expected_value=expected)
+    users_by_id = {str(u.get("id")): u.get("primary_email") for u in data.get("users", []) or [] if u.get("id")}
+    groups_by_id = {str(g.get("id")): g.get("email") for g in data.get("groups", []) or [] if g.get("id")}
+
+    def who(a: dict) -> str:
+        key = str(a.get("assignedTo"))
+        return users_by_id.get(key) or groups_by_id.get(key) or key
+
+    unconditioned, security_only, non_security_only, other = [], [], [], []
+    for a in assignments:
+        label = f"{who(a)} ({group_roles[str(a.get('roleId'))]})"
+        condition = str(a.get("condition") or "").strip()
+        if not condition:
+            unconditioned.append(label)
+        elif "groups.security" in condition and condition.startswith("!"):
+            non_security_only.append(label)
+        elif "groups.security" in condition:
+            security_only.append(label)
+        else:
+            other.append(f"{label}: {condition[:80]}")
+    actual = {"unconditioned": unconditioned, "security_groups_only": security_only,
+              "non_security_groups_only": non_security_only, "other_condition": other}
+    if unconditioned:
+        return make_fail(**common, details=(f"{len(unconditioned)} of {len(assignments)} Groups-privilege assignment(s) have no "
+                                            f"condition, so these admins can change every group including the security groups "
+                                            f"that grant access: {'; '.join(unconditioned[:15])}"),
+                         actual_value=actual, expected_value=expected)
+    return make_pass(**common, details=(f"All {len(assignments)} Groups-privilege assignment(s) are conditioned "
+                                        f"({len(security_only)} to security groups, {len(non_security_only)} to non-security groups"
+                                        + (f", {len(other)} with another condition" if other else "") + ")."),
+                     actual_value=actual, expected_value=expected)

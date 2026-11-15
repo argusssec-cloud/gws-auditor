@@ -844,6 +844,9 @@ EDITIONS_DATA_REGIONS = (("frontline_starter",) + _FRONTLINE_STD_PLUS + ("busine
 EDITIONS_DATA_PROCESSING_REGION = ("frontline_plus", "enterprise_plus", "enterprise_essentials_plus")
 # Assured Controls add-on (either SKU)
 EDITIONS_ASSURED_CONTROLS = ("assured_controls", "assured_controls_plus")
+# Conditions on admin role assignments (security / non-security groups): Workspace Updates 2024-12-12
+# "Provision Groups admin role for specific group types" lists Enterprise Standard and Plus, Education Standard and Plus.
+EDITIONS_ADMIN_ROLE_CONDITIONS = _ENTERPRISE + _EDU_STD_PLUS
 
 # Human-readable license names
 LICENSE_TIER_NAMES = {
@@ -878,6 +881,7 @@ REMEDIATION_THEMES = {
         "ADD-50",
     ],
     "Multi-Factor Authentication": [
+        "ADD-64",
         "CIS-4.1.1.1", "CIS-4.1.1.2", "CIS-4.1.1.3", "GWS.COMMONCONTROLS.1.2",
         "GWS.COMMONCONTROLS.1.3", "GWS.COMMONCONTROLS.1.4", "GWS.COMMONCONTROLS.1.5",
         "ADD-18", "ADD-32",
@@ -951,12 +955,14 @@ REMEDIATION_THEMES = {
         "ADD-27",
     ],
     "Groups Security": [
+        "ADD-63",
         "CIS-3.1.6.1", "CIS-3.1.6.2", "GWS.GROUPS.2.1", "CIS-3.1.6.3", "CIS-3.1.8.1",
         "GWS.GROUPS.1.1", "GWS.GROUPS.1.2", "GWS.GROUPS.1.3",
         "GWS.GROUPS.3.1", "GWS.GROUPS.4.1", "ADD-37",
         "ADD-46",
     ],
     "Account & Directory Security": [
+        "ADD-65", "ADD-66",
         "CIS-4.3.1", "CIS-4.3.2", "CIS-5.1.1.1", "CIS-5.1.1.2",
         "CIS-1.1.1", "GWS.COMMONCONTROLS.6.2", "CIS-1.1.2", "CIS-1.2.1.1",
         "CIS-4.1.2.1", "CIS-4.1.2.2", "CIS-4.1.3.1", "CIS-4.1.4.1", "CIS-4.1.5.1", "GWS.COMMONCONTROLS.5.4", "GWS.COMMONCONTROLS.5.2",
@@ -969,6 +975,9 @@ REMEDIATION_THEMES = {
     "Gemini & AI Controls": [
         "ADD-13", "ADD-14", "ADD-15", "ADD-16",
         "GWS.GEMINI.1.1", "GWS.GEMINI.2.1", "GWS.GEMINI.3.1", "GWS.GEMINI.3.2", "GWS.GEMINI.4.1",
+    ],
+    "Chrome Browser Hardening": [
+        "ADD-67", "ADD-68", "ADD-69", "ADD-70",
     ],
     "Encryption & Compliance": [
         "ADD-11", "ADD-26", "ADD-21",

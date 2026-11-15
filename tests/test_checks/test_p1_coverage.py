@@ -80,12 +80,16 @@ class TestPasswordAlert:
 
     def test_not_deployed_fails(self, full_audit_data):
         from gws_auditor.checks.additional import check_password_alert
-        full_audit_data["policies"]["security"] = {"password_alert": {"deployed": False, "trigger": 0}}
+        full_audit_data["policies"]["security"] = {"password_alert": {"deployed": False, "trigger": "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_NO_WARNING"}}
         assert check_password_alert(full_audit_data).status == Status.FAIL
 
-    @pytest.mark.parametrize("trigger, status", [(0, Status.FAIL), (1, Status.PASS), (2, Status.PASS)])
+    @pytest.mark.parametrize("trigger, status", [
+        ("PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_NO_WARNING", Status.FAIL),
+        ("PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PASSWORD_REUSE", Status.PASS),
+        ("PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PHISHING_REUSE", Status.WARN),
+    ])
     def test_end_to_end_from_chrome_policy(self, full_audit_data, trigger, status):
-        """The provider maps chrome_policies.password_protection_warning_trigger to the alert state."""
+        """The provider maps chrome_policies.password_protection_warning_trigger (chrome.users.PasswordAlert enum) to the alert state."""
         from gws_auditor.checks.additional import check_password_alert
         from gws_auditor.provider import normalize_data
         raw = dict(full_audit_data)
@@ -101,5 +105,5 @@ class TestPasswordAlert:
         raw["org_units"] = []
         raw["policies"] = {"security": []}
         raw["chrome_policies"] = {}
-        raw["api_errors"] = [{"operation": "resolve_policy(chrome.users.PasswordProtectionWarningTrigger)", "error": "403"}]
+        raw["api_errors"] = [{"operation": "resolve_policy(chrome.users.PasswordAlert)", "error": "403"}]
         assert check_password_alert(normalize_data(raw)).status == Status.MANUAL

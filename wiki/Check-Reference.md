@@ -4,29 +4,29 @@
 
 ## Overview
 
-The GWS Security Auditor implements **280 security checks** across four frameworks:
+The GWS Security Auditor implements **288 security checks** across four frameworks:
 
 | Framework | Full Name | Checks |
 |-----------|-----------|-------:|
 | **CIS** | CIS Google Workspace Foundations Benchmark v1.4.1 | 86 |
 | **CISA** | CISA SCuBA Secure Configuration Baselines for Google Workspace v1 (ScubaGoggles 1.1.0) | 138 |
-| **GOOGLE** | Google Security Checklist for Medium & Large Businesses | 23 |
-| **OTHER** | Additional best-practice checks | 33 |
-| | **Total** | **280** |
+| **GOOGLE** | Google Security Checklist for Medium & Large Businesses | 35 |
+| **OTHER** | Additional best-practice checks | 29 |
+| | **Total** | **288** |
 
 ## Check Levels
 
-- **L1 (Level 1)** -- 181 checks. Baseline security settings that should be applied to all organizations. Minimal performance impact, broad applicability.
-- **L2 (Level 2)** -- 99 checks. Advanced security settings for organizations with higher security requirements. May restrict functionality or require additional configuration.
+- **L1 (Level 1)** -- 183 checks. Baseline security settings that should be applied to all organizations. Minimal performance impact, broad applicability.
+- **L2 (Level 2)** -- 105 checks. Advanced security settings for organizations with higher security requirements. May restrict functionality or require additional configuration.
 
 ## Severity
 
 | Severity | Checks |
 |----------|-------:|
 | **CRITICAL** | 24 |
-| **HIGH** | 108 |
-| **MEDIUM** | 107 |
-| **LOW** | 41 |
+| **HIGH** | 110 |
+| **MEDIUM** | 112 |
+| **LOW** | 42 |
 
 41 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
 
@@ -102,6 +102,15 @@ Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.
 | GWS.CALENDAR.3.2 | Ensure Calendar Interop uses Microsoft 365 Graph API | L1 | CISA | MEDIUM | IA-2(1), IA-2(2) |  |  | unscored |
 | GWS.CALENDAR.4.1 | Ensure paid appointment scheduling is disabled | L2 | CISA | LOW | CM-7 |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
 
+## Chrome Browser
+
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-67 | Ensure Safe Browsing is always on in Chrome and its warnings cannot be bypassed | L1 | GOOGLE | HIGH |  |  |  |  |
+| ADD-68 | Ensure the Chrome password manager is allowed | L2 | GOOGLE | LOW |  |  |  |  |
+| ADD-69 | Ensure Chrome blocks malicious downloads and keeps site isolation on | L2 | GOOGLE | MEDIUM |  |  |  |  |
+| ADD-70 | Ensure Chrome and ChromeOS auto-update and force a relaunch to apply updates | L2 | GOOGLE | MEDIUM |  |  |  |  |
+
 ## Classroom
 
 | ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
@@ -130,6 +139,7 @@ Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.
 | ADD-43 | Ensure suspended users do not hold admin roles | L1 | OTHER | MEDIUM |  |  |  |  |
 | ADD-44 | Review active user accounts with no recent sign-in | L2 | OTHER | LOW |  |  |  | unscored |
 | ADD-52 | Review active users without a Google Workspace licence | L2 | OTHER | LOW |  |  |  | unscored |
+| ADD-65 | Ensure super admin accounts have recovery email and phone set | L2 | GOOGLE | MEDIUM |  |  |  |  |
 | CIS-1.1.1 | Ensure that between two and four Super Admin accounts are designated | L1 | CIS | CRITICAL | AC-6(5) | PR.AA-05 |  |  |
 | CIS-1.1.2 | Ensure Super Admin accounts are used only for super admin activities | L1 | CIS | MEDIUM | AC-6(2) | PR.AA-05 |  |  |
 | CIS-1.2.1.1 | Ensure directory data is restricted from external access | L1 | CIS | HIGH | AC-3(11) | PR.AA-05 |  |  |
@@ -149,7 +159,7 @@ Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.
 | ADD-24 | Ensure AI-powered data classification is enabled for Drive | L2 | GOOGLE | MEDIUM |  |  |  | unscored, editions: Frontline Plus, Enterprise Plus |
 | ADD-25 | Ensure Drive trust rules are configured | L2 | GOOGLE | MEDIUM |  |  |  | editions: Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
 | ADD-57 | Ensure Drive SDK is disabled | L2 | OTHER | MEDIUM |  |  |  |  |
-| ADD-60 | Ensure Google Drive Add-Ons are disabled | L2 | OTHER | MEDIUM |  |  |  |  |
+| ADD-60 | Ensure Google Drive Add-Ons are disabled | L2 | GOOGLE | MEDIUM |  |  |  |  |
 | CIS-3.1.2.1.1.1 | Ensure users are warned when sharing outside domain | L1 | CIS | HIGH | AC-21b | PR.AA-05 |  |  |
 | CIS-3.1.2.1.1.2 | Ensure users cannot publish files publicly | L1 | CIS | CRITICAL | AC-22a | PR.AA-05 |  |  |
 | CIS-3.1.2.1.1.3 | Ensure sharing is controlled by domain allowlists | L2 | CIS | HIGH | AC-4 | PR.AA-05 |  |  |
@@ -311,7 +321,8 @@ Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.
 |----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
 | ADD-28 | Ensure groups have active members | L1 | OTHER | LOW |  |  |  | unscored |
 | ADD-37 | Ensure group discoverability is restricted | L2 | OTHER | MEDIUM |  |  |  |  |
-| ADD-46 | Ensure groups cannot be joined by anyone on the internet | L1 | OTHER | MEDIUM |  |  |  |  |
+| ADD-46 | Ensure groups cannot be joined by anyone on the internet | L1 | GOOGLE | MEDIUM |  |  |  |  |
+| ADD-63 | Ensure spam moderation is enabled for every group | L1 | GOOGLE | MEDIUM |  |  |  |  |
 | CIS-3.1.6.1 | Ensure external Groups access is private | L1 | CIS | HIGH | AC-3 | PR.AA-05 |  |  |
 | CIS-3.1.6.2 | Ensure group creation is restricted to admins | L1 | CIS | MEDIUM | AC-2c | PR.AA-05 |  |  |
 | CIS-3.1.6.3 | Ensure group conversation viewing is restricted | L1 | CIS | MEDIUM | AC-6 | PR.AA-05 |  |  |
@@ -360,12 +371,14 @@ Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.
 | ADD-41 | Ensure admin roles are not assigned to groups anyone can join | L1 | OTHER | HIGH |  |  |  |  |
 | ADD-47 | Ensure compromised, unencrypted or unlocked devices do not keep access | L1 | OTHER | HIGH |  |  |  |  |
 | ADD-48 | Review custom admin roles with account-takeover privileges | L2 | OTHER | MEDIUM |  |  |  |  |
-| ADD-49 | Review who holds Google Vault privileges | L2 | OTHER | LOW |  |  |  | unscored |
+| ADD-49 | Review who holds Google Vault privileges | L2 | GOOGLE | LOW |  |  |  | unscored |
 | ADD-53 | Ensure the Admin console is protected by a Context-Aware Access level | L2 | GOOGLE | MEDIUM |  |  |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
 | ADD-54 | Ensure a device-based Context-Aware Access level is enforced | L2 | GOOGLE | HIGH |  |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
 | ADD-55 | Review Context-Aware Access levels that are not assigned to any app | L2 | OTHER | MEDIUM |  |  |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
 | ADD-56 | Review Context-Aware Access denials | L2 | OTHER | MEDIUM |  |  |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-58 | Ensure less secure app access is disabled | L1 | OTHER | CRITICAL |  |  |  |  |
+| ADD-58 | Ensure less secure app access is disabled | L1 | GOOGLE | CRITICAL |  |  |  |  |
+| ADD-64 | Ensure every super admin has a spare security key enrolled | L2 | GOOGLE | HIGH |  |  |  |  |
+| ADD-66 | Ensure delegated Groups admin roles are conditioned on a group type | L2 | GOOGLE | MEDIUM |  |  |  | editions: Enterprise Standard, Enterprise Plus, Education Standard, Education Plus |
 | CIS-4.1.1.1 | Ensure 2-Step Verification is enforced for all admins | L1 | CIS | CRITICAL | IA-2(1) | PR.AA-03 |  |  |
 | CIS-4.1.1.2 | Ensure hardware security keys are required for admins | L2 | CIS | CRITICAL | IA-2(6) | PR.AA-03 |  |  |
 | CIS-4.1.1.3 | Ensure 2-Step Verification is enforced for all users | L1 | CIS | CRITICAL | IA-2(2) | PR.AA-03 |  |  |

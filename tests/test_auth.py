@@ -566,3 +566,76 @@ class TestCloudCredentials:
     def test_oauth_has_no_cloud_identity(self):
         auth = AuthManager({"auth": {"method": "oauth"}})
         assert auth.cloud_credentials() is None
+
+
+
+class TestUnauthorizedScopeFallback:
+    """A delegated scope missing from the Admin console grant must not stop the whole scan (1.6.0 added
+    cloud-identity.inboundsso.readonly; the token endpoint refuses the entire request when one scope is missing)."""
+
+    def _manager(self, tmp_path):
+        from gws_auditor.auth import AuthManager
+        cred = tmp_path / "sa.json"
+        cred.write_text("{}")
+        return AuthManager({"auth": {"method": "service_account", "credentials_file": str(cred), "subject": "admin@example.com"}})
+
+    def test_unauthorized_scope_is_dropped_and_recorded(self, tmp_path, monkeypatch):
+        from unittest.mock import MagicMock
+        from gws_auditor import auth as auth_module
+        from gws_auditor.constants import SCOPES, SERVICE_ACCOUNT_SCOPES
+        missing = "https://www.googleapis.com/auth/cloud-identity.inboundsso.readonly"
+        assert missing in SCOPES
+
+        built = []
+
+        def fake_from_file(path, scopes=None):
+            creds = MagicMock()
+            creds.scopes = list(scopes or [])
+            creds.with_subject.return_value = creds
+
+            def refresh(request):
+                if missing in creds.scopes:
+                    raise Exception("unauthorized_client: Client is unauthorized to retrieve access tokens using this method")
+            creds.refresh.side_effect = refresh
+            built.append(creds)
+            return creds
+
+        monkeypatch.setattr(auth_module.service_account.Credentials, "from_service_account_file", staticmethod(fake_from_file))
+        monkeypatch.setattr(auth_module.AuthManager, "_build_http", lambda self: MagicMock())
+        monkeypatch.setattr(auth_module.google_auth_httplib2, "Request", lambda http: MagicMock())
+        manager = self._manager(tmp_path)
+        manager.authenticate()
+        assert manager.unauthorized_scopes == [missing]
+        assert missing not in manager.credentials.scopes
+        assert set(manager.credentials.scopes) == set(SCOPES + SERVICE_ACCOUNT_SCOPES) - {missing}
+
+    def test_other_refresh_errors_are_raised(self, tmp_path, monkeypatch):
+        from unittest.mock import MagicMock
+        import pytest
+        from gws_auditor import auth as auth_module
+
+        def fake_from_file(path, scopes=None):
+            creds = MagicMock()
+            creds.with_subject.return_value = creds
+            creds.refresh.side_effect = Exception("invalid_grant: Invalid email or User ID")
+            return creds
+
+        monkeypatch.setattr(auth_module.service_account.Credentials, "from_service_account_file", staticmethod(fake_from_file))
+        monkeypatch.setattr(auth_module.AuthManager, "_build_http", lambda self: MagicMock())
+        monkeypatch.setattr(auth_module.google_auth_httplib2, "Request", lambda http: MagicMock())
+        with pytest.raises(Exception, match="invalid_grant"):
+            self._manager(tmp_path).authenticate()
+
+    def test_provider_records_missing_scopes_as_api_errors(self):
+        from unittest.mock import MagicMock
+        from gws_auditor.provider import Provider
+        auth = MagicMock()
+        auth.unauthorized_scopes = ["https://www.googleapis.com/auth/cloud-identity.inboundsso.readonly"]
+        provider = Provider(auth, {"auth": {"customer_id": "C1"}, "options": {}})
+        for name in [n for n in dir(provider) if n.startswith("_get_") or n in ("_detect_drive_sdk",)]:
+            setattr(provider, name, MagicMock(return_value={} if "groups" not in name else []))
+        provider._get_groups_with_settings = MagicMock(return_value=[])
+        provider._save_cache = MagicMock()
+        data = provider.collect_all()
+        ops = [e["operation"] for e in data["api_errors"]]
+        assert "scope:https://www.googleapis.com/auth/cloud-identity.inboundsso.readonly" in ops

@@ -127,19 +127,91 @@ def defaults_for_setting(setting_key: str) -> dict:
     return {}
 
 
-# Chrome user-policy defaults (Chrome Policy API, not the Cloud Identity Policy API). An unset policy
-# resolves to nothing; these are what Chrome and Google document for that case.
+# Chrome policy defaults (Chrome Policy API, not the Cloud Identity Policy API). An unset policy
+# resolves to nothing; ``default_value`` is the ``defaultValue`` Google publishes for the field in
+# ``policySchemas.get`` (tests/fixtures/chrome_policy_schemas.json, read live 2026-11-15), ``unset``
+# is what that default means for the user, and ``satisfies`` whether it meets the check on its own.
 CHROME_POLICY_DEFAULTS: dict[str, dict] = {
-    "chrome.users.PasswordProtectionWarningTrigger": {
-        "unset": "Chrome's password protection service protects Google passwords only: a warning is shown when the "
-                 "Google Account password is reused on another site. Set the policy to extend protection to enterprise passwords.",
-        "satisfies": True,  # the warning is active for the Workspace (Google) password
-        "source": "https://raw.githubusercontent.com/chromium/chromium/main/components/policy/resources/templates/policy_definitions/SafeBrowsing/PasswordProtectionWarningTrigger.yaml",
+    "chrome.users.PasswordAlert": {
+        "unset": "Google's default is 'Trigger on password reuse on phishing page': Chrome warns only when the "
+                 "Google Account password is typed on a page Safe Browsing flags as phishing, not on every other site.",
+        "satisfies": False,  # the checklist wants a warning on any reuse of the corporate password
+        "default_value": "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PHISHING_REUSE",
+        "source": "https://support.google.com/chrome/a/answer/9102482",
     },
     "chrome.users.BoundSessionCredentialsEnabled": {
         "unset": "Device Bound Session Credentials are on by default for Google Workspace accounts (Chrome on Windows with a TPM, "
                  "rolled out by Chrome); the policy only forces them on or off.",
         "satisfies": True,
+        "default_value": "UNSET",
         "source": "https://knowledge.workspace.google.com/admin/security/prevent-cookie-theft-with-session-binding",
+    },
+    "chrome.users.GeminiSettings": {
+        "unset": "Gemini integrations in Chrome follow the Generative AI policy default, which allows generative AI "
+                 "features unless that default is set to 'Do not allow GenAI features'.",
+        "satisfies": False,
+        "default_value": "GEMINI_SETTINGS_ENUM_UNSET",
+        "source": "https://support.google.com/chrome/a/answer/16291696",
+    },
+    "chrome.users.GenAiDefaultSettings": {
+        "unset": "Allow GenAI features without improving AI models.",
+        "satisfies": False,
+        "default_value": "GEN_AI_DEFAULT_SETTINGS_ENUM_ALLOWED_WITHOUT_LOGGING",
+        "source": "https://support.google.com/chrome/a/answer/2657289#gen_ai_default_settings",
+    },
+    "chrome.users.SafeBrowsingProtectionLevel": {
+        "unset": "'Allow the user to decide': Safe Browsing starts in standard protection but every user can turn it off.",
+        "satisfies": False,
+        "default_value": "SAFE_BROWSING_PROTECTION_LEVEL_ENUM_USER_CHOICE",
+        "source": "https://support.google.com/chrome/a/answer/2657289#safe_browsing_protection_level",
+    },
+    "chrome.users.DisableSafeBrowsingProceedAnyway": {
+        "unset": "Users may bypass a Safe Browsing warning and proceed to the flagged page or download.",
+        "satisfies": False,
+        "default_value": False,
+        "source": "https://support.google.com/chrome/a/answer/2657289#disable_safe_browsing_proceed_anyway",
+    },
+    "chrome.users.PasswordManager": {
+        "unset": "'Allow the user to decide': the Chrome password manager is available (allowed by default) and a user may turn it off.",
+        "satisfies": True,
+        "default_value": "UNSET",
+        "source": "https://support.google.com/chrome/a/answer/2657289#password_manager_enabled",
+    },
+    "chrome.users.DownloadRestrictions": {
+        "unset": "'No special restrictions': Chrome warns about dangerous downloads but lets users keep them.",
+        "satisfies": False,
+        "default_value": "DOWNLOAD_RESTRICTION_ENUM_NO_SPECIAL_RESTRICTIONS",
+        "source": "https://support.google.com/chrome/a/answer/2657289#safe_browsing_download_restrictions",
+    },
+    "chrome.users.SiteIsolationBrowser": {
+        "unset": "The policy is off, which leaves Chrome's built-in behaviour: desktop Chrome has isolated every site in its own "
+                 "process since Chrome 67; the policy only forces that on or off.",
+        "satisfies": True,
+        "default_value": False,
+        "source": "https://www.chromium.org/Home/chromium-security/site-isolation/",
+    },
+    "chrome.users.ComponentUpdates": {
+        "unset": "Enable updates for all components.",
+        "satisfies": True,
+        "default_value": True,
+        "source": "https://support.google.com/chrome/a/answer/2657289#component_updates",
+    },
+    "chrome.users.AutoUpdateCheckPeriodNewV2": {
+        "unset": "Empty means Chrome checks for updates every 295 minutes; 0 would disable all auto-update checks.",
+        "satisfies": True,
+        "default_value": None,
+        "source": "https://support.google.com/chrome/a/answer/2657289#auto_update_check_period",
+    },
+    "chrome.users.RelaunchNotificationWithDurationV2": {
+        "unset": "'No relaunch notification': a pending update is applied only when the user restarts Chrome on their own.",
+        "satisfies": False,
+        "default_value": "RELAUNCH_NOTIFICATION_ENUM_NO_NOTIFICATION",
+        "source": "https://support.google.com/chrome/a/answer/2657289#relaunch_notification",
+    },
+    "chrome.devices.AutoUpdateSettings": {
+        "unset": "Allow updates: managed ChromeOS devices install OS updates automatically.",
+        "satisfies": True,
+        "default_value": False,
+        "source": "https://support.google.com/chrome/a/answer/3168106",
     },
 }

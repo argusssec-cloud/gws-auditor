@@ -429,46 +429,57 @@ def check_password_alert(data: dict) -> CheckResult:
     password_alert = security.get("password_alert", {})
     deployed = password_alert.get("deployed", None)
     trigger = password_alert.get("trigger", None)
-
+    # chrome.users.PasswordAlert.passwordProtectionWarningTrigger (live schema 2026-11-15)
+    _OFF = "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_NO_WARNING"
+    _REUSE = "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PASSWORD_REUSE"
+    _PHISHING = "PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PHISHING_REUSE"
     _TRIGGER_LABELS = {
-        0: "Off",
-        1: "Password reuse warning",
-        2: "Phishing and password reuse warning",
+        _OFF: "No password protection warning",
+        _REUSE: "Trigger on password reuse",
+        _PHISHING: "Trigger on password reuse on phishing page",
     }
-
+    expected = "Trigger on password reuse (warn whenever the corporate password is entered on an unauthorized site)"
+    common = dict(check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC)
+    if deployed is True and trigger == _PHISHING:
+        return make_warn(
+            **common,
+            details=("Password alert is set to 'Trigger on password reuse on phishing page': users are warned only when "
+                     "the corporate password is typed on a page Safe Browsing flags as phishing. Google's checklist wants "
+                     "a warning on any reuse of the corporate password on another site ('Trigger on password reuse')."),
+            actual_value={"trigger": trigger, "label": _TRIGGER_LABELS[_PHISHING]},
+            expected_value=expected, remediation=_REMED,
+        )
     if deployed is True:
         label = _TRIGGER_LABELS.get(trigger, str(trigger))
         return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            **common,
             details=f"Password protection warning is enabled: {label}.",
             actual_value={"trigger": trigger, "label": label},
-            expected_value="Password reuse warning or higher",
+            expected_value=expected,
         )
-
     if deployed is False:
         return make_fail(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details="Password protection warning is disabled.",
+            **common,
+            details="Password protection warning is disabled ('No password protection warning').",
             actual_value={"trigger": trigger},
-            expected_value="Password reuse warning or higher",
+            expected_value=expected,
             remediation=_REMED,
         )
-
-    if chrome_policy_unset(data, "chrome.users.PasswordProtectionWarningTrigger"):
-        default = CHROME_POLICY_DEFAULTS["chrome.users.PasswordProtectionWarningTrigger"]
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=("Password protection warning is not set by policy, so Chrome's default applies: " + default["unset"]
-                     + f" (source: {default['source']})"),
-            actual_value={"trigger": None, "source": "chrome default"},
-            expected_value="Password reuse warning or higher",
+    if chrome_policy_unset(data, "chrome.users.PasswordAlert"):
+        default = CHROME_POLICY_DEFAULTS["chrome.users.PasswordAlert"]
+        return make_warn(
+            **common,
+            details=("Password alert is not set by policy, so Chrome's default applies: " + default["unset"]
+                     + f" Google's checklist wants 'Trigger on password reuse' (source: {default['source']})."),
+            actual_value={"trigger": default["default_value"], "source": "chrome default"},
+            expected_value=expected, remediation=_REMED,
         )
     return make_review(
-        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+        **common,
         details=(
             "Password protection warning status could not be determined "
             "(Chrome policies were not collected or the resolve call failed). Verify in Admin console > Devices > "
-            "Chrome > Settings > User & browser settings > Password Alert."
+            "Chrome > Settings > Users & browsers > Password alert."
         ),
         remediation=_REMED,
     )
@@ -834,48 +845,46 @@ def check_gemini_workspace_features(data: dict) -> CheckResult:
     ),
 )
 def check_gemini_chrome(data: dict) -> CheckResult:
-    """Gemini in Chrome should be disabled to prevent uncontrolled AI data processing."""
+    """Gemini in Chrome should be disabled to prevent uncontrolled AI data processing.
+
+    ``policies.gemini.chrome.enabled`` is derived by the provider from the Chrome Policy API:
+    ``chrome.users.GeminiSettings`` (ENABLED / DISABLED) or, when that is UNSET or absent, the
+    ``chrome.users.GenAiDefaultSettings`` value it falls back to. Both unset means Chrome's
+    default, which allows Gemini; a failed Chrome collection is MANUAL, not FAIL.
+    """
+    _REMED = (
+        "Admin console > Devices > Chrome > Settings > Users & browsers > Generative AI > Gemini integrations: "
+        "'Do not allow Gemini integrations' (or set the Generative AI policy defaults to 'Do not allow GenAI "
+        "features'). https://support.google.com/chrome/a/answer/16291696"
+    )
+    common = dict(check_id="ADD-14", title="Ensure Gemini in Chrome is disabled",
+                  level="L2", source="GOOGLE", section="Gemini")
+    expected = "Disabled for all OUs"
     policies = data.get("policies", {})
-    gemini = policies.get("gemini", {})
-    chrome = gemini.get("chrome", {})
-    enabled = chrome.get("enabled", None)
-
+    enabled = policies.get("gemini", {}).get("chrome", {}).get("enabled", None)
     if enabled is False:
-        return make_pass(
-            check_id="ADD-14",
-            title="Ensure Gemini in Chrome is disabled",
-            level="L2", source="GOOGLE", section="Gemini",
-            details="Gemini in Chrome is disabled.",
-            actual_value=enabled,
-            expected_value="Disabled for all OUs",
-        )
-
-    if enabled is None:
+        return make_pass(**common, details="Gemini in Chrome is disabled.", actual_value=False, expected_value=expected)
+    if enabled is True:
         return make_fail(
-            check_id="ADD-14",
-            title="Ensure Gemini in Chrome is disabled",
-            level="L2", source="GOOGLE", section="Gemini",
-            details="Gemini in Chrome is not explicitly disabled via Chrome policy.",
-            actual_value=None,
-            expected_value="Disabled for all OUs",
-            remediation=(
-                "Admin console > Devices > Chrome > Settings > User & browser settings. "
-                "Disable Gemini in Chrome to prevent browser-level AI data processing. https://support.google.com/chrome/a/answer/16291696"
-            ),
+            **common,
+            details=("Gemini in Chrome is allowed: GeminiSettings permits Gemini integrations, or it is unset and the "
+                     "Generative AI policy default allows GenAI features."),
+            actual_value=True, expected_value=expected, remediation=_REMED,
         )
-
-    return make_fail(
-        check_id="ADD-14",
-        title="Ensure Gemini in Chrome is disabled",
-        level="L2", source="GOOGLE", section="Gemini",
-        details="Gemini in Chrome is enabled.",
-        actual_value=enabled,
-        expected_value="Disabled for all OUs",
-        remediation=(
-            "Admin console > Devices > Chrome > Settings > User & browser settings. "
-            "Disable Gemini in Chrome to prevent browser-based AI from "
-            "processing organizational data. https://support.google.com/chrome/a/answer/16291696"
-        ),
+    if chrome_policy_unset(data, "chrome.users.GeminiSettings") and chrome_policy_unset(data, "chrome.users.GenAiDefaultSettings"):
+        default = CHROME_POLICY_DEFAULTS["chrome.users.GeminiSettings"]
+        return make_fail(
+            **common,
+            details=("Gemini in Chrome is not set by policy, so Chrome's default applies: " + default["unset"]
+                     + f" (source: {default['source']})"),
+            actual_value={"gemini_settings": None, "source": "chrome default"},
+            expected_value=expected, remediation=_REMED,
+        )
+    return make_review(
+        **common,
+        details=("Gemini in Chrome could not be determined (Chrome policies were not collected or the resolve call "
+                 "failed). Verify in Admin console > Devices > Chrome > Settings > Users & browsers > Generative AI."),
+        remediation=_REMED,
     )
 
 
