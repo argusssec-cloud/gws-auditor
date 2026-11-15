@@ -16,8 +16,8 @@ The GWS Security Auditor implements **242 security checks** across four framewor
 
 ## Check Levels
 
-- **L1 (Level 1)** -- 149 checks. Baseline security settings that should be applied to all organizations. Minimal performance impact, broad applicability.
-- **L2 (Level 2)** -- 93 checks. Advanced security settings for organizations with higher security requirements. May restrict functionality or require additional configuration.
+- **L1 (Level 1)** -- 150 checks. Baseline security settings that should be applied to all organizations. Minimal performance impact, broad applicability.
+- **L2 (Level 2)** -- 92 checks. Advanced security settings for organizations with higher security requirements. May restrict functionality or require additional configuration.
 
 ## Severity
 
@@ -96,7 +96,7 @@ Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.
 | CIS-3.1.1.2.2 | Ensure internal sharing for secondary calendars is configured | L2 | CIS | MEDIUM | AC-6 | PR.AA-05 |  |  |
 | CIS-3.1.1.3.1 | Ensure Calendar web offline access is disabled | L2 | CIS | MEDIUM | CM-7b | PR.PS-01 |  | unscored |
 | GWS.CALENDAR.3.1 | Ensure Calendar Interop is disabled | L2 | CISA | MEDIUM | CM-7 |  |  |  |
-| GWS.CALENDAR.3.2 | Ensure Calendar Interop uses Microsoft 365 Graph API | L2 | CISA | MEDIUM | IA-2(1), IA-2(2) |  |  | unscored |
+| GWS.CALENDAR.3.2 | Ensure Calendar Interop uses Microsoft 365 Graph API | L1 | CISA | MEDIUM | IA-2(1), IA-2(2) |  |  | unscored |
 | GWS.CALENDAR.4.1 | Ensure paid appointment scheduling is disabled | L2 | CISA | LOW | CM-7 |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
 
 ## Classroom
