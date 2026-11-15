@@ -113,6 +113,8 @@ def format_standards(check) -> str:
         parts.append(f"{NIST_SP800_53_NAME}: {', '.join(sp)}")
     if csf:
         parts.append(f"{NIST_CSF_NAME}: {', '.join(csf)}")
+    if getattr(check, "bod_25_01", False):
+        parts.append("CISA BOD 25-01 requirement")
     return " | ".join(parts)
 
 class HTMLReporter:

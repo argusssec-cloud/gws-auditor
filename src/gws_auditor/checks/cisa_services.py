@@ -7,6 +7,8 @@
 Only checks NOT already covered by CIS/OTHER/GOOGLE or the main cisa_scuba module.
 """
 
+import re
+
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
                    format_ou_values_readable, latest_setting_changes, field_value, ou_verdict)
 from ..constants import (
@@ -42,11 +44,110 @@ def _spam_override_rules(value: dict) -> list[dict]:
     return [r for r in rules if isinstance(r, dict)] if isinstance(rules, list) else []
 
 
+def _gmail_address_lists(data: dict) -> dict[str, dict] | None:
+    """``{list id: {"name", "addresses": [..]}}`` from ``gmail.email_address_lists`` (top OU), or
+    ``None`` when the setting was not collected. Disabled lists (``gmail.rule_states``) are emptied."""
+    gmail = data.get("policies", {}).get("gmail", {})
+    entries = get_ou_values(gmail, "email_address_lists")
+    if not entries:
+        return None
+    enabled = _gmail_enabled_rule_ids(gmail)
+    lists: dict[str, dict] = {}
+    for entry in entries:
+        for item in (field_value(entry, "emailAddressList") or []):
+            if not isinstance(item, dict):
+                continue
+            lid = str(item.get("id", ""))
+            address_list = item.get("addressList") or item.get("blockedAddressList") or {}
+            addrs = [str(a.get("address", "")) if isinstance(a, dict) else str(a)
+                     for a in (address_list.get("address", []) if isinstance(address_list, dict) else [])]
+            if enabled is not None and lid not in enabled:
+                addrs = []
+            lists.setdefault(lid, {"name": item.get("name", lid), "addresses": addrs})
+    return lists
+
+
+def _gmail_enabled_rule_ids(gmail: dict) -> set[str] | None:
+    states = get_ou_values(gmail, "rule_states")
+    if not states:
+        return None
+    enabled = set()
+    for entry in states:
+        for rs in (field_value(entry, "ruleStates") or []):
+            if isinstance(rs, dict) and rs.get("enabled") is True:
+                enabled.add(str(rs.get("ruleId")))
+    return enabled
+
+
+def _is_domain_entry(address: str) -> bool:
+    return bool(re.match(r"^[^@\s]+\.[^@\s]+$", address.strip()))
+
+
+def _spam_override_domains(data: dict, entry: dict, flag: str, list_field: str) -> tuple[list[str], list[str]]:
+    """``(domain findings, unresolved rules)`` for the enabled spam-override rules of one OU that
+    have *flag* set: a finding names rule, list and the domain entries; a rule whose lists cannot
+    be read (no list reference or lists not collected) is reported as unresolved."""
+    gmail = data.get("policies", {}).get("gmail", {})
+    enabled = _gmail_enabled_rule_ids(gmail)
+    lists = _gmail_address_lists(data)
+    findings, unresolved = [], []
+    for rule in _spam_override_rules(entry["value"]):
+        if rule.get(flag) is not True:
+            continue
+        if enabled is not None and rule.get("ruleId") is not None and str(rule.get("ruleId")) not in enabled:
+            continue
+        name = str(rule.get("description") or rule.get("ruleId") or "rule")
+        list_ids = rule.get(list_field)
+        if lists is None or not isinstance(list_ids, list):
+            unresolved.append(name)
+            continue
+        for lid in list_ids:
+            info = lists.get(str(lid))
+            if info is None:
+                unresolved.append(f"{name} (list {lid} not returned)")
+                continue
+            domains = [a for a in info["addresses"] if _is_domain_entry(a)]
+            if domains:
+                findings.append(f"{name}: {info['name']} ({', '.join(domains)})")
+    return findings, unresolved
+
+
+def _spam_override_domain_check(data: dict, *, flag: str, list_field: str, check_id: str, title: str,
+                                level: str, fail_text: str, pass_text: str, remediation: str) -> CheckResult:
+    common = dict(check_id=check_id, title=title, level=level, source="CISA", section="Gmail")
+    gmail = data.get("policies", {}).get("gmail", {})
+    ou_values = get_ou_values(gmail, "spam_override_lists")
+    if not ou_values:
+        return make_review(**common, remediation=remediation,
+                           details="'gmail.spam_override_lists' was not returned by the Cloud Identity Policy API; verify in the Admin console.")
+    bad, unknown, clean = [], [], 0
+    for entry in ou_values:
+        findings, unresolved = _spam_override_domains(data, entry, flag, list_field)
+        ou = entry.get("org_unit", "/")
+        if findings:
+            bad.append(f"{ou}: {'; '.join(findings)}")
+        elif unresolved:
+            unknown.append(f"{ou}: {', '.join(unresolved)}")
+        else:
+            clean += 1
+    if bad:
+        return make_fail(**common, remediation=remediation,
+                         details=f"{len(bad)} OU(s) {fail_text}: {' | '.join(bad)}",
+                         actual_value={"domain_entries": bad}, expected_value="No domain entries in the address lists")
+    if unknown:
+        return make_review(**common, remediation=remediation,
+                           details=(f"Spam override rules exist whose address lists could not be read (the Policy API "
+                                    f"returned no list reference or 'gmail.email_address_lists' was not collected): "
+                                    f"{' | '.join(unknown)}. Check the lists for domain entries in the Admin console."))
+    return make_pass(**common, details=f"All {clean} OU(s) {pass_text}.",
+                     actual_value=f"{clean} OU(s) safe", expected_value="No domain entries in the address lists")
+
+
 def _rule_bypasses_all_senders(rule: dict) -> bool:
-    """True if a spam override rule bypasses filters for internal or all senders."""
-    if rule.get("bypassInternalSenders") is True:
+    """True if a spam override rule bypasses filters or hides warnings for all senders."""
+    if rule.get("bypassInternalSenders") is True or rule.get("hideWarningBannerForAll") is True:
         return True
-    # The "all internal and external senders" option; exact field name is not documented
+    # Other "all internal and external senders" flags, should the API add them
     return any(v is True for k, v in rule.items()
                if "all" in k.lower() and ("bypass" in k.lower() or "hidewarning" in k.lower()))
 
@@ -83,6 +184,8 @@ def check_dmarc_published(data: dict) -> CheckResult:
         dmarc = domain_dns.get("dmarc", {})
         if not dmarc.get("record_found", False):
             missing_dmarc.append(domain_name)
+        elif int(dmarc.get("record_count", 1) or 1) > 1:
+            missing_dmarc.append(f"{domain_name} ({dmarc.get('record_count')} DMARC records; RFC 7489 allows one)")
 
     if not missing_dmarc:
         return make_pass(
@@ -140,8 +243,13 @@ def check_dmarc_reject(data: dict) -> CheckResult:
         domain_dns = dns_records.get(domain_name, {})
         dmarc = domain_dns.get("dmarc", {})
         policy = dmarc.get("policy", "")
-        if policy != "reject":
-            non_reject.append(domain_name)
+        inherited = dmarc.get("inherited_from", "")
+        # A record found on the organisational (parent) domain governs this subdomain through
+        # its sp= tag, which defaults to p= (RFC 7489 / RFC 9989 discovery, ScubaGoggles 1.1.0).
+        effective = (dmarc.get("subdomain_policy") or policy) if inherited else policy
+        if effective != "reject":
+            non_reject.append(f"{domain_name} ({'sp' if inherited else 'p'}={effective or 'none'}"
+                              + (f" via _dmarc.{inherited}" if inherited else "") + ")")
 
     if not non_reject:
         return make_pass(
@@ -277,80 +385,17 @@ def check_flagged_email_action(data: dict) -> CheckResult:
     ),
 )
 def check_spam_approved_senders_domains(data: dict) -> CheckResult:
-    """No domains should be configured to bypass spam filters."""
-    _ID = "GWS.GMAIL.18.1"
-    _TITLE = "Ensure no domains bypass spam filters"
-    _L, _S, _SEC = "L1", "CISA", "Gmail"
-    _REMED = (
+    """SCuBA GMAIL.18.1: a spam-override rule with 'bypassSelectedSenders' may list addresses but not whole domains.
+    The attached ``gmail.email_address_lists`` are resolved (disabled lists via ``gmail.rule_states``)
+    and an entry without '@' is a domain."""
+    return _spam_override_domain_check(
+        data, flag="bypassSelectedSenders", list_field="bypassSenderAllowlist",
+        check_id="GWS.GMAIL.18.1", title="Ensure no domains bypass spam filters", level="L1",
+        fail_text="let whole domains bypass spam filters through approved-sender lists", pass_text="list only individual addresses in spam-bypass allowlists",
+        remediation=(
         "Admin console > Apps > Google Workspace > Gmail > Spam, "
         "Phishing and Malware. Remove all domains from the approved "
         "senders list. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
-    )
-
-    policies = data.get("policies", {})
-    gmail = policies.get("gmail", {})
-
-    # OU-aware path
-    ou_values = get_ou_values(gmail, "spam_override_lists")
-    if ou_values:
-        def judge(entry: dict):
-            # spamOverride[] absent -> documented default [] (no override rules), judged as compliant
-            rules = [r for r in _spam_override_rules(entry["value"])
-                     if r.get("bypassSelectedSenders") is True]
-            if rules:
-                return False, len(rules)
-            domains = field_value(entry, "approvedSendersDomains", "approved_senders_domains")
-            if isinstance(domains, list) and len(domains) > 0:
-                return False, len(domains)
-            return True
-
-        return ou_verdict(
-            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="have approved sender domains",
-            pass_text="have no approved sender domains",
-            expected_value="No approved sender domains", remediation=_REMED,
-        )
-
-    # Fallback: mapped root-level value
-    spam_settings = gmail.get("spam_settings", {})
-    approved = spam_settings.get("approved_senders_domains", None)
-
-    if isinstance(approved, list) and len(approved) == 0:
-        return make_pass(
-            check_id="GWS.GMAIL.18.1",
-            title="Ensure no domains bypass spam filters",
-            level="L1", source="CISA", section="Gmail",
-            details="No domains are configured to bypass spam filters.",
-            actual_value={"approved_domains_count": 0},
-            expected_value="No approved sender domains",
-        )
-
-    if approved is None:
-        return make_manual(
-            check_id="GWS.GMAIL.18.1",
-            title="Ensure no domains bypass spam filters",
-            level="L1", source="CISA", section="Gmail",
-            details="Could not determine approved senders domain list.",
-            remediation=(
-                "Admin console > Apps > Google Workspace > Gmail > Spam, "
-                "Phishing and Malware. Remove all domains from the approved "
-                "senders list. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
-            ),
-        )
-
-    count = len(approved) if isinstance(approved, list) else "unknown"
-    return make_fail(
-        check_id="GWS.GMAIL.18.1",
-        title="Ensure no domains bypass spam filters",
-        level="L1", source="CISA", section="Gmail",
-        details=f"{count} domain(s) are configured to bypass spam filters.",
-        actual_value={"approved_domains_count": count},
-        expected_value="No approved sender domains",
-        remediation=(
-            "Admin console > Apps > Google Workspace > Gmail > Spam, "
-            "Phishing and Malware. Remove all domains from the approved "
-            "senders list. Allowing domains to bypass spam filters "
-            "increases the risk of phishing and malware delivery. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
         ),
     )
 
@@ -368,81 +413,17 @@ def check_spam_approved_senders_domains(data: dict) -> CheckResult:
     ),
 )
 def check_spam_domains_bypass_hide_warnings(data: dict) -> CheckResult:
-    """No domains should bypass spam filters while also hiding warnings."""
-    _ID = "GWS.GMAIL.18.2"
-    _TITLE = "Ensure no domains bypass spam filters and hide warnings"
-    _L, _S, _SEC = "L1", "CISA", "Gmail"
-    _REMED = (
+    """SCuBA GMAIL.18.2: a spam-override rule with 'hideWarningBannerFromSelectedSenders' may list addresses but not whole domains.
+    The attached ``gmail.email_address_lists`` are resolved (disabled lists via ``gmail.rule_states``)
+    and an entry without '@' is a domain."""
+    return _spam_override_domain_check(
+        data, flag="hideWarningBannerFromSelectedSenders", list_field="hideWarningBannerSenderAllowlist",
+        check_id="GWS.GMAIL.18.2", title="Ensure no domains bypass spam filters and hide warnings", level="L1",
+        fail_text="hide spam warnings for whole domains through approved-sender lists", pass_text="list only individual addresses in warning-hiding allowlists",
+        remediation=(
         "Admin console > Apps > Google Workspace > Gmail > Spam, "
         "Phishing and Malware. Remove all domains that bypass spam "
         "filters and hide warnings from users. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
-    )
-
-    policies = data.get("policies", {})
-    gmail = policies.get("gmail", {})
-
-    # OU-aware path
-    ou_values = get_ou_values(gmail, "spam_override_lists")
-    if ou_values:
-        def judge(entry: dict):
-            # spamOverride[] absent -> documented default [] (no override rules), judged as compliant
-            rules = [r for r in _spam_override_rules(entry["value"])
-                     if r.get("bypassSelectedSenders") is True
-                     and r.get("hideWarningBannerFromSelectedSenders") is True]
-            if rules:
-                return False, len(rules)
-            bypass = field_value(entry, "domainsBypassAndHideWarnings", "domains_bypass_and_hide_warnings")
-            if isinstance(bypass, list) and len(bypass) > 0:
-                return False, len(bypass)
-            return True
-
-        return ou_verdict(
-            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="have domains bypassing and hiding warnings",
-            pass_text="have no domains bypassing and hiding warnings",
-            expected_value="No domains bypass and hide warnings", remediation=_REMED,
-        )
-
-    # Fallback: mapped root-level value
-    spam_settings = gmail.get("spam_settings", {})
-    bypass_hide = spam_settings.get("domains_bypass_and_hide_warnings", None)
-
-    if isinstance(bypass_hide, list) and len(bypass_hide) == 0:
-        return make_pass(
-            check_id="GWS.GMAIL.18.2",
-            title="Ensure no domains bypass spam filters and hide warnings",
-            level="L1", source="CISA", section="Gmail",
-            details="No domains bypass spam filters while hiding warnings.",
-            actual_value={"bypass_hide_count": 0},
-            expected_value="No domains bypass and hide warnings",
-        )
-
-    if bypass_hide is None:
-        return make_manual(
-            check_id="GWS.GMAIL.18.2",
-            title="Ensure no domains bypass spam filters and hide warnings",
-            level="L1", source="CISA", section="Gmail",
-            details="Could not determine domains that bypass and hide spam warnings.",
-            remediation=(
-                "Admin console > Apps > Google Workspace > Gmail > Spam, "
-                "Phishing and Malware. Remove all domains that bypass spam "
-                "filters and hide warnings from users. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
-            ),
-        )
-
-    count = len(bypass_hide) if isinstance(bypass_hide, list) else "unknown"
-    return make_fail(
-        check_id="GWS.GMAIL.18.2",
-        title="Ensure no domains bypass spam filters and hide warnings",
-        level="L1", source="CISA", section="Gmail",
-        details=f"{count} domain(s) bypass spam filters and hide warnings.",
-        actual_value={"bypass_hide_count": count},
-        expected_value="No domains bypass and hide warnings",
-        remediation=(
-            "Admin console > Apps > Google Workspace > Gmail > Spam, "
-            "Phishing and Malware. Remove all domains that bypass spam "
-            "filters and suppress warnings. This is especially dangerous "
-            "as users will not see any indication of suspicious mail. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
         ),
     )
 
@@ -1056,10 +1037,10 @@ def check_drive_non_member_access(data: dict) -> CheckResult:
 
 
 @check(
-    check_id="GWS.DRIVEDOCS.5.1",
+    check_id="ADD-60",
     title="Ensure Google Drive Add-Ons are disabled",
-    level="L1",
-    source="CISA",
+    level="L2",
+    source="OTHER",
     section="Drive and Docs",
     remediation=(
         "Admin console > Apps > Google Workspace > Drive and Docs > "
@@ -1067,10 +1048,14 @@ def check_drive_non_member_access(data: dict) -> CheckResult:
     ),
 )
 def check_drive_add_ons_disabled(data: dict) -> CheckResult:
-    """Google Drive Add-Ons should be disabled to reduce third-party attack surface."""
-    _ID = "GWS.DRIVEDOCS.5.1"
+    """Google Drive Add-Ons should be disabled to reduce third-party attack surface.
+
+    Was GWS.DRIVEDOCS.5.1 until SCuBA v1 replaced that policy with Drive for Desktop (1.6.0); CIS v1.4.1
+    dropped its add-ons recommendation too, so this is kept as an additional check.
+    """
+    _ID = "ADD-60"
     _TITLE = "Ensure Google Drive Add-Ons are disabled"
-    _L, _S, _SEC = "L1", "CISA", "Drive and Docs"
+    _L, _S, _SEC = "L2", "OTHER", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Features and Applications. Disable Google Drive Add-Ons. https://knowledge.workspace.google.com/admin/drive/allow-third-party-apps-for-drive-files"
@@ -1116,9 +1101,9 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
 
     if add_ons_enabled is False:
         return make_pass(
-            check_id="GWS.DRIVEDOCS.5.1",
+            check_id="ADD-60",
             title="Ensure Google Drive Add-Ons are disabled",
-            level="L1", source="CISA", section="Drive and Docs",
+            level="L2", source="OTHER", section="Drive and Docs",
             details="Google Drive Add-Ons are disabled.",
             actual_value=add_ons_enabled,
             expected_value="Disabled for all OUs",
@@ -1126,9 +1111,9 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
 
     if add_ons_enabled is None:
         return make_review(
-            check_id="GWS.DRIVEDOCS.5.1",
+            check_id="ADD-60",
             title="Ensure Google Drive Add-Ons are disabled",
-            level="L1", source="CISA", section="Drive and Docs",
+            level="L2", source="OTHER", section="Drive and Docs",
             details=(
                 "Drive Add-Ons availability is not exposed by the Cloud "
                 "Identity Policy API — verify in Admin console."
@@ -1140,9 +1125,9 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
         )
 
     return make_fail(
-        check_id="GWS.DRIVEDOCS.5.1",
+        check_id="ADD-60",
         title="Ensure Google Drive Add-Ons are disabled",
-        level="L1", source="CISA", section="Drive and Docs",
+        level="L2", source="OTHER", section="Drive and Docs",
         details="Google Drive Add-Ons are enabled.",
         actual_value=add_ons_enabled,
         expected_value="Disabled for all OUs",
@@ -1156,8 +1141,8 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
 
 
 @check(
-    check_id="GWS.DRIVEDOCS.6.1",
-    title="Ensure Drive for Desktop is restricted to authorized devices",
+    check_id="GWS.DRIVEDOCS.5.1",
+    title="Ensure Drive for Desktop is enabled only for authorized devices",
     level="L1",
     source="CISA",
     section="Drive and Docs",
@@ -1168,9 +1153,9 @@ def check_drive_add_ons_disabled(data: dict) -> CheckResult:
     ),
 )
 def check_drive_desktop_restricted(data: dict) -> CheckResult:
-    """Drive for Desktop should be restricted to authorized devices or disabled entirely."""
-    _ID = "GWS.DRIVEDOCS.6.1"
-    _TITLE = "Ensure Drive for Desktop is restricted to authorized devices"
+    """Drive for Desktop should be restricted to authorized devices or disabled entirely (SCuBA v1 5.1; 6.1 in v0.6)."""
+    _ID = "GWS.DRIVEDOCS.5.1"
+    _TITLE = "Ensure Drive for Desktop is enabled only for authorized devices"
     _L, _S, _SEC = "L1", "CISA", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
@@ -1213,8 +1198,8 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
             else "Drive for Desktop is restricted to authorized devices."
         )
         return make_pass(
-            check_id="GWS.DRIVEDOCS.6.1",
-            title="Ensure Drive for Desktop is restricted to authorized devices",
+            check_id="GWS.DRIVEDOCS.5.1",
+            title="Ensure Drive for Desktop is enabled only for authorized devices",
             level="L1", source="CISA", section="Drive and Docs",
             details=detail,
             actual_value={
@@ -1226,8 +1211,8 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
 
     if desktop_authorized_only is None and desktop_allowed is None:
         return make_manual(
-            check_id="GWS.DRIVEDOCS.6.1",
-            title="Ensure Drive for Desktop is restricted to authorized devices",
+            check_id="GWS.DRIVEDOCS.5.1",
+            title="Ensure Drive for Desktop is enabled only for authorized devices",
             level="L1", source="CISA", section="Drive and Docs",
             details="Could not determine Drive for Desktop device restriction setting.",
             remediation=(
@@ -1238,8 +1223,8 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
         )
 
     return make_fail(
-        check_id="GWS.DRIVEDOCS.6.1",
-        title="Ensure Drive for Desktop is restricted to authorized devices",
+        check_id="GWS.DRIVEDOCS.5.1",
+        title="Ensure Drive for Desktop is enabled only for authorized devices",
         level="L1", source="CISA", section="Drive and Docs",
         details="Drive for Desktop is not restricted to authorized devices.",
         actual_value={
@@ -1260,6 +1245,34 @@ def check_drive_desktop_restricted(data: dict) -> CheckResult:
 # ===========================================================================
 # Google Chat - CISA SCuBA service-specific checks
 # ===========================================================================
+
+
+_RANSOMWARE_REMED = (
+    "Admin console > Apps > Google Workspace > Drive and Docs > Ransomware protection (or Security > Alert center "
+    "rules). Turn on monitoring for potential ransomware corruption so affected files are flagged and restorable. "
+    "https://knowledge.workspace.google.com/admin/drive/protect-your-organization-from-ransomware"
+)
+
+
+@check(
+    check_id="GWS.DRIVEDOCS.5.2",
+    scored=False,  # Admin-console-only control: no API or audit-log signal known
+    title="Ensure monitoring for potential ransomware corruption in Drive is enabled",
+    level="L1",
+    source="CISA",
+    section="Drive and Docs",
+    remediation=_RANSOMWARE_REMED,
+)
+def check_drive_ransomware_monitoring(data: dict) -> CheckResult:
+    """SCuBA v1 5.2 (SHALL): no API exposes the Drive ransomware-monitoring setting."""
+    return make_review(
+        check_id="GWS.DRIVEDOCS.5.2", title="Ensure monitoring for potential ransomware corruption in Drive is enabled",
+        level="L1", source="CISA", section="Drive and Docs",
+        details=("Drive ransomware monitoring is not exposed by the Cloud Identity Policy API or by an admin audit-log "
+                 "event the auditor knows; verify it in the Admin console."),
+        remediation=_RANSOMWARE_REMED,
+    )
+
 
 @check(
     check_id="GWS.CHAT.3.1",
@@ -1438,7 +1451,7 @@ def check_chat_reporting_categories(data: dict) -> CheckResult:
     check_id="GWS.CALENDAR.3.2",
     scored=False,  # P3: the interop authentication method is not exposed by the Policy API; MANUAL by design
     title="Ensure Calendar Interop uses Microsoft 365 Graph API",
-    level="L2",
+    level="L1",
     source="CISA",
     section="Calendar",
     remediation=(
@@ -1456,7 +1469,7 @@ def check_calendar_interop_auth_method(data: dict) -> CheckResult:
     """
     _ID = "GWS.CALENDAR.3.2"
     _TITLE = "Ensure Calendar Interop uses Microsoft 365 Graph API"
-    _L, _S, _SEC = "L2", "CISA", "Calendar"
+    _L, _S, _SEC = "L1", "CISA", "Calendar"
     _REMED = (
         "Admin console > Apps > Google Workspace > Calendar > "
         "Calendar Interop management. Switch the endpoint from "

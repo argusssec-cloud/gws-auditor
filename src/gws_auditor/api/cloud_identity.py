@@ -68,3 +68,22 @@ class CloudIdentityClient(BaseAPIClient):
         except Exception as exc:
             self.record_error("list_endpoint_devices", exc)
             return []
+
+    def list_inbound_sso_assignments(self, customer_id: str) -> list[dict[str, Any]]:
+        """List the customer's inbound SSO assignments (``inboundSsoAssignments.list``).
+
+        Each assignment binds an OU (``targetOrgUnit: orgUnits/<id>``) or a group
+        (``targetGroup: groups/<id>``) to an ``ssoMode`` (``SSO_OFF``, ``SAML_SSO``,
+        ``DOMAIN_WIDE_SAML_IF_ENABLED``) and, for SAML, a ``samlSsoProfile``. Needs the
+        ``cloud-identity.inboundsso.readonly`` scope. Used by GWS.COMMONCONTROLS.6.1 to
+        tell which privileged accounts sign in through a third-party IdP.
+        """
+        cid = str(customer_id or "").strip()
+        if cid and not cid.startswith("customers/"):
+            cid = f"customers/{cid}"
+        return self.paginate(
+            self.service.inboundSsoAssignments().list,
+            items_key="inboundSsoAssignments",
+            filter=f'customer=="{cid or "customers/my_customer"}"',
+            pageSize=100,
+        )

@@ -61,6 +61,7 @@ DEFAULT_CONFIG = {
         # CIS-4.2.1.4: OAuth client IDs whose domain-wide delegation has been vetted; a
         # listed client with org-wide write scopes is reported but not flagged.
         "dwd_allowlist": [],
+        "dmarc_report_contacts": ["reports@dmarc.cyber.dhs.gov"],  # GWS.GMAIL.4.3 required rua recipient(s)
         # OU paths or fnmatch patterns whose permissive sharing is
         # intentional. Empty list = use the built-in pattern set in
         # checks/base.py (_DEFAULT_EXTERNAL_SHARING_PATTERNS).

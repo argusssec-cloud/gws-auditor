@@ -26,6 +26,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly",
     # Cloud Identity – Policy API
     "https://www.googleapis.com/auth/cloud-identity.policies.readonly",
+    # Cloud Identity – Inbound SSO assignments (GWS.COMMONCONTROLS.6.1: which OUs/groups sign in through an IdP)
+    "https://www.googleapis.com/auth/cloud-identity.inboundsso.readonly",
     # Cloud Identity – Devices (endpoint verification: Windows/Mac/Linux)
     "https://www.googleapis.com/auth/cloud-identity.devices.readonly",
     # Chrome Policy API
@@ -279,8 +281,7 @@ HIGH_CHECKS: frozenset[str] = frozenset({
     "CIS-4.2.3.1",         # Ensure DLP policies are configured for Drive
     "GWS.DRIVEDOCS.1.2",  # Ensure receiving files from non-allowlisted domains is disabled
     "GWS.DRIVEDOCS.1.8",  # Ensure default access for new items is 'private to owner'
-    "GWS.COMMONCONTROLS.18.3",  # Ensure DLP policy is configured for Gmail
-    "GWS.COMMONCONTROLS.18.4",  # Ensure DLP policies block external sharing
+    "GWS.COMMONCONTROLS.18.1",  # Ensure DLP rules cover Drive, Calendar, Chat and Gmail for PII
     "ADD-12",              # Ensure DLP rules are configured for Gmail
     "ADD-35",              # Ensure Shared Drives have secure default restrictions
     # External chat & collaboration
@@ -361,8 +362,8 @@ LOW_CHECKS: frozenset[str] = frozenset({
     "GWS.ASSUREDCONTROLS.1.2",  # Ensure support access is restricted to US personnel
     "GWS.ASSUREDCONTROLS.2.1",  # Ensure multi-region data processing is disabled
     # Meet recording/transcription (low direct security impact)
-    "GWS.MEET.6.1",       # Ensure automatic recording is disabled
-    "GWS.MEET.6.2",       # Ensure automatic transcription is disabled
+    "GWS.MEET.5.1",       # Ensure automatic recording is disabled (6.1 before SCuBA v1)
+    "GWS.MEET.5.2",       # Ensure automatic transcription is disabled (6.2 before SCuBA v1)
     # Calendar scheduling
     "GWS.CALENDAR.4.1",   # Ensure paid appointment scheduling is disabled
     # Data regions (compliance, not direct security)
@@ -482,6 +483,180 @@ NIST_MAPPINGS: dict[str, dict[str, tuple[str, ...]]] = {
     "CIS-6.7": {"sp800_53": ('SI-4(5)',), "csf": ('DE.AE-06',)},
     "CIS-6.8": {"sp800_53": ('SI-4(5)',), "csf": ('DE.AE-06',)},
 }
+
+# NIST SP 800-53 Rev. 5 (FedRAMP High baseline) controls per CISA SCuBA policy, copied from the
+# '_NIST SP 800-53 Rev. 5 FedRAMP High Baseline Mapping_' line of the SCuBA Google Workspace
+# baselines v1 (ScubaGoggles 1.1.0, 2026-10-20). SCuBA publishes no CSF mapping.
+NIST_MAPPINGS.update({
+    "GWS.ASSUREDCONTROLS.1.1": {"sp800_53": ('SC-7(10)(a)',), "csf": ()},
+    "GWS.ASSUREDCONTROLS.1.2": {"sp800_53": ('SC-7(10)(a)',), "csf": ()},
+    "GWS.ASSUREDCONTROLS.2.1": {"sp800_53": ('SC-7(10)(a)',), "csf": ()},
+    "GWS.CALENDAR.1.1": {"sp800_53": ('AC-3', 'SC-7(10)(a)',), "csf": ()},
+    "GWS.CALENDAR.1.2": {"sp800_53": ('AC-3', 'SC-7(10)(a)',), "csf": ()},
+    "GWS.CALENDAR.2.1": {"sp800_53": ('AT-2b',), "csf": ()},
+    "GWS.CALENDAR.3.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.CALENDAR.3.2": {"sp800_53": ('IA-2(1)', 'IA-2(2)',), "csf": ()},
+    "GWS.CALENDAR.4.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.CHAT.1.1": {"sp800_53": ('AU-2', 'SC-7(10)',), "csf": ()},
+    "GWS.CHAT.1.2": {"sp800_53": ('AU-9',), "csf": ()},
+    "GWS.CHAT.2.1": {"sp800_53": ('AC-3', 'SC-7(10)',), "csf": ()},
+    "GWS.CHAT.3.1": {"sp800_53": ('AU-2', 'SC-7(10)',), "csf": ()},
+    "GWS.CHAT.4.1": {"sp800_53": ('AC-3',), "csf": ()},
+    "GWS.CHAT.5.1": {"sp800_53": ('IR-6',), "csf": ()},
+    "GWS.CHAT.5.2": {"sp800_53": ('IR-6',), "csf": ()},
+    "GWS.CLASSROOM.1.1": {"sp800_53": ('AC-3',), "csf": ()},
+    "GWS.CLASSROOM.1.2": {"sp800_53": ('SC-7(10)',), "csf": ()},
+    "GWS.CLASSROOM.2.1": {"sp800_53": ('AC-6(10)',), "csf": ()},
+    "GWS.CLASSROOM.3.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.CLASSROOM.4.1": {"sp800_53": ('AC-6(10)',), "csf": ()},
+    "GWS.CLASSROOM.5.1": {"sp800_53": ('AC-6(5)', 'AC-6(10)',), "csf": ()},
+    "GWS.COMMONCONTROLS.1.1": {"sp800_53": ('IA-2(1)', 'IA-2(2)', 'IA-5c', 'IA-5g', 'IA-2(8)',), "csf": ()},
+    "GWS.COMMONCONTROLS.1.2": {"sp800_53": ('IA-2(1)', 'IA-2(2)',), "csf": ()},
+    "GWS.COMMONCONTROLS.1.3": {"sp800_53": ('CM-7b', 'IA-5c',), "csf": ()},
+    "GWS.COMMONCONTROLS.1.4": {"sp800_53": ('IA-2(1)', 'IA-2(2)',), "csf": ()},
+    "GWS.COMMONCONTROLS.1.5": {"sp800_53": ('IA-2(1)', 'IA-2(2)',), "csf": ()},
+    "GWS.COMMONCONTROLS.2.1": {"sp800_53": ('IA-3',), "csf": ()},
+    "GWS.COMMONCONTROLS.3.1": {"sp800_53": ('IA-2(1)', 'IA-2(2)',), "csf": ()},
+    "GWS.COMMONCONTROLS.3.2": {"sp800_53": ('IA-2(1)', 'IA-2(2)',), "csf": ()},
+    "GWS.COMMONCONTROLS.4.1": {"sp800_53": ('IA-11',), "csf": ()},
+    "GWS.COMMONCONTROLS.5.1": {"sp800_53": ('IA-5(1)',), "csf": ()},
+    "GWS.COMMONCONTROLS.5.2": {"sp800_53": ('IA-5(1)',), "csf": ()},
+    "GWS.COMMONCONTROLS.5.3": {"sp800_53": ('IA-5(1)',), "csf": ()},
+    "GWS.COMMONCONTROLS.5.4": {"sp800_53": ('IA-5(1)',), "csf": ()},
+    "GWS.COMMONCONTROLS.5.5": {"sp800_53": ('IA-5(1)',), "csf": ()},
+    "GWS.COMMONCONTROLS.5.6": {"sp800_53": ('IA-5(1)',), "csf": ()},
+    "GWS.COMMONCONTROLS.6.1": {"sp800_53": ('AC-6(5)',), "csf": ()},
+    "GWS.COMMONCONTROLS.6.2": {"sp800_53": ('AC-6(5)',), "csf": ()},
+    "GWS.COMMONCONTROLS.7.1": {"sp800_53": ('IA-2',), "csf": ()},
+    "GWS.COMMONCONTROLS.8.1": {"sp800_53": ('IA-5d', 'IA-5g',), "csf": ()},
+    "GWS.COMMONCONTROLS.8.2": {"sp800_53": ('IA-5d', 'IA-5g',), "csf": ()},
+    "GWS.COMMONCONTROLS.8.3": {"sp800_53": ('SC-7(10)',), "csf": ()},
+    "GWS.COMMONCONTROLS.9.1": {"sp800_53": ('IA-2(1)', 'IA-2(2)', 'IA-5c', 'IA-5d', 'IA-5g', 'SI-3', 'SI-8',), "csf": ()},
+    "GWS.COMMONCONTROLS.9.2": {"sp800_53": ('IA-2(1)', 'IA-2(2)', 'IA-5c', 'IA-5d', 'IA-5g', 'SI-3', 'SI-8',), "csf": ()},
+    "GWS.COMMONCONTROLS.10.1": {"sp800_53": ('SI-3',), "csf": ()},
+    "GWS.COMMONCONTROLS.10.2": {"sp800_53": ('AC-6',), "csf": ()},
+    "GWS.COMMONCONTROLS.10.3": {"sp800_53": ('SI-3',), "csf": ()},
+    "GWS.COMMONCONTROLS.10.4": {"sp800_53": ('SI-3',), "csf": ()},
+    "GWS.COMMONCONTROLS.10.5": {"sp800_53": ('IA-2(1)', 'IA-2(2)',), "csf": ()},
+    "GWS.COMMONCONTROLS.11.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.COMMONCONTROLS.12.1": {"sp800_53": ('CM-7', 'SC-7(10)',), "csf": ()},
+    "GWS.COMMONCONTROLS.13.1": {"sp800_53": ('SI-4(5)',), "csf": ()},
+    "GWS.COMMONCONTROLS.14.1": {"sp800_53": ('SI-4(5)',), "csf": ()},
+    "GWS.COMMONCONTROLS.14.2": {"sp800_53": ('AU-11',), "csf": ()},
+    "GWS.COMMONCONTROLS.15.1": {"sp800_53": ('SC-7(10)',), "csf": ()},
+    "GWS.COMMONCONTROLS.15.2": {"sp800_53": ('SC-7(10)',), "csf": ()},
+    "GWS.COMMONCONTROLS.16.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.COMMONCONTROLS.16.2": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.COMMONCONTROLS.16.3": {"sp800_53": ('AC-3', 'SC-7(10)',), "csf": ()},
+    "GWS.COMMONCONTROLS.16.4": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.COMMONCONTROLS.17.1": {"sp800_53": ('AC-5',), "csf": ()},
+    "GWS.COMMONCONTROLS.18.1": {"sp800_53": ('SC-7(10)',), "csf": ()},
+    "GWS.COMMONCONTROLS.18.2": {"sp800_53": ('AC-3', 'SC-7(10)',), "csf": ()},
+    "GWS.DRIVEDOCS.1.1": {"sp800_53": ('AC-3', 'SC-7(10)',), "csf": ()},
+    "GWS.DRIVEDOCS.1.2": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.DRIVEDOCS.1.3": {"sp800_53": ('AT-2b',), "csf": ()},
+    "GWS.DRIVEDOCS.1.4": {"sp800_53": ('IA-8', 'SC-7(10)',), "csf": ()},
+    "GWS.DRIVEDOCS.1.5": {"sp800_53": ('IA-8',), "csf": ()},
+    "GWS.DRIVEDOCS.1.6": {"sp800_53": ('AC-3', 'IA-8', 'SC-7(10)',), "csf": ()},
+    "GWS.DRIVEDOCS.1.7": {"sp800_53": ('SC-7(10)',), "csf": ()},
+    "GWS.DRIVEDOCS.1.8": {"sp800_53": ('AC-6',), "csf": ()},
+    "GWS.DRIVEDOCS.1.9": {"sp800_53": ('IA-8', 'SC-7(10)',), "csf": ()},
+    "GWS.DRIVEDOCS.1.10": {"sp800_53": ('IA-8', 'SC-7(10)',), "csf": ()},
+    "GWS.DRIVEDOCS.1.11": {"sp800_53": ('IA-8', 'SC-7(10)',), "csf": ()},
+    "GWS.DRIVEDOCS.2.1": {"sp800_53": ('AC-6',), "csf": ()},
+    "GWS.DRIVEDOCS.2.2": {"sp800_53": ('AC-3',), "csf": ()},
+    "GWS.DRIVEDOCS.3.1": {"sp800_53": ('AC-3',), "csf": ()},
+    "GWS.DRIVEDOCS.4.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.DRIVEDOCS.5.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.DRIVEDOCS.5.2": {"sp800_53": ('CP-9', 'CP-10',), "csf": ()},
+    "GWS.GEMINI.1.1": {"sp800_53": ('SC-7(10)(a)',), "csf": ()},
+    "GWS.GEMINI.2.1": {"sp800_53": ('SC-7(10)(a)',), "csf": ()},
+    "GWS.GEMINI.3.1": {"sp800_53": ('AU-2', 'AU-11',), "csf": ()},
+    "GWS.GEMINI.3.2": {"sp800_53": ('AU-2', 'AU-11',), "csf": ()},
+    "GWS.GEMINI.4.1": {"sp800_53": ('SC-7(10)a',), "csf": ()},
+    "GWS.GMAIL.1.1": {"sp800_53": ('IA-2', 'SC-7(10)',), "csf": ()},
+    "GWS.GMAIL.2.1": {"sp800_53": ('SC-8',), "csf": ()},
+    "GWS.GMAIL.3.1": {"sp800_53": ('AC-2d',), "csf": ()},
+    "GWS.GMAIL.4.1": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.4.2": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.4.3": {"sp800_53": ('SI-4(5)',), "csf": ()},
+    "GWS.GMAIL.4.4": {"sp800_53": ('SI-4(5)',), "csf": ()},
+    "GWS.GMAIL.5.1": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.5.2": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.5.3": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.5.4": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.5.5": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.6.1": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.6.2": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.6.3": {"sp800_53": ('SI-4', 'SI-8', 'AT-2b',), "csf": ()},
+    "GWS.GMAIL.6.4": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.7.1": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.7.2": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.7.3": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.7.4": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.7.5": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.7.6": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.7.7": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.8.1": {"sp800_53": ('CM-7', 'SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.9.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.GMAIL.10.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.GMAIL.11.1": {"sp800_53": ('AC-4',), "csf": ()},
+    "GWS.GMAIL.12.1": {"sp800_53": ('AC-4',), "csf": ()},
+    "GWS.GMAIL.13.1": {"sp800_53": ('AT-2b',), "csf": ()},
+    "GWS.GMAIL.14.1": {"sp800_53": ('AC-4',), "csf": ()},
+    "GWS.GMAIL.15.1": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.16.1": {"sp800_53": ('SI-3', 'SI-8',), "csf": ()},
+    "GWS.GMAIL.17.1": {"sp800_53": ('SI-12', 'SC-7(10)',), "csf": ()},
+    "GWS.GMAIL.18.1": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.18.2": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GMAIL.18.3": {"sp800_53": ('SI-8',), "csf": ()},
+    "GWS.GROUPS.1.1": {"sp800_53": ('AC-3',), "csf": ()},
+    "GWS.GROUPS.1.2": {"sp800_53": ('CM-7', 'AC-6(10)',), "csf": ()},
+    "GWS.GROUPS.1.3": {"sp800_53": ('CM-7', 'AC-6(10)',), "csf": ()},
+    "GWS.GROUPS.2.1": {"sp800_53": ('AC-6(10)',), "csf": ()},
+    "GWS.GROUPS.3.1": {"sp800_53": ('AC-6',), "csf": ()},
+    "GWS.GROUPS.4.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.MEET.1.1": {"sp800_53": ('IA-2', 'IA-8',), "csf": ()},
+    "GWS.MEET.2.1": {"sp800_53": ('IA-8', 'SC-7(10)',), "csf": ()},
+    "GWS.MEET.3.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.MEET.4.1": {"sp800_53": ('SC-15',), "csf": ()},
+    "GWS.MEET.5.1": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.MEET.5.2": {"sp800_53": ('CM-7',), "csf": ()},
+    "GWS.MEET.6.1": {"sp800_53": ('AC-3', 'SC-7(10)',), "csf": ()},
+    "GWS.MEET.6.2": {"sp800_53": ('SC-7(10)',), "csf": ()},
+    "GWS.MEET.6.3": {"sp800_53": ('AC-3', 'SC-7(10)',), "csf": ()},
+    "GWS.SITES.1.1": {"sp800_53": ('CM-7',), "csf": ()},
+})
+
+# SCuBA policies tagged 'BOD 25-01 Requirement' in the v1 baselines: the CISA Binding Operational
+# Directive 25-01 makes them mandatory for US federal civilian agencies.
+BOD_25_01_CHECKS: frozenset[str] = frozenset({
+    "GWS.CALENDAR.1.1", "GWS.CALENDAR.1.2", "GWS.CALENDAR.2.1",
+    "GWS.CHAT.1.1", "GWS.CHAT.1.2", "GWS.CHAT.2.1",
+    "GWS.CHAT.4.1", "GWS.COMMONCONTROLS.1.1", "GWS.COMMONCONTROLS.1.2",
+    "GWS.COMMONCONTROLS.1.3", "GWS.COMMONCONTROLS.1.4", "GWS.COMMONCONTROLS.1.5",
+    "GWS.COMMONCONTROLS.4.1", "GWS.COMMONCONTROLS.5.1", "GWS.COMMONCONTROLS.5.2",
+    "GWS.COMMONCONTROLS.5.4", "GWS.COMMONCONTROLS.5.5", "GWS.COMMONCONTROLS.5.6",
+    "GWS.COMMONCONTROLS.6.1", "GWS.COMMONCONTROLS.6.2", "GWS.COMMONCONTROLS.8.1",
+    "GWS.COMMONCONTROLS.8.2", "GWS.COMMONCONTROLS.10.1", "GWS.COMMONCONTROLS.10.2",
+    "GWS.COMMONCONTROLS.10.3", "GWS.COMMONCONTROLS.10.4", "GWS.COMMONCONTROLS.10.5",
+    "GWS.COMMONCONTROLS.11.1", "GWS.COMMONCONTROLS.12.1", "GWS.COMMONCONTROLS.13.1",
+    "GWS.COMMONCONTROLS.15.1", "GWS.COMMONCONTROLS.15.2", "GWS.DRIVEDOCS.1.1",
+    "GWS.DRIVEDOCS.1.3", "GWS.DRIVEDOCS.1.6", "GWS.DRIVEDOCS.1.8",
+    "GWS.DRIVEDOCS.1.9", "GWS.DRIVEDOCS.2.2", "GWS.DRIVEDOCS.3.1",
+    "GWS.DRIVEDOCS.5.1", "GWS.GMAIL.3.1", "GWS.GMAIL.4.1",
+    "GWS.GMAIL.4.2", "GWS.GMAIL.4.3", "GWS.GMAIL.5.1",
+    "GWS.GMAIL.5.2", "GWS.GMAIL.5.3", "GWS.GMAIL.5.5",
+    "GWS.GMAIL.6.1", "GWS.GMAIL.6.2", "GWS.GMAIL.6.3",
+    "GWS.GMAIL.6.4", "GWS.GMAIL.7.1", "GWS.GMAIL.7.2",
+    "GWS.GMAIL.7.3", "GWS.GMAIL.7.4", "GWS.GMAIL.7.5",
+    "GWS.GMAIL.7.6", "GWS.GMAIL.7.7", "GWS.GMAIL.8.1",
+    "GWS.GMAIL.9.1", "GWS.GMAIL.12.1", "GWS.GMAIL.15.1",
+    "GWS.GMAIL.18.1", "GWS.GMAIL.18.2", "GWS.GMAIL.18.3",
+    "GWS.GROUPS.1.1", "GWS.GROUPS.4.1", "GWS.MEET.1.1",
+    "GWS.MEET.2.1", "GWS.MEET.3.1", "GWS.MEET.4.1",
+    "GWS.MEET.5.1", "GWS.MEET.5.2",
+})
 
 # OAuth scopes considered dangerous when granted to third-party apps
 DANGEROUS_OAUTH_SCOPES = [
@@ -698,7 +873,7 @@ LICENSE_TIER_NAMES = {
 REMEDIATION_THEMES = {
     "Email Authentication (SPF/DKIM/DMARC)": [
         "CIS-3.1.3.2.1", "CIS-3.1.3.2.2", "CIS-3.1.3.2.3",
-        "GWS.GMAIL.4.1", "GWS.GMAIL.4.2", "GWS.GMAIL.4.3", "GWS.GMAIL.4.4",
+        "GWS.GMAIL.4.1", "GWS.GMAIL.4.2", "GWS.GMAIL.4.3", "GWS.GMAIL.4.4", "ADD-62",
         "ADD-05", "ADD-06",
         "ADD-50",
     ],
@@ -722,15 +897,16 @@ REMEDIATION_THEMES = {
         "CIS-3.1.2.1.1.4", "CIS-3.1.2.1.1.5", "CIS-3.1.2.1.1.6",
         "GWS.DRIVEDOCS.1.2", "GWS.DRIVEDOCS.1.3", "GWS.DRIVEDOCS.1.4",
         "GWS.DRIVEDOCS.1.5", "GWS.DRIVEDOCS.1.6", "GWS.DRIVEDOCS.1.7",
-        "GWS.DRIVEDOCS.1.8", "GWS.DRIVEDOCS.1.9",
+        "GWS.DRIVEDOCS.1.8", "GWS.DRIVEDOCS.1.9", "GWS.DRIVEDOCS.5.1", "GWS.DRIVEDOCS.5.2", "ADD-60",
         "ADD-25",
         "GWS.DRIVEDOCS.1.10", "GWS.DRIVEDOCS.1.11",
     ],
     "Data Loss Prevention": [
         "CIS-4.2.3.1", "ADD-12", "ADD-22", "ADD-23",
-        "GWS.COMMONCONTROLS.18.2", "GWS.COMMONCONTROLS.18.3", "GWS.COMMONCONTROLS.18.4",
+        "GWS.COMMONCONTROLS.18.1", "GWS.COMMONCONTROLS.18.2",
     ],
     "Third-Party App Access": [
+        "GWS.COMMONCONTROLS.16.1", "GWS.COMMONCONTROLS.16.2", "GWS.COMMONCONTROLS.16.3", "GWS.COMMONCONTROLS.16.4",
         "CIS-4.2.1.1", "CIS-4.2.1.2", "CIS-4.2.1.3", "CIS-4.2.1.4",
         "GWS.COMMONCONTROLS.10.1", "GWS.COMMONCONTROLS.10.2",
         "GWS.COMMONCONTROLS.10.3", "GWS.COMMONCONTROLS.10.4",
@@ -769,7 +945,7 @@ REMEDIATION_THEMES = {
     ],
     "Meet Security": [
         "GWS.MEET.1.1", "GWS.MEET.2.1", "GWS.MEET.3.1",
-        "GWS.MEET.4.1", "GWS.MEET.5.1", "GWS.MEET.6.1", "GWS.MEET.6.2",
+        "GWS.MEET.4.1", "GWS.MEET.5.1", "GWS.MEET.5.2", "GWS.MEET.6.1", "GWS.MEET.6.2", "GWS.MEET.6.3", "ADD-61",
         "ADD-27",
     ],
     "Groups Security": [
@@ -789,7 +965,7 @@ REMEDIATION_THEMES = {
     ],
     "Gemini & AI Controls": [
         "ADD-13", "ADD-14", "ADD-15", "ADD-16",
-        "GWS.GEMINI.1.1", "GWS.GEMINI.2.1",
+        "GWS.GEMINI.1.1", "GWS.GEMINI.2.1", "GWS.GEMINI.3.1", "GWS.GEMINI.3.2", "GWS.GEMINI.4.1",
     ],
     "Encryption & Compliance": [
         "ADD-11", "ADD-26", "ADD-21",

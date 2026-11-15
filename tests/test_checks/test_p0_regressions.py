@@ -90,7 +90,7 @@ class TestDmarcWithoutRecord:
 
         full_audit_data["domains"] = [{"domainName": "example.com", "isPrimary": True}]
         full_audit_data["dns_records"] = {
-            "example.com": make_dns_domain(dmarc_record="v=DMARC1; p=reject; RUA=mailto:d@example.com")}
+            "example.com": make_dns_domain(dmarc_record="v=DMARC1; p=reject; RUA=mailto:d@example.com,mailto:e@example.com; RUF=mailto:f@example.com")}
         assert check_dmarc_reporting(full_audit_data).status == Status.PASS
 
 
@@ -282,13 +282,11 @@ class TestThirdPartyAppAccessEnums:
 
     @pytest.mark.parametrize("level", ["BLOCK_ALL", "BLOCK_ALL_SCOPES"])
     def test_block_all_passes_everywhere(self, full_audit_data, level):
-        from gws_auditor.checks.cisa_commoncontrols import (
-            check_third_party_api_restricted, check_unconfigured_third_party_apps)
+        from gws_auditor.checks.cisa_commoncontrols import check_unconfigured_third_party_apps
         from gws_auditor.checks.security_access import check_third_party_app_access
 
         d = self._data(full_audit_data, level)
         assert check_third_party_app_access(d).status == Status.PASS
-        assert check_third_party_api_restricted(d).status == Status.PASS
         assert check_unconfigured_third_party_apps(d).status == Status.PASS
 
     def test_sign_in_only_still_allows_unconfigured_apps(self, full_audit_data):
@@ -300,24 +298,22 @@ class TestThirdPartyAppAccessEnums:
         assert check_unconfigured_third_party_apps(d).status == Status.FAIL
 
     def test_admin_unspecified_is_the_permissive_default(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import (
-            check_third_party_api_restricted, check_unconfigured_third_party_apps)
+        from gws_auditor.checks.cisa_commoncontrols import check_unconfigured_third_party_apps
         from gws_auditor.checks.security_access import check_third_party_app_access, check_third_party_app_review
 
         d = self._data(full_audit_data, "ACCESS_LEVEL_UNSPECIFIED")
-        for fn in (check_third_party_app_access, check_third_party_api_restricted, check_unconfigured_third_party_apps):
+        for fn in (check_third_party_app_access, check_unconfigured_third_party_apps):
             result = fn(d)
             assert result.status == Status.FAIL, fn.__name__
             assert "console default" in str(result.actual_value)
         assert check_third_party_app_review(d).status == Status.FAIL
 
     def test_system_only_unspecified_stays_unknown(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import (
-            check_third_party_api_restricted, check_unconfigured_third_party_apps)
+        from gws_auditor.checks.cisa_commoncontrols import check_unconfigured_third_party_apps
         from gws_auditor.checks.security_access import check_third_party_app_access
 
         d = self._data(full_audit_data, None)
-        for fn in (check_third_party_app_access, check_third_party_api_restricted, check_unconfigured_third_party_apps):
+        for fn in (check_third_party_app_access, check_unconfigured_third_party_apps):
             assert fn(d).status == Status.MANUAL, fn.__name__
 
 

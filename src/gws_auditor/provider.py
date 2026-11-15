@@ -98,6 +98,7 @@ class Provider:
         ("token_logs", "_get_token_logs"),
         ("caa_events", "_get_caa_events"),
         ("access_context", "_get_access_context"),
+        ("inbound_sso", "_get_inbound_sso"),
         ("user_account_logs", "_get_user_account_logs"),
         ("usage_reports", "_get_usage_reports"),
         ("user_usage", "_get_user_usage"),
@@ -135,6 +136,7 @@ class Provider:
             "groups": groups,
             "group_members": self._get_group_members(groups),
             "roles": self._get_roles(),
+            "inbound_sso": self._get_inbound_sso(),
             "policies": self._get_all_policies(),
             "chrome_policies": self._get_chrome_policies(),
             "admin_logs": self._get_admin_activity_logs(),
@@ -567,6 +569,35 @@ class Provider:
         except Exception as e:
             self._record_error("get_caa_activities", e)
             return []
+
+    def _get_inbound_sso(self) -> dict:
+        """Inbound SSO assignments from the Cloud Identity API.
+
+        Returns ``{"collected", "assignments", "reason"}``. ``collected`` is False with a
+        ``reason`` when the scope is missing (403), the auth method cannot call the API, or
+        the call fails; GWS.COMMONCONTROLS.6.1 then reports ERROR instead of guessing.
+        """
+        result = {"collected": False, "assignments": [], "reason": ""}
+        try:
+            from .api.cloud_identity import CloudIdentityClient
+            client = CloudIdentityClient(
+                self.auth, max_retries=self.options.get("max_retries", DEFAULT_MAX_RETRIES),
+                rate_limit_qps=self.options.get("rate_limit_qps", DEFAULT_RATE_LIMIT_QPS))
+            result["assignments"] = client.list_inbound_sso_assignments(self.customer_id)
+            result["collected"] = True
+            self._propagate_client_errors(client)
+            logger.info("Collected %d inbound SSO assignment(s)", len(result["assignments"]))
+            return result
+        except Exception as e:
+            status = getattr(getattr(e, "resp", None), "status", None)
+            if status == 403:
+                result["reason"] = ("permission denied: add the cloud-identity.inboundsso.readonly scope to the "
+                                    "domain-wide delegation grant (or the OAuth consent) and re-run")
+                logger.warning("Inbound SSO assignments: %s", result["reason"])
+            else:
+                result["reason"] = f"{type(e).__name__}: {e}"
+                self._record_error("list_inbound_sso_assignments", e)
+            return result
 
     def _get_access_context(self) -> dict:
         """Context-Aware Access level inventory from Access Context Manager.

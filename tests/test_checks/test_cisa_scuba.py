@@ -3,7 +3,7 @@
 import pytest
 
 from gws_auditor.models import Status
-from tests.factories import make_ou_policy
+from tests.factories import make_admin_event, make_ou_policy
 
 
 class TestCisaGmail:
@@ -46,7 +46,7 @@ class TestCisaGmail:
             "example.com": {
                 "dmarc": {
                     "record_found": True,
-                    "record": "v=DMARC1; p=reject; rua=mailto:dmarc@example.com",
+                    "record": "v=DMARC1; p=reject; rua=mailto:reports@dmarc.cyber.dhs.gov,mailto:dmarc@example.com; ruf=mailto:dmarc@example.com",
                     "policy": "reject",
                 },
             },
@@ -1807,3 +1807,112 @@ class TestUnknownValuesAreManual:
             make_ou_policy("meet", "automatic_recording", {}, "/"),
             make_ou_policy("meet", "video_recording", {"enableRecording": True}, "/")]}
         assert check_meet_auto_recording(full_audit_data).status == Status.MANUAL
+
+
+def _dns(record, found=True):
+    return {"example.com": {"dmarc": {"record_found": found, "record": record, "policy": "reject"}}}
+
+
+class TestDmarcReportContact:
+    """GWS.GMAIL.4.3 (SCuBA v1): rua must include the required contact (default CISA's address)."""
+
+    def test_dhs_contact_present_passes(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_dmarc_report_contact
+        full_audit_data["domains"] = [{"domainName": "example.com"}]
+        full_audit_data["dns_records"] = _dns("v=DMARC1; p=reject; rua=mailto:reports@dmarc.cyber.dhs.gov!10m,mailto:dmarc@example.com")
+        assert check_dmarc_report_contact(full_audit_data).status == Status.PASS
+
+    def test_missing_contact_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_dmarc_report_contact
+        full_audit_data["domains"] = [{"domainName": "example.com"}]
+        full_audit_data["dns_records"] = _dns("v=DMARC1; p=reject; rua=mailto:dmarc@example.com")
+        result = check_dmarc_report_contact(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "dmarc@example.com" in result.details
+
+    def test_option_overrides_contact(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_dmarc_report_contact
+        full_audit_data["domains"] = [{"domainName": "example.com"}]
+        full_audit_data["_options"] = {"dmarc_report_contacts": ["DMARC@Example.com"]}
+        full_audit_data["dns_records"] = _dns("v=DMARC1; p=reject; rua=mailto:dmarc@example.com")
+        assert check_dmarc_report_contact(full_audit_data).status == Status.PASS
+
+    def test_no_record_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_dmarc_report_contact
+        full_audit_data["domains"] = [{"domainName": "example.com"}]
+        full_audit_data["dns_records"] = _dns("", found=False)
+        assert check_dmarc_report_contact(full_audit_data).status == Status.FAIL
+
+
+class TestMeetNotesSharing:
+    """GWS.MEET.6.1 / 6.2 (SCuBA v1): Gemini notes sharing from the admin log."""
+
+    HOST = "MeetGenAiSmartNotesDocAccessProto manage_smart_notes_doc_access"
+    DEFAULT = "MeetGenAiSmartNotesDocAccessProto default_smart_notes_doc_access"
+
+    def _ev(self, setting, value, ou="/"):
+        return make_admin_event("CHANGE_APPLICATION_SETTING", {"SETTING_NAME": setting, "NEW_VALUE": value, "ORG_UNIT_NAME": ou})
+
+    def test_host_override_on_fails_off_passes(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_meet_notes_host_override
+        full_audit_data["admin_logs"] = [self._ev(self.HOST, "true", "/Sales")]
+        result = check_meet_notes_host_override(full_audit_data)
+        assert result.status == Status.FAIL and "/Sales" in result.details
+        full_audit_data["admin_logs"] = [self._ev(self.HOST, "false")]
+        assert check_meet_notes_host_override(full_audit_data).status == Status.PASS
+
+    def test_default_sharing_everyone_fails_restricted_passes(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_meet_notes_default_sharing
+        full_audit_data["admin_logs"] = [self._ev(self.DEFAULT, "EVERYONE")]
+        assert check_meet_notes_default_sharing(full_audit_data).status == Status.FAIL
+        full_audit_data["admin_logs"] = [self._ev(self.DEFAULT, "INTERNAL_GUESTS")]
+        assert check_meet_notes_default_sharing(full_audit_data).status == Status.PASS
+
+    def test_no_event_is_manual_and_screenshots_always_manual(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import (check_meet_notes_default_sharing, check_meet_notes_host_override,
+                                                    check_meet_notes_screenshots)
+        full_audit_data["admin_logs"] = []
+        for check in (check_meet_notes_host_override, check_meet_notes_default_sharing, check_meet_notes_screenshots):
+            assert check(full_audit_data).status == Status.MANUAL, check.__name__
+        assert check_meet_notes_screenshots(full_audit_data).scored is False
+
+
+class TestGeminiConversation:
+    """GWS.GEMINI.3.1 / 3.2 / 4.1 (SCuBA v1) from the gemini_app conversation settings."""
+
+    def _set(self, data, key, value):
+        data["policies"]["gemini_app"] = {"_ou_policies": [make_ou_policy("gemini_app", key, value)]}
+
+    @pytest.mark.parametrize("state, status", [("CONVERSATION_HISTORY_ON", Status.PASS), ("CONVERSATION_HISTORY_OFF", Status.FAIL),
+                                               ("SOMETHING_ELSE", Status.MANUAL)])
+    def test_history_state(self, full_audit_data, state, status):
+        from gws_auditor.checks.cisa_scuba import check_gemini_conversation_history
+        self._set(full_audit_data, "conversation_history", {"conversationHistoryState": state, "conversationRetention": "47304000s"})
+        assert check_gemini_conversation_history(full_audit_data).status == status
+
+    @pytest.mark.parametrize("retention, status", [("47304000s", Status.PASS), ("7776000s", Status.FAIL),
+                                                   ("RETENTION_18_MONTHS", Status.PASS), ("RETENTION_3_MONTHS", Status.FAIL),
+                                                   ("WHATEVER", Status.MANUAL)])
+    def test_retention(self, full_audit_data, retention, status):
+        from gws_auditor.checks.cisa_scuba import check_gemini_conversation_retention
+        self._set(full_audit_data, "conversation_history", {"conversationHistoryState": "CONVERSATION_HISTORY_ON", "conversationRetention": retention})
+        assert check_gemini_conversation_retention(full_audit_data).status == status
+
+    def test_history_off_fails_retention(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_gemini_conversation_retention
+        self._set(full_audit_data, "conversation_history", {"conversationHistoryState": "CONVERSATION_HISTORY_OFF", "conversationRetention": "47304000s"})
+        assert check_gemini_conversation_retention(full_audit_data).status == Status.FAIL
+
+    @pytest.mark.parametrize("option, status", [("ALLOW_SHARING_VIA_DRIVE", Status.FAIL), ("SHARING_DISABLED", Status.PASS),
+                                                ("UNEXPECTED", Status.MANUAL)])
+    def test_sharing(self, full_audit_data, option, status):
+        from gws_auditor.checks.cisa_scuba import check_gemini_conversation_sharing
+        self._set(full_audit_data, "conversation_sharing", {"conversationSharingOption": option})
+        assert check_gemini_conversation_sharing(full_audit_data).status == status
+
+    def test_not_returned_is_manual(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import (check_gemini_conversation_history, check_gemini_conversation_retention,
+                                                    check_gemini_conversation_sharing)
+        full_audit_data["policies"]["gemini_app"] = {}
+        for check in (check_gemini_conversation_history, check_gemini_conversation_retention, check_gemini_conversation_sharing):
+            assert check(full_audit_data).status == Status.MANUAL

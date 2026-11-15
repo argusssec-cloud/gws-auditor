@@ -3,7 +3,7 @@
 import pytest
 
 from gws_auditor.models import Status
-from tests.factories import make_ou_policy
+from tests.factories import make_admin_event, make_ou_policy
 
 
 def _make_security_data(full_audit_data, **overrides):
@@ -817,3 +817,39 @@ class TestLessSecureAppsOU:
             **{"less_secure_apps.allowed": False})
         result = check_less_secure_apps(full_audit_data)
         assert result.status == Status.PASS
+
+
+class TestLoginChallengesPostSsoEvents:
+    """CIS-4.1.4.1 with third-party SSO sign-ins: the SsoPolicyProto admin-log events settle the post-SSO half."""
+
+    LEGACY = "SsoPolicyProto challenge_selection_behavior"
+    PROFILES = "SsoPolicyProto sso_profile_challenge_selection_behavior"
+
+    def _ev(self, setting, value):
+        return make_admin_event("CHANGE_APPLICATION_SETTING", {"SETTING_NAME": setting, "NEW_VALUE": value, "ORG_UNIT_NAME": "/"})
+
+    def _base(self, data):
+        data["login_logs"] = [_saml_login()]
+        data["policies"]["security"] = {"_ou_policies": [make_ou_policy("security", "login_challenges", {"enableEmployeeIdChallenge": False}, "/")]}
+
+    def test_both_profiles_on_passes(self, full_audit_data):
+        from gws_auditor.checks.security_auth import check_login_challenges
+        self._base(full_audit_data)
+        full_audit_data["admin_logs"] = [self._ev(self.LEGACY, "PERFORM_CHALLENGE_SELECTION"),
+                                         self._ev(self.PROFILES, "SSO_PROFILES_PERFORM_CHALLENGE_SELECTION")]
+        result = check_login_challenges(full_audit_data)
+        assert result.status == Status.PASS and result.actual_value["post_sso_verification"] is True
+
+    def test_bypass_on_either_profile_fails(self, full_audit_data):
+        from gws_auditor.checks.security_auth import check_login_challenges
+        self._base(full_audit_data)
+        full_audit_data["admin_logs"] = [self._ev(self.LEGACY, "BYPASS_CHALLENGE_SELECTION"),
+                                         self._ev(self.PROFILES, "SSO_PROFILES_PERFORM_CHALLENGE_SELECTION")]
+        result = check_login_challenges(full_audit_data)
+        assert result.status == Status.FAIL and "legacy profile" in result.details
+
+    def test_only_one_profile_known_stays_manual(self, full_audit_data):
+        from gws_auditor.checks.security_auth import check_login_challenges
+        self._base(full_audit_data)
+        full_audit_data["admin_logs"] = [self._ev(self.LEGACY, "PERFORM_CHALLENGE_SELECTION")]
+        assert check_login_challenges(full_audit_data).status == Status.MANUAL

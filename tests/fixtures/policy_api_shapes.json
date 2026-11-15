@@ -248,9 +248,12 @@
    "spamOverride[].addToQuarantine",
    "spamOverride[].bypassInternalSenders",
    "spamOverride[].bypassSelectedSenders",
+   "spamOverride[].bypassSenderAllowlist",
    "spamOverride[].description",
    "spamOverride[].enableAggressiveFiltering",
+   "spamOverride[].hideWarningBannerForAll",
    "spamOverride[].hideWarningBannerFromSelectedSenders",
+   "spamOverride[].hideWarningBannerSenderAllowlist",
    "spamOverride[].quarantineId",
    "spamOverride[].ruleId"
   ],
@@ -536,6 +539,28 @@
   ],
   "provisioning.conflicting_accounts_management": [
    "option"
+  ],
+  "access_approval.axa_user_scoping": [
+   "requiresCustomerApproval"
+  ],
+  "gmail.email_address_lists": [
+   "emailAddressList",
+   "emailAddressList[].id",
+   "emailAddressList[].name",
+   "emailAddressList[].addressList",
+   "emailAddressList[].addressList.address",
+   "emailAddressList[].blockedAddressList"
+  ],
+  "gmail.blocked_sender_lists": [
+   "blockedSenders",
+   "blockedSenders[].ruleId",
+   "blockedSenders[].senderBlocklist",
+   "blockedSenders[].bypassApprovedSenderAllowlist"
+  ],
+  "api_controls.google_services": [
+   "services",
+   "services[].scopesGroup",
+   "services[].isEnabled"
   ]
  },
  "enum_values_seen_live": {

@@ -113,12 +113,13 @@ def check_gmail_spoofing_consequence(data: dict) -> CheckResult:
     )
 
 
-def _auto_apply_check(data: dict, check_id: str, title: str, setting_key: str, field: str, area: str) -> CheckResult:
+def _auto_apply_check(data: dict, check_id: str, title: str, setting_key: str, field: str, area: str,
+                      level: str = "L1") -> CheckResult:
     remediation = _GMAIL_SAFETY_REMED + f"Under {area}, enable 'Apply future recommended settings automatically'."
     return _evaluate_setting(
         data, "gmail", setting_key, (field,),
         lambda v: None if v.get(field) is True else v.get(field),
-        check_id=check_id, title=title, level="L1", section="Gmail",
+        check_id=check_id, title=title, level=level, section="Gmail",
         ok="apply future recommended settings automatically",
         bad="do not apply future recommended settings automatically",
         expected="Enabled for all OUs", remediation=remediation,
@@ -128,14 +129,14 @@ def _auto_apply_check(data: dict, check_id: str, title: str, setting_key: str, f
 @check(
     check_id="GWS.GMAIL.5.4",
     title="Ensure future recommended attachment protections are applied automatically",
-    level="L1", source="CISA", section="Gmail", severity="LOW",
+    level="L2", source="CISA", section="Gmail", severity="LOW",
     remediation=_GMAIL_SAFETY_REMED + "Under Attachments, enable 'Apply future recommended settings automatically'.",
 )
 def check_gmail_attachment_auto_apply(data: dict) -> CheckResult:
     """Google should be allowed to apply future recommended attachment settings automatically."""
     return _auto_apply_check(
         data, "GWS.GMAIL.5.4", "Ensure future recommended attachment protections are applied automatically",
-        "email_attachment_safety", "applyFutureRecommendedSettingsAutomatically", "Attachments")
+        "email_attachment_safety", "applyFutureRecommendedSettingsAutomatically", "Attachments", level="L2")
 
 
 @check(
@@ -175,13 +176,13 @@ _MFA_REMED = (
 @check(
     check_id="GWS.COMMONCONTROLS.1.1",
     title="Ensure phishing-resistant MFA is required for all users",
-    level="L2", source="CISA", section="Security", severity="HIGH",
+    level="L1", source="CISA", section="Security", severity="HIGH",
     remediation=_MFA_REMED,
 )
 def check_phishing_resistant_mfa(data: dict) -> CheckResult:
     """2SV should be enforced with passkeys/security keys only (no codes, prompts or telephony)."""
     common = dict(check_id="GWS.COMMONCONTROLS.1.1", title="Ensure phishing-resistant MFA is required for all users",
-                  level="L2", source="CISA", section="Security")
+                  level="L1", source="CISA", section="Security")
     security = data.get("policies", {}).get("security", {})
     factor_entries = get_ou_values(security, "two_step_verification_enforcement_factor")
     if not factor_entries:
@@ -263,17 +264,17 @@ def check_password_strength(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.COMMONCONTROLS.5.3",
-    title="Ensure minimum password length is at least 15 characters",
+    title="Ensure minimum password length is at least 16 characters",
     level="L2", source="CISA", section="Security", severity="LOW",
-    remediation=_PW_REMED + "Set the minimum length to 15 or more.",
+    remediation=_PW_REMED + "Set the minimum length to 16 or more.",
 )
-def check_password_length_15(data: dict) -> CheckResult:
-    """SCuBA recommends (SHOULD) a 15-character minimum; CIS-4.1.5.1 covers the 12-character SHALL."""
+def check_password_length_16(data: dict) -> CheckResult:
+    """SCuBA v1 recommends (SHOULD) a 16-character minimum (15 in v0.6); CIS-4.1.5.1 covers the 12-character SHALL."""
     return _password_check(
-        data, "GWS.COMMONCONTROLS.5.3", "Ensure minimum password length is at least 15 characters", "L2", "minimumLength",
-        lambda v: None if int(v.get("minimumLength") or 0) >= 15 else v.get("minimumLength"),
-        "require passwords of 15+ characters", "allow passwords shorter than 15 characters", ">= 15 for all OUs",
-        "Set the minimum length to 15 or more.")
+        data, "GWS.COMMONCONTROLS.5.3", "Ensure minimum password length is at least 16 characters", "L2", "minimumLength",
+        lambda v: None if int(v.get("minimumLength") or 0) >= 16 else v.get("minimumLength"),
+        "require passwords of 16+ characters", "allow passwords shorter than 16 characters", ">= 16 for all OUs",
+        "Set the minimum length to 16 or more.")
 
 
 @check(

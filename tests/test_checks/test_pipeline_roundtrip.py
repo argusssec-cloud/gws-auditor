@@ -135,29 +135,38 @@ class TestPolicyPrecedence:
 
 
 class TestDlpRulesRoundTrip:
+    TRIGGERS = {"drive": "google.workspace.drive.file.v1.share", "gmail": "google.workspace.gmail.email.v1.send",
+                "chat": "google.workspace.chat.message.v1.send", "calendar": "google.workspace.calendar.event.v1.save"}
+    COND = ("all_content.matches_dlp_detector('CREDIT_CARD_NUMBER', L, {}) || "
+            "all_content.matches_dlp_detector('US_INDIVIDUAL_TAXPAYER_IDENTIFICATION_NUMBER', L, {}) || "
+            "all_content.matches_dlp_detector('US_SOCIAL_SECURITY_NUMBER', L, {})")
+
     def _rules(self, *rules):
-        return raw_tenant({"rules": [raw_policy("rule.dlp", r) for r in rules]})
+        raw = raw_tenant({"rules": [raw_policy("rule.dlp", r) for r in rules]})
+        raw["subscription_type"] = "Google Workspace Enterprise Plus"
+        return raw
 
-    def _rule(self, app, action, state="ACTIVE"):
-        return {"displayName": f"{app} rule", "state": state, "triggers": [{"app": app.upper()}],
-                "condition": "c", "action": {f"{app}Action": {action: {}}}}
+    def _rule(self, apps, actions=None, state="ACTIVE"):
+        return {"displayName": "+".join(apps), "state": state, "triggers": [self.TRIGGERS[a] for a in apps],
+                "condition": {"contentCondition": self.COND},
+                "action": {f"{a}Action": (actions or {}).get(a, {"warnUser": {}}) for a in apps}}
 
-    def test_active_block_rules_pass(self):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_block_external, check_dlp_chat, check_dlp_gmail
-        data = normalized(self._rules(self._rule("gmail", "blockAccess"), self._rule("chat", "blockAccess")))
-        assert check_dlp_gmail(data).status == Status.PASS
-        assert check_dlp_chat(data).status == Status.PASS
-        assert check_dlp_block_external(data).status == Status.PASS
+    def test_full_coverage_and_blocking_actions_pass(self):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_actions_block, check_dlp_custom_policy
+        data = normalized(self._rules(self._rule(["drive", "gmail", "chat", "calendar"], {
+            "drive": {"blockExternalSharing": {}}, "chat": {"blockMessage": {}}, "calendar": {"blockEvent": {}}})))
+        assert check_dlp_custom_policy(data).status == Status.PASS
+        assert check_dlp_actions_block(data).status == Status.PASS
 
     def test_inactive_rule_does_not_count(self):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_gmail
-        data = normalized(self._rules(self._rule("gmail", "blockAccess", state="INACTIVE")))
-        assert check_dlp_gmail(data).status == Status.FAIL
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_custom_policy
+        data = normalized(self._rules(self._rule(["drive", "gmail", "chat", "calendar"], state="INACTIVE")))
+        assert check_dlp_custom_policy(data).status == Status.FAIL
 
     def test_warn_only_rules_do_not_block(self):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_block_external
-        data = normalized(self._rules(self._rule("gmail", "warnUser")))
-        assert check_dlp_block_external(data).status == Status.FAIL
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_actions_block
+        data = normalized(self._rules(self._rule(["drive"])))
+        assert check_dlp_actions_block(data).status == Status.FAIL
 
 
 class TestSystemDefinedAlertRulesRoundTrip:

@@ -188,16 +188,21 @@ class TestGmailSpamAndAttachments:
             check_spam_domains_bypass_hide_warnings,
         )
 
+        # A bypass rule whose address lists are not returned cannot be judged (SCuBA 18.1 fails domain entries only).
         _set(full_audit_data, "gmail", "spam_override_lists", self._override(bypassSelectedSenders=True))
-        assert check_spam_approved_senders_domains(full_audit_data).status == Status.FAIL
+        assert check_spam_approved_senders_domains(full_audit_data).status == Status.MANUAL
         assert check_spam_domains_bypass_hide_warnings(full_audit_data).status == Status.PASS
         assert check_spam_bypass_internal(full_audit_data).status == Status.PASS
 
     def test_bypass_and_hide_warnings_fails_18_2(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_domains_bypass_hide_warnings
 
-        _set(full_audit_data, "gmail", "spam_override_lists",
-             self._override(bypassSelectedSenders=True, hideWarningBannerFromSelectedSenders=True))
+        full_audit_data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "email_address_lists", {"emailAddressList": [
+                {"id": "L1", "name": "Vendors", "addressList": {"address": [{"address": "vendor.example"}]}}]}),
+            make_ou_policy("gmail", "spam_override_lists", self._override(
+                bypassSelectedSenders=True, hideWarningBannerFromSelectedSenders=True,
+                bypassSenderAllowlist=["L1"], hideWarningBannerSenderAllowlist=["L1"]))]}
         assert check_spam_domains_bypass_hide_warnings(full_audit_data).status == Status.FAIL
 
     def test_internal_bypass_fails_18_3(self, full_audit_data):

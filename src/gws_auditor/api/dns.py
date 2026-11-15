@@ -245,6 +245,7 @@ class DNSClient(BaseAPIClient):
             "domain": domain,
             "exists": False,
             "record": "",
+            "record_count": 0,
             "policy": "",
             "subdomain_policy": "",
             "inherited_from": "",
@@ -260,6 +261,15 @@ class DNSClient(BaseAPIClient):
             qname = f"_dmarc.{cand}"
             try:
                 answers = self._resolver.resolve(qname, "TXT")
+                dmarc_records = [
+                    "".join(part.decode(errors="replace") if isinstance(part, bytes) else str(part)
+                            for part in getattr(rdata, "strings", [])) or rdata.to_text().strip('"')
+                    for rdata in answers
+                ]
+                dmarc_records = [t for t in dmarc_records if t.lower().startswith("v=dmarc1")]
+                if dmarc_records:
+                    # RFC 7489 allows exactly one DMARC record; receivers ignore the name on more.
+                    result["record_count"] = len(dmarc_records)
                 for rdata in answers:
                     txt = rdata.to_text().strip('"')
                     if txt.lower().startswith("v=dmarc1"):

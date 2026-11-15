@@ -3,7 +3,7 @@
 import pytest
 
 from gws_auditor.models import Status
-from tests.factories import make_user_account_event, make_user_usage_row, make_ou_policy
+from tests.factories import make_admin_event, make_user_account_event, make_user_usage_row, make_ou_policy
 
 
 class TestContextAwareAccess:
@@ -28,44 +28,55 @@ class TestContextAwareAccess:
         assert result.status == Status.FAIL
 
 
-class TestSSOVerification:
-    """Tests for GWS.COMMONCONTROLS.3.x SSO verification checks."""
+class TestPostSsoVerification:
+    """GWS.COMMONCONTROLS.3.1 / 3.2: inferred from the SsoPolicyProto admin-log events (ScubaGoggles 1.1.0 names)."""
 
-    def test_sso_verification_pass(self, full_audit_data):
+    LEGACY = "SsoPolicyProto challenge_selection_behavior"
+    PROFILES = "SsoPolicyProto sso_profile_challenge_selection_behavior"
+
+    def _ev(self, setting, value, ou="/", time="2026-10-01T10:00:00.000Z"):
+        return make_admin_event("CHANGE_APPLICATION_SETTING",
+                                {"SETTING_NAME": setting, "NEW_VALUE": value, "ORG_UNIT_NAME": ou}, time=time)
+
+    def test_legacy_profile_on_passes(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_sso_verification
-
-        full_audit_data["policies"]["security"] = {
-            "sso": {"post_sso_verification_enabled": True},
-        }
+        full_audit_data["admin_logs"] = [self._ev(self.LEGACY, "PERFORM_CHALLENGE_SELECTION")]
         result = check_sso_verification(full_audit_data)
-        assert result.status == Status.PASS
+        assert result.status == Status.PASS and result.scored is True
 
-    def test_sso_verification_fail(self, full_audit_data):
+    def test_legacy_profile_bypass_fails(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_sso_verification
-
-        full_audit_data["policies"]["security"] = {
-            "sso": {"post_sso_verification_enabled": False},
-        }
+        full_audit_data["admin_logs"] = [self._ev(self.LEGACY, "BYPASS_CHALLENGE_SELECTION", ou="/Sales")]
         result = check_sso_verification(full_audit_data)
         assert result.status == Status.FAIL
+        assert "/Sales" in result.details
 
-    def test_third_party_sso_verification_pass(self, full_audit_data):
+    def test_legacy_profile_reverted_to_default_is_bypass(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_sso_verification
+        full_audit_data["admin_logs"] = [self._ev(self.LEGACY, "PERFORM_CHALLENGE_SELECTION", time="2026-09-01T10:00:00.000Z"),
+                                         self._ev(self.LEGACY, "DELETE_APPLICATION_SETTING", time="2026-10-01T10:00:00.000Z")]
+        assert check_sso_verification(full_audit_data).status == Status.FAIL
+
+    def test_no_event_is_manual(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_sso_verification, check_third_party_sso_verification
+        full_audit_data["admin_logs"] = []
+        for check in (check_sso_verification, check_third_party_sso_verification):
+            result = check(full_audit_data)
+            assert result.status == Status.MANUAL, check.__name__
+            assert "admin audit log" in result.details
+
+    def test_other_profiles_on_passes_and_off_fails(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_third_party_sso_verification
+        full_audit_data["admin_logs"] = [self._ev(self.PROFILES, "SSO_PROFILES_PERFORM_CHALLENGE_SELECTION")]
+        assert check_third_party_sso_verification(full_audit_data).status == Status.PASS
+        full_audit_data["admin_logs"] = [self._ev(self.PROFILES, "SSO_PROFILES_BYPASS_CHALLENGE_SELECTION")]
+        assert check_third_party_sso_verification(full_audit_data).status == Status.FAIL
 
-        full_audit_data["policies"]["security"] = {
-            "sso": {"third_party_sso_verification_enabled": True},
-        }
-        result = check_third_party_sso_verification(full_audit_data)
-        assert result.status == Status.PASS
-
-    def test_third_party_sso_verification_fail(self, full_audit_data):
+    def test_other_profiles_reverted_to_default_passes(self, full_audit_data):
+        """Google's default for other SSO profiles is to apply the challenges."""
         from gws_auditor.checks.cisa_commoncontrols import check_third_party_sso_verification
-
-        full_audit_data["policies"]["security"] = {
-            "sso": {"third_party_sso_verification_enabled": False},
-        }
-        result = check_third_party_sso_verification(full_audit_data)
-        assert result.status == Status.FAIL
+        full_audit_data["admin_logs"] = [self._ev(self.PROFILES, "DELETE_APPLICATION_SETTING")]
+        assert check_third_party_sso_verification(full_audit_data).status == Status.PASS
 
 
 class TestSessionManagement:
@@ -91,33 +102,71 @@ class TestSessionManagement:
 
 
 class TestAdminCloudOnly:
-    """Tests for GWS.COMMONCONTROLS.6.1 admin cloud-only accounts."""
+    """GWS.COMMONCONTROLS.6.1: privileged accounts versus the Cloud Identity inbound SSO assignments."""
 
-    def test_admin_cloud_only_pass(self, full_audit_data):
+    def _user(self, uid, email, ou, super_admin=False):
+        return {"id": uid, "primary_email": email, "primaryEmail": email, "is_super_admin": super_admin,
+                "isAdmin": super_admin, "is_delegated_admin": False, "suspended": False, "org_unit_path": ou}
+
+    def _setup(self, data, assignments, collected=True):
+        data["inbound_sso"] = {"collected": collected, "assignments": assignments, "reason": "" if collected else "permission denied"}
+        data["org_units"] = [{"orgUnitId": "id:root", "orgUnitPath": "/"}, {"orgUnitId": "id:adm", "orgUnitPath": "/Admins"},
+                             {"orgUnitId": "id:staff", "orgUnitPath": "/Staff"}]
+        data["roles"] = {"roles": [
+            {"roleId": "sa", "roleName": "_SEED_ADMIN_ROLE", "isSuperAdminRole": True, "rolePrivileges": []},
+            {"roleId": "um", "roleName": "_USER_MANAGEMENT_ADMIN_ROLE", "rolePrivileges": [{"privilegeName": "USERS_ALL"}]},
+            {"roleId": "hd", "roleName": "_HELP_DESK_ADMIN_ROLE", "rolePrivileges": [{"privilegeName": "USERS_RETRIEVE"}]},
+        ], "assignments": [{"roleId": "um", "assignedTo": "u3", "assigneeType": "user"},
+                           {"roleId": "hd", "assignedTo": "u4", "assigneeType": "user"}]}
+        data["users"] = [self._user("u1", "root-admin@example.com", "/Admins", True),
+                         self._user("u2", "staff-admin@example.com", "/Staff", True),
+                         self._user("u3", "usermgr@example.com", "/Staff"),
+                         self._user("u4", "helpdesk@example.com", "/Staff")]
+        data["groups"] = [{"id": "g1", "email": "sso-group@example.com", "name": "sso"}]
+        data["group_members"] = {"sso-group@example.com": [{"email": "root-admin@example.com", "type": "USER"}]}
+
+    def test_not_collected_is_error(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_admin_cloud_only
+        self._setup(full_audit_data, [], collected=False)
+        result = check_admin_cloud_only(full_audit_data)
+        assert result.status == Status.ERROR
+        assert "not collected" in result.details
 
-        full_audit_data["users"] = [
-            {
-                "primaryEmail": "admin@example.com",
-                "is_super_admin": True,
-                "is_federated": False,
-            },
-        ]
+    def test_no_assignment_passes(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_cloud_only
+        self._setup(full_audit_data, [])
         result = check_admin_cloud_only(full_audit_data)
         assert result.status == Status.PASS
+        assert result.actual_value["privileged_accounts"] == 3  # u1, u2 super admins + u3 user management
 
-    def test_admin_cloud_only_fail(self, full_audit_data):
+    def test_ou_assignment_fails_privileged_users_in_it(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_admin_cloud_only
-
-        full_audit_data["users"] = [
-            {
-                "primaryEmail": "admin@example.com",
-                "is_super_admin": True,
-                "is_federated": True,
-            },
-        ]
+        self._setup(full_audit_data, [{"targetOrgUnit": "orgUnits/staff", "ssoMode": "SAML_SSO", "samlSsoProfile": "p"}])
         result = check_admin_cloud_only(full_audit_data)
         assert result.status == Status.FAIL
+        assert "staff-admin@example.com" in result.details and "usermgr@example.com" in result.details
+        assert "root-admin" not in result.details and "helpdesk" not in result.details
+
+    def test_nearest_ou_assignment_wins(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_cloud_only
+        self._setup(full_audit_data, [{"targetOrgUnit": "orgUnits/root", "ssoMode": "SAML_SSO"},
+                                      {"targetOrgUnit": "orgUnits/adm", "ssoMode": "SSO_OFF"}])
+        result = check_admin_cloud_only(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "root-admin" not in result.details and "staff-admin@example.com" in result.details
+
+    def test_group_assignment_beats_ou(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_cloud_only
+        self._setup(full_audit_data, [{"targetOrgUnit": "orgUnits/adm", "ssoMode": "SSO_OFF"},
+                                      {"targetGroup": "groups/g1", "ssoMode": "DOMAIN_WIDE_SAML_IF_ENABLED"}])
+        result = check_admin_cloud_only(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "root-admin@example.com (DOMAIN_WIDE_SAML_IF_ENABLED via group sso-group@example.com)" in result.details
+
+    def test_all_sso_off_passes(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_admin_cloud_only
+        self._setup(full_audit_data, [{"targetOrgUnit": "orgUnits/root", "ssoMode": "SSO_OFF"}])
+        assert check_admin_cloud_only(full_audit_data).status == Status.PASS
 
 
 class TestAccountRecovery:
@@ -133,42 +182,6 @@ class TestAccountRecovery:
 
 class TestAppAccessControl:
     """Tests for GWS.COMMONCONTROLS.10.x app access control checks."""
-
-    def test_third_party_api_restricted_pass(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_third_party_api_restricted
-
-        full_audit_data["policies"]["security"] = {
-            "app_access": {"third_party_api_access_restricted": True},
-        }
-        result = check_third_party_api_restricted(full_audit_data)
-        assert result.status == Status.PASS
-
-    def test_third_party_api_restricted_fail(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_third_party_api_restricted
-
-        full_audit_data["policies"]["security"] = {
-            "app_access": {"third_party_api_access_restricted": False},
-        }
-        result = check_third_party_api_restricted(full_audit_data)
-        assert result.status == Status.FAIL
-
-    def test_user_consent_low_risk_pass(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
-
-        full_audit_data["policies"]["security"] = {
-            "app_access": {"allow_user_consent_low_risk": False},
-        }
-        result = check_user_consent_low_risk(full_audit_data)
-        assert result.status == Status.PASS
-
-    def test_user_consent_low_risk_fail(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
-
-        full_audit_data["policies"]["security"] = {
-            "app_access": {"allow_user_consent_low_risk": True},
-        }
-        result = check_user_consent_low_risk(full_audit_data)
-        assert result.status == Status.FAIL
 
     def test_unconfigured_internal_apps_pass(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_unconfigured_internal_apps
@@ -279,67 +292,92 @@ class TestServiceStatus:
         assert result.status == Status.FAIL
 
 
-class TestDLP:
-    """Tests for GWS.COMMONCONTROLS.18.x DLP checks."""
+DLP_TRIGGERS = {"drive": "google.workspace.drive.file.v1.share", "gmail": "google.workspace.gmail.email.v1.send",
+                "chat": "google.workspace.chat.message.v1.send", "calendar": "google.workspace.calendar.event.v1.save"}
+DLP_DETECTORS = ("CREDIT_CARD_NUMBER", "US_INDIVIDUAL_TAXPAYER_IDENTIFICATION_NUMBER", "US_SOCIAL_SECURITY_NUMBER")
 
-    def test_dlp_chat_pass(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_chat
 
-        full_audit_data["policies"]["security"] = {
-            "dlp": {"chat_dlp_rules": ["rule1"]},
-        }
-        result = check_dlp_chat(full_audit_data)
+def _dlp_rule(name, apps, detectors=DLP_DETECTORS, actions=None, state="ACTIVE"):
+    """A ``rule.dlp`` policy in the live shape (triggers, CEL content condition, per-app action)."""
+    cond = " || ".join(f"all_content.matches_dlp_detector('{d}', google.privacy.dlp.v2.Likelihood.POSSIBLE, {{}})" for d in detectors)
+    action = {f"{a}Action": (actions or {}).get(a, {"warnUser": {}}) for a in apps}
+    action["alertCenterAction"] = {"recipients": []}
+    return make_ou_policy("rule", "dlp", {"displayName": name, "state": state, "triggers": [DLP_TRIGGERS[a] for a in apps],
+                                          "condition": {"contentCondition": cond}, "action": action})
+
+
+def _dlp_data(full_audit_data, *rules):
+    full_audit_data["subscription_type"] = "Google Workspace Enterprise Plus"
+    full_audit_data["policies"]["rules"] = {"_ou_policies": list(rules)}
+    return full_audit_data
+
+
+class TestDlpCustomPolicy:
+    """GWS.COMMONCONTROLS.18.1 (SCuBA v1): Drive, Calendar, Chat and Gmail each covered for CC, ITIN and SSN."""
+
+    def test_full_coverage_passes(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_custom_policy
+        _dlp_data(full_audit_data, _dlp_rule("PII", ["drive", "gmail", "chat", "calendar"]))
+        result = check_dlp_custom_policy(full_audit_data)
         assert result.status == Status.PASS
 
-    def test_dlp_chat_fail(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_chat
+    def test_coverage_across_rules_passes(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_custom_policy
+        _dlp_data(full_audit_data, _dlp_rule("Drive+Gmail", ["drive", "gmail"]), _dlp_rule("Chat", ["chat"]),
+                  _dlp_rule("Calendar", ["calendar"]))
+        assert check_dlp_custom_policy(full_audit_data).status == Status.PASS
 
-        full_audit_data["policies"]["security"] = {
-            "dlp": {"chat_dlp_rules": []},
-        }
-        result = check_dlp_chat(full_audit_data)
+    def test_missing_app_or_detector_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_custom_policy
+        _dlp_data(full_audit_data, _dlp_rule("Drive+Gmail", ["drive", "gmail"]),
+                  _dlp_rule("Chat", ["chat"], detectors=("CREDIT_CARD_NUMBER",)))
+        result = check_dlp_custom_policy(full_audit_data)
         assert result.status == Status.FAIL
+        assert "Calendar: credit card numbers" in result.details and "Chat: US SSN" in result.details
+        assert "Drive" not in result.details
 
-    def test_dlp_gmail_pass(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_gmail
+    def test_inactive_rule_does_not_count(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_custom_policy
+        _dlp_data(full_audit_data, _dlp_rule("PII", ["drive", "gmail", "chat", "calendar"], state="INACTIVE"))
+        assert check_dlp_custom_policy(full_audit_data).status == Status.FAIL
 
-        full_audit_data["policies"]["security"] = {
-            "dlp": {"gmail_dlp_rules": ["rule1", "rule2", "rule3"]},
-        }
-        result = check_dlp_gmail(full_audit_data)
+    def test_rules_not_collected_is_error(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_custom_policy
+        full_audit_data["subscription_type"] = "Google Workspace Enterprise Plus"
+        full_audit_data["policies"].pop("rules", None)
+        assert check_dlp_custom_policy(full_audit_data).status == Status.ERROR
+
+
+class TestDlpActionsBlock:
+    """GWS.COMMONCONTROLS.18.2 (SCuBA v1): Drive, Chat and Calendar actions block; Gmail may audit only."""
+
+    def test_blocking_actions_pass(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_actions_block
+        _dlp_data(full_audit_data, _dlp_rule("PII", ["drive", "chat", "calendar", "gmail"], actions={
+            "drive": {"blockExternalSharing": {}}, "chat": {"blockMessage": {}}, "calendar": {"blockEvent": {}},
+            "gmail": {"auditOnly": {}}}))
+        result = check_dlp_actions_block(full_audit_data)
         assert result.status == Status.PASS
+        assert result.actual_value == {"blocking_actions": 3}
 
-    def test_dlp_gmail_fail(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_gmail
-
-        full_audit_data["policies"]["security"] = {
-            "dlp": {"gmail_dlp_rules": []},
-        }
-        result = check_dlp_gmail(full_audit_data)
+    def test_warn_only_drive_action_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_actions_block
+        _dlp_data(full_audit_data, _dlp_rule("Warn", ["drive", "chat"], actions={"chat": {"blockMessage": {}}}))
+        result = check_dlp_actions_block(full_audit_data)
         assert result.status == Status.FAIL
+        assert "Warn (driveAction: warnUser)" in result.details
 
-    def test_dlp_block_external_pass(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_block_external
+    def test_gmail_only_rules_are_not_applicable(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_actions_block
+        _dlp_data(full_audit_data, _dlp_rule("Mail", ["gmail"]))
+        assert check_dlp_actions_block(full_audit_data).status == Status.NOT_APPLICABLE
 
-        full_audit_data["policies"]["security"] = {
-            "dlp": {"default_action": "block_external"},
-        }
-        result = check_dlp_block_external(full_audit_data)
-        assert result.status == Status.PASS
+    def test_rules_not_collected_is_error(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_dlp_actions_block
+        full_audit_data["subscription_type"] = "Google Workspace Enterprise Plus"
+        full_audit_data["policies"].pop("rules", None)
+        assert check_dlp_actions_block(full_audit_data).status == Status.ERROR
 
-    def test_dlp_block_external_fail(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_block_external
-
-        full_audit_data["policies"]["security"] = {
-            "dlp": {"default_action": "warn"},
-        }
-        result = check_dlp_block_external(full_audit_data)
-        assert result.status == Status.FAIL
-
-
-# -----------------------------------------------------------------------
-# OU-aware tests
-# -----------------------------------------------------------------------
 
 class TestContextAwareAccessOU:
     """OU-aware tests for GWS.COMMONCONTROLS.2.1 context-aware access."""
@@ -374,21 +412,6 @@ class TestContextAwareAccessOU:
         assert result.status == Status.FAIL
         assert "/Sales" in result.details
 
-
-class TestSsoVerificationIsManualByDesign:
-    """P3: SSO profiles are not a Policy API setting type, so GWS.COMMONCONTROLS.3.1 / 3.2 can
-    only ask for review and are unscored."""
-
-    def test_any_sso_shaped_input_is_review(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import (
-            check_sso_verification, check_third_party_sso_verification)
-        full_audit_data["subscription_type"] = "Google Workspace Enterprise Plus"
-        full_audit_data["policies"]["security"] = {"_ou_policies": [
-            make_ou_policy("security", "sso", {"postSsoVerificationEnabled": True}, "/")]}
-        for check in (check_sso_verification, check_third_party_sso_verification):
-            result = check(full_audit_data)
-            assert result.status in (Status.MANUAL, Status.ERROR), check.__name__
-            assert result.scored is False
 
 class TestSessionDurationOU:
     """OU-aware tests for GWS.COMMONCONTROLS.4.1 session duration.
@@ -461,85 +484,67 @@ class TestSessionDurationOU:
 
 
 
-class TestThirdPartyApiRestrictedOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.10.1 third-party API restriction."""
+ALL_SERVICE_GROUPS = ("DRIVE_ALL", "GMAIL_ALL", "CALENDAR_ALL", "CONTACTS_ALL", "GSUITE_ADMIN_ALL", "VAULT_ALL",
+                      "CLOUD_PLATFORM", "CLOUD_BILLING", "CLOUD_ML", "APPS_SCRIPT_API", "APPS_SCRIPT_RUNTIME",
+                      "CLASSROOM_ALL", "TASKS", "GROUPS", "CHAT", "SIGN_IN", "MEET", "CLOUD_SEARCH")
 
-    def test_all_ous_safe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_third_party_api_restricted
 
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "unconfigured_third_party_apps",
-                                {"thirdPartyApiAccessRestricted": True}, "/"),
-                make_ou_policy("security", "unconfigured_third_party_apps",
-                                {"thirdPartyApiAccessRestricted": True}, "/Engineering"),
-            ],
-        }
-        result = check_third_party_api_restricted(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
+def _services(*groups):
+    return {"services": [{"scopesGroup": g, "isEnabled": False} for g in groups]}
 
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_third_party_api_restricted
 
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "unconfigured_third_party_apps",
-                                {"thirdPartyApiAccessRestricted": True}, "/"),
-                make_ou_policy("security", "unconfigured_third_party_apps",
-                                {"thirdPartyApiAccessRestricted": False}, "/Labs"),
-            ],
-        }
+class TestAppAccessControlServices:
+    """GWS.COMMONCONTROLS.10.1 / 10.2 read api_controls.google_services.services[].scopesGroup (ScubaGoggles 1.1.0):
+    <X>_ALL = Restricted, <X>_HIGH_RISK = Restricted (high risk), nothing = Unrestricted."""
+
+    def _set(self, data, *entries):
+        data["policies"]["api_controls"] = {"_ou_policies": list(entries)}
+
+    def test_all_services_restricted_pass(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_third_party_api_restricted, check_user_consent_low_risk
+        self._set(full_audit_data, make_ou_policy("api_controls", "google_services", _services(*ALL_SERVICE_GROUPS)))
+        assert check_third_party_api_restricted(full_audit_data).status == Status.PASS
+        assert check_user_consent_low_risk(full_audit_data).status == Status.PASS
+
+    def test_unrestricted_service_fails_10_1(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_third_party_api_restricted, check_user_consent_low_risk
+        groups = tuple(g for g in ALL_SERVICE_GROUPS if g not in ("DRIVE_ALL", "MEET"))
+        self._set(full_audit_data, make_ou_policy("api_controls", "google_services", _services(*groups)))
         result = check_third_party_api_restricted(full_audit_data)
         assert result.status == Status.FAIL
-        assert "/Labs" in result.details
+        assert "Drive" in str(result.actual_value) and "Meet" in str(result.actual_value)
+        assert check_user_consent_low_risk(full_audit_data).status == Status.PASS
 
-    def test_fallback_to_api_controls(self, full_audit_data):
-        """When security has no matching _ou_policies, fall back to api_controls."""
+    def test_high_risk_only_fails_10_2_but_satisfies_10_1(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_third_party_api_restricted, check_user_consent_low_risk
+        groups = tuple("DRIVE_HIGH_RISK" if g == "DRIVE_ALL" else g for g in ALL_SERVICE_GROUPS)
+        self._set(full_audit_data, make_ou_policy("api_controls", "google_services", _services(*groups)))
+        assert check_third_party_api_restricted(full_audit_data).status == Status.PASS
+        result = check_user_consent_low_risk(full_audit_data)
+        assert result.status == Status.FAIL
+        assert "Drive" in str(result.actual_value)
+
+    def test_google_default_empty_list_fails_10_1(self, full_audit_data):
         from gws_auditor.checks.cisa_commoncontrols import check_third_party_api_restricted
+        self._set(full_audit_data, make_ou_policy("api_controls", "google_services", {"services": []}))
+        assert check_third_party_api_restricted(full_audit_data).status == Status.FAIL
 
+    def test_child_ou_named(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
+        self._set(full_audit_data,
+                  make_ou_policy("api_controls", "google_services", _services(*ALL_SERVICE_GROUPS), "/"),
+                  make_ou_policy("api_controls", "google_services",
+                                 _services(*("GMAIL_HIGH_RISK" if g == "GMAIL_ALL" else g for g in ALL_SERVICE_GROUPS)), "/Sales"))
+        result = check_user_consent_low_risk(full_audit_data)
+        assert result.status == Status.FAIL and "/Sales" in result.details
+
+    def test_setting_not_returned_is_manual(self, full_audit_data):
+        from gws_auditor.checks.cisa_commoncontrols import check_third_party_api_restricted, check_user_consent_low_risk
+        full_audit_data["policies"]["api_controls"] = {}
         full_audit_data["policies"]["security"] = {}
-        full_audit_data["policies"]["api_controls"] = {
-            "_ou_policies": [
-                make_ou_policy("api_controls", "unconfigured_third_party_apps",
-                                {"thirdPartyApiAccessRestricted": True}, "/"),
-                make_ou_policy("api_controls", "unconfigured_third_party_apps",
-                                {"thirdPartyApiAccessRestricted": False}, "/Research"),
-            ],
-        }
-        result = check_third_party_api_restricted(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Research" in result.details
+        for check in (check_third_party_api_restricted, check_user_consent_low_risk):
+            assert check(full_audit_data).status == Status.MANUAL
 
-
-class TestUserConsentLowRiskOU:
-    """GWS.COMMONCONTROLS.10.2 on the real api_controls.unconfigured_third_party_apps.accessLevel."""
-
-    def _set(self, data, *levels):
-        data["subscription_type"] = "Google Workspace Enterprise Plus"
-        data["policies"]["security"] = {}
-        data["policies"]["api_controls"] = {"_ou_policies": [
-            make_ou_policy("api_controls", "unconfigured_third_party_apps", {"accessLevel": lv}, ou)
-            for ou, lv in levels]}
-
-    def test_all_ous_safe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
-        self._set(full_audit_data, ("/", "BLOCK_ALL"), ("/Legal", "BLOCK_ALL_SCOPES"))
-        result = check_user_consent_low_risk(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
-
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
-        self._set(full_audit_data, ("/", "BLOCK_ALL"), ("/Marketing", "ALLOW_SIGN_IN_ONLY"))
-        result = check_user_consent_low_risk(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Marketing" in result.details
-
-    def test_console_default_allow_fails(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
-        self._set(full_audit_data, ("/", "ACCESS_LEVEL_UNSPECIFIED"))
-        assert check_user_consent_low_risk(full_audit_data).status == Status.FAIL
 
 class TestUnconfiguredInternalAppsOU:
     """OU-aware tests for GWS.COMMONCONTROLS.10.3 unconfigured internal apps.
@@ -772,119 +777,13 @@ class TestEarlyAccessDisabledOU:
         assert check_early_access_disabled(full_audit_data).status == Status.MANUAL
 
 
-class TestDlpChatOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.18.2 DLP for Chat."""
-
-    def test_all_ous_safe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_chat
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "dlp",
-                                {"chatDlpRules": ["rule1"]}, "/"),
-                make_ou_policy("security", "dlp",
-                                {"chatDlpRules": ["rule2"]}, "/Legal"),
-            ],
-        }
-        result = check_dlp_chat(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
-
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_chat
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "dlp",
-                                {"chatDlpRules": ["rule1"]}, "/"),
-                make_ou_policy("security", "dlp",
-                                {"chatDlpRules": []}, "/Interns"),
-            ],
-        }
-        result = check_dlp_chat(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Interns" in result.details
-
-
-class TestDlpGmailOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.18.3 DLP for Gmail."""
-
-    def test_all_ous_safe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_gmail
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "dlp",
-                                {"gmailDlpRules": ["rule1"]}, "/"),
-                make_ou_policy("security", "dlp",
-                                {"gmailDlpRules": ["rule2"]}, "/HR"),
-            ],
-        }
-        result = check_dlp_gmail(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
-
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_gmail
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "dlp",
-                                {"gmailDlpRules": ["rule1"]}, "/"),
-                make_ou_policy("security", "dlp",
-                                {"gmailDlpRules": []}, "/Contractors"),
-            ],
-        }
-        result = check_dlp_gmail(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Contractors" in result.details
-
-
-class TestDlpBlockExternalOU:
-    """OU-aware tests for GWS.COMMONCONTROLS.18.4 DLP block external."""
-
-    def test_all_ous_safe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_block_external
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "dlp",
-                                {"defaultAction": "block"}, "/"),
-                make_ou_policy("security", "dlp",
-                                {"defaultAction": "block_external"}, "/Engineering"),
-            ],
-        }
-        result = check_dlp_block_external(full_audit_data)
-        assert result.status == Status.PASS
-        assert "2 OU(s)" in result.details
-
-    def test_child_ou_unsafe(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_block_external
-
-        full_audit_data["policies"]["security"] = {
-            "_ou_policies": [
-                make_ou_policy("security", "dlp",
-                                {"defaultAction": "block"}, "/"),
-                make_ou_policy("security", "dlp",
-                                {"defaultAction": "warn"}, "/Sales"),
-            ],
-        }
-        result = check_dlp_block_external(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Sales" in result.details
-
-
 class TestUnknownValuesAreManual:
     """Plan Decision A: an absent field without a documented default, or an *_UNSPECIFIED enum,
     is unknown. No OU may PASS or FAIL because of it; a real non-compliant OU still wins."""
 
     @pytest.mark.parametrize("setting_key, check_name", [
-        ("unconfigured_third_party_apps", "check_user_consent_low_risk"),
         ("internal_apps", "check_unconfigured_internal_apps"),
         ("data_processing_region", "check_data_processing_in_region"),
-        ("dlp", "check_dlp_chat"),
-        ("dlp", "check_dlp_gmail"),
-        ("dlp", "check_dlp_block_external"),
     ])
     def test_empty_value_is_manual(self, full_audit_data, setting_key, check_name):
         """Was FAIL for every one of these: an empty ADMIN value has no documented default."""
@@ -895,26 +794,6 @@ class TestUnknownValuesAreManual:
         result = getattr(cisa_commoncontrols, check_name)(full_audit_data)
         assert result.status == Status.MANUAL, check_name
         assert "could not be determined" in result.details
-
-    def test_non_compliant_ou_beats_unknown_ou(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_user_consent_low_risk
-
-        full_audit_data["subscription_type"] = "Google Workspace Enterprise Plus"
-        full_audit_data["policies"]["security"] = {"_ou_policies": [
-            make_ou_policy("api_controls", "unconfigured_third_party_apps", {}, "/"),
-            make_ou_policy("api_controls", "unconfigured_third_party_apps", {"accessLevel": "ALLOW_SIGN_IN_ONLY"}, "/Marketing"),
-        ]}
-        result = check_user_consent_low_risk(full_audit_data)
-        assert result.status == Status.FAIL
-        assert "/Marketing" in result.details
-        assert "Undetermined" in result.details and "/" in result.details
-
-    def test_unspecified_dlp_action_is_unknown(self, full_audit_data):
-        from gws_auditor.checks.cisa_commoncontrols import check_dlp_block_external
-
-        full_audit_data["policies"]["security"] = {"_ou_policies": [
-            make_ou_policy("security", "dlp", {"defaultAction": "ACTION_UNSPECIFIED"})]}
-        assert check_dlp_block_external(full_audit_data).status == Status.MANUAL
 
     def test_account_recovery_uses_documented_default(self, full_audit_data):
         """enableAccountRecovery has a documented default (false), so an empty value is judged."""

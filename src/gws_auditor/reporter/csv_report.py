@@ -27,6 +27,7 @@ _FIELDNAMES = [
     "Org Unit",
     "NIST SP 800-53 Rev. 5",
     "NIST CSF 2.0",
+    "BOD 25-01",
 ]
 
 
@@ -76,4 +77,5 @@ class CSVReporter:
             "Org Unit": check.org_unit,
             "NIST SP 800-53 Rev. 5": ", ".join(getattr(check, "nist_sp800_53", []) or []),
             "NIST CSF 2.0": ", ".join(getattr(check, "nist_csf", []) or []),
+            "BOD 25-01": "yes" if getattr(check, "bod_25_01", False) else "",
         }

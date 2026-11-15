@@ -9,7 +9,7 @@ Only checks NOT already covered by CIS/OTHER/GOOGLE or the main CISA module.
 """
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values, drop_unspecified,
-                   admin_emails, user_usage_by_email, advanced_protection_enrolment, make_not_applicable,
+                   latest_setting_changes, admin_emails, user_usage_by_email, advanced_protection_enrolment, make_not_applicable,
                    format_ou_values_readable, is_default_policy, is_admin_configured, field_value, ou_verdict)
 from ..constants import (
     EDITIONS_CAA, EDITIONS_DATA_PROCESSING_REGION, EDITIONS_DLP, EDITIONS_DLP_DRIVE, EDITIONS_SESSION_CONTROL,
@@ -200,164 +200,111 @@ def check_context_aware_access(data: dict) -> CheckResult:
 # Common Controls 3 - Single Sign-On
 # ===========================================================================
 
+# Admin audit-log setting names for Post-SSO verification (as read by CISA ScubaGoggles 1.1.0;
+# Admin console > Security > Authentication > Login challenges > Post-SSO verification).
+POST_SSO_LEGACY_SETTING = "SsoPolicyProto challenge_selection_behavior"
+POST_SSO_LEGACY_ON = "PERFORM_CHALLENGE_SELECTION"
+POST_SSO_PROFILES_SETTING = "SsoPolicyProto sso_profile_challenge_selection_behavior"
+POST_SSO_PROFILES_ON = "SSO_PROFILES_PERFORM_CHALLENGE_SELECTION"
+_POST_SSO_REMED = (
+    "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
+    "Under 'Settings for users signing in using the legacy SSO profile' and 'Settings for users signing in "
+    "using other SSO profiles', select 'Ask users for additional verifications from Google if a sign-in or "
+    "session behavior looks suspicious, and always apply 2-Step Verification policies (if configured)'. "
+    "https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
+)
+
+
+def post_sso_verification_states(data: dict, setting_name: str, on_value: str, default_on: bool) -> dict[str, bool | None]:
+    """``{org_unit: True (verification on) | False (bypass) | None (reverted to the console default)}``
+    from the latest admin-log change per OU; ``{}`` when the setting was never changed in the window.
+
+    ``DELETE_APPLICATION_SETTING`` means the OU went back to Google's default, which is
+    *bypass* for the legacy profile and *apply challenges* for other SSO profiles.
+    """
+    out: dict[str, bool | None] = {}
+    for ou, value in latest_setting_changes(data, setting_name).items():
+        v = value.upper()
+        if v == "INHERIT_FROM_PARENT":
+            continue
+        if v == "DELETE_APPLICATION_SETTING":
+            out[ou] = default_on
+        else:
+            out[ou] = v == on_value
+    return out
+
+
+def _post_sso_check(data: dict, *, check_id: str, title: str, level: str, setting_name: str, on_value: str,
+                    default_on: bool, profile_text: str) -> CheckResult:
+    common = dict(check_id=check_id, title=title, level=level, source="CISA", section="Security")
+    states = post_sso_verification_states(data, setting_name, on_value, default_on)
+    if not states:
+        return make_review(
+            **common, remediation=_POST_SSO_REMED,
+            details=(f"Post-SSO verification for {profile_text} is not exposed by the Cloud Identity Policy API "
+                     f"and no '{setting_name}' change appears in the admin audit log window, so the current value "
+                     f"is unknown (Google's console default is {'to apply' if default_on else 'to bypass'} the "
+                     "challenges). Saving the setting once in the Admin console makes it visible to future audits."),
+        )
+    off = sorted(ou for ou, on in states.items() if not on)
+    if off:
+        return make_fail(
+            **common, remediation=_POST_SSO_REMED,
+            details=(f"{len(off)} OU(s) let users who sign in through {profile_text} bypass Google's additional "
+                     f"verifications (latest admin-log change): {', '.join(off)}."),
+            actual_value={"org_units_bypassing": off}, expected_value="Post-SSO verification on",
+        )
+    return make_pass(
+        **common,
+        details=(f"Post-SSO verification is on for {profile_text} in {len(states)} OU(s) "
+                 "(latest admin-log change)."),
+        actual_value={"org_units_on": sorted(states)}, expected_value="Post-SSO verification on",
+    )
+
+
 @check(
     check_id="GWS.COMMONCONTROLS.3.1",
-    scored=False,  # P3: SSO profiles are not exposed by the Policy API; MANUAL by design
-    title="Ensure SSO verification is enabled for organization SSO profile",
+    title="Ensure post-SSO verification is enabled for the organization's SSO profile",
     level="L2",
     source="CISA",
     section="Security",
-    remediation=(
-        "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
-        "Enable post-SSO verification so that users must re-authenticate with "
-        "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-    ),
+    remediation=_POST_SSO_REMED,
 )
 def check_sso_verification(data: dict) -> CheckResult:
-    """Post-SSO verification should be enabled for the organization SSO profile."""
-    _ID = "GWS.COMMONCONTROLS.3.1"
-    _TITLE = "Ensure SSO verification is enabled for organization SSO profile"
-    _L, _S, _SEC = "L2", "CISA", "Security"
-    _REMED = (
-        "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
-        "Enable post-SSO verification so that users must re-authenticate with "
-        "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-    )
+    """SCuBA 3.1 (SHOULD): post-SSO verification for users on the legacy (organization) SSO profile.
 
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-
-    # OU-aware path
-    ou_values = []  # P3: "security.sso" is not a Cloud Identity Policy API setting type; nothing to look up
-    if ou_values:
-        return ou_verdict(
-            ou_values, _flag_judge("postSsoVerificationEnabled", "post_sso_verification_enabled", expected=True),
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="lack post-SSO verification",
-            pass_text="have post-SSO verification enabled",
-            expected_value="Enabled for all OUs", remediation=_REMED,
-        )
-
-    # Fallback: mapped root-level value
-    sso = security.get("sso", {})
-    post_sso = sso.get("post_sso_verification_enabled", None)
-
-    if post_sso is True:
-        return make_pass(
-            check_id="GWS.COMMONCONTROLS.3.1",
-            title="Ensure SSO verification is enabled for organization SSO profile",
-            level="L2", source="CISA", section="Security",
-            details="Post-SSO verification is enabled for the organization SSO profile.",
-            actual_value=post_sso,
-            expected_value="Enabled for all OUs",
-        )
-
-    if post_sso is None:
-        return make_review(
-            check_id="GWS.COMMONCONTROLS.3.1",
-            title="Ensure SSO verification is enabled for organization SSO profile",
-            level="L2", source="CISA", section="Security",
-            details=("Post-SSO verification for the organization SSO profile is not in the Cloud Identity Policy API and no audit-log signal names it. Verify manually in Admin console > Security > Authentication > Login challenges > Post-SSO verification."),
-            remediation=(
-                "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
-                "Enable post-SSO verification to require additional Google authentication "
-                "after SSO for sensitive actions. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-            ),
-        )
-
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.3.1",
-        title="Ensure SSO verification is enabled for organization SSO profile",
-        level="L2", source="CISA", section="Security",
-        details="Post-SSO verification is not enabled for the organization SSO profile.",
-        actual_value=post_sso,
-        expected_value="Enabled for all OUs",
-        remediation=(
-            "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
-            "Enable post-SSO verification so that users must re-authenticate with "
-            "Google for sensitive operations even after completing SSO. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-        ),
+    Inferred from the admin audit log (``SsoPolicyProto challenge_selection_behavior``,
+    compliant value ``PERFORM_CHALLENGE_SELECTION``); Google's default for this profile is
+    to bypass the challenges.
+    """
+    return _post_sso_check(
+        data, check_id="GWS.COMMONCONTROLS.3.1",
+        title="Ensure post-SSO verification is enabled for the organization's SSO profile", level="L2",
+        setting_name=POST_SSO_LEGACY_SETTING, on_value=POST_SSO_LEGACY_ON, default_on=False,
+        profile_text="the organization's legacy SSO profile",
     )
 
 
 @check(
     check_id="GWS.COMMONCONTROLS.3.2",
-    scored=False,  # P3: SSO profiles are not exposed by the Policy API; MANUAL by design
-    title="Ensure post-SSO verification is enabled for third-party SSO",
+    title="Ensure post-SSO verification is enabled for third-party SSO profiles",
     level="L2",
     source="CISA",
     section="Security",
-    remediation=(
-        "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
-        "Enable post-SSO verification for third-party SSO profiles to ensure "
-        "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-    ),
+    remediation=_POST_SSO_REMED,
 )
 def check_third_party_sso_verification(data: dict) -> CheckResult:
-    """Post-SSO verification should be enabled for third-party SSO profiles."""
-    _ID = "GWS.COMMONCONTROLS.3.2"
-    _TITLE = "Ensure post-SSO verification is enabled for third-party SSO"
-    _L, _S, _SEC = "L2", "CISA", "Security"
-    _REMED = (
-        "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
-        "Enable post-SSO verification for third-party SSO profiles to ensure "
-        "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-    )
+    """SCuBA 3.2 (SHOULD): post-SSO verification for users on other (third-party) SSO profiles.
 
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-
-    # OU-aware path
-    ou_values = []  # P3: "security.sso" is not a Cloud Identity Policy API setting type; nothing to look up
-    if ou_values:
-        return ou_verdict(
-            ou_values, _flag_judge("thirdPartySsoVerificationEnabled", "third_party_sso_verification_enabled",
-                                   expected=True),
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="lack third-party SSO verification",
-            pass_text="have third-party SSO verification enabled",
-            expected_value="Enabled for all OUs", remediation=_REMED,
-        )
-
-    # Fallback: mapped root-level value
-    sso = security.get("sso", {})
-    third_party = sso.get("third_party_sso_verification_enabled", None)
-
-    if third_party is True:
-        return make_pass(
-            check_id="GWS.COMMONCONTROLS.3.2",
-            title="Ensure post-SSO verification is enabled for third-party SSO",
-            level="L2", source="CISA", section="Security",
-            details="Post-SSO verification is enabled for third-party SSO profiles.",
-            actual_value=third_party,
-            expected_value="Enabled for all OUs",
-        )
-
-    if third_party is None:
-        return make_review(
-            check_id="GWS.COMMONCONTROLS.3.2",
-            title="Ensure post-SSO verification is enabled for third-party SSO",
-            level="L2", source="CISA", section="Security",
-            details=("Post-SSO verification for third-party SSO profiles is not in the Cloud Identity Policy API and no audit-log signal names it. Verify manually in Admin console > Security > Authentication > Login challenges > Post-SSO verification."),
-            remediation=(
-                "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
-                "Enable post-SSO verification for all third-party SSO profiles to add "
-                "a layer of Google authentication. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-            ),
-        )
-
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.3.2",
-        title="Ensure post-SSO verification is enabled for third-party SSO",
-        level="L2", source="CISA", section="Security",
-        details="Post-SSO verification is not enabled for third-party SSO profiles.",
-        actual_value=third_party,
-        expected_value="Enabled for all OUs",
-        remediation=(
-            "Admin console > Security > Authentication > Login challenges > Post-SSO verification. "
-            "Enable post-SSO verification for third-party SSO profiles to ensure "
-            "users authenticate with Google after IdP login for sensitive actions. https://knowledge.workspace.google.com/admin/security/protect-google-workspace-accounts-with-security-challenges"
-        ),
+    Inferred from the admin audit log (``SsoPolicyProto sso_profile_challenge_selection_behavior``,
+    compliant value ``SSO_PROFILES_PERFORM_CHALLENGE_SELECTION``); Google's default for these
+    profiles is to apply the challenges.
+    """
+    return _post_sso_check(
+        data, check_id="GWS.COMMONCONTROLS.3.2",
+        title="Ensure post-SSO verification is enabled for third-party SSO profiles", level="L2",
+        setting_name=POST_SSO_PROFILES_SETTING, on_value=POST_SSO_PROFILES_ON, default_on=True,
+        profile_text="other (third-party) SSO profiles",
     )
 
 
@@ -422,7 +369,11 @@ def check_session_duration(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(security, "session_controls")
     if ou_values:
-        judge = web_session_judge
+        def judge(entry: dict):
+            # Real field: webSessionDuration (seconds string); shared judge with CIS-4.2.4.1.
+            if field_value(entry, "webSessionDuration", "sessionDurationHours", "duration") is None:
+                return None
+            return web_session_judge(entry)
 
         return ou_verdict(
             ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
@@ -478,74 +429,142 @@ def check_session_duration(data: dict) -> CheckResult:
 # Common Controls 6 - Admin Account Configuration
 # ===========================================================================
 
+# Directory privileges that make a role "highly privileged" for SCuBA GWS.COMMONCONTROLS.6
+# (ScubaGoggles 1.1.0 HIGHLY_PRIVILEGED_PRIVILEGES): user, group, service, mobile, OU and
+# role management, licence management and the legacy User Management alias.
+HIGHLY_PRIVILEGED_PRIVILEGES = frozenset({
+    "ADMIN_OAUTH_PRIVILEGE_GROUP", "ADMIN_ROLE_MANAGEMENT", "GROUPS_ALL", "MANAGE_USER_LICENSES",
+    "MOBILE_ALL", "ORGANIZATION_UNITS_ALL", "SERVICES_ALL", "USERS_ALL", "USERS_CREATE",
+    "USERS_SECURITY", "USERS_UPDATE",
+})
+_GOOGLE_AUTH_MODES = {"SSO_OFF", "SSO_MODE_UNSPECIFIED", ""}
+_CC_6_1_REMED = (
+    "Admin console > Security > Authentication > SSO with third-party IdP > Manage SSO profile assignments. "
+    "Put every super admin and every account holding a privileged admin role (user, group, service, mobile, "
+    "OU, role or licence management) in an OU or group whose SSO assignment is 'None' (Google authentication), "
+    "or create dedicated cloud-only admin accounts. "
+    "https://knowledge.workspace.google.com/admin/security/set-up-sso-via-a-third-party-identity-provider"
+)
+
+
+def privileged_users(data: dict) -> list[dict]:
+    """Super admins plus holders of a role carrying a HIGHLY_PRIVILEGED_PRIVILEGES privilege."""
+    users = data.get("users", []) or []
+    roles = data.get("roles") or {}
+    privileged_role_ids = set()
+    for role in roles.get("roles", []) or []:
+        if role.get("isSuperAdminRole"):
+            privileged_role_ids.add(role.get("roleId"))
+            continue
+        for priv in role.get("rolePrivileges", []) or []:
+            if str(priv.get("privilegeName", "")).upper() in HIGHLY_PRIVILEGED_PRIVILEGES:
+                privileged_role_ids.add(role.get("roleId"))
+                break
+    assigned_ids = {str(a.get("assignedTo")) for a in roles.get("assignments", []) or []
+                    if str(a.get("assigneeType", "user")).lower() == "user"
+                    and a.get("roleId") in privileged_role_ids}
+    return [u for u in users if u.get("is_super_admin") or str(u.get("id")) in assigned_ids]
+
+
+def _sso_mode_for_user(user: dict, assignments: list[dict], ou_paths: dict[str, str],
+                       group_emails: dict[str, str], group_members: dict) -> tuple[str, str]:
+    """``(mode, where)``: the inbound SSO mode that applies to *user*.
+
+    A group assignment wins over OU assignments; otherwise the deepest OU assignment on the
+    user's OU lineage; otherwise ``SSO_OFF`` (no assignment = Google authentication).
+    """
+    email = str(user.get("primary_email", "")).lower()
+    for a in assignments:
+        group = str(a.get("targetGroup", ""))
+        if not group:
+            continue
+        gemail = group_emails.get(group.split("/")[-1], "").lower()
+        members = group_members.get(gemail, []) if gemail else []
+        if any(str(m.get("email", "")).lower() == email for m in members if isinstance(m, dict)):
+            return str(a.get("ssoMode", "SSO_MODE_UNSPECIFIED")).upper(), f"group {gemail or group}"
+    user_path = user.get("org_unit_path") or user.get("orgUnitPath") or "/"
+    best: tuple[int, str, str] | None = None
+    for a in assignments:
+        target = str(a.get("targetOrgUnit", ""))
+        if not target:
+            continue
+        path = ou_paths.get(target.split("/")[-1])
+        if path is None:
+            continue
+        if path == "/" or user_path == path or user_path.startswith(path.rstrip("/") + "/"):
+            depth = 0 if path == "/" else path.count("/")
+            if best is None or depth > best[0]:
+                best = (depth, str(a.get("ssoMode", "SSO_MODE_UNSPECIFIED")).upper(), f"OU {path}")
+    if best:
+        return best[1], best[2]
+    return "SSO_OFF", "no SSO assignment"
+
+
 @check(
     check_id="GWS.COMMONCONTROLS.6.1",
-    title="Ensure admin accounts are cloud-only",
+    title="Ensure privileged accounts are cloud-only (not signed in through a third-party IdP)",
     level="L1",
     source="CISA",
     section="Directory",
-    remediation=(
-        "Ensure all super admin accounts are cloud-only managed accounts. "
-        "Federated admin accounts are vulnerable to on-premises identity "
-        "compromise. Create dedicated cloud-only admin accounts and remove "
-        "super admin privileges from federated accounts. https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
-    ),
+    remediation=_CC_6_1_REMED,
 )
 def check_admin_cloud_only(data: dict) -> CheckResult:
-    """Super admin accounts should be cloud-only, not federated."""
-    users = data.get("users", [])
+    """SCuBA 6.1: administrative accounts authenticate with Google, not an external IdP.
 
-    if not users:
+    Privileged users (super admins and holders of highly privileged roles) are matched against
+    the Cloud Identity inbound SSO assignments: a group assignment, else the nearest OU
+    assignment. ``SSO_OFF`` / no assignment is compliant; ``SAML_SSO`` or
+    ``DOMAIN_WIDE_SAML_IF_ENABLED`` is not.
+    """
+    _ID = "GWS.COMMONCONTROLS.6.1"
+    _TITLE = "Ensure privileged accounts are cloud-only (not signed in through a third-party IdP)"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Directory")
+    sso = data.get("inbound_sso") or {}
+    if not sso.get("collected"):
         return make_manual(
-            check_id="GWS.COMMONCONTROLS.6.1",
-            title="Ensure admin accounts are cloud-only",
-            level="L1", source="CISA", section="Directory",
-            details="No user data available to check admin account federation status.",
-            remediation=(
-                "Verify that all super admin accounts are cloud-only managed "
-                "accounts, not provisioned via directory sync or federation. https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
-            ),
+            **common, remediation=_CC_6_1_REMED,
+            details=("Inbound SSO assignments were not collected"
+                     + (f" ({sso.get('reason')})" if sso.get("reason") else "")
+                     + ", so it cannot be determined whether privileged accounts sign in through a third-party IdP."),
         )
-
-    super_admins = [u for u in users if u.get("is_super_admin", False)]
-    federated_admins = [
-        u.get("primaryEmail", u.get("email", "unknown"))
-        for u in super_admins
-        if u.get("is_federated", False)
-    ]
-
-    if not federated_admins:
+    privileged = privileged_users(data)
+    if not privileged:
+        return make_manual(**common, remediation=_CC_6_1_REMED,
+                           details="No privileged accounts found to evaluate (users or roles not collected).")
+    assignments = sso.get("assignments", []) or []
+    if not assignments:
         return make_pass(
-            check_id="GWS.COMMONCONTROLS.6.1",
-            title="Ensure admin accounts are cloud-only",
-            level="L1", source="CISA", section="Directory",
-            details=f"All {len(super_admins)} super admin account(s) are cloud-only.",
-            actual_value={"federated_admins": [], "total_super_admins": len(super_admins)},
-            expected_value="No federated super admin accounts",
+            **common,
+            details=(f"No inbound SSO assignment exists, so all {len(privileged)} privileged account(s) "
+                     "authenticate with Google."),
+            actual_value={"privileged_accounts": len(privileged), "sso_assignments": 0},
+            expected_value="No privileged account under a SAML SSO assignment",
         )
-
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.6.1",
-        title="Ensure admin accounts are cloud-only",
-        level="L1", source="CISA", section="Directory",
-        details=(
-            f"Found {len(federated_admins)} federated super admin account(s): "
-            f"{', '.join(federated_admins)}"
-        ),
-        actual_value={"federated_admins": federated_admins},
-        expected_value="No federated super admin accounts",
-        remediation=(
-            "Ensure all super admin accounts are cloud-only managed accounts. "
-            "Federated admin accounts are vulnerable to on-premises identity "
-            "compromise. Create dedicated cloud-only admin accounts and remove "
-            "super admin privileges from federated accounts. https://knowledge.workspace.google.com/admin/users/add-an-account-for-a-new-user"
-        ),
+    ou_paths = {str(ou.get("orgUnitId", "")).replace("id:", ""): ou.get("orgUnitPath", "/")
+                for ou in data.get("org_units", []) or []}
+    group_emails = {str(g.get("id", "")): str(g.get("email", "")) for g in data.get("groups", []) or []}
+    group_members = data.get("group_members", {}) or {}
+    federated = []
+    for user in privileged:
+        mode, where = _sso_mode_for_user(user, assignments, ou_paths, group_emails, group_members)
+        if mode not in _GOOGLE_AUTH_MODES:
+            federated.append(f"{user.get('primary_email', 'unknown')} ({mode} via {where})")
+    if federated:
+        return make_fail(
+            **common, remediation=_CC_6_1_REMED,
+            details=(f"{len(federated)} of {len(privileged)} privileged account(s) sign in through a third-party "
+                     f"identity provider: {'; '.join(sorted(federated))}."),
+            actual_value={"federated_privileged_accounts": sorted(federated)},
+            expected_value="No privileged account under a SAML SSO assignment",
+        )
+    return make_pass(
+        **common,
+        details=(f"All {len(privileged)} privileged account(s) fall under SSO_OFF (Google authentication); "
+                 f"{len(assignments)} inbound SSO assignment(s) reviewed."),
+        actual_value={"privileged_accounts": len(privileged), "sso_assignments": len(assignments)},
+        expected_value="No privileged account under a SAML SSO assignment",
     )
 
-
-# ===========================================================================
-# Common Controls 8 - Account Recovery
-# ===========================================================================
 
 @check(
     check_id="GWS.COMMONCONTROLS.8.3",
@@ -723,117 +742,86 @@ def check_sensitive_user_advanced_protection(data: dict) -> CheckResult:
 # Common Controls 10 - App Access Control
 # ===========================================================================
 
+# Google services and the OAuth scope groups the Admin console can restrict for them
+# (Security > Access and data control > API controls > Manage Google Services). ``<X>_ALL`` =
+# "Restricted" (every scope), ``<X>_HIGH_RISK`` = "Restricted (high risk)" (users may still
+# consent to the low-risk scopes). Mapping as in ScubaGoggles 1.1.0.
+GOOGLE_SERVICE_SCOPE_GROUPS: dict[str, frozenset[str]] = {
+    "Drive": frozenset({"DRIVE_ALL", "DRIVE_HIGH_RISK"}),
+    "Gmail": frozenset({"GMAIL_ALL", "GMAIL_HIGH_RISK"}),
+    "Calendar": frozenset({"CALENDAR_ALL"}),
+    "Contacts": frozenset({"CONTACTS_ALL"}),
+    "Google Workspace Admin": frozenset({"GSUITE_ADMIN_ALL"}),
+    "Vault": frozenset({"VAULT_ALL"}),
+    "Cloud Platform": frozenset({"CLOUD_PLATFORM"}),
+    "Cloud Billing": frozenset({"CLOUD_BILLING"}),
+    "Cloud Machine Learning": frozenset({"CLOUD_ML"}),
+    "Apps Script API": frozenset({"APPS_SCRIPT_API"}),
+    "Apps Script Runtime": frozenset({"APPS_SCRIPT_RUNTIME"}),
+    "Classroom": frozenset({"CLASSROOM_ALL", "CLASSROOM_HIGH_RISK"}),
+    "Tasks": frozenset({"TASKS"}),
+    "Groups": frozenset({"GROUPS"}),
+    "Chat": frozenset({"CHAT", "CHAT_HIGH_RISK"}),
+    "Google Sign-in": frozenset({"SIGN_IN"}),
+    "Meet": frozenset({"MEET"}),
+    "Cloud Search": frozenset({"CLOUD_SEARCH"}),
+}
+HIGH_RISK_SCOPE_GROUPS = frozenset({"DRIVE_HIGH_RISK", "GMAIL_HIGH_RISK", "CLASSROOM_HIGH_RISK", "CHAT_HIGH_RISK"})
+_API_CONTROLS_REMED = (
+    "Admin console > Security > Access and data control > API controls > Manage Google Services. "
+    "Set every service to 'Restricted' so that only trusted apps reach Google Workspace data; "
+    "'Restricted (high risk)' still lets users consent to low-risk scopes. "
+    "https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
+)
+
+
+def _restricted_scope_groups(entry: dict) -> set[str] | None:
+    """Scope groups listed under ``api_controls.google_services.services`` for one OU, or None if unknown."""
+    services = field_value(entry, "services")
+    if services is None or not isinstance(services, list):
+        return None
+    return {str(svc.get("scopesGroup", "")).upper() for svc in services if isinstance(svc, dict)}
+
+
 @check(
     check_id="GWS.COMMONCONTROLS.10.1",
-    title="Ensure app access control policies restrict third-party access",
+    title="Ensure app access control policies restrict third-party access to all Google services",
     level="L1",
     source="CISA",
     section="Security",
-    remediation=(
-        "Admin console > Security > Access and data control > API controls > App access control. "
-        "Restrict third-party API access to only approved applications. "
-        "Unrestricted access allows any app to request and obtain "
-        "user data through OAuth consent. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-    ),
+    remediation=_API_CONTROLS_REMED,
 )
 def check_third_party_api_restricted(data: dict) -> CheckResult:
-    """Third-party API access should be restricted by app access control policies."""
+    """SCuBA 10.1: every Google service is restricted ('Restricted' or 'Restricted (high risk)').
+
+    Reads ``api_controls.google_services.services[].scopesGroup`` per OU; a service with
+    none of its scope groups listed is unrestricted. Google's default is an empty list, so a
+    tenant that never touched App access control fails here.
+    """
     _ID = "GWS.COMMONCONTROLS.10.1"
-    _TITLE = "Ensure app access control policies restrict third-party access"
-    _L, _S, _SEC = "L1", "CISA", "Security"
-    _REMED = (
-        "Admin console > Security > Access and data control > API controls > App access control. "
-        "Restrict third-party API access to only approved applications. "
-        "Unrestricted access allows any app to request and obtain "
-        "user data through OAuth consent. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-    )
-
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-
-    # OU-aware path
-    ou_values = get_ou_values(security, "unconfigured_third_party_apps")
+    _TITLE = "Ensure app access control policies restrict third-party access to all Google services"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Security")
+    api_controls = data.get("policies", {}).get("api_controls", {})
+    ou_values = get_ou_values(api_controls, "google_services")
     if not ou_values:
-        api_controls = policies.get("api_controls", {})
-        ou_values = get_ou_values(api_controls, "unconfigured_third_party_apps")
-    default_allow = [e for e in ou_values if _is_default_allow(e)]
-    ou_values = drop_unspecified(ou_values, "accessLevel")  # SYSTEM ACCESS_LEVEL_UNSPECIFIED = unknown
-    if ou_values or default_allow:
-        unsafe_ous = [{"org_unit": e["org_unit"], "value": _DEFAULT_ALLOW_LABEL} for e in default_allow]
-        # Safe access levels that restrict third-party apps (BLOCK_ALL is the documented enum,
-        # BLOCK_ALL_SCOPES was returned by older API versions)
-        _SAFE_LEVELS = frozenset({
-            "BLOCK_ALL", "block_all", "BLOCK_ALL_SCOPES", "block_all_scopes",
-            "LIMITED_SCOPES", "limited_scopes",
-        })
-        for entry in ou_values:
-            access_level = entry["value"].get("accessLevel",
-                                              entry["value"].get("access_level", ""))
-            restricted_val = entry["value"].get("thirdPartyApiAccessRestricted",
-                                                entry["value"].get("restricted", None))
-            # Check accessLevel (API enum) first, then fall back to boolean
-            if access_level and access_level in _SAFE_LEVELS:
-                continue  # restricted — safe
-            if restricted_val is True:
-                continue  # legacy boolean — safe
-            if not access_level and restricted_val is None:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": access_level or restricted_val})
-            elif access_level not in _SAFE_LEVELS:
-                unsafe_ous.append({"org_unit": entry["org_unit"], "value": access_level})
-        if unsafe_ous:
-            ou_list = ", ".join(u["org_unit"] for u in unsafe_ous)
-            return make_fail(
-                check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-                details=f"{len(unsafe_ous)} OU(s) do not restrict third-party API access: {ou_list}",
-                actual_value=format_ou_values_readable(unsafe_ous), expected_value="Enabled for all OUs",
-                remediation=_REMED,
-            )
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"All {len(ou_values)} OU(s) restrict third-party API access.",
-            actual_value=f"{len(ou_values)} OU(s) safe", expected_value="Enabled for all OUs",
-        )
-
-    # Fallback: mapped root-level value
-    app_access = security.get("app_access", {})
-    restricted = app_access.get("third_party_api_access_restricted", None)
-
-    if restricted is True:
-        return make_pass(
-            check_id="GWS.COMMONCONTROLS.10.1",
-            title="Ensure app access control policies restrict third-party access",
-            level="L1", source="CISA", section="Security",
-            details="Third-party API access is restricted by app access control policies.",
-            actual_value=restricted,
-            expected_value="Enabled for all OUs",
-        )
-
-    if restricted is None:
         return make_review(
-            check_id="GWS.COMMONCONTROLS.10.1",
-            title="Ensure app access control policies restrict third-party access",
-            level="L1", source="CISA", section="Security",
-            details="Could not determine third-party API access restriction setting.",
-            remediation=(
-                "Admin console > Security > Access and data control > API controls > App access control. "
-                "Configure policies to restrict third-party application access "
-                "to Google Workspace APIs and user data. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-            ),
+            **common, remediation=_API_CONTROLS_REMED,
+            details="'api_controls.google_services' was not returned by the Cloud Identity Policy API; verify in the Admin console.",
         )
 
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.10.1",
-        title="Ensure app access control policies restrict third-party access",
-        level="L1", source="CISA", section="Security",
-        details="Third-party API access is not restricted.",
-        actual_value=restricted,
-        expected_value="Enabled for all OUs",
-        remediation=(
-            "Admin console > Security > Access and data control > API controls > App access control. "
-            "Restrict third-party API access to only approved applications. "
-            "Unrestricted access allows any app to request and obtain "
-            "user data through OAuth consent. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-        ),
+    def judge(entry):
+        groups = _restricted_scope_groups(entry)
+        if groups is None:
+            return None
+        unrestricted = sorted(name for name, scope_groups in GOOGLE_SERVICE_SCOPE_GROUPS.items()
+                              if not (scope_groups & groups))
+        return (not unrestricted), (", ".join(unrestricted) if unrestricted else "all services restricted")
+
+    return ou_verdict(
+        ou_values, judge, **common,
+        fail_text="leave Google services unrestricted for third-party apps",
+        pass_text="restrict every Google service for third-party apps",
+        expected_value="Every Google service Restricted or Restricted (high risk)", remediation=_API_CONTROLS_REMED,
     )
 
 
@@ -843,94 +831,34 @@ def check_third_party_api_restricted(data: dict) -> CheckResult:
     level="L1",
     source="CISA",
     section="Security",
-    remediation=(
-        "Admin console > Security > Access and data control > API controls > App access control. "
-        "Disable the option for users to consent to low-risk scopes. "
-        "Even low-risk scopes can leak data if the requesting app "
-        "is malicious or compromised. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-    ),
+    remediation=_API_CONTROLS_REMED,
 )
 def check_user_consent_low_risk(data: dict) -> CheckResult:
-    """Users should not be able to consent to low-risk OAuth scopes."""
+    """SCuBA 10.2: no service is left in 'Restricted (high risk)', which still lets users consent
+    to its low-risk scopes. Reads ``api_controls.google_services.services[].scopesGroup``."""
     _ID = "GWS.COMMONCONTROLS.10.2"
     _TITLE = "Ensure users cannot consent to low-risk app scopes"
-    _L, _S, _SEC = "L1", "CISA", "Security"
-    _REMED = (
-        "Admin console > Security > Access and data control > API controls > App access control. "
-        "Disable the option for users to consent to low-risk scopes. "
-        "Even low-risk scopes can leak data if the requesting app "
-        "is malicious or compromised. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-    )
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Security")
+    api_controls = data.get("policies", {}).get("api_controls", {})
+    ou_values = get_ou_values(api_controls, "google_services")
+    if not ou_values:
+        return make_review(
+            **common, remediation=_API_CONTROLS_REMED,
+            details="'api_controls.google_services' was not returned by the Cloud Identity Policy API; verify in the Admin console.",
+        )
 
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-
-    # OU-aware path
-    # Real signal: api_controls.unconfigured_third_party_apps.accessLevel. Users can consent to
-    # low-risk (sign-in) scopes of unconfigured apps unless access is blocked entirely.
-    ou_values = (get_ou_values(security, "unconfigured_third_party_apps")
-                 or get_ou_values(policies.get("api_controls", {}), "unconfigured_third_party_apps"))
-    if ou_values:
-        def _consent_judge(entry):
-            if _is_default_allow(entry):
-                return (False, _DEFAULT_ALLOW_LABEL)
-            level = field_value(entry, "accessLevel")
-            if level is None:
-                return None
-            lv = str(level).upper()
-            if lv in ("BLOCK_ALL", "BLOCK_ALL_SCOPES"):
-                return (True, level)
-            if "SIGN_IN" in lv or "ALLOW" in lv:
-                return (False, level)
+    def judge(entry):
+        groups = _restricted_scope_groups(entry)
+        if groups is None:
             return None
-        return ou_verdict(
-            ou_values, _consent_judge,
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="allow user consent to low-risk scopes",
-            pass_text="prevent user consent to low-risk scopes",
-            expected_value="Disabled for all OUs", remediation=_REMED,
-        )
+        high_risk_only = sorted(g.split("_")[0].title() for g in groups & HIGH_RISK_SCOPE_GROUPS)
+        return (not high_risk_only), (", ".join(high_risk_only) if high_risk_only else "no high-risk-only restriction")
 
-    # Fallback: mapped root-level value
-    app_access = security.get("app_access", {})
-    consent = app_access.get("allow_user_consent_low_risk", None)
-
-    if consent is False:
-        return make_pass(
-            check_id="GWS.COMMONCONTROLS.10.2",
-            title="Ensure users cannot consent to low-risk app scopes",
-            level="L1", source="CISA", section="Security",
-            details="User consent to low-risk app scopes is disabled.",
-            actual_value=consent,
-            expected_value="Disabled for all OUs",
-        )
-
-    if consent is None:
-        return make_manual(
-            check_id="GWS.COMMONCONTROLS.10.2",
-            title="Ensure users cannot consent to low-risk app scopes",
-            level="L1", source="CISA", section="Security",
-            details="Could not determine user consent setting for low-risk scopes.",
-            remediation=(
-                "Admin console > Security > Access and data control > API controls > App access control. "
-                "Disable user consent for low-risk OAuth scopes to ensure "
-                "all app authorizations go through admin review. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-            ),
-        )
-
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.10.2",
-        title="Ensure users cannot consent to low-risk app scopes",
-        level="L1", source="CISA", section="Security",
-        details="Users can consent to low-risk app scopes without admin approval.",
-        actual_value=consent,
-        expected_value="Disabled for all OUs",
-        remediation=(
-            "Admin console > Security > Access and data control > API controls > App access control. "
-            "Disable the option for users to consent to low-risk scopes. "
-            "Even low-risk scopes can leak data if the requesting app "
-            "is malicious or compromised. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-        ),
+    return ou_verdict(
+        ou_values, judge, **common,
+        fail_text="restrict services for high-risk scopes only, so users may consent to low-risk scopes",
+        pass_text="do not leave any service in 'Restricted (high risk)'",
+        expected_value="No service in Restricted (high risk)", remediation=_API_CONTROLS_REMED,
     )
 
 
@@ -1142,13 +1070,13 @@ def check_unconfigured_third_party_apps(data: dict) -> CheckResult:
     section="Reporting",
     remediation=(
         "Admin console > Reporting > Audit and investigation. "
-        "Verify audit log retention is at least 6 months. Export "
-        "logs to BigQuery or a SIEM solution for long-term retention "
-        "and forensic analysis capability. https://knowledge.workspace.google.com/admin/reports/reports-overview"
+        "Keep audit logs searchable for at least 3 months and retrievable for at least 12 months "
+        "(SCuBA 14.2 v1): export them to BigQuery or a SIEM for retention beyond Google's 6-month window. "
+        "https://knowledge.workspace.google.com/admin/reports/reports-overview"
     ),
 )
 def check_audit_log_retention(data: dict) -> CheckResult:
-    """Audit log retention should be at least 6 months.
+    """Audit logs searchable for 3 months and retrievable for 12 months (SCuBA 14.2 v1).
 
     Audit log retention and BigQuery export settings are not available
     via the Cloud Identity Policy API.  This check always requires
@@ -1159,18 +1087,18 @@ def check_audit_log_retention(data: dict) -> CheckResult:
     _L, _S, _SEC = "L1", "CISA", "Reporting"
     _REMED = (
         "Admin console > Reporting > Audit and investigation. "
-        "Verify audit log retention is at least 6 months. Export "
-        "logs to BigQuery or a SIEM solution for long-term retention "
-        "and forensic analysis capability. https://knowledge.workspace.google.com/admin/reports/reports-overview"
+        "Keep audit logs searchable for at least 3 months and retrievable for at least 12 months "
+        "(SCuBA 14.2 v1): export them to BigQuery or a SIEM for retention beyond Google's 6-month window. "
+        "https://knowledge.workspace.google.com/admin/reports/reports-overview"
     )
 
     return make_review(
         check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
         details=(
             "Audit log retention settings are not available via the Cloud "
-            "Identity Policy API. Verify manually that logs are retained "
-            "for at least 6 months, ideally via BigQuery export or SIEM "
-            "integration."
+            "Identity Policy API. Verify manually that logs are searchable for "
+            "at least 3 months and retrievable for at least 12 months (SCuBA 14.2 v1), "
+            "typically via BigQuery export or SIEM integration."
         ),
         remediation=_REMED,
     )
@@ -1183,7 +1111,7 @@ def check_audit_log_retention(data: dict) -> CheckResult:
 @check(
     check_id="GWS.COMMONCONTROLS.15.2",
     title="Ensure data is processed in the selected storage region",
-    level="L2",
+    level="L1",
     source="CISA",
     section="Security",
     remediation=(
@@ -1198,7 +1126,7 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
     """Data processing should be restricted to the configured storage region."""
     _ID = "GWS.COMMONCONTROLS.15.2"
     _TITLE = "Ensure data is processed in the selected storage region"
-    _L, _S, _SEC = "L2", "CISA", "Security"
+    _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
         "Admin console > Data > Compliance > Data regions. "
         "Enable data processing restrictions to ensure data at rest "
@@ -1230,7 +1158,7 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.COMMONCONTROLS.15.2",
             title="Ensure data is processed in the selected storage region",
-            level="L2", source="CISA", section="Security",
+            level="L1", source="CISA", section="Security",
             details="Data processing is restricted to the selected storage region.",
             actual_value=processing_in_region,
             expected_value="Enabled for all OUs",
@@ -1240,7 +1168,7 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
         return make_review(
             check_id="GWS.COMMONCONTROLS.15.2",
             title="Ensure data is processed in the selected storage region",
-            level="L2", source="CISA", section="Security",
+            level="L1", source="CISA", section="Security",
             details=(
                 "Data processing region is not exposed by the Cloud Identity "
                 "Policy API for this tenant — verify in Admin console."
@@ -1255,7 +1183,7 @@ def check_data_processing_in_region(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.COMMONCONTROLS.15.2",
         title="Ensure data is processed in the selected storage region",
-        level="L2", source="CISA", section="Security",
+        level="L1", source="CISA", section="Security",
         details="Data processing is not restricted to the selected storage region.",
         actual_value=processing_in_region,
         expected_value="Enabled for all OUs",
@@ -1478,264 +1406,207 @@ def _rule_list_judge(*names: str):
         return (isinstance(rules, list) and len(rules) > 0), rules
     return judge
 
+# DLP detectors SCuBA 18.1 requires at minimum (Google Cloud DLP infoType names used in
+# ``rule.dlp`` content conditions) and the four apps a custom policy must cover.
+DLP_REQUIRED_DETECTORS: dict[str, str] = {
+    "credit card numbers": "CREDIT_CARD_NUMBER",
+    "US ITIN": "US_INDIVIDUAL_TAXPAYER_IDENTIFICATION_NUMBER",
+    "US SSN": "US_SOCIAL_SECURITY_NUMBER",
+}
+DLP_REQUIRED_APPS: dict[str, str] = {"Drive": "drive", "Calendar": "calendar", "Chat": "chat", "Gmail": "gmail"}
+_DLP_REMED = (
+    "Admin console > Security > Access and data control > Data protection > Manage rules. Create a rule "
+    "whose triggers cover Google Drive (file shared), Google Calendar (event saved), Google Chat (message sent, "
+    "file uploaded) and Gmail (message sent and received), with conditions for the predefined detectors "
+    "Global - Credit card number, United States - Individual Taxpayer Identification Number and United States - "
+    "Social Security Number, and the actions of GWS.COMMONCONTROLS.18.2. "
+    "https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
+)
+_DLP_ACTION_REMED = (
+    "Admin console > Security > Access and data control > Data protection > Manage rules. In each rule's Actions: "
+    "Google Drive 'Block external sharing', Google Chat 'Block message', Google Calendar 'Block event' "
+    "(Gmail may stay 'Audit only'). "
+    "https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
+)
+
+
+def active_dlp_rules(data: dict) -> tuple[bool, list[dict]]:
+    """``(rules_collected, [rule values with state ACTIVE])`` from the ``rule.dlp`` policies."""
+    rules = data.get("policies", {}).get("rules")
+    if not isinstance(rules, dict):
+        return False, []
+    policies = rules.get("_ou_policies", []) or []
+    active = []
+    for policy in policies:
+        setting = policy.get("setting", {}) if isinstance(policy, dict) else {}
+        if not str(setting.get("type", "")).endswith("rule.dlp"):
+            continue
+        value = setting.get("value", {}) or {}
+        if str(value.get("state", "")).upper() == "ACTIVE":
+            active.append(value)
+    return True, active
+
+
+def _rule_apps(rule: dict) -> set[str]:
+    blob = " ".join(str(t.get("app", t.get("application", t))) if isinstance(t, dict) else str(t)
+                    for t in (rule.get("triggers") or []))
+    action = rule.get("action") if isinstance(rule.get("action"), dict) else {}
+    blob += " " + " ".join(action.keys())
+    return {app for app, needle in DLP_REQUIRED_APPS.items() if needle in blob.lower()}
+
+
+
+def _console_only_review(check_id: str, title: str, level: str, section: str, setting_text: str, remediation: str) -> CheckResult:
+    return make_review(
+        check_id=check_id, title=title, level=level, source="CISA", section=section,
+        details=(f"{setting_text} is not exposed by the Cloud Identity Policy API or by an admin audit-log event "
+                 "the auditor knows; verify it in the Admin console."),
+        remediation=remediation,
+    )
+
+
+_LOOKER_REMED = (
+    "Admin console > Apps > Additional Google services > Looker Studio > Sharing setting. Select OFF so reports "
+    "cannot be shared outside the organisation. https://knowledge.workspace.google.com/admin/apps/additional-google-services/looker-studio"
+)
+_PINPOINT_REMED = (
+    "Admin console > Apps > Additional Google services > Pinpoint > Data access settings. Select "
+    "'OFF - Users cannot copy files from Drive to Pinpoint'. https://knowledge.workspace.google.com/admin/apps/additional-google-services/pinpoint"
+)
+
+
+@check(
+    check_id="GWS.COMMONCONTROLS.16.3",
+    scored=False,  # Admin-console-only control: no API or audit-log signal known
+    title="Ensure Looker Studio sharing outside the organization is off",
+    level="L2",
+    source="CISA",
+    section="Security",
+    remediation=_LOOKER_REMED,
+)
+def check_looker_studio_sharing(data: dict) -> CheckResult:
+    """SCuBA v1 16.3 (SHOULD): no API exposes the Looker Studio sharing setting."""
+    return _console_only_review("GWS.COMMONCONTROLS.16.3", "Ensure Looker Studio sharing outside the organization is off",
+                                "L2", "Security", "The Looker Studio 'Sharing setting'", _LOOKER_REMED)
+
+
+@check(
+    check_id="GWS.COMMONCONTROLS.16.4",
+    scored=False,  # Admin-console-only control: no API or audit-log signal known
+    title="Ensure Pinpoint access to Drive is off",
+    level="L2",
+    source="CISA",
+    section="Security",
+    remediation=_PINPOINT_REMED,
+)
+def check_pinpoint_drive_access(data: dict) -> CheckResult:
+    """SCuBA v1 16.4 (SHOULD): no API exposes the Pinpoint data-access setting."""
+    return _console_only_review("GWS.COMMONCONTROLS.16.4", "Ensure Pinpoint access to Drive is off",
+                                "L2", "Security", "The Pinpoint 'Data access settings' toggle", _PINPOINT_REMED)
+
+
+@check(
+    check_id="GWS.COMMONCONTROLS.18.1",
+    title="Ensure DLP rules cover Drive, Calendar, Chat and Gmail for credit card, ITIN and SSN data",
+    level="L1",
+    source="CISA",
+    section="Security",
+    remediation=_DLP_REMED,
+    requires_license=EDITIONS_DLP,
+)
+def check_dlp_custom_policy(data: dict) -> CheckResult:
+    """SCuBA 18.1: an active DLP rule covers each of Drive, Calendar, Chat and Gmail for each of
+    the three required detectors (credit card, US ITIN, US SSN), read from the ``rule.dlp`` policies."""
+    _ID = "GWS.COMMONCONTROLS.18.1"
+    _TITLE = "Ensure DLP rules cover Drive, Calendar, Chat and Gmail for credit card, ITIN and SSN data"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Security")
+    collected, rules = active_dlp_rules(data)
+    if not collected:
+        return make_manual(**common, remediation=_DLP_REMED,
+                           details="DLP rules (Policy API category 'rule') were not collected.")
+    covered: dict[tuple[str, str], list[str]] = {}
+    for rule in rules:
+        apps = _rule_apps(rule)
+        condition = json_dumps_lower(rule.get("condition"))
+        for det_name, infotype in DLP_REQUIRED_DETECTORS.items():
+            if infotype.lower() in condition:
+                for app in apps:
+                    covered.setdefault((app, det_name), []).append(str(rule.get("displayName", "unnamed")))
+    missing = [f"{app}: {det}" for app in DLP_REQUIRED_APPS for det in DLP_REQUIRED_DETECTORS if (app, det) not in covered]
+    if missing:
+        return make_fail(
+            **common, remediation=_DLP_REMED,
+            details=(f"{len(rules)} active DLP rule(s); {len(missing)} of the 12 required app/detector pairs have no "
+                     f"active rule: {', '.join(missing)}."),
+            actual_value={"active_rules": len(rules), "missing": missing},
+            expected_value="Every app covered for credit card, ITIN and SSN",
+        )
+    return make_pass(
+        **common,
+        details=(f"{len(rules)} active DLP rule(s) cover Drive, Calendar, Chat and Gmail for credit card numbers, "
+                 "US ITIN and US SSN."),
+        actual_value={"active_rules": len(rules), "covered_pairs": len(covered)},
+        expected_value="Every app covered for credit card, ITIN and SSN",
+    )
+
+
+def json_dumps_lower(value) -> str:
+    import json as _json
+    try:
+        return _json.dumps(value, default=str).lower()
+    except (TypeError, ValueError):
+        return str(value).lower()
+
+
 @check(
     check_id="GWS.COMMONCONTROLS.18.2",
-    title="Ensure DLP policy is configured for Google Chat",
-    level="L1",
+    title="Ensure DLP rule actions block (Drive external sharing, Chat messages, Calendar events)",
+    level="L2",
     source="CISA",
     section="Security",
-    remediation=(
-        "Admin console > Security > Access and data control > Data protection > Manage rules. "
-        "Create DLP rules for Google Chat to prevent sensitive data "
-        "from being shared in chat conversations. Chat is a common "
-        "vector for accidental data exposure. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-from-chat-messages-and-attachments"
-    ),
+    remediation=_DLP_ACTION_REMED,
     requires_license=EDITIONS_DLP,
 )
-def check_dlp_chat(data: dict) -> CheckResult:
-    """DLP rules should be configured for Google Chat."""
+def check_dlp_actions_block(data: dict) -> CheckResult:
+    """SCuBA 18.2 (SHOULD): every active DLP rule blocks for Drive, Chat and Calendar; Gmail rules
+    may audit only. A rule action is blocking when its per-app action carries a ``block*`` key
+    (e.g. ``driveAction.blockExternalSharing``); ``warnUser`` and audit-only are not."""
     _ID = "GWS.COMMONCONTROLS.18.2"
-    _TITLE = "Ensure DLP policy is configured for Google Chat"
-    _L, _S, _SEC = "L1", "CISA", "Security"
-    _REMED = (
-        "Admin console > Security > Access and data control > Data protection > Manage rules. "
-        "Create DLP rules for Google Chat to prevent sensitive data "
-        "from being shared in chat conversations. Chat is a common "
-        "vector for accidental data exposure. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-from-chat-messages-and-attachments"
-    )
-
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-
-    # OU-aware path
-    ou_values = get_ou_values(security, "dlp")
-    if ou_values:
-        return ou_verdict(
-            ou_values, _rule_list_judge("chatDlpRules", "chat_dlp_rules"),
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="lack DLP rules for Chat",
-            pass_text="have DLP rules configured for Chat",
-            expected_value="At least one DLP rule for Chat", remediation=_REMED,
+    _TITLE = "Ensure DLP rule actions block (Drive external sharing, Chat messages, Calendar events)"
+    common = dict(check_id=_ID, title=_TITLE, level="L2", source="CISA", section="Security")
+    collected, rules = active_dlp_rules(data)
+    if not collected:
+        return make_manual(**common, remediation=_DLP_ACTION_REMED,
+                           details="DLP rules (Policy API category 'rule') were not collected.")
+    judged = 0
+    non_blocking = []
+    for rule in rules:
+        action = rule.get("action") if isinstance(rule.get("action"), dict) else {}
+        for app_key in ("driveAction", "chatAction", "calendarAction"):
+            app_action = action.get(app_key)
+            if not isinstance(app_action, dict):
+                continue
+            judged += 1
+            kinds = sorted(app_action.keys())
+            if not any("block" in k.lower() for k in kinds):
+                non_blocking.append(f"{rule.get('displayName', 'unnamed')} ({app_key}: {', '.join(kinds) or 'no action'})")
+    if judged == 0:
+        return make_not_applicable(
+            **common,
+            details=("No active DLP rule acts on Drive, Chat or Calendar, so there is no rule action to judge "
+                     "(see GWS.COMMONCONTROLS.18.1)."),
         )
-
-    # Fallback: mapped root-level value
-    dlp = security.get("dlp", {})
-    chat_rules = dlp.get("chat_dlp_rules", None)
-
-    if isinstance(chat_rules, list) and len(chat_rules) > 0:
-        return make_pass(
-            check_id="GWS.COMMONCONTROLS.18.2",
-            title="Ensure DLP policy is configured for Google Chat",
-            level="L1", source="CISA", section="Security",
-            details=f"Found {len(chat_rules)} DLP rule(s) configured for Google Chat.",
-            actual_value={"rule_count": len(chat_rules)},
-            expected_value="At least one DLP rule for Chat",
+    if non_blocking:
+        return make_fail(
+            **common, remediation=_DLP_ACTION_REMED,
+            details=(f"{len(non_blocking)} of {judged} Drive/Chat/Calendar rule action(s) do not block: "
+                     f"{'; '.join(non_blocking[:15])}" + (" ..." if len(non_blocking) > 15 else "") + "."),
+            actual_value={"non_blocking_actions": non_blocking}, expected_value="block",
         )
-
-    if chat_rules is None:
-        return make_review(
-            check_id="GWS.COMMONCONTROLS.18.2",
-            title="Ensure DLP policy is configured for Google Chat",
-            level="L1", source="CISA", section="Security",
-            details=(
-                "DLP rules are not exposed by the Cloud Identity Policy API — "
-                "verify Chat DLP coverage in Admin console."
-            ),
-            remediation=(
-                "Admin console > Security > Access and data control > Data protection > Manage rules. "
-                "Create DLP rules for Google Chat to detect and prevent "
-                "sharing of sensitive data in chat messages and spaces. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-from-chat-messages-and-attachments"
-            ),
-        )
-
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.18.2",
-        title="Ensure DLP policy is configured for Google Chat",
-        level="L1", source="CISA", section="Security",
-        details="No DLP rules are configured for Google Chat.",
-        actual_value={"rule_count": 0},
-        expected_value="At least one DLP rule for Chat",
-        remediation=(
-            "Admin console > Security > Access and data control > Data protection > Manage rules. "
-            "Create DLP rules for Google Chat to prevent sensitive data "
-            "from being shared in chat conversations. Chat is a common "
-            "vector for accidental data exposure. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-from-chat-messages-and-attachments"
-        ),
-    )
-
-
-@check(
-    check_id="GWS.COMMONCONTROLS.18.3",
-    title="Ensure DLP policy is configured for Gmail",
-    level="L1",
-    source="CISA",
-    section="Security",
-    remediation=(
-        "Admin console > Security > Access and data control > Data protection > Manage rules. "
-        "Create DLP rules for Gmail to prevent sensitive data from "
-        "being emailed externally. Email is the primary channel for "
-        "both accidental and intentional data exfiltration. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
-    ),
-    requires_license=EDITIONS_DLP,
-)
-def check_dlp_gmail(data: dict) -> CheckResult:
-    """DLP rules should be configured for Gmail."""
-    _ID = "GWS.COMMONCONTROLS.18.3"
-    _TITLE = "Ensure DLP policy is configured for Gmail"
-    _L, _S, _SEC = "L1", "CISA", "Security"
-    _REMED = (
-        "Admin console > Security > Access and data control > Data protection > Manage rules. "
-        "Create DLP rules for Gmail to prevent sensitive data from "
-        "being emailed externally. Email is the primary channel for "
-        "both accidental and intentional data exfiltration. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
-    )
-
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-
-    # OU-aware path
-    ou_values = get_ou_values(security, "dlp")
-    if ou_values:
-        return ou_verdict(
-            ou_values, _rule_list_judge("gmailDlpRules", "gmail_dlp_rules"),
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="lack DLP rules for Gmail",
-            pass_text="have DLP rules configured for Gmail",
-            expected_value="At least one DLP rule for Gmail", remediation=_REMED,
-        )
-
-    # Fallback: mapped root-level value
-    dlp = security.get("dlp", {})
-    gmail_rules = dlp.get("gmail_dlp_rules", None)
-
-    if isinstance(gmail_rules, list) and len(gmail_rules) > 0:
-        return make_pass(
-            check_id="GWS.COMMONCONTROLS.18.3",
-            title="Ensure DLP policy is configured for Gmail",
-            level="L1", source="CISA", section="Security",
-            details=f"Found {len(gmail_rules)} DLP rule(s) configured for Gmail.",
-            actual_value={"rule_count": len(gmail_rules)},
-            expected_value="At least one DLP rule for Gmail",
-        )
-
-    if gmail_rules is None:
-        return make_manual(
-            check_id="GWS.COMMONCONTROLS.18.3",
-            title="Ensure DLP policy is configured for Gmail",
-            level="L1", source="CISA", section="Security",
-            details="Could not determine DLP configuration for Gmail.",
-            remediation=(
-                "Admin console > Security > Access and data control > Data protection > Manage rules. "
-                "Create DLP rules for Gmail to detect and prevent "
-                "sensitive data from being sent via email. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
-            ),
-        )
-
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.18.3",
-        title="Ensure DLP policy is configured for Gmail",
-        level="L1", source="CISA", section="Security",
-        details="No DLP rules are configured for Gmail.",
-        actual_value={"rule_count": 0},
-        expected_value="At least one DLP rule for Gmail",
-        remediation=(
-            "Admin console > Security > Access and data control > Data protection > Manage rules. "
-            "Create DLP rules for Gmail to prevent sensitive data from "
-            "being emailed externally. Email is the primary channel for "
-            "both accidental and intentional data exfiltration. https://knowledge.workspace.google.com/admin/security/prevent-data-leaks-in-email-and-attachments-gmail-dlp"
-        ),
-    )
-
-
-@check(
-    check_id="GWS.COMMONCONTROLS.18.4",
-    title="Ensure DLP policies block external sharing",
-    level="L1",
-    source="CISA",
-    section="Security",
-    remediation=(
-        "Admin console > Security > Access and data control > Data protection > Manage rules. "
-        "Set the DLP default action to 'block' or 'block external sharing'. "
-        "Warn-only or audit-only actions do not prevent data loss and "
-        "should only be used during initial policy tuning. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
-    ),
-    requires_license=EDITIONS_DLP_DRIVE,
-)
-def check_dlp_block_external(data: dict) -> CheckResult:
-    """DLP default action should block or block external sharing of sensitive data."""
-    _ID = "GWS.COMMONCONTROLS.18.4"
-    _TITLE = "Ensure DLP policies block external sharing"
-    _L, _S, _SEC = "L1", "CISA", "Security"
-    _REMED = (
-        "Admin console > Security > Access and data control > Data protection > Manage rules. "
-        "Set the DLP default action to 'block' or 'block external sharing'. "
-        "Warn-only or audit-only actions do not prevent data loss and "
-        "should only be used during initial policy tuning. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
-    )
-
-    policies = data.get("policies", {})
-    security = policies.get("security", {})
-
-    # OU-aware path
-    ou_values = get_ou_values(security, "dlp")
-    if ou_values:
-        def judge(entry: dict):
-            action = field_value(entry, "defaultAction", "default_action")
-            if action is None:
-                return None
-            return action in ("block", "block_external", "BLOCK", "BLOCK_EXTERNAL"), action
-
-        return ou_verdict(
-            ou_values, judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="have DLP action not set to block",
-            pass_text="have DLP set to block external sharing",
-            expected_value="block or block_external", remediation=_REMED,
-        )
-
-    # Fallback: mapped root-level value
-    dlp = security.get("dlp", {})
-    default_action = dlp.get("default_action", None)
-
-    if default_action in ("block", "block_external"):
-        return make_pass(
-            check_id="GWS.COMMONCONTROLS.18.4",
-            title="Ensure DLP policies block external sharing",
-            level="L1", source="CISA", section="Security",
-            details=f"DLP default action is '{default_action}'.",
-            actual_value=default_action,
-            expected_value="block or block_external",
-        )
-
-    if default_action is None:
-        return make_review(
-            check_id="GWS.COMMONCONTROLS.18.4",
-            title="Ensure DLP policies block external sharing",
-            level="L1", source="CISA", section="Security",
-            details=(
-                "DLP rules are not exposed by the Cloud Identity Policy API — "
-                "verify the DLP default action in Admin console."
-            ),
-            remediation=(
-                "Admin console > Security > Access and data control > Data protection > Manage rules. "
-                "Configure DLP rules with a default action of 'block' or "
-                "'block external sharing' to prevent sensitive data from "
-                "leaving the organization. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
-            ),
-        )
-
-    return make_fail(
-        check_id="GWS.COMMONCONTROLS.18.4",
-        title="Ensure DLP policies block external sharing",
-        level="L1", source="CISA", section="Security",
-        details=f"DLP default action is '{default_action}' instead of block or block_external.",
-        actual_value=default_action,
-        expected_value="block or block_external",
-        remediation=(
-            "Admin console > Security > Access and data control > Data protection > Manage rules. "
-            "Set the DLP default action to 'block' or 'block external sharing'. "
-            "Warn-only or audit-only actions do not prevent data loss and "
-            "should only be used during initial policy tuning. https://knowledge.workspace.google.com/admin/security/create-data-protection-rules"
-        ),
+    return make_pass(
+        **common,
+        details=f"All {judged} Drive/Chat/Calendar DLP rule action(s) block.",
+        actual_value={"blocking_actions": judged}, expected_value="block",
     )
 
 
@@ -1781,7 +1652,7 @@ def check_user_account_recovery_disabled(data: dict) -> CheckResult:
     )
 
 
-# Rules CISA SCuBA GWS.COMMONCONTROLS.13.1 requires (baseline v0.6); other system-defined rules are optional.
+# Rules CISA SCuBA GWS.COMMONCONTROLS.13.1 requires (policy group 13 description, unchanged from v0.6 to v1); other system-defined rules are optional.
 SCUBA_REQUIRED_ALERT_RULES = (
     'Government-backed attacks', 'User-reported phishing', "User's Admin privilege revoked",
     'User suspended for spamming through relay', 'User suspended for spamming', 'User suspended due to suspicious activity',

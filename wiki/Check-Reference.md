@@ -4,31 +4,31 @@
 
 ## Overview
 
-The GWS Security Auditor implements **233 security checks** across four frameworks:
+The GWS Security Auditor implements **242 security checks** across four frameworks:
 
 | Framework | Full Name | Checks |
 |-----------|-----------|-------:|
 | **CIS** | CIS Google Workspace Foundations Benchmark v1.4.1 | 83 |
-| **CISA** | CISA SCuBA Baselines for Google Workspace | 97 |
+| **CISA** | CISA SCuBA Secure Configuration Baselines for Google Workspace v1 (ScubaGoggles 1.1.0) | 103 |
 | **GOOGLE** | Google Security Checklist for Medium & Large Businesses | 23 |
-| **OTHER** | Additional best-practice checks | 30 |
-| | **Total** | **233** |
+| **OTHER** | Additional best-practice checks | 33 |
+| | **Total** | **242** |
 
 ## Check Levels
 
-- **L1 (Level 1)** -- 162 checks. Baseline security settings that should be applied to all organizations. Minimal performance impact, broad applicability.
-- **L2 (Level 2)** -- 71 checks. Advanced security settings for organizations with higher security requirements. May restrict functionality or require additional configuration.
+- **L1 (Level 1)** -- 149 checks. Baseline security settings that should be applied to all organizations. Minimal performance impact, broad applicability.
+- **L2 (Level 2)** -- 93 checks. Advanced security settings for organizations with higher security requirements. May restrict functionality or require additional configuration.
 
 ## Severity
 
 | Severity | Checks |
 |----------|-------:|
 | **CRITICAL** | 24 |
-| **HIGH** | 82 |
-| **MEDIUM** | 86 |
+| **HIGH** | 81 |
+| **MEDIUM** | 96 |
 | **LOW** | 41 |
 
-38 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
+39 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
 
 ## Check Statuses
 
@@ -44,329 +44,338 @@ The GWS Security Auditor implements **233 security checks** across four framewor
 
 Some settings are not exposed by the Cloud Identity Policy API. Where Google records changes to them in the admin audit log, the auditor infers the current value from the most recent change event; with no event inside the log window the result is MANUAL.
 
-Every CIS check also carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.0** subcategories that the benchmark's References section maps it to; they appear in the JSON and CSV reports, in the HTML detail view and in the tables below.
+Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.0** subcategories from the benchmark's References section; every CISA check carries the SP 800-53 controls from the SCuBA baseline's FedRAMP High mapping and, where the baseline says so, the **CISA BOD 25-01** requirement flag. They appear in the JSON and CSV reports, in the HTML detail view and in the tables below.
 
 ---
 
 ## Access Control
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-59 | Ensure Device Bound Session Credentials (DBSC) are enabled | L2 | OTHER | HIGH |  |  |  |
-| CIS-4.2.1.1 | Ensure third-party app access is restricted | L2 | CIS | CRITICAL | AC-3(12) | PR.AA-05 |  |
-| CIS-4.2.1.2 | Ensure third-party apps are reviewed | L2 | CIS | HIGH | AC-3(12) | PR.AA-05 |  |
-| CIS-4.2.1.3 | Ensure internal app API access is controlled | L1 | CIS | HIGH | CM-7b | PR.PS-01 |  |
-| CIS-4.2.1.4 | Ensure domain-wide delegation is reviewed | L2 | CIS | CRITICAL | AC-6(7) | PR.AA-05 |  |
-| CIS-4.2.2.1 | Ensure geo-blocking is configured | L1 | CIS | HIGH | AC-3(13) | PR.AA-05 | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| CIS-4.2.3.1 | Ensure DLP policies are configured for Drive | L1 | CIS | HIGH | AC-4(15) | DE.CM-09 | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus |
-| CIS-4.2.4.1 | Ensure Google session control limits web sessions to 12 hours or less | L1 | CIS | CRITICAL | AC-12 | PR.AA-03 | editions: Frontline Standard, Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus |
-| CIS-4.2.5.1 | Ensure cloud session control is configured | L2 | CIS | HIGH | IA-11 | PR.AA-03 | unscored, editions: Frontline Standard, Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-59 | Ensure Device Bound Session Credentials (DBSC) are enabled | L2 | OTHER | HIGH |  |  |  |  |
+| CIS-4.2.1.1 | Ensure third-party app access is restricted | L2 | CIS | CRITICAL | AC-3(12) | PR.AA-05 |  |  |
+| CIS-4.2.1.2 | Ensure third-party apps are reviewed | L2 | CIS | HIGH | AC-3(12) | PR.AA-05 |  |  |
+| CIS-4.2.1.3 | Ensure internal app API access is controlled | L1 | CIS | HIGH | CM-7b | PR.PS-01 |  |  |
+| CIS-4.2.1.4 | Ensure domain-wide delegation is reviewed | L2 | CIS | CRITICAL | AC-6(7) | PR.AA-05 |  |  |
+| CIS-4.2.2.1 | Ensure geo-blocking is configured | L1 | CIS | HIGH | AC-3(13) | PR.AA-05 |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| CIS-4.2.3.1 | Ensure DLP policies are configured for Drive | L1 | CIS | HIGH | AC-4(15) | DE.CM-09 |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus |
+| CIS-4.2.4.1 | Ensure Google session control limits web sessions to 12 hours or less | L1 | CIS | CRITICAL | AC-12 | PR.AA-03 |  | editions: Frontline Standard, Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus |
+| CIS-4.2.5.1 | Ensure cloud session control is configured | L2 | CIS | HIGH | IA-11 | PR.AA-03 |  | unscored, editions: Frontline Standard, Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus |
 
 ## Alert Rules
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| CIS-6.1 | Ensure alert for user password change is configured | L1 | CIS | HIGH | SI-4(5) | DE.AE-06 |  |
-| CIS-6.2 | Ensure alert for government-backed attacks is configured | L1 | CIS | HIGH | SI-4(5) | DE.AE-06 |  |
-| CIS-6.3 | Ensure alert for suspicious activity is configured | L1 | CIS | MEDIUM | SI-4(5) | DE.AE-06 |  |
-| CIS-6.4 | Ensure alert for admin privilege grant is configured | L1 | CIS | HIGH | AC-2(7) | DE.AE-06 |  |
-| CIS-6.5 | Ensure alert for suspicious programmatic login is configured | L1 | CIS | MEDIUM | AC-2(12) | DE.AE-06 |  |
-| CIS-6.6 | Ensure alert for suspicious login is configured | L1 | CIS | MEDIUM | AC-2(12) | DE.AE-06 |  |
-| CIS-6.7 | Ensure alert for leaked password is configured | L1 | CIS | HIGH | SI-4(5) | DE.AE-06 |  |
-| CIS-6.8 | Ensure alert for employee spoofing is configured | L1 | CIS | MEDIUM | SI-4(5) | DE.AE-06 |  |
-| GWS.COMMONCONTROLS.13.1 | Ensure system-defined alerting rules are enabled | L1 | CISA | MEDIUM |  |  |  |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| CIS-6.1 | Ensure alert for user password change is configured | L1 | CIS | HIGH | SI-4(5) | DE.AE-06 |  |  |
+| CIS-6.2 | Ensure alert for government-backed attacks is configured | L1 | CIS | HIGH | SI-4(5) | DE.AE-06 |  |  |
+| CIS-6.3 | Ensure alert for suspicious activity is configured | L1 | CIS | MEDIUM | SI-4(5) | DE.AE-06 |  |  |
+| CIS-6.4 | Ensure alert for admin privilege grant is configured | L1 | CIS | HIGH | AC-2(7) | DE.AE-06 |  |  |
+| CIS-6.5 | Ensure alert for suspicious programmatic login is configured | L1 | CIS | MEDIUM | AC-2(12) | DE.AE-06 |  |  |
+| CIS-6.6 | Ensure alert for suspicious login is configured | L1 | CIS | MEDIUM | AC-2(12) | DE.AE-06 |  |  |
+| CIS-6.7 | Ensure alert for leaked password is configured | L1 | CIS | HIGH | SI-4(5) | DE.AE-06 |  |  |
+| CIS-6.8 | Ensure alert for employee spoofing is configured | L1 | CIS | MEDIUM | SI-4(5) | DE.AE-06 |  |  |
+| GWS.COMMONCONTROLS.13.1 | Ensure system-defined alerting rules are enabled | L1 | CISA | MEDIUM | SI-4(5) |  | yes |  |
 
 ## Assured Controls
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| GWS.ASSUREDCONTROLS.1.1 | Ensure access approvals are enabled | L2 | CISA | LOW |  |  | editions: Assured Controls add-on, Assured Controls Plus add-on |
-| GWS.ASSUREDCONTROLS.1.2 | Ensure support access is restricted to US personnel | L2 | CISA | LOW |  |  | editions: Assured Controls add-on, Assured Controls Plus add-on |
-| GWS.ASSUREDCONTROLS.2.1 | Ensure multi-region data processing is disabled | L2 | CISA | LOW |  |  | editions: Assured Controls add-on, Assured Controls Plus add-on |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| GWS.ASSUREDCONTROLS.1.1 | Ensure access approvals are enabled | L2 | CISA | LOW | SC-7(10)(a) |  |  | editions: Assured Controls add-on, Assured Controls Plus add-on |
+| GWS.ASSUREDCONTROLS.1.2 | Ensure support access is restricted to US personnel | L2 | CISA | LOW | SC-7(10)(a) |  |  | editions: Assured Controls add-on, Assured Controls Plus add-on |
+| GWS.ASSUREDCONTROLS.2.1 | Ensure multi-region data processing is disabled | L2 | CISA | LOW | SC-7(10)(a) |  |  | editions: Assured Controls add-on, Assured Controls Plus add-on |
 
 ## Calendar
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-23 | Ensure DLP rules are configured for Calendar | L2 | GOOGLE | MEDIUM |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials |
-| CIS-3.1.1.1.1 | Ensure external sharing for primary calendars is limited | L1 | CIS | MEDIUM | AC-4 | PR.AA-05 |  |
-| CIS-3.1.1.1.2 | Ensure internal sharing for primary calendars is configured | L2 | CIS | MEDIUM | AC-6 | PR.AA-05 |  |
-| CIS-3.1.1.1.3 | Ensure external invitations show warning | L1 | CIS | MEDIUM | AC-21b | PR.DS-02 |  |
-| CIS-3.1.1.2.1 | Ensure external sharing for secondary calendars is limited | L1 | CIS | MEDIUM | AC-3(11) | PR.AA-05 |  |
-| CIS-3.1.1.2.2 | Ensure internal sharing for secondary calendars is configured | L2 | CIS | MEDIUM | AC-6 | PR.AA-05 |  |
-| CIS-3.1.1.3.1 | Ensure Calendar web offline access is disabled | L2 | CIS | MEDIUM | CM-7b | PR.PS-01 | unscored |
-| GWS.CALENDAR.3.1 | Ensure Calendar Interop is disabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.CALENDAR.3.2 | Ensure Calendar Interop uses Microsoft 365 Graph API | L2 | CISA | MEDIUM |  |  | unscored |
-| GWS.CALENDAR.4.1 | Ensure paid appointment scheduling is disabled | L1 | CISA | LOW |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-23 | Ensure DLP rules are configured for Calendar | L2 | GOOGLE | MEDIUM |  |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials |
+| CIS-3.1.1.1.1 | Ensure external sharing for primary calendars is limited | L1 | CIS | MEDIUM | AC-4 | PR.AA-05 |  |  |
+| CIS-3.1.1.1.2 | Ensure internal sharing for primary calendars is configured | L2 | CIS | MEDIUM | AC-6 | PR.AA-05 |  |  |
+| CIS-3.1.1.1.3 | Ensure external invitations show warning | L1 | CIS | MEDIUM | AC-21b | PR.DS-02 |  |  |
+| CIS-3.1.1.2.1 | Ensure external sharing for secondary calendars is limited | L1 | CIS | MEDIUM | AC-3(11) | PR.AA-05 |  |  |
+| CIS-3.1.1.2.2 | Ensure internal sharing for secondary calendars is configured | L2 | CIS | MEDIUM | AC-6 | PR.AA-05 |  |  |
+| CIS-3.1.1.3.1 | Ensure Calendar web offline access is disabled | L2 | CIS | MEDIUM | CM-7b | PR.PS-01 |  | unscored |
+| GWS.CALENDAR.3.1 | Ensure Calendar Interop is disabled | L2 | CISA | MEDIUM | CM-7 |  |  |  |
+| GWS.CALENDAR.3.2 | Ensure Calendar Interop uses Microsoft 365 Graph API | L2 | CISA | MEDIUM | IA-2(1), IA-2(2) |  |  | unscored |
+| GWS.CALENDAR.4.1 | Ensure paid appointment scheduling is disabled | L2 | CISA | LOW | CM-7 |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
 
 ## Classroom
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| GWS.CLASSROOM.1.1 | Ensure class membership is restricted to domain | L1 | CISA | LOW |  |  |  |
-| GWS.CLASSROOM.1.2 | Ensure classes users can join are restricted to domain | L1 | CISA | LOW |  |  |  |
-| GWS.CLASSROOM.2.1 | Ensure Classroom API access is disabled | L1 | CISA | LOW |  |  |  |
-| GWS.CLASSROOM.3.1 | Ensure roster import with Clever is disabled | L1 | CISA | LOW |  |  |  |
-| GWS.CLASSROOM.4.1 | Ensure only teachers can unenroll students | L1 | CISA | LOW |  |  |  |
-| GWS.CLASSROOM.5.1 | Ensure class creation is restricted to verified teachers | L1 | CISA | LOW |  |  |  |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| GWS.CLASSROOM.1.1 | Ensure class membership is restricted to domain | L2 | CISA | LOW | AC-3 |  |  |  |
+| GWS.CLASSROOM.1.2 | Ensure classes users can join are restricted to domain | L2 | CISA | LOW | SC-7(10) |  |  |  |
+| GWS.CLASSROOM.2.1 | Ensure Classroom API access is disabled | L2 | CISA | LOW | AC-6(10) |  |  |  |
+| GWS.CLASSROOM.3.1 | Ensure roster import with Clever is disabled | L2 | CISA | LOW | CM-7 |  |  |  |
+| GWS.CLASSROOM.4.1 | Ensure only teachers can unenroll students | L2 | CISA | LOW | AC-6(10) |  |  |  |
+| GWS.CLASSROOM.5.1 | Ensure class creation is restricted to verified teachers | L2 | CISA | LOW | AC-6(5), AC-6(10) |  |  |  |
 
 ## Devices
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-30 | Ensure mobile devices are syncing recently | L1 | OTHER | LOW |  |  | unscored |
-| ADD-31 | Ensure ChromeOS devices are active recently | L1 | OTHER | LOW |  |  | unscored |
-| ADD-38 | Ensure endpoint verification devices are syncing recently | L1 | OTHER | LOW |  |  | unscored |
-| ADD-39 | Ensure pending devices are approved promptly | L2 | OTHER | LOW |  |  | unscored |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-30 | Ensure mobile devices are syncing recently | L1 | OTHER | LOW |  |  |  | unscored |
+| ADD-31 | Ensure ChromeOS devices are active recently | L1 | OTHER | LOW |  |  |  | unscored |
+| ADD-38 | Ensure endpoint verification devices are syncing recently | L1 | OTHER | LOW |  |  |  | unscored |
+| ADD-39 | Ensure pending devices are approved promptly | L2 | OTHER | LOW |  |  |  | unscored |
 
 ## Directory
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-42 | Ensure super admin accounts are actively used or removed | L1 | OTHER | HIGH |  |  |  |
-| ADD-43 | Ensure suspended users do not hold admin roles | L1 | OTHER | MEDIUM |  |  |  |
-| ADD-44 | Review active user accounts with no recent sign-in | L2 | OTHER | LOW |  |  | unscored |
-| ADD-52 | Review active users without a Google Workspace licence | L2 | OTHER | LOW |  |  | unscored |
-| CIS-1.1.1 | Ensure that between two and four Super Admin accounts are designated | L1 | CIS | CRITICAL | AC-6(5) | PR.AA-05 |  |
-| CIS-1.1.2 | Ensure Super Admin accounts are used only for super admin activities | L1 | CIS | MEDIUM | AC-6(2) | PR.AA-05 |  |
-| CIS-1.2.1.1 | Ensure directory data is restricted from external access | L1 | CIS | HIGH | AC-3(11) | PR.AA-05 |  |
-| GWS.COMMONCONTROLS.6.1 | Ensure admin accounts are cloud-only | L1 | CISA | HIGH |  |  |  |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-42 | Ensure super admin accounts are actively used or removed | L1 | OTHER | HIGH |  |  |  |  |
+| ADD-43 | Ensure suspended users do not hold admin roles | L1 | OTHER | MEDIUM |  |  |  |  |
+| ADD-44 | Review active user accounts with no recent sign-in | L2 | OTHER | LOW |  |  |  | unscored |
+| ADD-52 | Review active users without a Google Workspace licence | L2 | OTHER | LOW |  |  |  | unscored |
+| CIS-1.1.1 | Ensure that between two and four Super Admin accounts are designated | L1 | CIS | CRITICAL | AC-6(5) | PR.AA-05 |  |  |
+| CIS-1.1.2 | Ensure Super Admin accounts are used only for super admin activities | L1 | CIS | MEDIUM | AC-6(2) | PR.AA-05 |  |  |
+| CIS-1.2.1.1 | Ensure directory data is restricted from external access | L1 | CIS | HIGH | AC-3(11) | PR.AA-05 |  |  |
+| GWS.COMMONCONTROLS.6.1 | Ensure privileged accounts are cloud-only (not signed in through a third-party IdP) | L1 | CISA | HIGH | AC-6(5) |  | yes |  |
 
 ## Drive
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-35 | Ensure Shared Drives have secure default restrictions | L1 | OTHER | HIGH |  |  | unscored |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-35 | Ensure Shared Drives have secure default restrictions | L1 | OTHER | HIGH |  |  |  | unscored |
 
 ## Drive and Docs
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-24 | Ensure AI-powered data classification is enabled for Drive | L2 | GOOGLE | MEDIUM |  |  | unscored, editions: Frontline Plus, Enterprise Plus |
-| ADD-25 | Ensure Drive trust rules are configured | L2 | GOOGLE | MEDIUM |  |  | editions: Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-57 | Ensure Drive SDK is disabled | L2 | OTHER | MEDIUM |  |  |  |
-| CIS-3.1.2.1.1.1 | Ensure users are warned when sharing outside domain | L1 | CIS | HIGH | AC-21b | PR.AA-05 |  |
-| CIS-3.1.2.1.1.2 | Ensure users cannot publish files publicly | L1 | CIS | CRITICAL | AC-22a | PR.AA-05 |  |
-| CIS-3.1.2.1.1.3 | Ensure sharing is controlled by domain allowlists | L2 | CIS | HIGH | AC-4 | PR.AA-05 |  |
-| CIS-3.1.2.1.1.4 | Ensure users are warned when sharing with allowlisted domains | L2 | CIS | MEDIUM | AC-21b | PR.AA-05 |  |
-| CIS-3.1.2.1.1.5 | Ensure Access Checker limits file access | L1 | CIS | HIGH | AC-6 | PR.AA-05 |  |
-| CIS-3.1.2.1.1.6 | Ensure only internal users can distribute content externally | L1 | CIS | HIGH | AC-4 | PR.AA-05 |  |
-| CIS-3.1.2.1.2.1 | Audit users' ability to create new shared drives | L1 | CIS | MEDIUM | SI-12 | PR.DS-01 |  |
-| CIS-3.1.2.1.2.2 | Ensure manager cannot override shared drive settings | L1 | CIS | MEDIUM | AC-6(1) | PR.AA-05 | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
-| CIS-3.1.2.1.2.3 | Ensure shared drive access is restricted to members | L1 | CIS | MEDIUM | AC-3 | PR.AA-05 | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
-| CIS-3.1.2.1.2.4 | Ensure 'Download, print, and copy' on shared drives is not enabled for everyone | L2 | CIS | MEDIUM | AC-6 | PR.AA-05 | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
-| CIS-3.1.2.2.1 | Ensure offline access to Drive is disabled | L1 | CIS | MEDIUM | AC-20(3) | PR.DS-01 | unscored |
-| CIS-3.1.2.3.1 | Ensure Desktop access to Drive is disabled | L1 | CIS | MEDIUM | CM-7b | PR.PS-01 |  |
-| GWS.DRIVEDOCS.1.2 | Ensure receiving files from non-allowlisted domains is disabled | L1 | CISA | HIGH |  |  |  |
-| GWS.DRIVEDOCS.1.3 | Ensure sharing warnings for non-allowlisted domains are enabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.DRIVEDOCS.1.4 | Ensure sharing with non-Google accounts is disabled | L1 | CISA | CRITICAL |  |  |  |
-| GWS.DRIVEDOCS.1.5 | Ensure 'anyone with the link' sharing is disabled | L1 | CISA | CRITICAL |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus |
-| GWS.DRIVEDOCS.1.6 | Ensure access checking is set to recipients only | L1 | CISA | MEDIUM |  |  |  |
-| GWS.DRIVEDOCS.1.7 | Ensure users cannot upload to external shared drives | L2 | CISA | MEDIUM |  |  |  |
-| GWS.DRIVEDOCS.1.8 | Ensure default access for new items is 'private to owner' | L1 | CISA | HIGH |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus |
-| GWS.DRIVEDOCS.1.9 | Ensure out-of-domain file-level warnings are enabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.DRIVEDOCS.1.10 | Ensure forms cannot accept external responses when external sharing is off | L2 | CISA | LOW |  |  | unscored |
-| GWS.DRIVEDOCS.1.11 | Ensure users cannot respond to external forms when receiving files is off | L2 | CISA | LOW |  |  | unscored |
-| GWS.DRIVEDOCS.2.1 | Ensure shared drive manager override is disabled | L2 | CISA | MEDIUM |  |  | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
-| GWS.DRIVEDOCS.2.2 | Ensure non-members can be added to shared drive files | L1 | CISA | MEDIUM |  |  | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
-| GWS.DRIVEDOCS.3.1 | Ensure security updates for files are applied | L1 | CISA | MEDIUM |  |  |  |
-| GWS.DRIVEDOCS.5.1 | Ensure Google Drive Add-Ons are disabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.DRIVEDOCS.6.1 | Ensure Drive for Desktop is restricted to authorized devices | L1 | CISA | MEDIUM |  |  |  |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-24 | Ensure AI-powered data classification is enabled for Drive | L2 | GOOGLE | MEDIUM |  |  |  | unscored, editions: Frontline Plus, Enterprise Plus |
+| ADD-25 | Ensure Drive trust rules are configured | L2 | GOOGLE | MEDIUM |  |  |  | editions: Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ADD-57 | Ensure Drive SDK is disabled | L2 | OTHER | MEDIUM |  |  |  |  |
+| ADD-60 | Ensure Google Drive Add-Ons are disabled | L2 | OTHER | MEDIUM |  |  |  |  |
+| CIS-3.1.2.1.1.1 | Ensure users are warned when sharing outside domain | L1 | CIS | HIGH | AC-21b | PR.AA-05 |  |  |
+| CIS-3.1.2.1.1.2 | Ensure users cannot publish files publicly | L1 | CIS | CRITICAL | AC-22a | PR.AA-05 |  |  |
+| CIS-3.1.2.1.1.3 | Ensure sharing is controlled by domain allowlists | L2 | CIS | HIGH | AC-4 | PR.AA-05 |  |  |
+| CIS-3.1.2.1.1.4 | Ensure users are warned when sharing with allowlisted domains | L2 | CIS | MEDIUM | AC-21b | PR.AA-05 |  |  |
+| CIS-3.1.2.1.1.5 | Ensure Access Checker limits file access | L1 | CIS | HIGH | AC-6 | PR.AA-05 |  |  |
+| CIS-3.1.2.1.1.6 | Ensure only internal users can distribute content externally | L1 | CIS | HIGH | AC-4 | PR.AA-05 |  |  |
+| CIS-3.1.2.1.2.1 | Audit users' ability to create new shared drives | L1 | CIS | MEDIUM | SI-12 | PR.DS-01 |  |  |
+| CIS-3.1.2.1.2.2 | Ensure manager cannot override shared drive settings | L1 | CIS | MEDIUM | AC-6(1) | PR.AA-05 |  | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
+| CIS-3.1.2.1.2.3 | Ensure shared drive access is restricted to members | L1 | CIS | MEDIUM | AC-3 | PR.AA-05 |  | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
+| CIS-3.1.2.1.2.4 | Ensure 'Download, print, and copy' on shared drives is not enabled for everyone | L2 | CIS | MEDIUM | AC-6 | PR.AA-05 |  | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
+| CIS-3.1.2.2.1 | Ensure offline access to Drive is disabled | L1 | CIS | MEDIUM | AC-20(3) | PR.DS-01 |  | unscored |
+| CIS-3.1.2.3.1 | Ensure Desktop access to Drive is disabled | L1 | CIS | MEDIUM | CM-7b | PR.PS-01 |  |  |
+| GWS.DRIVEDOCS.1.2 | Ensure receiving files from non-allowlisted domains is disabled | L2 | CISA | HIGH | SI-3, SI-8 |  |  |  |
+| GWS.DRIVEDOCS.1.3 | Ensure sharing warnings for non-allowlisted domains are enabled | L1 | CISA | MEDIUM | AT-2b |  | yes |  |
+| GWS.DRIVEDOCS.1.4 | Ensure sharing with non-Google accounts is disabled | L2 | CISA | CRITICAL | IA-8, SC-7(10) |  |  |  |
+| GWS.DRIVEDOCS.1.5 | Ensure 'anyone with the link' sharing is disabled | L2 | CISA | CRITICAL | IA-8 |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus |
+| GWS.DRIVEDOCS.1.6 | Ensure access checking is set to recipients only | L1 | CISA | MEDIUM | AC-3, IA-8, SC-7(10) |  | yes |  |
+| GWS.DRIVEDOCS.1.7 | Ensure users cannot upload to external shared drives | L2 | CISA | MEDIUM | SC-7(10) |  |  |  |
+| GWS.DRIVEDOCS.1.8 | Ensure default access for new items is 'private to owner' | L1 | CISA | HIGH | AC-6 |  | yes | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus |
+| GWS.DRIVEDOCS.1.9 | Ensure out-of-domain file-level warnings are enabled | L1 | CISA | MEDIUM | IA-8, SC-7(10) |  | yes |  |
+| GWS.DRIVEDOCS.1.10 | Ensure forms cannot accept external responses when external sharing is off | L2 | CISA | LOW | IA-8, SC-7(10) |  |  | unscored |
+| GWS.DRIVEDOCS.1.11 | Ensure users cannot respond to external forms when receiving files is off | L2 | CISA | LOW | IA-8, SC-7(10) |  |  | unscored |
+| GWS.DRIVEDOCS.2.1 | Ensure shared drive manager override is disabled | L2 | CISA | MEDIUM | AC-6 |  |  | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
+| GWS.DRIVEDOCS.2.2 | Ensure non-members can be added to shared drive files | L1 | CISA | MEDIUM | AC-3 |  | yes | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
+| GWS.DRIVEDOCS.3.1 | Ensure security updates for files are applied | L1 | CISA | MEDIUM | AC-3 |  | yes |  |
+| GWS.DRIVEDOCS.5.1 | Ensure Drive for Desktop is enabled only for authorized devices | L1 | CISA | MEDIUM | CM-7 |  | yes |  |
+| GWS.DRIVEDOCS.5.2 | Ensure monitoring for potential ransomware corruption in Drive is enabled | L1 | CISA | MEDIUM | CP-9, CP-10 |  |  | unscored |
 
 ## Gemini
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-13 | Ensure Gemini features in Workspace apps are controlled | L1 | GOOGLE | LOW |  |  | unscored, editions: Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning |
-| ADD-14 | Ensure Gemini in Chrome is disabled | L2 | GOOGLE | LOW |  |  |  |
-| ADD-15 | Ensure Google Workspace Studio access is controlled | L2 | GOOGLE | LOW |  |  | editions: Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning |
-| GWS.GEMINI.1.1 | Ensure Gemini app access is restricted to licensed users | L1 | CISA | LOW |  |  |  |
-| GWS.GEMINI.2.1 | Ensure alpha Gemini features are disabled | L1 | CISA | LOW |  |  |  |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-13 | Ensure Gemini features in Workspace apps are controlled | L1 | GOOGLE | LOW |  |  |  | unscored, editions: Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning |
+| ADD-14 | Ensure Gemini in Chrome is disabled | L2 | GOOGLE | LOW |  |  |  |  |
+| ADD-15 | Ensure Google Workspace Studio access is controlled | L2 | GOOGLE | LOW |  |  |  | editions: Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning |
+| GWS.GEMINI.1.1 | Ensure Gemini app access is restricted to licensed users | L1 | CISA | LOW | SC-7(10)(a) |  |  |  |
+| GWS.GEMINI.2.1 | Ensure Gemini Beta features are disabled | L1 | CISA | LOW | SC-7(10)(a) |  |  |  |
+| GWS.GEMINI.3.1 | Ensure Gemini conversation history is enabled | L1 | CISA | MEDIUM | AU-2, AU-11 |  |  |  |
+| GWS.GEMINI.3.2 | Ensure Gemini conversation retention is at least 18 months | L1 | CISA | MEDIUM | AU-2, AU-11 |  |  |  |
+| GWS.GEMINI.4.1 | Ensure Gemini conversation sharing is off | L1 | CISA | MEDIUM | SC-7(10)a |  |  |  |
 
 ## Gmail
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-02 | Ensure Security Sandbox is enabled for Gmail | L1 | OTHER | HIGH |  |  | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus |
-| ADD-05 | Ensure MX records point to Google | L1 | GOOGLE | HIGH |  |  |  |
-| ADD-06 | Ensure inbound gateway SPF configuration is correct | L2 | GOOGLE | MEDIUM |  |  |  |
-| ADD-07 | Ensure TLS is enforced for partner domains | L2 | GOOGLE | HIGH |  |  | unscored |
-| ADD-12 | Ensure DLP rules are configured for Gmail | L1 | GOOGLE | HIGH |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
-| ADD-22 | Ensure data classification labels are enabled for Gmail | L1 | GOOGLE | MEDIUM |  |  | unscored, editions: Frontline Starter, Frontline Standard, Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
-| ADD-26 | Ensure CSE is enabled for Gmail | L2 | GOOGLE | MEDIUM |  |  | unscored, editions: Frontline Plus, Enterprise Plus, Education Standard, Education Plus |
-| ADD-50 | Ensure MTA-STS is published for all mail domains | L2 | OTHER | MEDIUM |  |  |  |
-| ADD-51 | Ensure mailboxes do not forward to external addresses | L1 | OTHER | HIGH |  |  |  |
-| CIS-3.1.3.1.1 | Ensure mail delegation is disabled | L1 | CIS | CRITICAL | AC-3 | PR.AA-05 |  |
-| CIS-3.1.3.1.2 | Ensure offline Gmail is disabled | L1 | CIS | MEDIUM | CM-7b | PR.PS-01 |  |
-| CIS-3.1.3.2.1 | Ensure DKIM is enabled for all domains | L1 | CIS | CRITICAL | SC-8(1) | PR.DS-02 |  |
-| CIS-3.1.3.2.2 | Ensure SPF records are configured for all domains | L1 | CIS | CRITICAL | AC-4 | PR.AA-03 |  |
-| CIS-3.1.3.2.3 | Ensure DMARC records are configured for all domains | L1 | CIS | CRITICAL | AC-4(17) | PR.DS-02 |  |
-| CIS-3.1.3.3.1 | Ensure quarantine admin notifications are enabled | L1 | CIS | MEDIUM | SI-4(5) | DE.AE-06 |  |
-| CIS-3.1.3.4.1.1 | Ensure encrypted attachment protection is enabled | L1 | CIS | HIGH | SI-3a | DE.CM-09 |  |
-| CIS-3.1.3.4.1.2 | Ensure script attachment protection is enabled | L1 | CIS | HIGH | SI-3a | DE.CM-09 |  |
-| CIS-3.1.3.4.1.3 | Ensure anomalous attachment protection is enabled | L1 | CIS | HIGH | SI-3a | DE.CM-09 |  |
-| CIS-3.1.3.4.2.1 | Ensure shortened URL identification is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |
-| CIS-3.1.3.4.2.2 | Ensure linked image scanning is enabled | L1 | CIS | HIGH | SI-3c | DE.CM-09 |  |
-| CIS-3.1.3.4.2.3 | Ensure warning for untrusted links is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |
-| CIS-3.1.3.4.3.1 | Ensure domain spoofing protection is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |
-| CIS-3.1.3.4.3.2 | Ensure employee name spoofing protection is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |
-| CIS-3.1.3.4.3.3 | Ensure inbound domain spoofing protection is enabled | L1 | CIS | HIGH | AC-4 | DE.CM-09 |  |
-| CIS-3.1.3.4.3.4 | Ensure unauthenticated email protection is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |
-| CIS-3.1.3.4.3.5 | Ensure Groups inbound spoofing protection is enabled | L1 | CIS | HIGH | AC-4 | DE.CM-09 |  |
-| CIS-3.1.3.5.1 | Ensure POP and IMAP access is disabled | L2 | CIS | HIGH | CM-7b | PR.PS-01 |  |
-| CIS-3.1.3.5.2 | Ensure automatic email forwarding is disabled | L1 | CIS | CRITICAL | SC-7(10) | PR.DS-02 |  |
-| CIS-3.1.3.5.3 | Ensure per-user outbound gateways are disabled | L1 | CIS | MEDIUM | AC-4 | PR.PS-01 |  |
-| CIS-3.1.3.5.4 | Ensure external recipient warnings are enabled | L1 | CIS | MEDIUM | AC-21b | PR.DS-02 |  |
-| CIS-3.1.3.6.1 | Ensure enhanced pre-delivery message scanning is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |
-| CIS-3.1.3.6.2 | Ensure spam filters are not bypassed for internal senders | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |
-| CIS-3.1.3.7.1 | Ensure comprehensive mail storage is enabled | L1 | CIS | MEDIUM | SI-12 | PR.DS-01 |  |
-| CIS-3.1.3.7.2 | Ensure secure TLS connection is enforced | L1 | CIS | HIGH | SC-8(1) | PR.DS-02 | unscored |
-| GWS.GMAIL.4.1 | Ensure DMARC policy is published for all domains | L1 | CISA | HIGH |  |  |  |
-| GWS.GMAIL.4.2 | Ensure DMARC policy is set to reject | L1 | CISA | CRITICAL |  |  |  |
-| GWS.GMAIL.4.3 | Ensure DMARC alignment mode is strict | L1 | CISA | HIGH |  |  |  |
-| GWS.GMAIL.4.4 | Ensure DMARC reporting is configured | L1 | CISA | MEDIUM |  |  |  |
-| GWS.GMAIL.5.4 | Ensure future recommended attachment protections are applied automatically | L1 | CISA | LOW |  |  |  |
-| GWS.GMAIL.5.5 | Ensure flagged emails are moved out of inbox | L1 | CISA | MEDIUM |  |  |  |
-| GWS.GMAIL.6.4 | Ensure future recommended link and image protections are applied automatically | L1 | CISA | LOW |  |  |  |
-| GWS.GMAIL.7.6 | Ensure spoofed and unauthenticated email is not kept in the inbox | L1 | CISA | HIGH |  |  |  |
-| GWS.GMAIL.7.7 | Ensure future recommended spoofing protections are applied automatically | L1 | CISA | LOW |  |  |  |
-| GWS.GMAIL.8.1 | Ensure user email uploads are disabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.GMAIL.10.1 | Ensure Google Workspace Sync is disabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.GMAIL.14.1 | Ensure email allowlist is not used | L1 | CISA | MEDIUM |  |  |  |
-| GWS.GMAIL.18.1 | Ensure no domains bypass spam filters | L1 | CISA | HIGH |  |  |  |
-| GWS.GMAIL.18.2 | Ensure no domains bypass spam filters and hide warnings | L1 | CISA | HIGH |  |  |  |
-| GWS.GMAIL.18.3 | Ensure global spam filter bypass is disabled | L1 | CISA | HIGH |  |  |  |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-02 | Ensure Security Sandbox is enabled for Gmail | L1 | OTHER | HIGH |  |  |  | editions: Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus |
+| ADD-05 | Ensure MX records point to Google | L1 | GOOGLE | HIGH |  |  |  |  |
+| ADD-06 | Ensure inbound gateway SPF configuration is correct | L2 | GOOGLE | MEDIUM |  |  |  |  |
+| ADD-07 | Ensure TLS is enforced for partner domains | L2 | GOOGLE | HIGH |  |  |  | unscored |
+| ADD-12 | Ensure DLP rules are configured for Gmail | L1 | GOOGLE | HIGH |  |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
+| ADD-22 | Ensure data classification labels are enabled for Gmail | L1 | GOOGLE | MEDIUM |  |  |  | unscored, editions: Frontline Starter, Frontline Standard, Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
+| ADD-26 | Ensure CSE is enabled for Gmail | L2 | GOOGLE | MEDIUM |  |  |  | unscored, editions: Frontline Plus, Enterprise Plus, Education Standard, Education Plus |
+| ADD-50 | Ensure MTA-STS is published for all mail domains | L2 | OTHER | MEDIUM |  |  |  |  |
+| ADD-51 | Ensure mailboxes do not forward to external addresses | L1 | OTHER | HIGH |  |  |  |  |
+| ADD-62 | Ensure DMARC alignment mode is strict | L2 | OTHER | MEDIUM |  |  |  |  |
+| CIS-3.1.3.1.1 | Ensure mail delegation is disabled | L1 | CIS | CRITICAL | AC-3 | PR.AA-05 |  |  |
+| CIS-3.1.3.1.2 | Ensure offline Gmail is disabled | L1 | CIS | MEDIUM | CM-7b | PR.PS-01 |  |  |
+| CIS-3.1.3.2.1 | Ensure DKIM is enabled for all domains | L1 | CIS | CRITICAL | SC-8(1) | PR.DS-02 |  |  |
+| CIS-3.1.3.2.2 | Ensure SPF records are configured for all domains | L1 | CIS | CRITICAL | AC-4 | PR.AA-03 |  |  |
+| CIS-3.1.3.2.3 | Ensure DMARC records are configured for all domains | L1 | CIS | CRITICAL | AC-4(17) | PR.DS-02 |  |  |
+| CIS-3.1.3.3.1 | Ensure quarantine admin notifications are enabled | L1 | CIS | MEDIUM | SI-4(5) | DE.AE-06 |  |  |
+| CIS-3.1.3.4.1.1 | Ensure encrypted attachment protection is enabled | L1 | CIS | HIGH | SI-3a | DE.CM-09 |  |  |
+| CIS-3.1.3.4.1.2 | Ensure script attachment protection is enabled | L1 | CIS | HIGH | SI-3a | DE.CM-09 |  |  |
+| CIS-3.1.3.4.1.3 | Ensure anomalous attachment protection is enabled | L1 | CIS | HIGH | SI-3a | DE.CM-09 |  |  |
+| CIS-3.1.3.4.2.1 | Ensure shortened URL identification is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |  |
+| CIS-3.1.3.4.2.2 | Ensure linked image scanning is enabled | L1 | CIS | HIGH | SI-3c | DE.CM-09 |  |  |
+| CIS-3.1.3.4.2.3 | Ensure warning for untrusted links is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |  |
+| CIS-3.1.3.4.3.1 | Ensure domain spoofing protection is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |  |
+| CIS-3.1.3.4.3.2 | Ensure employee name spoofing protection is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |  |
+| CIS-3.1.3.4.3.3 | Ensure inbound domain spoofing protection is enabled | L1 | CIS | HIGH | AC-4 | DE.CM-09 |  |  |
+| CIS-3.1.3.4.3.4 | Ensure unauthenticated email protection is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |  |
+| CIS-3.1.3.4.3.5 | Ensure Groups inbound spoofing protection is enabled | L1 | CIS | HIGH | AC-4 | DE.CM-09 |  |  |
+| CIS-3.1.3.5.1 | Ensure POP and IMAP access is disabled | L2 | CIS | HIGH | CM-7b | PR.PS-01 |  |  |
+| CIS-3.1.3.5.2 | Ensure automatic email forwarding is disabled | L1 | CIS | CRITICAL | SC-7(10) | PR.DS-02 |  |  |
+| CIS-3.1.3.5.3 | Ensure per-user outbound gateways are disabled | L1 | CIS | MEDIUM | AC-4 | PR.PS-01 |  |  |
+| CIS-3.1.3.5.4 | Ensure external recipient warnings are enabled | L1 | CIS | MEDIUM | AC-21b | PR.DS-02 |  |  |
+| CIS-3.1.3.6.1 | Ensure enhanced pre-delivery message scanning is enabled | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |  |
+| CIS-3.1.3.6.2 | Ensure spam filters are not bypassed for internal senders | L1 | CIS | HIGH | SI-8a | DE.CM-09 |  |  |
+| CIS-3.1.3.7.1 | Ensure comprehensive mail storage is enabled | L1 | CIS | MEDIUM | SI-12 | PR.DS-01 |  |  |
+| CIS-3.1.3.7.2 | Ensure secure TLS connection is enforced | L1 | CIS | HIGH | SC-8(1) | PR.DS-02 |  | unscored |
+| GWS.GMAIL.4.1 | Ensure DMARC policy is published for all domains | L1 | CISA | HIGH | SI-8 |  | yes |  |
+| GWS.GMAIL.4.2 | Ensure DMARC policy is set to reject | L1 | CISA | CRITICAL | SI-8 |  | yes |  |
+| GWS.GMAIL.4.3 | Ensure DMARC aggregate reports are sent to the required point of contact | L1 | CISA | HIGH | SI-4(5) |  | yes |  |
+| GWS.GMAIL.4.4 | Ensure DMARC aggregate and failure reports include an agency contact | L2 | CISA | MEDIUM | SI-4(5) |  |  |  |
+| GWS.GMAIL.5.4 | Ensure future recommended attachment protections are applied automatically | L2 | CISA | LOW | SI-3, SI-8 |  |  |  |
+| GWS.GMAIL.5.5 | Ensure flagged emails are moved out of inbox | L1 | CISA | MEDIUM | SI-3, SI-8 |  | yes |  |
+| GWS.GMAIL.6.4 | Ensure future recommended link and image protections are applied automatically | L1 | CISA | LOW | SI-3, SI-8 |  | yes |  |
+| GWS.GMAIL.7.6 | Ensure spoofed and unauthenticated email is not kept in the inbox | L1 | CISA | HIGH | SI-8 |  | yes |  |
+| GWS.GMAIL.7.7 | Ensure future recommended spoofing protections are applied automatically | L1 | CISA | LOW | SI-8 |  | yes |  |
+| GWS.GMAIL.8.1 | Ensure user email uploads are disabled | L1 | CISA | MEDIUM | CM-7, SI-3, SI-8 |  | yes |  |
+| GWS.GMAIL.10.1 | Ensure Google Workspace Sync is disabled | L2 | CISA | MEDIUM | CM-7 |  |  |  |
+| GWS.GMAIL.14.1 | Ensure email allowlist is not used | L2 | CISA | MEDIUM | AC-4 |  |  |  |
+| GWS.GMAIL.18.1 | Ensure no domains bypass spam filters | L1 | CISA | HIGH | SI-8 |  | yes |  |
+| GWS.GMAIL.18.2 | Ensure no domains bypass spam filters and hide warnings | L1 | CISA | HIGH | SI-8 |  | yes |  |
+| GWS.GMAIL.18.3 | Ensure global spam filter bypass is disabled | L1 | CISA | HIGH | SI-8 |  | yes |  |
 
 ## Google Chat
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-29 | Ensure Chat spaces have recent activity | L2 | OTHER | LOW |  |  | unscored |
-| ADD-45 | Ensure Chat spaces with external members are restricted | L2 | OTHER | MEDIUM |  |  |  |
-| CIS-3.1.4.1.2 | Ensure internal file sharing in Google Chat is disabled | L2 | CIS | MEDIUM | CM-7b | PR.PS-01 | editions: Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| CIS-3.1.4.2.1 | Ensure external chat is restricted to allowed domains | L1 | CIS | HIGH | AC-4 | PR.DS-02 | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Enterprise Essentials, Enterprise Essentials Plus |
-| CIS-3.1.4.3.1 | Ensure external spaces in Google Chat are restricted to allowlisted domains | L1 | CIS | MEDIUM | AC-3 | PR.AA-05 | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Enterprise Essentials, Enterprise Essentials Plus |
-| CIS-3.1.4.4.1 | Ensure Chat app installation is disabled | L1 | CIS | MEDIUM | CM-11b | PR.PS-05 |  |
-| CIS-3.1.4.4.2 | Ensure incoming webhooks are disabled | L1 | CIS | MEDIUM | CM-7b | PR.PS-01 |  |
-| GWS.CHAT.1.1 | Ensure Chat history is enabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.CHAT.1.2 | Ensure users cannot change Chat history setting | L1 | CISA | MEDIUM |  |  |  |
-| GWS.CHAT.2.1 | Ensure external file sharing in Chat is disabled | L1 | CISA | HIGH |  |  | editions: Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| GWS.CHAT.3.1 | Ensure Chat space history is enabled | L2 | CISA | MEDIUM |  |  |  |
-| GWS.CHAT.5.1 | Ensure Chat content reporting is enabled | L1 | CISA | MEDIUM |  |  | editions: Frontline Plus, Enterprise Plus, Education Standard, Education Plus |
-| GWS.CHAT.5.2 | Ensure all Chat reporting categories are selected | L2 | CISA | MEDIUM |  |  | unscored, editions: Frontline Plus, Enterprise Plus, Education Standard, Education Plus |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-29 | Ensure Chat spaces have recent activity | L2 | OTHER | LOW |  |  |  | unscored |
+| ADD-45 | Ensure Chat spaces with external members are restricted | L2 | OTHER | MEDIUM |  |  |  |  |
+| CIS-3.1.4.1.2 | Ensure internal file sharing in Google Chat is disabled | L2 | CIS | MEDIUM | CM-7b | PR.PS-01 |  | editions: Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| CIS-3.1.4.2.1 | Ensure external chat is restricted to allowed domains | L1 | CIS | HIGH | AC-4 | PR.DS-02 |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Enterprise Essentials, Enterprise Essentials Plus |
+| CIS-3.1.4.3.1 | Ensure external spaces in Google Chat are restricted to allowlisted domains | L1 | CIS | MEDIUM | AC-3 | PR.AA-05 |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Enterprise Essentials, Enterprise Essentials Plus |
+| CIS-3.1.4.4.1 | Ensure Chat app installation is disabled | L1 | CIS | MEDIUM | CM-11b | PR.PS-05 |  |  |
+| CIS-3.1.4.4.2 | Ensure incoming webhooks are disabled | L1 | CIS | MEDIUM | CM-7b | PR.PS-01 |  |  |
+| GWS.CHAT.1.1 | Ensure Chat history is enabled | L1 | CISA | MEDIUM | AU-2, SC-7(10) |  | yes |  |
+| GWS.CHAT.1.2 | Ensure users cannot change Chat history setting | L1 | CISA | MEDIUM | AU-9 |  | yes |  |
+| GWS.CHAT.2.1 | Ensure external file sharing in Chat is disabled | L1 | CISA | HIGH | AC-3, SC-7(10) |  | yes | editions: Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| GWS.CHAT.3.1 | Ensure Chat space history is enabled | L2 | CISA | MEDIUM | AU-2, SC-7(10) |  |  |  |
+| GWS.CHAT.5.1 | Ensure Chat content reporting is enabled | L1 | CISA | MEDIUM | IR-6 |  |  | editions: Frontline Plus, Enterprise Plus, Education Standard, Education Plus |
+| GWS.CHAT.5.2 | Ensure all Chat reporting categories are selected | L2 | CISA | MEDIUM | IR-6 |  |  | unscored, editions: Frontline Plus, Enterprise Plus, Education Standard, Education Plus |
 
 ## Google Meet
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-27 | Ensure Meet compliance recording is configured | L2 | GOOGLE | MEDIUM |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
-| GWS.MEET.1.1 | Ensure external users must ask to join meetings | L1 | CISA | HIGH |  |  |  |
-| GWS.MEET.2.1 | Ensure non-GWS tenant meeting access is disabled | L1 | CISA | HIGH |  |  |  |
-| GWS.MEET.3.1 | Ensure host management is enabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.MEET.4.1 | Ensure external participant warning is enabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.MEET.5.1 | Ensure incoming calls are restricted to organization | L1 | CISA | MEDIUM |  |  |  |
-| GWS.MEET.6.1 | Ensure automatic recording is disabled | L1 | CISA | LOW |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
-| GWS.MEET.6.2 | Ensure automatic transcription is disabled | L1 | CISA | LOW |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-27 | Ensure Meet compliance recording is configured | L2 | GOOGLE | MEDIUM |  |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
+| ADD-61 | Ensure incoming calls are restricted to organization | L2 | OTHER | MEDIUM |  |  |  |  |
+| GWS.MEET.1.1 | Ensure external users must ask to join meetings | L1 | CISA | HIGH | IA-2, IA-8 |  | yes |  |
+| GWS.MEET.2.1 | Ensure non-GWS tenant meeting access is disabled | L1 | CISA | HIGH | IA-8, SC-7(10) |  | yes |  |
+| GWS.MEET.3.1 | Ensure host management is enabled | L1 | CISA | MEDIUM | CM-7 |  | yes |  |
+| GWS.MEET.4.1 | Ensure external participant warning is enabled | L1 | CISA | MEDIUM | SC-15 |  | yes |  |
+| GWS.MEET.5.1 | Ensure automatic recording is disabled | L1 | CISA | LOW | CM-7 |  | yes | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
+| GWS.MEET.5.2 | Ensure automatic transcription is disabled | L1 | CISA | LOW | CM-7 |  | yes | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus |
+| GWS.MEET.6.1 | Ensure hosts cannot override the default sharing level for Gemini meeting notes | L2 | CISA | MEDIUM | AC-3, SC-7(10) |  |  |  |
+| GWS.MEET.6.2 | Ensure the default sharing of Gemini meeting notes is restricted to guests in the organization | L1 | CISA | MEDIUM | SC-7(10) |  |  |  |
+| GWS.MEET.6.3 | Ensure screenshots are captured in Gemini notes only when the meeting is recorded | L1 | CISA | MEDIUM | AC-3, SC-7(10) |  |  | unscored |
 
 ## Groups
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-28 | Ensure groups have active members | L1 | OTHER | LOW |  |  | unscored |
-| ADD-37 | Ensure group discoverability is restricted | L2 | OTHER | MEDIUM |  |  |  |
-| ADD-46 | Ensure groups cannot be joined by anyone on the internet | L1 | OTHER | MEDIUM |  |  |  |
-| CIS-3.1.6.1 | Ensure external Groups access is private | L1 | CIS | HIGH | AC-3 | PR.AA-05 |  |
-| CIS-3.1.6.2 | Ensure group creation is restricted to admins | L1 | CIS | MEDIUM | AC-2c | PR.AA-05 |  |
-| CIS-3.1.6.3 | Ensure group conversation viewing is restricted | L1 | CIS | MEDIUM | AC-6 | PR.AA-05 |  |
-| CIS-3.1.8.1 | Ensure external Google Groups is disabled | L1 | CIS | MEDIUM | CM-7b | PR.PS-01 |  |
-| GWS.GROUPS.1.1 | Ensure external group access is disabled by default | L1 | CISA | HIGH |  |  |  |
-| GWS.GROUPS.1.2 | Ensure external group members are disabled by default | L2 | CISA | HIGH |  |  |  |
-| GWS.GROUPS.1.3 | Ensure external posting to groups is disabled | L1 | CISA | HIGH |  |  |  |
-| GWS.GROUPS.3.1 | Ensure default conversation visibility is members-only | L2 | CISA | MEDIUM |  |  |  |
-| GWS.GROUPS.4.1 | Ensure groups cannot be hidden from directory | L1 | CISA | MEDIUM |  |  |  |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-28 | Ensure groups have active members | L1 | OTHER | LOW |  |  |  | unscored |
+| ADD-37 | Ensure group discoverability is restricted | L2 | OTHER | MEDIUM |  |  |  |  |
+| ADD-46 | Ensure groups cannot be joined by anyone on the internet | L1 | OTHER | MEDIUM |  |  |  |  |
+| CIS-3.1.6.1 | Ensure external Groups access is private | L1 | CIS | HIGH | AC-3 | PR.AA-05 |  |  |
+| CIS-3.1.6.2 | Ensure group creation is restricted to admins | L1 | CIS | MEDIUM | AC-2c | PR.AA-05 |  |  |
+| CIS-3.1.6.3 | Ensure group conversation viewing is restricted | L1 | CIS | MEDIUM | AC-6 | PR.AA-05 |  |  |
+| CIS-3.1.8.1 | Ensure external Google Groups is disabled | L1 | CIS | MEDIUM | CM-7b | PR.PS-01 |  |  |
+| GWS.GROUPS.1.1 | Ensure external group access is disabled by default | L1 | CISA | HIGH | AC-3 |  | yes |  |
+| GWS.GROUPS.1.2 | Ensure external group members are disabled by default | L2 | CISA | HIGH | CM-7, AC-6(10) |  |  |  |
+| GWS.GROUPS.1.3 | Ensure external posting to groups is disabled | L2 | CISA | HIGH | CM-7, AC-6(10) |  |  |  |
+| GWS.GROUPS.3.1 | Ensure default conversation visibility is members-only | L2 | CISA | MEDIUM | AC-6 |  |  |  |
+| GWS.GROUPS.4.1 | Ensure groups cannot be hidden from directory | L1 | CISA | MEDIUM | CM-7 |  | yes |  |
 
 ## Marketplace
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| CIS-3.1.9.1.1 | Ensure Marketplace apps are restricted | L1 | CIS | HIGH | CM-11b | PR.PS-05 |  |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| CIS-3.1.9.1.1 | Ensure Marketplace apps are restricted | L1 | CIS | HIGH | CM-11b | PR.PS-05 |  |  |
 
 ## Reporting
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| CIS-5.1.1.1 | Ensure App Usage Activity Report is reviewed | L1 | CIS | LOW | AC-2(12) | DE.CM-03 | unscored |
-| CIS-5.1.1.2 | Ensure the Security Report is reviewed regularly for anomalies | L1 | CIS | LOW | CA-7d | DE.CM-03 |  |
-| GWS.COMMONCONTROLS.14.1 | Ensure audit logging is enabled | L1 | CISA | HIGH |  |  |  |
-| GWS.COMMONCONTROLS.14.2 | Ensure audit log retention meets minimum requirements | L1 | CISA | HIGH |  |  | unscored |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| CIS-5.1.1.1 | Ensure App Usage Activity Report is reviewed | L1 | CIS | LOW | AC-2(12) | DE.CM-03 |  | unscored |
+| CIS-5.1.1.2 | Ensure the Security Report is reviewed regularly for anomalies | L1 | CIS | LOW | CA-7d | DE.CM-03 |  |  |
+| GWS.COMMONCONTROLS.14.1 | Ensure audit logging is enabled | L1 | CISA | HIGH | SI-4(5) |  |  |  |
+| GWS.COMMONCONTROLS.14.2 | Ensure audit log retention meets minimum requirements | L1 | CISA | HIGH | AU-11 |  |  | unscored |
 
 ## Security
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| ADD-08 | Ensure password protection warning is enabled | L2 | GOOGLE | HIGH |  |  |  |
-| ADD-09 | Ensure Google Takeout is restricted | L1 | GOOGLE | MEDIUM |  |  |  |
-| ADD-11 | Ensure client-side encryption is enabled | L2 | GOOGLE | MEDIUM |  |  | unscored, editions: Frontline Plus, Enterprise Plus, Education Standard, Education Plus |
-| ADD-16 | Ensure Apple Intelligence Writing Tools are disabled for Workspace | L2 | GOOGLE | LOW |  |  |  |
-| ADD-18 | Ensure passkeys are enforced as primary authentication | L2 | GOOGLE | CRITICAL |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-20 | Ensure Context-Aware Access is applied to OIDC apps | L2 | GOOGLE | MEDIUM |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-21 | Ensure Multi-Party Approval covers Vault exports | L2 | GOOGLE | MEDIUM |  |  | unscored, editions: Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-32 | Users without 2-Step Verification by OU inventory | L1 | OTHER | LOW |  |  | unscored |
-| ADD-33 | Ensure no OAuth apps have dangerous privilege grants | L1 | OTHER | CRITICAL |  |  | unscored |
-| ADD-34 | Ensure no users have active App-Specific Passwords | L1 | OTHER | HIGH |  |  | unscored |
-| ADD-36 | Ensure no active OAuth tokens grant dangerous privileges | L1 | OTHER | CRITICAL |  |  |  |
-| ADD-40 | Ensure default Context-Aware Access policy is enabled for SAML applications | L2 | GOOGLE | MEDIUM |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-41 | Ensure admin roles are not assigned to groups anyone can join | L1 | OTHER | HIGH |  |  |  |
-| ADD-47 | Ensure compromised, unencrypted or unlocked devices do not keep access | L1 | OTHER | HIGH |  |  |  |
-| ADD-48 | Review custom admin roles with account-takeover privileges | L2 | OTHER | MEDIUM |  |  |  |
-| ADD-49 | Review who holds Google Vault privileges | L2 | OTHER | LOW |  |  | unscored |
-| ADD-53 | Ensure the Admin console is protected by a Context-Aware Access level | L2 | GOOGLE | MEDIUM |  |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-54 | Ensure a device-based Context-Aware Access level is enforced | L2 | GOOGLE | HIGH |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-55 | Review Context-Aware Access levels that are not assigned to any app | L2 | OTHER | MEDIUM |  |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-56 | Review Context-Aware Access denials | L2 | OTHER | MEDIUM |  |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| ADD-58 | Ensure less secure app access is disabled | L1 | OTHER | CRITICAL |  |  |  |
-| CIS-4.1.1.1 | Ensure 2-Step Verification is enforced for all admins | L1 | CIS | CRITICAL | IA-2(1) | PR.AA-03 |  |
-| CIS-4.1.1.2 | Ensure hardware security keys are required for admins | L2 | CIS | CRITICAL | IA-2(6) | PR.AA-03 |  |
-| CIS-4.1.1.3 | Ensure 2-Step Verification is enforced for all users | L1 | CIS | CRITICAL | IA-2(2) | PR.AA-03 |  |
-| CIS-4.1.2.1 | Ensure super admin account recovery is disabled | L2 | CIS | CRITICAL | IA-5d | PR.AA-01 |  |
-| CIS-4.1.2.2 | Ensure user account recovery is enabled | L1 | CIS | HIGH | IA-5(1) | PR.AA-01 |  |
-| CIS-4.1.3.1 | Ensure Advanced Protection Program is available | L2 | CIS | HIGH | IA-2(6) | PR.AA-03 |  |
-| CIS-4.1.4.1 | Ensure login challenges are enforced | L2 | CIS | HIGH | IA-10 | PR.AA-03 |  |
-| CIS-4.1.5.1 | Ensure password policy is enhanced | L1 | CIS | HIGH | IA-5(1) | PR.AA-03 |  |
-| GWS.COMMONCONTROLS.1.1 | Ensure phishing-resistant MFA is required for all users | L2 | CISA | HIGH |  |  |  |
-| GWS.COMMONCONTROLS.1.3 | Ensure SMS/Voice MFA methods are disabled | L1 | CISA | CRITICAL |  |  |  |
-| GWS.COMMONCONTROLS.1.4 | Ensure MFA enrollment period is configured | L1 | CISA | HIGH |  |  |  |
-| GWS.COMMONCONTROLS.1.5 | Ensure 'trust this device' is disabled | L1 | CISA | HIGH |  |  |  |
-| GWS.COMMONCONTROLS.2.1 | Ensure context-aware access policies are implemented | L2 | CISA | HIGH |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| GWS.COMMONCONTROLS.3.1 | Ensure SSO verification is enabled for organization SSO profile | L2 | CISA | HIGH |  |  | unscored |
-| GWS.COMMONCONTROLS.3.2 | Ensure post-SSO verification is enabled for third-party SSO | L2 | CISA | HIGH |  |  | unscored |
-| GWS.COMMONCONTROLS.4.1 | Ensure users re-authenticate after 12-hour session expiry | L1 | CISA | HIGH |  |  | editions: Frontline Standard, Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus |
-| GWS.COMMONCONTROLS.5.1 | Ensure strong password strength is enforced | L1 | CISA | MEDIUM |  |  |  |
-| GWS.COMMONCONTROLS.5.3 | Ensure minimum password length is at least 15 characters | L2 | CISA | LOW |  |  |  |
-| GWS.COMMONCONTROLS.5.5 | Ensure password reuse is not allowed | L1 | CISA | MEDIUM |  |  |  |
-| GWS.COMMONCONTROLS.5.6 | Ensure passwords are not set to expire | L1 | CISA | LOW |  |  |  |
-| GWS.COMMONCONTROLS.7.1 | Ensure conflicting account management is configured | L1 | CISA | LOW |  |  | unscored |
-| GWS.COMMONCONTROLS.8.1 | Ensure super admin account self-recovery is disabled | L1 | CISA | CRITICAL |  |  |  |
-| GWS.COMMONCONTROLS.8.2 | Ensure user account self-recovery is disabled | L1 | CISA | MEDIUM |  |  |  |
-| GWS.COMMONCONTROLS.8.3 | Ensure adding recovery information is disabled | L2 | CISA | MEDIUM |  |  | unscored |
-| GWS.COMMONCONTROLS.9.1 | Ensure privileged accounts are in Advanced Protection Program | L1 | CISA | HIGH |  |  |  |
-| GWS.COMMONCONTROLS.9.2 | Ensure sensitive users are in Advanced Protection Program | L2 | CISA | HIGH |  |  |  |
-| GWS.COMMONCONTROLS.10.1 | Ensure app access control policies restrict third-party access | L1 | CISA | HIGH |  |  |  |
-| GWS.COMMONCONTROLS.10.2 | Ensure users cannot consent to low-risk app scopes | L1 | CISA | HIGH |  |  |  |
-| GWS.COMMONCONTROLS.10.3 | Ensure unconfigured internal apps are not trusted | L1 | CISA | HIGH |  |  |  |
-| GWS.COMMONCONTROLS.10.4 | Ensure unconfigured third-party apps are blocked | L1 | CISA | CRITICAL |  |  |  |
-| GWS.COMMONCONTROLS.15.1 | Ensure data regions are configured | L2 | CISA | LOW |  |  | editions: Frontline Starter, Frontline Standard, Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| GWS.COMMONCONTROLS.15.2 | Ensure data is processed in the selected storage region | L2 | CISA | LOW |  |  | editions: Frontline Plus, Enterprise Plus, Enterprise Essentials Plus |
-| GWS.COMMONCONTROLS.16.1 | Ensure unused Google services are disabled | L2 | CISA | MEDIUM |  |  |  |
-| GWS.COMMONCONTROLS.16.2 | Ensure early access apps are disabled | L2 | CISA | LOW |  |  |  |
-| GWS.COMMONCONTROLS.17.1 | Ensure multi-party approval is enabled | L2 | CISA | HIGH |  |  | editions: Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
-| GWS.COMMONCONTROLS.18.2 | Ensure DLP policy is configured for Google Chat | L1 | CISA | MEDIUM |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
-| GWS.COMMONCONTROLS.18.3 | Ensure DLP policy is configured for Gmail | L1 | CISA | HIGH |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
-| GWS.COMMONCONTROLS.18.4 | Ensure DLP policies block external sharing | L1 | CISA | HIGH |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| ADD-08 | Ensure password protection warning is enabled | L2 | GOOGLE | HIGH |  |  |  |  |
+| ADD-09 | Ensure Google Takeout is restricted | L1 | GOOGLE | MEDIUM |  |  |  |  |
+| ADD-11 | Ensure client-side encryption is enabled | L2 | GOOGLE | MEDIUM |  |  |  | unscored, editions: Frontline Plus, Enterprise Plus, Education Standard, Education Plus |
+| ADD-16 | Ensure Apple Intelligence Writing Tools are disabled for Workspace | L2 | GOOGLE | LOW |  |  |  |  |
+| ADD-18 | Ensure passkeys are enforced as primary authentication | L2 | GOOGLE | CRITICAL |  |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ADD-20 | Ensure Context-Aware Access is applied to OIDC apps | L2 | GOOGLE | MEDIUM |  |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ADD-21 | Ensure Multi-Party Approval covers Vault exports | L2 | GOOGLE | MEDIUM |  |  |  | unscored, editions: Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ADD-32 | Users without 2-Step Verification by OU inventory | L1 | OTHER | LOW |  |  |  | unscored |
+| ADD-33 | Ensure no OAuth apps have dangerous privilege grants | L1 | OTHER | CRITICAL |  |  |  | unscored |
+| ADD-34 | Ensure no users have active App-Specific Passwords | L1 | OTHER | HIGH |  |  |  | unscored |
+| ADD-36 | Ensure no active OAuth tokens grant dangerous privileges | L1 | OTHER | CRITICAL |  |  |  |  |
+| ADD-40 | Ensure default Context-Aware Access policy is enabled for SAML applications | L2 | GOOGLE | MEDIUM |  |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ADD-41 | Ensure admin roles are not assigned to groups anyone can join | L1 | OTHER | HIGH |  |  |  |  |
+| ADD-47 | Ensure compromised, unencrypted or unlocked devices do not keep access | L1 | OTHER | HIGH |  |  |  |  |
+| ADD-48 | Review custom admin roles with account-takeover privileges | L2 | OTHER | MEDIUM |  |  |  |  |
+| ADD-49 | Review who holds Google Vault privileges | L2 | OTHER | LOW |  |  |  | unscored |
+| ADD-53 | Ensure the Admin console is protected by a Context-Aware Access level | L2 | GOOGLE | MEDIUM |  |  |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ADD-54 | Ensure a device-based Context-Aware Access level is enforced | L2 | GOOGLE | HIGH |  |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ADD-55 | Review Context-Aware Access levels that are not assigned to any app | L2 | OTHER | MEDIUM |  |  |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ADD-56 | Review Context-Aware Access denials | L2 | OTHER | MEDIUM |  |  |  | unscored, editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| ADD-58 | Ensure less secure app access is disabled | L1 | OTHER | CRITICAL |  |  |  |  |
+| CIS-4.1.1.1 | Ensure 2-Step Verification is enforced for all admins | L1 | CIS | CRITICAL | IA-2(1) | PR.AA-03 |  |  |
+| CIS-4.1.1.2 | Ensure hardware security keys are required for admins | L2 | CIS | CRITICAL | IA-2(6) | PR.AA-03 |  |  |
+| CIS-4.1.1.3 | Ensure 2-Step Verification is enforced for all users | L1 | CIS | CRITICAL | IA-2(2) | PR.AA-03 |  |  |
+| CIS-4.1.2.1 | Ensure super admin account recovery is disabled | L2 | CIS | CRITICAL | IA-5d | PR.AA-01 |  |  |
+| CIS-4.1.2.2 | Ensure user account recovery is enabled | L1 | CIS | HIGH | IA-5(1) | PR.AA-01 |  |  |
+| CIS-4.1.3.1 | Ensure Advanced Protection Program is available | L2 | CIS | HIGH | IA-2(6) | PR.AA-03 |  |  |
+| CIS-4.1.4.1 | Ensure login challenges are enforced | L2 | CIS | HIGH | IA-10 | PR.AA-03 |  |  |
+| CIS-4.1.5.1 | Ensure password policy is enhanced | L1 | CIS | HIGH | IA-5(1) | PR.AA-03 |  |  |
+| GWS.COMMONCONTROLS.1.1 | Ensure phishing-resistant MFA is required for all users | L1 | CISA | HIGH | IA-2(1), IA-2(2), IA-5c, IA-5g, IA-2(8) |  | yes |  |
+| GWS.COMMONCONTROLS.1.3 | Ensure SMS/Voice MFA methods are disabled | L1 | CISA | CRITICAL | CM-7b, IA-5c |  | yes |  |
+| GWS.COMMONCONTROLS.1.4 | Ensure MFA enrollment period is configured | L1 | CISA | HIGH | IA-2(1), IA-2(2) |  | yes |  |
+| GWS.COMMONCONTROLS.1.5 | Ensure 'trust this device' is disabled | L1 | CISA | HIGH | IA-2(1), IA-2(2) |  | yes |  |
+| GWS.COMMONCONTROLS.2.1 | Ensure context-aware access policies are implemented | L2 | CISA | HIGH | IA-3 |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| GWS.COMMONCONTROLS.3.1 | Ensure post-SSO verification is enabled for the organization's SSO profile | L2 | CISA | HIGH | IA-2(1), IA-2(2) |  |  |  |
+| GWS.COMMONCONTROLS.3.2 | Ensure post-SSO verification is enabled for third-party SSO profiles | L2 | CISA | HIGH | IA-2(1), IA-2(2) |  |  |  |
+| GWS.COMMONCONTROLS.4.1 | Ensure users re-authenticate after 12-hour session expiry | L1 | CISA | HIGH | IA-11 |  | yes | editions: Frontline Standard, Frontline Plus, Business Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus, Enterprise Essentials Plus |
+| GWS.COMMONCONTROLS.5.1 | Ensure strong password strength is enforced | L1 | CISA | MEDIUM | IA-5(1) |  | yes |  |
+| GWS.COMMONCONTROLS.5.3 | Ensure minimum password length is at least 16 characters | L2 | CISA | LOW | IA-5(1) |  |  |  |
+| GWS.COMMONCONTROLS.5.5 | Ensure password reuse is not allowed | L1 | CISA | MEDIUM | IA-5(1) |  | yes |  |
+| GWS.COMMONCONTROLS.5.6 | Ensure passwords are not set to expire | L1 | CISA | LOW | IA-5(1) |  | yes |  |
+| GWS.COMMONCONTROLS.7.1 | Ensure conflicting account management is configured | L2 | CISA | LOW | IA-2 |  |  |  |
+| GWS.COMMONCONTROLS.8.1 | Ensure super admin account self-recovery is disabled | L1 | CISA | CRITICAL | IA-5d, IA-5g |  | yes |  |
+| GWS.COMMONCONTROLS.8.2 | Ensure user account self-recovery is disabled | L1 | CISA | MEDIUM | IA-5d, IA-5g |  | yes |  |
+| GWS.COMMONCONTROLS.8.3 | Ensure adding recovery information is disabled | L2 | CISA | MEDIUM | SC-7(10) |  |  | unscored |
+| GWS.COMMONCONTROLS.9.1 | Ensure privileged accounts are in Advanced Protection Program | L1 | CISA | HIGH | IA-2(1), IA-2(2), IA-5c, IA-5d, IA-5g, SI-3, SI-8 |  |  |  |
+| GWS.COMMONCONTROLS.9.2 | Ensure sensitive users are in Advanced Protection Program | L2 | CISA | HIGH | IA-2(1), IA-2(2), IA-5c, IA-5d, IA-5g, SI-3, SI-8 |  |  |  |
+| GWS.COMMONCONTROLS.10.1 | Ensure app access control policies restrict third-party access to all Google services | L1 | CISA | HIGH | SI-3 |  | yes |  |
+| GWS.COMMONCONTROLS.10.2 | Ensure users cannot consent to low-risk app scopes | L1 | CISA | HIGH | AC-6 |  | yes |  |
+| GWS.COMMONCONTROLS.10.3 | Ensure unconfigured internal apps are not trusted | L1 | CISA | HIGH | SI-3 |  | yes |  |
+| GWS.COMMONCONTROLS.10.4 | Ensure unconfigured third-party apps are blocked | L1 | CISA | CRITICAL | SI-3 |  | yes |  |
+| GWS.COMMONCONTROLS.15.1 | Ensure data regions are configured | L1 | CISA | LOW | SC-7(10) |  | yes | editions: Frontline Starter, Frontline Standard, Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| GWS.COMMONCONTROLS.15.2 | Ensure data is processed in the selected storage region | L1 | CISA | LOW | SC-7(10) |  | yes | editions: Frontline Plus, Enterprise Plus, Enterprise Essentials Plus |
+| GWS.COMMONCONTROLS.16.1 | Ensure unused Google services are disabled | L2 | CISA | MEDIUM | CM-7 |  |  |  |
+| GWS.COMMONCONTROLS.16.2 | Ensure early access apps are disabled | L2 | CISA | LOW | CM-7 |  |  |  |
+| GWS.COMMONCONTROLS.16.3 | Ensure Looker Studio sharing outside the organization is off | L2 | CISA | MEDIUM | AC-3, SC-7(10) |  |  | unscored |
+| GWS.COMMONCONTROLS.16.4 | Ensure Pinpoint access to Drive is off | L2 | CISA | MEDIUM | CM-7 |  |  | unscored |
+| GWS.COMMONCONTROLS.17.1 | Ensure multi-party approval is enabled | L2 | CISA | HIGH | AC-5 |  |  | editions: Enterprise Standard, Enterprise Plus, Education Standard, Education Plus, Enterprise Essentials Plus |
+| GWS.COMMONCONTROLS.18.1 | Ensure DLP rules cover Drive, Calendar, Chat and Gmail for credit card, ITIN and SSN data | L1 | CISA | HIGH | SC-7(10) |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
+| GWS.COMMONCONTROLS.18.2 | Ensure DLP rule actions block (Drive external sharing, Chat messages, Calendar events) | L2 | CISA | MEDIUM | AC-3, SC-7(10) |  |  | editions: Frontline Standard, Frontline Plus, Enterprise Standard, Enterprise Plus, Education Fundamentals, Education Standard, Education Plus |
 
 ## Sites
 
-| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | Notes |
-|----|-------|-------|--------|----------|-------------------|--------------|-------|
-| CIS-3.1.7.1 | Ensure Google Sites creation is disabled | L1 | CIS | HIGH | CM-7b | PR.PS-01 |  |
-| GWS.SITES.1.1 | Ensure Sites service is disabled | L1 | CISA | MEDIUM |  |  |  |
+| ID | Title | Level | Source | Severity | NIST SP 800-53 r5 | NIST CSF 2.0 | BOD 25-01 | Notes |
+|----|-------|-------|--------|----------|-------------------|--------------|-----------|-------|
+| CIS-3.1.7.1 | Ensure Google Sites creation is disabled | L1 | CIS | HIGH | CM-7b | PR.PS-01 |  |  |
+| GWS.SITES.1.1 | Ensure Sites service is disabled | L2 | CISA | MEDIUM | CM-7 |  |  |  |

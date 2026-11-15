@@ -92,15 +92,23 @@ REQUIRED_SETTINGS: dict[str, list[str]] = {
         "gmail.spam_override_lists",
         "gmail.email_spam_filter_ip_allowlist",
         "gmail.external_recipient_warning",  # live 2026-11-07; documented default enabled=true
+        "gmail.email_address_lists",
+        "gmail.blocked_sender_lists",
+        "gmail.rule_states",
     ],
     "devices": [
         "devices.ios_apple_intelligence",  # ADD-16, live 2026-11-07
     ],
     "gemini_app": [
         "gemini_app.unlicensed_user_access",  # GWS.GEMINI.1.1, live 2026-11-07
+        "gemini_app.conversation_history",
+        "gemini_app.conversation_sharing",
     ],
     "gemini_for_workspace": [
         "gemini_for_workspace.beta_features",  # GWS.GEMINI.2.1, live 2026-11-07
+    ],
+    "access_approval": [
+        "access_approval.axa_user_scoping",  # GWS.ASSUREDCONTROLS.1.1 (ScubaGoggles 1.1.0); Assured Controls tenants only
     ],
     "provisioning": [
         "provisioning.conflicting_accounts_management",  # GWS.COMMONCONTROLS.7.1 (ScubaGoggles)
@@ -171,6 +179,7 @@ REQUIRED_SETTINGS: dict[str, list[str]] = {
     "api_controls": [
         "api_controls.unconfigured_third_party_apps",
         "api_controls.internal_apps",
+        "api_controls.google_services",
     ],
 }
 

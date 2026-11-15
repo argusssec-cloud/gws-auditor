@@ -84,5 +84,6 @@ class JSONReporter:
             "cis_controls": check.cis_controls,
             "nist_sp800_53": list(getattr(check, "nist_sp800_53", []) or []),
             "nist_csf": list(getattr(check, "nist_csf", []) or []),
+            "bod_25_01": bool(getattr(check, "bod_25_01", False)),
             "scored": getattr(check, "scored", True),
         }

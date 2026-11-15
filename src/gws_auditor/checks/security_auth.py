@@ -630,6 +630,31 @@ def _employee_id_off_result(common: dict, data: dict, ou_count: int | None) -> C
     where = f"All {ou_count} OU(s) leave" if ou_count else "The organisation leaves"
     saml = _saml_sso_logins(data)
     if saml:
+        # The admin log can settle the post-SSO half (same events as GWS.COMMONCONTROLS.3.1 / 3.2).
+        from .cisa_commoncontrols import (POST_SSO_LEGACY_ON, POST_SSO_LEGACY_SETTING, POST_SSO_PROFILES_ON,
+                                          POST_SSO_PROFILES_SETTING, post_sso_verification_states)
+        legacy = post_sso_verification_states(data, POST_SSO_LEGACY_SETTING, POST_SSO_LEGACY_ON, False)
+        profiles = post_sso_verification_states(data, POST_SSO_PROFILES_SETTING, POST_SSO_PROFILES_ON, True)
+        bypass = sorted({f"legacy profile in {ou}" for ou, on in legacy.items() if not on}
+                        | {f"other SSO profiles in {ou}" for ou, on in profiles.items() if not on})
+        if bypass:
+            return make_fail(
+                **common,
+                details=(f"{where} the employee ID challenge off, but post-SSO verification is bypassed for: "
+                         f"{', '.join(bypass)} (latest admin-log change), while {saml} sign-in(s) came through a "
+                         "third-party SSO identity provider."),
+                actual_value={"employee_id_challenge": False, "post_sso_bypass": bypass, "saml_sso_logins": saml},
+                expected_value=_LC_EXPECTED, remediation=_LC_REMED,
+            )
+        if legacy and profiles:
+            return make_pass(
+                **common,
+                details=(f"{where} the employee ID challenge off, and the admin log shows post-SSO verification on "
+                         f"for the legacy SSO profile and for other SSO profiles ({saml} third-party SSO sign-in(s) "
+                         "in the window)."),
+                actual_value={"employee_id_challenge": False, "post_sso_verification": True, "saml_sso_logins": saml},
+                expected_value=_LC_EXPECTED,
+            )
         return make_review(
             **common,
             details=(f"{where} the employee ID challenge off (compliant), but {saml} sign-in(s) in the login log "

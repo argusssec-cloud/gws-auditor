@@ -86,8 +86,8 @@ class TestScubaAdditions:
     def test_password_controls(self, full_audit_data):
         from gws_auditor.checks import cisa_additions as m
 
-        good = {"allowedStrength": "STRONG", "minimumLength": 15, "allowReuse": False, "expirationDuration": "0s"}
-        checks = (m.check_password_strength, m.check_password_length_15, m.check_password_reuse, m.check_password_no_expiry)
+        good = {"allowedStrength": "STRONG", "minimumLength": 16, "allowReuse": False, "expirationDuration": "0s"}
+        checks = (m.check_password_strength, m.check_password_length_16, m.check_password_reuse, m.check_password_no_expiry)
         _set(full_audit_data, "security", "password", good)
         assert all(c(full_audit_data).status == Status.PASS for c in checks)
         _set(full_audit_data, "security", "password",

@@ -83,43 +83,59 @@ class TestCisaServicesGmail:
 
     # -- GWS.GMAIL.18.1: check_spam_approved_senders_domains --
 
-    def test_spam_approved_senders_domains_pass(self, full_audit_data):
+    def _lists(self, data, *entries, addresses=("alice@partner.example", "bob@partner.example")):
+        data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "email_address_lists", {"emailAddressList": [
+                {"id": "L1", "name": "Partners", "addressList": {"address": [{"address": a} for a in addresses]}}]}),
+            make_ou_policy("gmail", "rule_states", {"ruleStates": [{"ruleId": "r1", "enabled": True}, {"ruleId": "L1", "enabled": True}]}),
+            *entries]}
+
+    def test_spam_approved_senders_addresses_only_pass(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_approved_senders_domains
+        self._lists(full_audit_data, make_ou_policy("gmail", "spam_override_lists",
+                    _override(ruleId="r1", bypassSelectedSenders=True, bypassSenderAllowlist=["L1"])))
+        assert check_spam_approved_senders_domains(full_audit_data).status == Status.PASS
 
-        full_audit_data["policies"]["gmail"] = {
-            "spam_settings": {"approved_senders_domains": []},
-        }
-        result = check_spam_approved_senders_domains(full_audit_data)
-        assert result.status == Status.PASS
-
-    def test_spam_approved_senders_domains_fail(self, full_audit_data):
+    def test_spam_approved_senders_domain_entry_fails(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_approved_senders_domains
-
-        full_audit_data["policies"]["gmail"] = {
-            "spam_settings": {"approved_senders_domains": ["spammer.com"]},
-        }
+        self._lists(full_audit_data, make_ou_policy("gmail", "spam_override_lists",
+                    _override(ruleId="r1", bypassSelectedSenders=True, bypassSenderAllowlist=["L1"])),
+                    addresses=("alice@partner.example", "spammer.example"))
         result = check_spam_approved_senders_domains(full_audit_data)
         assert result.status == Status.FAIL
+        assert "Partners (spammer.example)" in result.details
 
     # -- GWS.GMAIL.18.2: check_spam_domains_bypass_hide_warnings --
 
     def test_spam_domains_bypass_hide_warnings_pass(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_domains_bypass_hide_warnings
-
-        full_audit_data["policies"]["gmail"] = {
-            "spam_settings": {"domains_bypass_and_hide_warnings": []},
-        }
-        result = check_spam_domains_bypass_hide_warnings(full_audit_data)
-        assert result.status == Status.PASS
+        self._lists(full_audit_data, make_ou_policy("gmail", "spam_override_lists",
+                    _override(ruleId="r1", hideWarningBannerFromSelectedSenders=True, hideWarningBannerSenderAllowlist=["L1"])))
+        assert check_spam_domains_bypass_hide_warnings(full_audit_data).status == Status.PASS
 
     def test_spam_domains_bypass_hide_warnings_fail(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_domains_bypass_hide_warnings
+        self._lists(full_audit_data, make_ou_policy("gmail", "spam_override_lists",
+                    _override(ruleId="r1", hideWarningBannerFromSelectedSenders=True, hideWarningBannerSenderAllowlist=["L1"])),
+                    addresses=("bad.example",))
+        assert check_spam_domains_bypass_hide_warnings(full_audit_data).status == Status.FAIL
 
-        full_audit_data["policies"]["gmail"] = {
-            "spam_settings": {"domains_bypass_and_hide_warnings": ["bad.com"]},
-        }
-        result = check_spam_domains_bypass_hide_warnings(full_audit_data)
-        assert result.status == Status.FAIL
+    def test_disabled_list_is_ignored(self, full_audit_data):
+        from gws_auditor.checks.cisa_services import check_spam_approved_senders_domains
+        full_audit_data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "email_address_lists", {"emailAddressList": [
+                {"id": "L1", "name": "Old", "addressList": {"address": [{"address": "spammer.example"}]}}]}),
+            make_ou_policy("gmail", "rule_states", {"ruleStates": [{"ruleId": "r1", "enabled": True}, {"ruleId": "L1", "enabled": False}]}),
+            make_ou_policy("gmail", "spam_override_lists", _override(ruleId="r1", bypassSelectedSenders=True, bypassSenderAllowlist=["L1"]))]}
+        assert check_spam_approved_senders_domains(full_audit_data).status == Status.PASS
+
+    def test_unresolvable_lists_are_manual(self, full_audit_data):
+        from gws_auditor.checks.cisa_services import check_spam_approved_senders_domains
+        full_audit_data["policies"]["gmail"] = {"_ou_policies": [
+            make_ou_policy("gmail", "spam_override_lists", _override(bypassSelectedSenders=True))]}
+        result = check_spam_approved_senders_domains(full_audit_data)
+        assert result.status == Status.MANUAL
+        assert "could not be read" in result.details
 
     # -- GWS.GMAIL.18.3: check_spam_bypass_internal --
 
@@ -552,17 +568,18 @@ class TestSpamApprovedSendersDomainsOU:
 
     def test_child_ou_unsafe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_approved_senders_domains
-
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
+                make_ou_policy("gmail", "email_address_lists", {"emailAddressList": [
+                    {"id": "L1", "name": "Vendors", "addressList": {"address": [{"address": "vendor.example"}]}}]}),
                 make_ou_policy("gmail", "spam_override_lists", {"spamOverride": []}, "/"),
                 make_ou_policy("gmail", "spam_override_lists",
-                                _override(bypassSelectedSenders=True), "/Marketing"),
+                                _override(bypassSelectedSenders=True, bypassSenderAllowlist=["L1"]), "/Marketing"),
             ],
         }
         result = check_spam_approved_senders_domains(full_audit_data)
         assert result.status == Status.FAIL
-        assert "/Marketing" in result.details
+        assert "/Marketing" in result.details and "vendor.example" in result.details
 
     def test_absent_rule_list_is_the_documented_default(self, full_audit_data):
         """spamOverride[] absent means the documented default [] (no override rules): PASS, not unknown."""
@@ -599,26 +616,18 @@ class TestSpamDomainsBypassHideWarningsOU:
 
     def test_child_ou_unsafe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_domains_bypass_hide_warnings
-
         full_audit_data["policies"]["gmail"] = {
             "_ou_policies": [
+                make_ou_policy("gmail", "email_address_lists", {"emailAddressList": [
+                    {"id": "L1", "name": "Vendors", "addressList": {"address": [{"address": "vendor.example"}]}}]}),
                 make_ou_policy("gmail", "spam_override_lists", {"spamOverride": []}, "/"),
                 make_ou_policy("gmail", "spam_override_lists",
-                                _override(bypassSelectedSenders=True, hideWarningBannerFromSelectedSenders=True),
-                                "/Support"),
+                                _override(hideWarningBannerFromSelectedSenders=True, hideWarningBannerSenderAllowlist=["L1"]), "/Marketing"),
             ],
         }
         result = check_spam_domains_bypass_hide_warnings(full_audit_data)
         assert result.status == Status.FAIL
-        assert "/Support" in result.details
-
-
-class TestSpamBypassInternalOU:
-    """OU-aware tests for GWS.GMAIL.18.3: check_spam_bypass_internal.
-
-    Rewritten with the real spamOverride[].bypassInternalSenders instead of the invented
-    bypassSpamFiltersForInternal.
-    """
+        assert "/Marketing" in result.details and "vendor.example" in result.details
 
     def test_all_ous_safe(self, full_audit_data):
         from gws_auditor.checks.cisa_services import check_spam_bypass_internal

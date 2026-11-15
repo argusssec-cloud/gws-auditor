@@ -26,11 +26,70 @@ from ..models import CheckResult, Status
 # Gmail - CISA SCuBA checks
 # ===========================================================================
 
+
+def _dmarc_tag_addresses(record: str, tag: str) -> list[str]:
+    """``mailto:`` addresses of a DMARC ``rua=`` / ``ruf=`` tag (lower-cased, without ``mailto:`` and size limits)."""
+    for part in str(record or "").split(";"):
+        part = part.strip()
+        if part.lower().startswith(tag + "="):
+            values = part.split("=", 1)[1].split(",")
+            return [v.strip().lower()[7:].split("!")[0] for v in values if v.strip().lower().startswith("mailto:")]
+    return []
+
+
+def _domain_names(data: dict) -> list[str]:
+    return [d if isinstance(d, str) else d.get("domainName", d.get("domain_name", "")) for d in data.get("domains", [])]
+
+
+DEFAULT_DMARC_REPORT_CONTACTS = ("reports@dmarc.cyber.dhs.gov",)
+_DMARC_CONTACT_REMED = (
+    "Add the required aggregate-report recipient to every DMARC record, e.g. "
+    "'rua=mailto:reports@dmarc.cyber.dhs.gov,mailto:dmarc@<domain>' (US federal agencies: CISA's address; other "
+    "organisations set options.dmarc_report_contacts to their own mandated recipient). "
+    "https://knowledge.workspace.google.com/admin/security/set-up-dmarc"
+)
+
+
 @check(
     check_id="GWS.GMAIL.4.3",
-    title="Ensure DMARC alignment mode is strict",
+    title="Ensure DMARC aggregate reports are sent to the required point of contact",
     level="L1",
     source="CISA",
+    section="Gmail",
+    remediation=_DMARC_CONTACT_REMED,
+)
+def check_dmarc_report_contact(data: dict) -> CheckResult:
+    """SCuBA v1 4.3 (SHALL): the DMARC ``rua=`` tag of every domain includes the required contact,
+    ``reports@dmarc.cyber.dhs.gov`` for US federal agencies (``options.dmarc_report_contacts`` overrides)."""
+    _ID, _TITLE = "GWS.GMAIL.4.3", "Ensure DMARC aggregate reports are sent to the required point of contact"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Gmail")
+    contacts = [str(c).lower() for c in ((data.get("_options") or {}).get("dmarc_report_contacts") or DEFAULT_DMARC_REPORT_CONTACTS)]
+    domains = _domain_names(data)
+    dns_records = data.get("dns_records", {})
+    if not domains:
+        return make_manual(**common, details="No domains found to check DMARC reporting contacts.", remediation=_DMARC_CONTACT_REMED)
+    missing = []
+    for name in domains:
+        dmarc = dns_records.get(name, {}).get("dmarc", {})
+        if not dmarc.get("record_found", False):
+            missing.append(f"{name} (no DMARC record)")
+            continue
+        rua = _dmarc_tag_addresses(dmarc.get("record", ""), "rua")
+        if not any(c in rua for c in contacts):
+            missing.append(f"{name} (rua: {', '.join(rua) or 'none'})")
+    if missing:
+        return make_fail(**common, remediation=_DMARC_CONTACT_REMED,
+                         details=f"{len(missing)} domain(s) do not send DMARC aggregate reports to {' or '.join(contacts)}: {', '.join(missing)}",
+                         actual_value={"missing": missing}, expected_value=f"rua includes {' or '.join(contacts)}")
+    return make_pass(**common, details=f"All {len(domains)} domain(s) send DMARC aggregate reports to {' or '.join(contacts)}.",
+                     actual_value={"domains": len(domains)}, expected_value=f"rua includes {' or '.join(contacts)}")
+
+
+@check(
+    check_id="ADD-62",
+    title="Ensure DMARC alignment mode is strict",
+    level="L2",
+    source="OTHER",
     section="Gmail",
     remediation=(
         "Update DMARC DNS records to include 'aspf=s; adkim=s' for "
@@ -38,15 +97,18 @@ from ..models import CheckResult, Status
     ),
 )
 def check_dmarc_strict_alignment(data: dict) -> CheckResult:
-    """DMARC alignment should use strict mode (aspf=s; adkim=s)."""
+    """DMARC alignment should use strict mode (aspf=s; adkim=s).
+
+    Was GWS.GMAIL.4.3 until 1.6.0; SCuBA 4.3 is the aggregate-report contact. Kept as an additional check.
+    """
     domains = data.get("domains", [])
     dns_records = data.get("dns_records", {})
 
     if not domains:
         return make_manual(
-            check_id="GWS.GMAIL.4.3",
+            check_id="ADD-62",
             title="Ensure DMARC alignment mode is strict",
-            level="L1", source="CISA", section="Gmail",
+            level="L2", source="OTHER", section="Gmail",
             details="No domains found to check DMARC alignment.",
             remediation="Verify DMARC alignment settings for all domains. https://knowledge.workspace.google.com/admin/security/set-up-dmarc",
         )
@@ -71,9 +133,9 @@ def check_dmarc_strict_alignment(data: dict) -> CheckResult:
 
     if not relaxed_domains:
         return make_pass(
-            check_id="GWS.GMAIL.4.3",
+            check_id="ADD-62",
             title="Ensure DMARC alignment mode is strict",
-            level="L1", source="CISA", section="Gmail",
+            level="L2", source="OTHER", section="Gmail",
             details="DMARC alignment is strict for all domains.",
             actual_value={"all_strict": True},
             expected_value="aspf=s; adkim=s",
@@ -84,9 +146,9 @@ def check_dmarc_strict_alignment(data: dict) -> CheckResult:
     # rather than FAIL so it shows up for review without dropping the
     # tenant's pass rate for an explicit, working DMARC posture.
     return make_warn(
-        check_id="GWS.GMAIL.4.3",
+        check_id="ADD-62",
         title="Ensure DMARC alignment mode is strict",
-        level="L1", source="CISA", section="Gmail",
+        level="L2", source="OTHER", section="Gmail",
         details=f"DMARC alignment is relaxed (not strict) for: {', '.join(relaxed_domains)}",
         actual_value={"relaxed_domains": relaxed_domains},
         expected_value="aspf=s; adkim=s for all domains",
@@ -99,62 +161,45 @@ def check_dmarc_strict_alignment(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.GMAIL.4.4",
-    title="Ensure DMARC reporting is configured",
-    level="L1",
+    title="Ensure DMARC aggregate and failure reports include an agency contact",
+    level="L2",
     source="CISA",
     section="Gmail",
     remediation=(
-        "Add 'rua=mailto:dmarc-reports@<domain>' to DMARC DNS records "
-        "for aggregate report delivery. https://knowledge.workspace.google.com/admin/security/set-up-dmarc"
+        "Add at least two 'rua=mailto:' recipients (the required contact plus the organisation's own) and at "
+        "least one 'ruf=mailto:' recipient to every DMARC record (SCuBA 4.4). "
+        "https://knowledge.workspace.google.com/admin/security/set-up-dmarc"
     ),
 )
 def check_dmarc_reporting(data: dict) -> CheckResult:
-    """DMARC records should include aggregate reporting (rua) configuration."""
-    domains = data.get("domains", [])
-    dns_records = data.get("dns_records", {})
-
-    if not domains:
-        return make_manual(
-            check_id="GWS.GMAIL.4.4",
-            title="Ensure DMARC reporting is configured",
-            level="L1", source="CISA", section="Gmail",
-            details="No domains found to check DMARC reporting.",
-            remediation="Verify DMARC reporting is configured for all domains. https://knowledge.workspace.google.com/admin/security/set-up-dmarc",
-        )
-
-    missing_rua = []
-    for domain in domains:
-        domain_name = domain if isinstance(domain, str) else domain.get("domainName", domain.get("domain_name", ""))
-        domain_dns = dns_records.get(domain_name, {})
-        dmarc = domain_dns.get("dmarc", {})
-        record = str(dmarc.get("record", "") or "").lower().replace(" ", "")
-        if not dmarc.get("record_found", False):
-            missing_rua.append(f"{domain_name} (no DMARC record)")
-        elif "rua=" not in record:
-            missing_rua.append(domain_name)
-
-    if not missing_rua:
-        return make_pass(
-            check_id="GWS.GMAIL.4.4",
-            title="Ensure DMARC reporting is configured",
-            level="L1", source="CISA", section="Gmail",
-            details="DMARC aggregate reporting is configured for all domains.",
-            actual_value={"all_configured": True},
-            expected_value="rua= tag present in DMARC records",
-        )
-
-    return make_fail(
-        check_id="GWS.GMAIL.4.4",
-        title="Ensure DMARC reporting is configured",
-        level="L1", source="CISA", section="Gmail",
-        details=f"DMARC reporting (rua=) missing for: {', '.join(missing_rua)}",
-        actual_value={"missing_rua_domains": missing_rua},
-        expected_value="rua= tag in all DMARC records",
-        remediation=(
-            "Add 'rua=mailto:dmarc-reports@<domain>' to DMARC DNS records "
-            "for aggregate report delivery. https://knowledge.workspace.google.com/admin/security/set-up-dmarc"
-        ),
+    """SCuBA v1 4.4 (SHOULD): every DMARC record names at least two ``rua`` and one ``ruf`` mailto recipient."""
+    _ID, _TITLE = "GWS.GMAIL.4.4", "Ensure DMARC aggregate and failure reports include an agency contact"
+    common = dict(check_id=_ID, title=_TITLE, level="L2", source="CISA", section="Gmail")
+    _REMED = (
+        "Add at least two 'rua=mailto:' recipients (the required contact plus the organisation's own) and at "
+        "least one 'ruf=mailto:' recipient to every DMARC record (SCuBA 4.4). "
+        "https://knowledge.workspace.google.com/admin/security/set-up-dmarc"
     )
+    domains = _domain_names(data)
+    dns_records = data.get("dns_records", {})
+    if not domains:
+        return make_manual(**common, details="No domains found to check DMARC reporting.", remediation=_REMED)
+    short = []
+    for name in domains:
+        dmarc = dns_records.get(name, {}).get("dmarc", {})
+        if not dmarc.get("record_found", False):
+            short.append(f"{name} (no DMARC record)")
+            continue
+        rua = _dmarc_tag_addresses(dmarc.get("record", ""), "rua")
+        ruf = _dmarc_tag_addresses(dmarc.get("record", ""), "ruf")
+        if len(rua) < 2 or len(ruf) < 1:
+            short.append(f"{name} (rua: {len(rua)}, ruf: {len(ruf)})")
+    if short:
+        return make_fail(**common, remediation=_REMED,
+                         details=f"{len(short)} domain(s) lack two aggregate (rua) and one failure (ruf) report recipients: {', '.join(short)}",
+                         actual_value={"domains_short": short}, expected_value=">= 2 rua and >= 1 ruf mailto recipients")
+    return make_pass(**common, details=f"All {len(domains)} domain(s) name at least two rua and one ruf recipient.",
+                     actual_value={"domains": len(domains)}, expected_value=">= 2 rua and >= 1 ruf mailto recipients")
 
 
 @check(
@@ -240,7 +285,7 @@ def check_gmail_email_uploads(data: dict) -> CheckResult:
 @check(
     check_id="GWS.GMAIL.10.1",
     title="Ensure Google Workspace Sync is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Gmail",
     remediation=(
@@ -253,7 +298,7 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
     """Google Workspace Sync for Microsoft Outlook should be disabled."""
     _ID = "GWS.GMAIL.10.1"
     _TITLE = "Ensure Google Workspace Sync is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Gmail"
+    _L, _S, _SEC = "L2", "CISA", "Gmail"
     _REMED = (
         "Admin console > Apps > Google Workspace > Gmail > "
         "End User Access. Disable Google Workspace Sync for "
@@ -286,7 +331,7 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.GMAIL.10.1",
             title="Ensure Google Workspace Sync is disabled",
-            level="L1", source="CISA", section="Gmail",
+            level="L2", source="CISA", section="Gmail",
             details="Google Workspace Sync is disabled.",
             actual_value=sync_enabled,
             expected_value="Disabled for all OUs",
@@ -296,7 +341,7 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.GMAIL.10.1",
             title="Ensure Google Workspace Sync is disabled",
-            level="L1", source="CISA", section="Gmail",
+            level="L2", source="CISA", section="Gmail",
             details="Could not determine Workspace Sync setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Gmail > "
@@ -307,7 +352,7 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.GMAIL.10.1",
         title="Ensure Google Workspace Sync is disabled",
-        level="L1", source="CISA", section="Gmail",
+        level="L2", source="CISA", section="Gmail",
         details="Google Workspace Sync is enabled.",
         actual_value=sync_enabled,
         expected_value="Disabled for all OUs",
@@ -322,7 +367,7 @@ def check_gmail_workspace_sync(data: dict) -> CheckResult:
 @check(
     check_id="GWS.GMAIL.14.1",
     title="Ensure email allowlist is not used",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Gmail",
     remediation=(
@@ -334,7 +379,7 @@ def check_gmail_email_allowlist(data: dict) -> CheckResult:
     """Email allowlists should not bypass spam filtering."""
     _ID = "GWS.GMAIL.14.1"
     _TITLE = "Ensure email allowlist is not used"
-    _L, _S, _SEC = "L1", "CISA", "Gmail"
+    _L, _S, _SEC = "L2", "CISA", "Gmail"
     _REMED = (
         "Admin console > Apps > Google Workspace > Gmail > Spam, "
         "Phishing and Malware. Remove all entries from the email allowlist. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
@@ -371,7 +416,7 @@ def check_gmail_email_allowlist(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.GMAIL.14.1",
             title="Ensure email allowlist is not used",
-            level="L1", source="CISA", section="Gmail",
+            level="L2", source="CISA", section="Gmail",
             details="No email allowlist is configured.",
             actual_value={"allowlist_count": 0},
             expected_value="No allowlisted addresses",
@@ -381,7 +426,7 @@ def check_gmail_email_allowlist(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.GMAIL.14.1",
             title="Ensure email allowlist is not used",
-            level="L1", source="CISA", section="Gmail",
+            level="L2", source="CISA", section="Gmail",
             details="Could not determine email allowlist configuration.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Gmail > Spam, "
@@ -392,7 +437,7 @@ def check_gmail_email_allowlist(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.GMAIL.14.1",
         title="Ensure email allowlist is not used",
-        level="L1", source="CISA", section="Gmail",
+        level="L2", source="CISA", section="Gmail",
         details=f"Email allowlist has {len(allowlist)} entries that bypass spam filtering.",
         actual_value={"allowlist_count": len(allowlist)},
         expected_value="No allowlisted addresses",
@@ -411,7 +456,7 @@ def check_gmail_email_allowlist(data: dict) -> CheckResult:
 @check(
     check_id="GWS.CALENDAR.3.1",
     title="Ensure Calendar Interop is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Calendar",
     remediation=(
@@ -424,7 +469,7 @@ def check_calendar_interop_disabled(data: dict) -> CheckResult:
     """Calendar Interop with Exchange should be disabled unless required."""
     _ID = "GWS.CALENDAR.3.1"
     _TITLE = "Ensure Calendar Interop is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Calendar"
+    _L, _S, _SEC = "L2", "CISA", "Calendar"
     _REMED = (
         "Admin console > Apps > Google Workspace > Calendar > "
         "Calendar Interop management. Disable Exchange Interop "
@@ -462,7 +507,7 @@ def check_calendar_interop_disabled(data: dict) -> CheckResult:
 @check(
     check_id="GWS.CALENDAR.4.1",
     title="Ensure paid appointment scheduling is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Calendar",
     remediation=(
@@ -475,7 +520,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
     """Paid appointment scheduling should be disabled to reduce attack surface."""
     _ID = "GWS.CALENDAR.4.1"
     _TITLE = "Ensure paid appointment scheduling is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Calendar"
+    _L, _S, _SEC = "L2", "CISA", "Calendar"
     _REMED = (
         "Admin console > Apps > Google Workspace > Calendar > "
         "General settings. Turn off 'Appointment schedules with payments'. https://knowledge.workspace.google.com/admin/calendar/allow-paid-appointment-schedules-in-calendar"
@@ -507,7 +552,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.CALENDAR.4.1",
             title="Ensure paid appointment scheduling is disabled",
-            level="L1", source="CISA", section="Calendar",
+            level="L2", source="CISA", section="Calendar",
             details="Paid appointment scheduling is disabled.",
             actual_value=paid_enabled,
             expected_value="Disabled for all OUs",
@@ -517,7 +562,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.CALENDAR.4.1",
             title="Ensure paid appointment scheduling is disabled",
-            level="L1", source="CISA", section="Calendar",
+            level="L2", source="CISA", section="Calendar",
             details="Could not determine paid appointment scheduling setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Calendar > "
@@ -528,7 +573,7 @@ def check_calendar_paid_appointments(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.CALENDAR.4.1",
         title="Ensure paid appointment scheduling is disabled",
-        level="L1", source="CISA", section="Calendar",
+        level="L2", source="CISA", section="Calendar",
         details="Paid appointment scheduling is enabled.",
         actual_value=paid_enabled,
         expected_value="Disabled for all OUs",
@@ -810,7 +855,7 @@ def check_chat_content_reporting(data: dict) -> CheckResult:
 @check(
     check_id="GWS.DRIVEDOCS.1.2",
     title="Ensure receiving files from non-allowlisted domains is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Drive and Docs",
     remediation=(
@@ -822,7 +867,7 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
     """Receiving files from outside allowlisted domains should be disabled."""
     _ID = "GWS.DRIVEDOCS.1.2"
     _TITLE = "Ensure receiving files from non-allowlisted domains is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Drive and Docs"
+    _L, _S, _SEC = "L2", "CISA", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Sharing settings. Disable receiving files from non-allowlisted domains. https://knowledge.workspace.google.com/admin/drive/manage-external-sharing-for-your-organization"
@@ -869,7 +914,7 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.DRIVEDOCS.1.2",
             title="Ensure receiving files from non-allowlisted domains is disabled",
-            level="L1", source="CISA", section="Drive and Docs",
+            level="L2", source="CISA", section="Drive and Docs",
             details="Receiving files from non-allowlisted domains is disabled.",
             actual_value=receive_external,
             expected_value="Disabled for all OUs",
@@ -879,7 +924,7 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.DRIVEDOCS.1.2",
             title="Ensure receiving files from non-allowlisted domains is disabled",
-            level="L1", source="CISA", section="Drive and Docs",
+            level="L2", source="CISA", section="Drive and Docs",
             details="Could not determine external file receiving setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Drive and Docs > "
@@ -890,7 +935,7 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.DRIVEDOCS.1.2",
         title="Ensure receiving files from non-allowlisted domains is disabled",
-        level="L1", source="CISA", section="Drive and Docs",
+        level="L2", source="CISA", section="Drive and Docs",
         details="Receiving files from non-allowlisted domains is enabled.",
         actual_value=receive_external,
         expected_value="Disabled for all OUs",
@@ -905,7 +950,7 @@ def check_drive_receive_non_allowlisted(data: dict) -> CheckResult:
 @check(
     check_id="GWS.DRIVEDOCS.1.4",
     title="Ensure sharing with non-Google accounts is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Drive and Docs",
     remediation=(
@@ -917,7 +962,7 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
     """Sharing with users who don't have Google accounts should be disabled."""
     _ID = "GWS.DRIVEDOCS.1.4"
     _TITLE = "Ensure sharing with non-Google accounts is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Drive and Docs"
+    _L, _S, _SEC = "L2", "CISA", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Sharing settings. Disable sharing with non-Google account users. https://knowledge.workspace.google.com/admin/drive/allow-sharing-to-non-google-users-with-visitor-sharing"
@@ -964,7 +1009,7 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.DRIVEDOCS.1.4",
             title="Ensure sharing with non-Google accounts is disabled",
-            level="L1", source="CISA", section="Drive and Docs",
+            level="L2", source="CISA", section="Drive and Docs",
             details="Sharing with non-Google accounts is disabled.",
             actual_value=non_google,
             expected_value="Disabled for all OUs",
@@ -974,7 +1019,7 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.DRIVEDOCS.1.4",
             title="Ensure sharing with non-Google accounts is disabled",
-            level="L1", source="CISA", section="Drive and Docs",
+            level="L2", source="CISA", section="Drive and Docs",
             details="Could not determine non-Google account sharing setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Drive and Docs > "
@@ -985,7 +1030,7 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.DRIVEDOCS.1.4",
         title="Ensure sharing with non-Google accounts is disabled",
-        level="L1", source="CISA", section="Drive and Docs",
+        level="L2", source="CISA", section="Drive and Docs",
         details="Sharing with non-Google accounts is enabled.",
         actual_value=non_google,
         expected_value="Disabled for all OUs",
@@ -1001,7 +1046,7 @@ def check_drive_non_google_sharing(data: dict) -> CheckResult:
     check_id="GWS.DRIVEDOCS.1.5",
     requires_license=EDITIONS_DRIVE_GENERAL_ACCESS,
     title="Ensure 'anyone with the link' sharing is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Drive and Docs",
     remediation=(
@@ -1014,7 +1059,7 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
     """'Anyone with the link' sharing option should be disabled."""
     _ID = "GWS.DRIVEDOCS.1.5"
     _TITLE = "Ensure 'anyone with the link' sharing is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Drive and Docs"
+    _L, _S, _SEC = "L2", "CISA", "Drive and Docs"
     _REMED = (
         "Admin console > Apps > Google Workspace > Drive and Docs > "
         "Sharing settings. Disable 'anyone with the link' option "
@@ -1056,7 +1101,7 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.DRIVEDOCS.1.5",
             title="Ensure 'anyone with the link' sharing is disabled",
-            level="L1", source="CISA", section="Drive and Docs",
+            level="L2", source="CISA", section="Drive and Docs",
             details="'Anyone with the link' sharing is disabled.",
             actual_value=anyone_link,
             expected_value="Disabled for all OUs",
@@ -1066,7 +1111,7 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.DRIVEDOCS.1.5",
             title="Ensure 'anyone with the link' sharing is disabled",
-            level="L1", source="CISA", section="Drive and Docs",
+            level="L2", source="CISA", section="Drive and Docs",
             details="Could not determine 'anyone with the link' setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Drive and Docs > "
@@ -1079,7 +1124,7 @@ def check_drive_anyone_with_link(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.DRIVEDOCS.1.5",
         title="Ensure 'anyone with the link' sharing is disabled",
-        level="L1", source="CISA", section="Drive and Docs",
+        level="L2", source="CISA", section="Drive and Docs",
         details="'Anyone with the link' sharing is enabled, allowing unauthenticated access.",
         actual_value=anyone_link,
         expected_value="Disabled for all OUs",
@@ -1621,10 +1666,10 @@ def check_meet_external_warning(data: dict) -> CheckResult:
 
 
 @check(
-    check_id="GWS.MEET.5.1",
+    check_id="ADD-61",
     title="Ensure incoming calls are restricted to organization",
-    level="L1",
-    source="CISA",
+    level="L2",
+    source="OTHER",
     section="Google Meet",
     remediation=(
         "Admin console > Apps > Google Workspace > Google Meet > "
@@ -1633,10 +1678,13 @@ def check_meet_external_warning(data: dict) -> CheckResult:
     ),
 )
 def check_meet_incoming_calls(data: dict) -> CheckResult:
-    """Incoming calls should be restricted to contacts and org users."""
-    _ID = "GWS.MEET.5.1"
+    """Incoming calls should be restricted to contacts and org users.
+
+    Was GWS.MEET.5.1 until SCuBA v1 dropped the policy (1.6.0); kept as an additional check.
+    """
+    _ID = "ADD-61"
     _TITLE = "Ensure incoming calls are restricted to organization"
-    _L, _S, _SEC = "L1", "CISA", "Google Meet"
+    _L, _S, _SEC = "L2", "OTHER", "Google Meet"
     _REMED = (
         "Admin console > Apps > Google Workspace > Google Meet > "
         "Meet safety settings > Incoming call restrictions. Restrict incoming calls to contacts and "
@@ -1671,9 +1719,9 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
 
     if incoming_restricted is True:
         return make_pass(
-            check_id="GWS.MEET.5.1",
+            check_id="ADD-61",
             title="Ensure incoming calls are restricted to organization",
-            level="L1", source="CISA", section="Google Meet",
+            level="L1", source="OTHER", section="Google Meet",
             details="Incoming calls are restricted to contacts and organization.",
             actual_value=incoming_restricted,
             expected_value="Enabled for all OUs",
@@ -1681,9 +1729,9 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
 
     if incoming_restricted is None:
         return make_manual(
-            check_id="GWS.MEET.5.1",
+            check_id="ADD-61",
             title="Ensure incoming calls are restricted to organization",
-            level="L1", source="CISA", section="Google Meet",
+            level="L1", source="OTHER", section="Google Meet",
             details="Could not determine incoming calls restriction setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Google Meet > "
@@ -1693,9 +1741,9 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
         )
 
     return make_fail(
-        check_id="GWS.MEET.5.1",
+        check_id="ADD-61",
         title="Ensure incoming calls are restricted to organization",
-        level="L1", source="CISA", section="Google Meet",
+        level="L1", source="OTHER", section="Google Meet",
         details="Incoming calls are not restricted to organization.",
         actual_value=incoming_restricted,
         expected_value="Enabled for all OUs",
@@ -1708,7 +1756,7 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
 
 
 @check(
-    check_id="GWS.MEET.6.1",
+    check_id="GWS.MEET.5.1",
     title="Ensure automatic recording is disabled",
     level="L1",
     source="CISA",
@@ -1721,8 +1769,8 @@ def check_meet_incoming_calls(data: dict) -> CheckResult:
     requires_license=EDITIONS_MEET_RECORDING,
 )
 def check_meet_auto_recording(data: dict) -> CheckResult:
-    """Automatic meeting recording should be disabled."""
-    _ID = "GWS.MEET.6.1"
+    """Automatic meeting recording should be disabled (SCuBA v1 5.1; 6.1 in v0.6)."""
+    _ID = "GWS.MEET.5.1"
     _TITLE = "Ensure automatic recording is disabled"
     _L, _S, _SEC = "L1", "CISA", "Google Meet"
     _REMED = (
@@ -1776,7 +1824,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
 
     if auto_record is False:
         return make_pass(
-            check_id="GWS.MEET.6.1",
+            check_id="GWS.MEET.5.1",
             title="Ensure automatic recording is disabled",
             level="L1", source="CISA", section="Google Meet",
             details="Automatic meeting recording is disabled.",
@@ -1786,7 +1834,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
 
     if auto_record is None:
         return make_manual(
-            check_id="GWS.MEET.6.1",
+            check_id="GWS.MEET.5.1",
             title="Ensure automatic recording is disabled",
             level="L1", source="CISA", section="Google Meet",
             details="Could not determine automatic recording setting.",
@@ -1797,7 +1845,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
         )
 
     return make_fail(
-        check_id="GWS.MEET.6.1",
+        check_id="GWS.MEET.5.1",
         title="Ensure automatic recording is disabled",
         level="L1", source="CISA", section="Google Meet",
         details="Automatic meeting recording is enabled.",
@@ -1812,7 +1860,7 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
 
 
 @check(
-    check_id="GWS.MEET.6.2",
+    check_id="GWS.MEET.5.2",
     title="Ensure automatic transcription is disabled",
     level="L1",
     source="CISA",
@@ -1825,8 +1873,8 @@ def check_meet_auto_recording(data: dict) -> CheckResult:
     requires_license=EDITIONS_MEET_TRANSCRIPTION,
 )
 def check_meet_auto_transcription(data: dict) -> CheckResult:
-    """Automatic meeting transcription should be disabled."""
-    _ID = "GWS.MEET.6.2"
+    """Automatic meeting transcription should be disabled (SCuBA v1 5.2; 6.2 in v0.6)."""
+    _ID = "GWS.MEET.5.2"
     _TITLE = "Ensure automatic transcription is disabled"
     _L, _S, _SEC = "L1", "CISA", "Google Meet"
     _REMED = (
@@ -1876,7 +1924,7 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
 
     if auto_transcript is False:
         return make_pass(
-            check_id="GWS.MEET.6.2",
+            check_id="GWS.MEET.5.2",
             title="Ensure automatic transcription is disabled",
             level="L1", source="CISA", section="Google Meet",
             details="Automatic meeting transcription is disabled.",
@@ -1886,7 +1934,7 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
 
     if auto_transcript is None:
         return make_review(
-            check_id="GWS.MEET.6.2",
+            check_id="GWS.MEET.5.2",
             title="Ensure automatic transcription is disabled",
             level="L1", source="CISA", section="Google Meet",
             details=(
@@ -1900,7 +1948,7 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
         )
 
     return make_fail(
-        check_id="GWS.MEET.6.2",
+        check_id="GWS.MEET.5.2",
         title="Ensure automatic transcription is disabled",
         level="L1", source="CISA", section="Google Meet",
         details="Automatic meeting transcription is enabled.",
@@ -1918,10 +1966,104 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
 # Groups - CISA SCuBA checks
 # ===========================================================================
 
+
+# Admin audit-log setting names for Gemini meeting-notes sharing (as read by ScubaGoggles 1.1.0;
+# Admin console > Apps > Google Workspace > Google Meet > Gemini settings > Gemini notes sharing).
+MEET_NOTES_HOST_OVERRIDE_SETTING = "MeetGenAiSmartNotesDocAccessProto manage_smart_notes_doc_access"
+MEET_NOTES_DEFAULT_ACCESS_SETTING = "MeetGenAiSmartNotesDocAccessProto default_smart_notes_doc_access"
+_MEET_NOTES_REMED = (
+    "Admin console > Apps > Google Workspace > Google Meet > Gemini settings > Gemini notes sharing. "
+    "Clear 'Allow hosts to change who notes are shared to' and set 'Default sharing setting for Gemini notes' "
+    "to 'The hosts and co-hosts' or 'Invited guests in your organization'. "
+    "https://knowledge.workspace.google.com/admin/meet/manage-gemini-in-meet"
+)
+_MEET_NOTES_SCREENSHOT_REMED = (
+    "Admin console > Apps > Google Workspace > Google Meet > Gemini settings > Visual content in notes. "
+    "Select 'Only allow screenshots of presented content to be captured in notes when recording is enabled'. "
+    "https://knowledge.workspace.google.com/admin/meet/manage-gemini-in-meet"
+)
+
+
+@check(
+    check_id="GWS.MEET.6.1",
+    title="Ensure hosts cannot override the default sharing level for Gemini meeting notes",
+    level="L2",
+    source="CISA",
+    section="Google Meet",
+    remediation=_MEET_NOTES_REMED,
+)
+def check_meet_notes_host_override(data: dict) -> CheckResult:
+    """SCuBA v1 6.1 (SHOULD NOT): inferred from the admin log setting
+    ``MeetGenAiSmartNotesDocAccessProto manage_smart_notes_doc_access`` (``true`` = hosts may change)."""
+    _ID, _TITLE = "GWS.MEET.6.1", "Ensure hosts cannot override the default sharing level for Gemini meeting notes"
+    common = dict(check_id=_ID, title=_TITLE, level="L2", source="CISA", section="Google Meet")
+    inferred = result_from_setting_changes(
+        data, MEET_NOTES_HOST_OVERRIDE_SETTING, ("true",), **common,
+        what="Allow hosts to change who Gemini notes are shared to", remediation=_MEET_NOTES_REMED,
+    )
+    if inferred is not None:
+        return inferred
+    return make_review(
+        **common, remediation=_MEET_NOTES_REMED,
+        details=("Gemini notes sharing is not exposed by the Cloud Identity Policy API and no "
+                 f"'{MEET_NOTES_HOST_OVERRIDE_SETTING}' change appears in the admin audit log window; the current "
+                 "value is unknown (Google's console default leaves the host override off). Saving the setting once "
+                 "makes it visible to future audits."),
+    )
+
+
+@check(
+    check_id="GWS.MEET.6.2",
+    title="Ensure the default sharing of Gemini meeting notes is restricted to guests in the organization",
+    level="L1",
+    source="CISA",
+    section="Google Meet",
+    remediation=_MEET_NOTES_REMED,
+)
+def check_meet_notes_default_sharing(data: dict) -> CheckResult:
+    """SCuBA v1 6.2 (SHALL): inferred from the admin log setting
+    ``MeetGenAiSmartNotesDocAccessProto default_smart_notes_doc_access`` (``EVERYONE`` = all invited guests)."""
+    _ID = "GWS.MEET.6.2"
+    _TITLE = "Ensure the default sharing of Gemini meeting notes is restricted to guests in the organization"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Google Meet")
+    inferred = result_from_setting_changes(
+        data, MEET_NOTES_DEFAULT_ACCESS_SETTING, ("everyone",), **common,
+        what="Default sharing setting for Gemini notes", remediation=_MEET_NOTES_REMED,
+    )
+    if inferred is not None:
+        return inferred
+    return make_review(
+        **common, remediation=_MEET_NOTES_REMED,
+        details=("Gemini notes sharing is not exposed by the Cloud Identity Policy API and no "
+                 f"'{MEET_NOTES_DEFAULT_ACCESS_SETTING}' change appears in the admin audit log window; the current "
+                 "value is unknown. Saving the setting once makes it visible to future audits."),
+    )
+
+
+@check(
+    check_id="GWS.MEET.6.3",
+    scored=False,  # Admin-console-only control: no API or audit-log signal known
+    title="Ensure screenshots are captured in Gemini notes only when the meeting is recorded",
+    level="L1",
+    source="CISA",
+    section="Google Meet",
+    remediation=_MEET_NOTES_SCREENSHOT_REMED,
+)
+def check_meet_notes_screenshots(data: dict) -> CheckResult:
+    """SCuBA v1 6.3: no Google API or audit-log event exposes the visual-notes setting."""
+    return make_review(
+        check_id="GWS.MEET.6.3",
+        title="Ensure screenshots are captured in Gemini notes only when the meeting is recorded",
+        level="L1", source="CISA", section="Google Meet",
+        details=("The 'Visual content in notes' setting is not exposed by any Google API or audit-log event. "
+                 "Verify in Admin console > Apps > Google Workspace > Google Meet > Gemini settings."),
+        remediation=_MEET_NOTES_SCREENSHOT_REMED,
+    )
+
 @check(
     check_id="GWS.GROUPS.1.3",
     title="Ensure external posting to groups is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Groups",
     remediation=(
@@ -1934,7 +2076,7 @@ def check_groups_external_posting(data: dict) -> CheckResult:
     """Group owners should not be able to allow external posting."""
     _ID = "GWS.GROUPS.1.3"
     _TITLE = "Ensure external posting to groups is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Groups"
+    _L, _S, _SEC = "L2", "CISA", "Groups"
     _REMED = (
         "Admin console > Apps > Google Workspace > Groups for Business > "
         "Sharing settings. Uncheck 'Group owners can allow incoming "
@@ -1969,7 +2111,7 @@ def check_groups_external_posting(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.GROUPS.1.3",
             title="Ensure external posting to groups is disabled",
-            level="L1", source="CISA", section="Groups",
+            level="L2", source="CISA", section="Groups",
             details="External posting to groups is disabled.",
             actual_value=external_posting,
             expected_value="Disabled for all OUs",
@@ -1979,7 +2121,7 @@ def check_groups_external_posting(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.GROUPS.1.3",
             title="Ensure external posting to groups is disabled",
-            level="L1", source="CISA", section="Groups",
+            level="L2", source="CISA", section="Groups",
             details="Could not determine external posting setting.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Groups for Business > "
@@ -1991,7 +2133,7 @@ def check_groups_external_posting(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.GROUPS.1.3",
         title="Ensure external posting to groups is disabled",
-        level="L1", source="CISA", section="Groups",
+        level="L2", source="CISA", section="Groups",
         details="External posting to groups is allowed.",
         actual_value=external_posting,
         expected_value="Disabled for all OUs",
@@ -2382,9 +2524,8 @@ def check_trust_device_disabled(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.COMMONCONTROLS.7.1",
-    scored=False,  # P3: conflicting-account management is not exposed by the v1 Policy API; MANUAL by design
     title="Ensure conflicting account management is configured",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Security",
     remediation=(
@@ -2396,7 +2537,7 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
     """Conflicting accounts should be automatically managed."""
     _ID = "GWS.COMMONCONTROLS.7.1"
     _TITLE = "Ensure conflicting account management is configured"
-    _L, _S, _SEC = "L1", "CISA", "Security"
+    _L, _S, _SEC = "L2", "CISA", "Security"
     _REMED = (
         "Admin console > Account > Account settings > Account management > Conflicting accounts management. Enable "
         "automatic management of conflicting accounts. https://knowledge.workspace.google.com/admin/users/find-and-add-unmanaged-users"
@@ -2434,7 +2575,7 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.COMMONCONTROLS.7.1",
             title="Ensure conflicting account management is configured",
-            level="L1", source="CISA", section="Security",
+            level="L2", source="CISA", section="Security",
             details="Conflicting account management is configured.",
             actual_value=conflict_mgmt,
             expected_value="Enabled for all OUs",
@@ -2444,7 +2585,7 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
         return make_review(
             check_id="GWS.COMMONCONTROLS.7.1",
             title="Ensure conflicting account management is configured",
-            level="L1", source="CISA", section="Security",
+            level="L2", source="CISA", section="Security",
             details=(
                 "The Policy API returned no provisioning.conflicting_accounts_management policy (it appears "
                 "only once the setting has been saved; Google's default is to send invitations). Verify in "
@@ -2460,7 +2601,7 @@ def check_conflicting_accounts(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.COMMONCONTROLS.7.1",
         title="Ensure conflicting account management is configured",
-        level="L1", source="CISA", section="Security",
+        level="L2", source="CISA", section="Security",
         details="Conflicting account management is not configured.",
         actual_value=conflict_mgmt,
         expected_value="Enabled for all OUs",
@@ -2523,7 +2664,7 @@ def check_audit_logging_enabled(data: dict) -> CheckResult:
 @check(
     check_id="GWS.COMMONCONTROLS.15.1",
     title="Ensure data regions are configured",
-    level="L2",
+    level="L1",
     source="CISA",
     section="Security",
     remediation=(
@@ -2537,7 +2678,7 @@ def check_data_regions(data: dict) -> CheckResult:
     """Data region policies should be configured for data residency."""
     _ID = "GWS.COMMONCONTROLS.15.1"
     _TITLE = "Ensure data regions are configured"
-    _L, _S, _SEC = "L2", "CISA", "Security"
+    _L, _S, _SEC = "L1", "CISA", "Security"
     _REMED = (
         "Admin console > Data > Compliance > Data regions. "
         "Configure data storage locations to comply with data "
@@ -2575,7 +2716,7 @@ def check_data_regions(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.COMMONCONTROLS.15.1",
             title="Ensure data regions are configured",
-            level="L2", source="CISA", section="Security",
+            level="L1", source="CISA", section="Security",
             details="Data region policies are configured.",
             actual_value=configured,
             expected_value="Enabled for all OUs",
@@ -2585,7 +2726,7 @@ def check_data_regions(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.COMMONCONTROLS.15.1",
             title="Ensure data regions are configured",
-            level="L2", source="CISA", section="Security",
+            level="L1", source="CISA", section="Security",
             details="Could not determine data region configuration.",
             remediation=(
                 "Admin console > Data > Compliance > Data regions. "
@@ -2597,7 +2738,7 @@ def check_data_regions(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.COMMONCONTROLS.15.1",
         title="Ensure data regions are configured",
-        level="L2", source="CISA", section="Security",
+        level="L1", source="CISA", section="Security",
         details="Data region policies are not configured.",
         actual_value=configured,
         expected_value="Enabled for all OUs",
@@ -2725,7 +2866,7 @@ def check_multi_party_approval(data: dict) -> CheckResult:
 @check(
     check_id="GWS.CLASSROOM.1.1",
     title="Ensure class membership is restricted to domain",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Classroom",
     remediation=(
@@ -2743,7 +2884,7 @@ def check_class_membership_restricted(data: dict) -> CheckResult:
     """
     _ID = "GWS.CLASSROOM.1.1"
     _TITLE = "Ensure class membership is restricted to domain"
-    _L, _S, _SEC = "L1", "CISA", "Classroom"
+    _L, _S, _SEC = "L2", "CISA", "Classroom"
     _REMED = (
         "Admin console > Apps > Additional Google services > Classroom > "
         "Class settings. Set 'Who can join classes in your domain' "
@@ -2807,7 +2948,7 @@ def check_class_membership_restricted(data: dict) -> CheckResult:
 @check(
     check_id="GWS.CLASSROOM.1.2",
     title="Ensure classes users can join are restricted to domain",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Classroom",
     remediation=(
@@ -2824,7 +2965,7 @@ def check_classes_to_join_restricted(data: dict) -> CheckResult:
     """
     _ID = "GWS.CLASSROOM.1.2"
     _TITLE = "Ensure classes users can join are restricted to domain"
-    _L, _S, _SEC = "L1", "CISA", "Classroom"
+    _L, _S, _SEC = "L2", "CISA", "Classroom"
     _REMED = (
         "Admin console > Apps > Additional Google services > Classroom > "
         "Class settings. Set 'Which classes can users in your domain "
@@ -2888,7 +3029,7 @@ def check_classes_to_join_restricted(data: dict) -> CheckResult:
 @check(
     check_id="GWS.CLASSROOM.2.1",
     title="Ensure Classroom API access is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Classroom",
     remediation=(
@@ -2901,7 +3042,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
     """Classroom API access should be disabled to prevent programmatic access."""
     _ID = "GWS.CLASSROOM.2.1"
     _TITLE = "Ensure Classroom API access is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Classroom"
+    _L, _S, _SEC = "L2", "CISA", "Classroom"
     _REMED = (
         "Admin console > Apps > Additional Google services > Classroom > "
         "API access. Disable Classroom API access to prevent "
@@ -2934,7 +3075,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.CLASSROOM.2.1",
             title="Ensure Classroom API access is disabled",
-            level="L1", source="CISA", section="Classroom",
+            level="L2", source="CISA", section="Classroom",
             details="Classroom API access is disabled.",
             actual_value=enabled,
             expected_value="Disabled for all OUs",
@@ -2944,7 +3085,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.CLASSROOM.2.1",
             title="Ensure Classroom API access is disabled",
-            level="L1", source="CISA", section="Classroom",
+            level="L2", source="CISA", section="Classroom",
             details="Could not determine Classroom API access setting.",
             remediation=(
                 "Admin console > Apps > Additional Google services > Classroom > "
@@ -2955,7 +3096,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.CLASSROOM.2.1",
         title="Ensure Classroom API access is disabled",
-        level="L1", source="CISA", section="Classroom",
+        level="L2", source="CISA", section="Classroom",
         details="Classroom API access is enabled, allowing programmatic access.",
         actual_value=enabled,
         expected_value="Disabled for all OUs",
@@ -2970,7 +3111,7 @@ def check_classroom_api_disabled(data: dict) -> CheckResult:
 @check(
     check_id="GWS.CLASSROOM.3.1",
     title="Ensure roster import with Clever is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Classroom",
     remediation=(
@@ -2983,7 +3124,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
     """Roster import via Clever should be disabled."""
     _ID = "GWS.CLASSROOM.3.1"
     _TITLE = "Ensure roster import with Clever is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Classroom"
+    _L, _S, _SEC = "L2", "CISA", "Classroom"
     _REMED = (
         "Admin console > Apps > Additional Google services > Classroom > "
         "Roster import. Disable Clever integration to prevent "
@@ -3019,7 +3160,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.CLASSROOM.3.1",
             title="Ensure roster import with Clever is disabled",
-            level="L1", source="CISA", section="Classroom",
+            level="L2", source="CISA", section="Classroom",
             details="Roster import with Clever is disabled.",
             actual_value=clever_enabled,
             expected_value="Disabled for all OUs",
@@ -3029,7 +3170,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.CLASSROOM.3.1",
             title="Ensure roster import with Clever is disabled",
-            level="L1", source="CISA", section="Classroom",
+            level="L2", source="CISA", section="Classroom",
             details="Could not determine Clever roster import setting.",
             remediation=(
                 "Admin console > Apps > Additional Google services > Classroom > "
@@ -3040,7 +3181,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.CLASSROOM.3.1",
         title="Ensure roster import with Clever is disabled",
-        level="L1", source="CISA", section="Classroom",
+        level="L2", source="CISA", section="Classroom",
         details="Roster import with Clever is enabled.",
         actual_value=clever_enabled,
         expected_value="Disabled for all OUs",
@@ -3055,7 +3196,7 @@ def check_clever_roster_import_disabled(data: dict) -> CheckResult:
 @check(
     check_id="GWS.CLASSROOM.4.1",
     title="Ensure only teachers can unenroll students",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Classroom",
     remediation=(
@@ -3068,7 +3209,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
     """Only teachers should be able to unenroll students from classes."""
     _ID = "GWS.CLASSROOM.4.1"
     _TITLE = "Ensure only teachers can unenroll students"
-    _L, _S, _SEC = "L1", "CISA", "Classroom"
+    _L, _S, _SEC = "L2", "CISA", "Classroom"
     _REMED = (
         "Admin console > Apps > Additional Google services > Classroom > "
         "Class settings. Restrict student unenrollment to "
@@ -3102,7 +3243,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.CLASSROOM.4.1",
             title="Ensure only teachers can unenroll students",
-            level="L1", source="CISA", section="Classroom",
+            level="L2", source="CISA", section="Classroom",
             details=f"Student unenrollment is restricted to '{who_can_unenroll}'.",
             actual_value=who_can_unenroll,
             expected_value="teachers_only",
@@ -3112,7 +3253,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.CLASSROOM.4.1",
             title="Ensure only teachers can unenroll students",
-            level="L1", source="CISA", section="Classroom",
+            level="L2", source="CISA", section="Classroom",
             details="Could not determine student unenrollment setting.",
             remediation=(
                 "Admin console > Apps > Additional Google services > Classroom > "
@@ -3124,7 +3265,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.CLASSROOM.4.1",
         title="Ensure only teachers can unenroll students",
-        level="L1", source="CISA", section="Classroom",
+        level="L2", source="CISA", section="Classroom",
         details=f"Student unenrollment is set to '{who_can_unenroll}', not restricted to teachers.",
         actual_value=who_can_unenroll,
         expected_value="teachers_only",
@@ -3139,7 +3280,7 @@ def check_teachers_only_unenroll(data: dict) -> CheckResult:
 @check(
     check_id="GWS.CLASSROOM.5.1",
     title="Ensure class creation is restricted to verified teachers",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Classroom",
     remediation=(
@@ -3152,7 +3293,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
     """Class creation should be restricted to verified teachers only."""
     _ID = "GWS.CLASSROOM.5.1"
     _TITLE = "Ensure class creation is restricted to verified teachers"
-    _L, _S, _SEC = "L1", "CISA", "Classroom"
+    _L, _S, _SEC = "L2", "CISA", "Classroom"
     _REMED = (
         "Admin console > Apps > Additional Google services > Classroom > "
         "General settings. Set who can create classes to "
@@ -3186,7 +3327,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.CLASSROOM.5.1",
             title="Ensure class creation is restricted to verified teachers",
-            level="L1", source="CISA", section="Classroom",
+            level="L2", source="CISA", section="Classroom",
             details=f"Class creation is restricted to '{who_can_create}'.",
             actual_value=who_can_create,
             expected_value="verified_teachers",
@@ -3196,7 +3337,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.CLASSROOM.5.1",
             title="Ensure class creation is restricted to verified teachers",
-            level="L1", source="CISA", section="Classroom",
+            level="L2", source="CISA", section="Classroom",
             details="Could not determine class creation setting.",
             remediation=(
                 "Admin console > Apps > Additional Google services > Classroom > "
@@ -3208,7 +3349,7 @@ def check_class_creation_verified_teachers(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.CLASSROOM.5.1",
         title="Ensure class creation is restricted to verified teachers",
-        level="L1", source="CISA", section="Classroom",
+        level="L2", source="CISA", section="Classroom",
         details=f"Class creation is set to '{who_can_create}', not restricted to verified teachers.",
         actual_value=who_can_create,
         expected_value="verified_teachers",
@@ -3329,7 +3470,7 @@ _GEMINI_BETA_SETTING_NAMES = (
 
 @check(
     check_id="GWS.GEMINI.2.1",
-    title="Ensure alpha Gemini features are disabled",
+    title="Ensure Gemini Beta features are disabled",
     level="L1",
     source="CISA",
     section="Gemini",
@@ -3342,7 +3483,7 @@ _GEMINI_BETA_SETTING_NAMES = (
 def check_gemini_alpha_features(data: dict) -> CheckResult:
     """Alpha Gemini features should be disabled in production environments."""
     _ID = "GWS.GEMINI.2.1"
-    _TITLE = "Ensure alpha Gemini features are disabled"
+    _TITLE = "Ensure Gemini Beta features are disabled"
     _L, _S, _SEC = "L1", "CISA", "Gemini"
     _REMED = (
         "Admin console > Generative AI > Gemini in Workspace > Beta features "
@@ -3391,7 +3532,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
     if alpha_enabled is False:
         return make_pass(
             check_id="GWS.GEMINI.2.1",
-            title="Ensure alpha Gemini features are disabled",
+            title="Ensure Gemini Beta features are disabled",
             level="L1", source="CISA", section="Gemini",
             details="Alpha Gemini features are disabled.",
             actual_value=alpha_enabled,
@@ -3401,7 +3542,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
     if alpha_enabled is None:
         return make_review(
             check_id="GWS.GEMINI.2.1",
-            title="Ensure alpha Gemini features are disabled",
+            title="Ensure Gemini Beta features are disabled",
             level="L1", source="CISA", section="Gemini",
             details=(
                 "Gemini app settings are not available via the Cloud Identity "
@@ -3415,7 +3556,7 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
 
     return make_fail(
         check_id="GWS.GEMINI.2.1",
-        title="Ensure alpha Gemini features are disabled",
+        title="Ensure Gemini Beta features are disabled",
         level="L1", source="CISA", section="Gemini",
         details="Alpha Gemini features are enabled.",
         actual_value=alpha_enabled,
@@ -3431,6 +3572,133 @@ def check_gemini_alpha_features(data: dict) -> CheckResult:
 # ===========================================================================
 # Assured Controls - CISA SCuBA checks
 # ===========================================================================
+
+
+_GEMINI_HISTORY_REMED = (
+    "Admin console > Generative AI > Gemini app > Gemini conversation history and management > Gemini conversation "
+    "history. Check 'Gemini conversation history' and set 'Conversation retention' to at least 18 months. "
+    "https://knowledge.workspace.google.com/admin/generative-ai/gemini-app/manage-gemini-conversation-history"
+)
+_GEMINI_SHARING_REMED = (
+    "Admin console > Generative AI > Gemini app > Sharing. Set 'Allow conversation sharing via link' to OFF. "
+    "https://knowledge.workspace.google.com/admin/generative-ai/gemini-app/manage-gemini-conversation-history"
+)
+_EIGHTEEN_MONTHS_SECONDS = 18 * 30 * 24 * 3600  # 540 days; Google stores durations as "<seconds>s"
+
+
+def _duration_seconds(value) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value or "").strip().lower()
+    if text.endswith("s") and text[:-1].replace(".", "", 1).isdigit():
+        return float(text[:-1])
+    return None
+
+
+@check(
+    check_id="GWS.GEMINI.3.1",
+    title="Ensure Gemini conversation history is enabled",
+    level="L1",
+    source="CISA",
+    section="Gemini",
+    remediation=_GEMINI_HISTORY_REMED,
+)
+def check_gemini_conversation_history(data: dict) -> CheckResult:
+    """SCuBA v1 3.1 (SHALL): ``gemini_app.conversation_history.conversationHistoryState``."""
+    _ID, _TITLE = "GWS.GEMINI.3.1", "Ensure Gemini conversation history is enabled"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Gemini")
+    ou_values = get_ou_values(data.get("policies", {}).get("gemini_app", {}), "conversation_history")
+    if not ou_values:
+        return make_review(**common, remediation=_GEMINI_HISTORY_REMED,
+                           details="'gemini_app.conversation_history' was not returned by the Cloud Identity Policy API; verify in the Admin console.")
+
+    def judge(entry):
+        state = field_value(entry, "conversationHistoryState")
+        if state is None:
+            return None
+        text = str(state).upper()
+        if "OFF" in text or "DISABLED" in text:
+            return False, state
+        if "ON" in text or "ENABLED" in text:
+            return True, state
+        return None
+
+    return ou_verdict(ou_values, judge, **common, fail_text="keep Gemini conversation history off",
+                      pass_text="keep Gemini conversation history on", expected_value="Conversation history on",
+                      remediation=_GEMINI_HISTORY_REMED)
+
+
+@check(
+    check_id="GWS.GEMINI.3.2",
+    title="Ensure Gemini conversation retention is at least 18 months",
+    level="L1",
+    source="CISA",
+    section="Gemini",
+    remediation=_GEMINI_HISTORY_REMED,
+)
+def check_gemini_conversation_retention(data: dict) -> CheckResult:
+    """SCuBA v1 3.2 (SHALL): ``gemini_app.conversation_history.conversationRetention`` (seconds duration or enum)."""
+    _ID, _TITLE = "GWS.GEMINI.3.2", "Ensure Gemini conversation retention is at least 18 months"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Gemini")
+    ou_values = get_ou_values(data.get("policies", {}).get("gemini_app", {}), "conversation_history")
+    if not ou_values:
+        return make_review(**common, remediation=_GEMINI_HISTORY_REMED,
+                           details="'gemini_app.conversation_history' was not returned by the Cloud Identity Policy API; verify in the Admin console.")
+
+    def judge(entry):
+        state = field_value(entry, "conversationHistoryState")
+        if state is not None and ("OFF" in str(state).upper() or "DISABLED" in str(state).upper()):
+            return False, f"history off ({state})"
+        retention = field_value(entry, "conversationRetention")
+        if retention is None:
+            return None
+        seconds = _duration_seconds(retention)
+        if seconds is not None:
+            return seconds >= _EIGHTEEN_MONTHS_SECONDS, f"{int(seconds // 86400)} days"
+        text = str(retention).upper()
+        if any(k in text for k in ("18_MONTH", "18MONTH", "FOREVER", "INDEFINITE", "UNLIMITED", "RETAIN_ALL")):
+            return True, retention
+        if any(k in text for k in ("3_MONTH", "6_MONTH", "12_MONTH", "DAY", "HOUR")):
+            return False, retention
+        return None
+
+    return ou_verdict(ou_values, judge, **common, fail_text="retain Gemini conversations for less than 18 months",
+                      pass_text="retain Gemini conversations for at least 18 months",
+                      expected_value=">= 18 months", remediation=_GEMINI_HISTORY_REMED)
+
+
+@check(
+    check_id="GWS.GEMINI.4.1",
+    title="Ensure Gemini conversation sharing is off",
+    level="L1",
+    source="CISA",
+    section="Gemini",
+    remediation=_GEMINI_SHARING_REMED,
+)
+def check_gemini_conversation_sharing(data: dict) -> CheckResult:
+    """SCuBA v1 4.1 (SHALL): ``gemini_app.conversation_sharing.conversationSharingOption``
+    (``ALLOW_SHARING_VIA_DRIVE`` seen live = sharing allowed)."""
+    _ID, _TITLE = "GWS.GEMINI.4.1", "Ensure Gemini conversation sharing is off"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Gemini")
+    ou_values = get_ou_values(data.get("policies", {}).get("gemini_app", {}), "conversation_sharing")
+    if not ou_values:
+        return make_review(**common, remediation=_GEMINI_SHARING_REMED,
+                           details="'gemini_app.conversation_sharing' was not returned by the Cloud Identity Policy API; verify in the Admin console.")
+
+    def judge(entry):
+        option = field_value(entry, "conversationSharingOption")
+        if option is None:
+            return None
+        text = str(option).upper()
+        if any(k in text for k in ("DISABLED", "DISALLOW", "NO_SHARING", "SHARING_OFF", "OFF")):
+            return True, option
+        if "ALLOW" in text or "ENABLED" in text:
+            return False, option
+        return None
+
+    return ou_verdict(ou_values, judge, **common, fail_text="allow Gemini conversation sharing via link",
+                      pass_text="keep Gemini conversation sharing off", expected_value="Sharing off",
+                      remediation=_GEMINI_SHARING_REMED)
 
 @check(
     check_id="GWS.ASSUREDCONTROLS.1.1",
@@ -3459,19 +3727,18 @@ def check_access_approvals_enabled(data: dict) -> CheckResult:
     policies = data.get("policies", {})
     security = policies.get("security", {})
 
-    # OU-aware path
-    ou_values = []  # P3: "security.assured_controls" is not a Cloud Identity Policy API setting type; nothing to look up
+    # Policy API (ScubaGoggles 1.1.0): access_approval.axa_user_scoping.requiresCustomerApproval
+    ou_values = get_ou_values(policies.get("access_approval", {}), "axa_user_scoping")
     if ou_values:
         def _judge(entry):
-            val = field_value(entry, "accessApprovalsEnabled", "access_approvals_enabled")
+            val = field_value(entry, "requiresCustomerApproval")
             if val is None:
                 return None
             return (val is True, val)
-
         return ou_verdict(
             ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="lack access approvals", pass_text="have access approvals enabled",
-            expected_value="Enabled for all OUs", remediation=_REMED,
+            fail_text="do not require customer approval for Google staff access", pass_text="require access approvals",
+            expected_value="requiresCustomerApproval true for all OUs", remediation=_REMED,
         )
 
     # Not exposed by the Policy API: infer from the latest "Access Approvals enabled"
@@ -3744,7 +4011,7 @@ def check_multi_region_processing_disabled(data: dict) -> CheckResult:
 @check(
     check_id="GWS.SITES.1.1",
     title="Ensure Sites service is disabled",
-    level="L1",
+    level="L2",
     source="CISA",
     section="Sites",
     remediation=(
@@ -3757,7 +4024,7 @@ def check_sites_service_disabled(data: dict) -> CheckResult:
     """Sites service should be disabled if not required."""
     _ID = "GWS.SITES.1.1"
     _TITLE = "Ensure Sites service is disabled"
-    _L, _S, _SEC = "L1", "CISA", "Sites"
+    _L, _S, _SEC = "L2", "CISA", "Sites"
     _REMED = (
         "Admin console > Apps > Google Workspace > Sites. "
         "Disable the Sites service to reduce the attack surface "
@@ -3789,7 +4056,7 @@ def check_sites_service_disabled(data: dict) -> CheckResult:
         return make_pass(
             check_id="GWS.SITES.1.1",
             title="Ensure Sites service is disabled",
-            level="L1", source="CISA", section="Sites",
+            level="L2", source="CISA", section="Sites",
             details="Sites service is disabled.",
             actual_value=status,
             expected_value="disabled",
@@ -3799,7 +4066,7 @@ def check_sites_service_disabled(data: dict) -> CheckResult:
         return make_manual(
             check_id="GWS.SITES.1.1",
             title="Ensure Sites service is disabled",
-            level="L1", source="CISA", section="Sites",
+            level="L2", source="CISA", section="Sites",
             details="Could not determine Sites service status.",
             remediation=(
                 "Admin console > Apps > Google Workspace > Sites. "
@@ -3810,7 +4077,7 @@ def check_sites_service_disabled(data: dict) -> CheckResult:
     return make_fail(
         check_id="GWS.SITES.1.1",
         title="Ensure Sites service is disabled",
-        level="L1", source="CISA", section="Sites",
+        level="L2", source="CISA", section="Sites",
         details=f"Sites service is '{status}', not disabled.",
         actual_value=status,
         expected_value="disabled",

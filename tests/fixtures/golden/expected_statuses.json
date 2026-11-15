@@ -220,6 +220,18 @@
       "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
       "status": "PASS"
     },
+    "ADD-60": {
+      "confirmed": false,
+      "status": "PASS"
+    },
+    "ADD-61": {
+      "confirmed": false,
+      "status": "PASS"
+    },
+    "ADD-62": {
+      "confirmed": false,
+      "status": "PASS"
+    },
     "CIS-1.1.1": {
       "confirmed": false,
       "status": "FAIL"
@@ -643,11 +655,11 @@
     },
     "GWS.COMMONCONTROLS.10.1": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "FAIL"
     },
     "GWS.COMMONCONTROLS.10.2": {
       "confirmed": false,
-      "status": "MANUAL"
+      "status": "PASS"
     },
     "GWS.COMMONCONTROLS.10.3": {
       "confirmed": false,
@@ -685,19 +697,23 @@
       "confirmed": false,
       "status": "ERROR"
     },
+    "GWS.COMMONCONTROLS.16.3": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.COMMONCONTROLS.16.4": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
     "GWS.COMMONCONTROLS.17.1": {
       "confirmed": false,
       "status": "NOT_APPLICABLE"
     },
+    "GWS.COMMONCONTROLS.18.1": {
+      "confirmed": false,
+      "status": "NOT_APPLICABLE"
+    },
     "GWS.COMMONCONTROLS.18.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.18.3": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.18.4": {
       "confirmed": false,
       "status": "NOT_APPLICABLE"
     },
@@ -735,7 +751,7 @@
     },
     "GWS.COMMONCONTROLS.6.1": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "ERROR"
     },
     "GWS.COMMONCONTROLS.7.1": {
       "confirmed": false,
@@ -818,15 +834,27 @@
       "confirmed": false,
       "status": "PASS"
     },
-    "GWS.DRIVEDOCS.6.1": {
+    "GWS.DRIVEDOCS.5.2": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "MANUAL"
     },
     "GWS.GEMINI.1.1": {
       "confirmed": false,
       "status": "MANUAL"
     },
     "GWS.GEMINI.2.1": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.GEMINI.3.1": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.GEMINI.3.2": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.GEMINI.4.1": {
       "confirmed": false,
       "status": "MANUAL"
     },
@@ -840,7 +868,7 @@
     },
     "GWS.GMAIL.18.1": {
       "confirmed": false,
-      "status": "FAIL"
+      "status": "MANUAL"
     },
     "GWS.GMAIL.18.2": {
       "confirmed": false,
@@ -860,11 +888,11 @@
     },
     "GWS.GMAIL.4.3": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "FAIL"
     },
     "GWS.GMAIL.4.4": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "FAIL"
     },
     "GWS.GMAIL.5.4": {
       "confirmed": false,
@@ -928,7 +956,11 @@
     },
     "GWS.MEET.5.1": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "MANUAL"
+    },
+    "GWS.MEET.5.2": {
+      "confirmed": false,
+      "status": "NOT_APPLICABLE"
     },
     "GWS.MEET.6.1": {
       "confirmed": false,
@@ -936,7 +968,11 @@
     },
     "GWS.MEET.6.2": {
       "confirmed": false,
-      "status": "NOT_APPLICABLE"
+      "status": "MANUAL"
+    },
+    "GWS.MEET.6.3": {
+      "confirmed": false,
+      "status": "MANUAL"
     },
     "GWS.SITES.1.1": {
       "confirmed": false,
@@ -1171,6 +1207,19 @@
     "ADD-59": {
       "confirmed": false,
       "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+      "status": "PASS"
+    },
+    "ADD-60": {
+      "confirmed": false,
+      "status": "PASS"
+    },
+    "ADD-61": {
+      "confirmed": true,
+      "note": "Admin console 2026-11-04",
+      "status": "PASS"
+    },
+    "ADD-62": {
+      "confirmed": false,
       "status": "PASS"
     },
     "CIS-1.1.1": {
@@ -1667,7 +1716,7 @@
     },
     "GWS.COMMONCONTROLS.10.2": {
       "confirmed": false,
-      "status": "FAIL"
+      "status": "PASS"
     },
     "GWS.COMMONCONTROLS.10.3": {
       "confirmed": false,
@@ -1707,21 +1756,24 @@
       "confirmed": false,
       "status": "PASS"
     },
+    "GWS.COMMONCONTROLS.16.3": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.COMMONCONTROLS.16.4": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
     "GWS.COMMONCONTROLS.17.1": {
       "confirmed": true,
       "note": "Admin console 2026-11-01",
       "status": "FAIL"
     },
-    "GWS.COMMONCONTROLS.18.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
+    "GWS.COMMONCONTROLS.18.1": {
+      "confirmed": false,
       "status": "FAIL"
     },
-    "GWS.COMMONCONTROLS.18.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.18.4": {
+    "GWS.COMMONCONTROLS.18.2": {
       "confirmed": true,
       "note": "Admin console 2026-11-04",
       "status": "FAIL"
@@ -1766,7 +1818,7 @@
     },
     "GWS.COMMONCONTROLS.6.1": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "ERROR"
     },
     "GWS.COMMONCONTROLS.7.1": {
       "confirmed": false,
@@ -1858,9 +1910,9 @@
       "confirmed": false,
       "status": "PASS"
     },
-    "GWS.DRIVEDOCS.6.1": {
+    "GWS.DRIVEDOCS.5.2": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "MANUAL"
     },
     "GWS.GEMINI.1.1": {
       "confirmed": true,
@@ -1870,6 +1922,18 @@
     "GWS.GEMINI.2.1": {
       "confirmed": true,
       "note": "flip test 2026-11-06 (after approval): turning 'Beta Gemini features' On then Off logged APPLICATION_NAME 'Gemini in Workspace', SETTING_NAME 'Beta Gemini Features Beta Features enabled', NEW_VALUE 'true' (first save = CREATE_APPLICATION_SETTING, no OLD_VALUE, plus a sibling 'Beta UXR outreach enabled' false event) then 'false' (CHANGE_APPLICATION_SETTING). ScubaGoggles' 'GenAiAlphaSettingsProto alpha_enabled' did not appear; check now reads the live name first. Golden snapshot predates the events so stays MANUAL. 2026-11-07: Policy API path added (devices.ios_apple_intelligence / gemini_app.unlicensed_user_access / gemini_for_workspace.beta_features / gmail.external_recipient_warning). The golden snapshot predates the collector categories, so its status is unchanged.",
+      "status": "MANUAL"
+    },
+    "GWS.GEMINI.3.1": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.GEMINI.3.2": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.GEMINI.4.1": {
+      "confirmed": false,
       "status": "MANUAL"
     },
     "GWS.GMAIL.10.1": {
@@ -1883,9 +1947,9 @@
       "status": "PASS"
     },
     "GWS.GMAIL.18.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: bypassSelectedSenders true->false->true, check FAIL->PASS->FAIL",
-      "status": "FAIL"
+      "confirmed": false,
+      "note": "flip test 2026-11-04: bypassSelectedSenders true->false->true, check FAIL->PASS->FAIL under the v0.6 reading. Since the SCuBA v1 alignment (2026-11-14) only domain entries in the attached address lists fail; this snapshot carries no bypassSenderAllowlist reference, so the rule cannot be resolved and the check asks for review",
+      "status": "MANUAL"
     },
     "GWS.GMAIL.18.2": {
       "confirmed": true,
@@ -1907,11 +1971,11 @@
     },
     "GWS.GMAIL.4.3": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "FAIL"
     },
     "GWS.GMAIL.4.4": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "FAIL"
     },
     "GWS.GMAIL.5.4": {
       "confirmed": true,
@@ -1989,15 +2053,22 @@
       "note": "Admin console 2026-11-04",
       "status": "PASS"
     },
-    "GWS.MEET.6.1": {
+    "GWS.MEET.5.2": {
       "confirmed": true,
       "note": "Admin console 2026-11-04",
       "status": "PASS"
     },
+    "GWS.MEET.6.1": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
     "GWS.MEET.6.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.MEET.6.3": {
+      "confirmed": false,
+      "status": "MANUAL"
     },
     "GWS.SITES.1.1": {
       "confirmed": true,
@@ -2224,6 +2295,18 @@
     "ADD-59": {
       "confirmed": false,
       "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+      "status": "PASS"
+    },
+    "ADD-60": {
+      "confirmed": false,
+      "status": "PASS"
+    },
+    "ADD-61": {
+      "confirmed": false,
+      "status": "PASS"
+    },
+    "ADD-62": {
+      "confirmed": false,
       "status": "PASS"
     },
     "CIS-1.1.1": {
@@ -2649,7 +2732,7 @@
     },
     "GWS.COMMONCONTROLS.10.1": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "FAIL"
     },
     "GWS.COMMONCONTROLS.10.2": {
       "confirmed": false,
@@ -2691,19 +2774,23 @@
       "confirmed": false,
       "status": "ERROR"
     },
+    "GWS.COMMONCONTROLS.16.3": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.COMMONCONTROLS.16.4": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
     "GWS.COMMONCONTROLS.17.1": {
       "confirmed": false,
       "status": "NOT_APPLICABLE"
     },
+    "GWS.COMMONCONTROLS.18.1": {
+      "confirmed": false,
+      "status": "NOT_APPLICABLE"
+    },
     "GWS.COMMONCONTROLS.18.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.18.3": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.18.4": {
       "confirmed": false,
       "status": "NOT_APPLICABLE"
     },
@@ -2741,7 +2828,7 @@
     },
     "GWS.COMMONCONTROLS.6.1": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "ERROR"
     },
     "GWS.COMMONCONTROLS.7.1": {
       "confirmed": false,
@@ -2824,15 +2911,27 @@
       "confirmed": false,
       "status": "PASS"
     },
-    "GWS.DRIVEDOCS.6.1": {
+    "GWS.DRIVEDOCS.5.2": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "MANUAL"
     },
     "GWS.GEMINI.1.1": {
       "confirmed": false,
       "status": "MANUAL"
     },
     "GWS.GEMINI.2.1": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.GEMINI.3.1": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.GEMINI.3.2": {
+      "confirmed": false,
+      "status": "MANUAL"
+    },
+    "GWS.GEMINI.4.1": {
       "confirmed": false,
       "status": "MANUAL"
     },
@@ -2846,7 +2945,7 @@
     },
     "GWS.GMAIL.18.1": {
       "confirmed": false,
-      "status": "FAIL"
+      "status": "MANUAL"
     },
     "GWS.GMAIL.18.2": {
       "confirmed": false,
@@ -2866,11 +2965,11 @@
     },
     "GWS.GMAIL.4.3": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "FAIL"
     },
     "GWS.GMAIL.4.4": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "FAIL"
     },
     "GWS.GMAIL.5.4": {
       "confirmed": false,
@@ -2934,15 +3033,23 @@
     },
     "GWS.MEET.5.1": {
       "confirmed": false,
-      "status": "PASS"
+      "status": "NOT_APPLICABLE"
+    },
+    "GWS.MEET.5.2": {
+      "confirmed": false,
+      "status": "NOT_APPLICABLE"
     },
     "GWS.MEET.6.1": {
       "confirmed": false,
-      "status": "NOT_APPLICABLE"
+      "status": "MANUAL"
     },
     "GWS.MEET.6.2": {
       "confirmed": false,
-      "status": "NOT_APPLICABLE"
+      "status": "MANUAL"
+    },
+    "GWS.MEET.6.3": {
+      "confirmed": false,
+      "status": "MANUAL"
     },
     "GWS.SITES.1.1": {
       "confirmed": false,
