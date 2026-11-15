@@ -701,7 +701,7 @@ class Authentication(_Base):
 class ApiAccess(_Base):
     third_party_apps_restricted: bool | None = None
     trust_policy: str = ""
-    internal_apps_controlled: bool | None = None
+    trust_internal_apps: bool | None = None
 
 
 class AppAccess(_Base):

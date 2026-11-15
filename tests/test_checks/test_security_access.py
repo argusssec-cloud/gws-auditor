@@ -131,29 +131,40 @@ class TestThirdPartyAppReview:
 # -----------------------------------------------------------------------
 
 class TestInternalApiAccess:
-    """Tests for CIS-4.2.1.3."""
+    """CIS-4.2.1.3 (v1.4.1): 'Trust internal, domain-owned apps' selected = PASS; SCuBA 10.3 is the inverse."""
 
-    def test_controlled_pass(self, full_audit_data):
+    def test_trusted_pass(self, full_audit_data):
         from gws_auditor.checks.security_access import check_internal_api_access
-        full_audit_data["policies"].setdefault("security", {})["api_access"] = {
-            "internal_apps_controlled": True,
-        }
+        full_audit_data["policies"]["api_controls"] = {"_ou_policies": [
+            make_ou_policy("api_controls", "internal_apps", {"trustInternalApps": True}, "/")]}
         result = check_internal_api_access(full_audit_data)
         assert result.status == Status.PASS
+        assert "GWS.COMMONCONTROLS.10.3" in result.details
 
-    def test_not_controlled_fail(self, full_audit_data):
+    def test_not_trusted_fail(self, full_audit_data):
         from gws_auditor.checks.security_access import check_internal_api_access
-        full_audit_data["policies"].setdefault("security", {})["api_access"] = {
-            "internal_apps_controlled": False,
-        }
+        full_audit_data["policies"]["api_controls"] = {"_ou_policies": [
+            make_ou_policy("api_controls", "internal_apps", {"trustInternalApps": True}, "/"),
+            make_ou_policy("api_controls", "internal_apps", {"trustInternalApps": False}, "/Contractors")]}
         result = check_internal_api_access(full_audit_data)
         assert result.status == Status.FAIL
+        assert "/Contractors" in result.details
 
-
-# -----------------------------------------------------------------------
-# CIS-4.2.1.4: Domain-wide delegation (no OU mapping, unchanged)
-# -----------------------------------------------------------------------
-
+    def test_legacy_mapping_and_unknown(self, full_audit_data):
+        from gws_auditor.checks.security_access import check_internal_api_access
+        from gws_auditor.checks.cisa_commoncontrols import check_unconfigured_internal_apps
+        full_audit_data["policies"].pop("api_controls", None)
+        full_audit_data["policies"]["security"] = {"api_access": {"trust_internal_apps": False}}
+        assert check_internal_api_access(full_audit_data).status == Status.FAIL
+        full_audit_data["policies"]["security"] = {"api_access": {"trust_internal_apps": True}}
+        assert check_internal_api_access(full_audit_data).status == Status.PASS
+        full_audit_data["policies"]["security"] = {}
+        assert check_internal_api_access(full_audit_data).status == Status.ERROR
+        # The two standards disagree on the same field: one PASS implies the other FAIL.
+        full_audit_data["policies"]["api_controls"] = {"_ou_policies": [
+            make_ou_policy("api_controls", "internal_apps", {"trustInternalApps": True}, "/")]}
+        assert check_internal_api_access(full_audit_data).status == Status.PASS
+        assert check_unconfigured_internal_apps(full_audit_data).status == Status.FAIL
 
 
 class TestDomainWideDelegation:

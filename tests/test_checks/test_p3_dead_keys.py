@@ -136,18 +136,18 @@ class TestManualByDesignAreUnscored:
 class TestSitesServiceOff:
     """P6 console reading: Sites OFF for everyone while the SYSTEM creation flag stays true."""
 
-    def test_service_off_means_no_site_creation(self, full_audit_data):
+    def test_service_off_passes_despite_system_creation_flag(self, full_audit_data):
         from gws_auditor.checks.apps_sites import check_sites_creation_disabled
         sysp = make_ou_policy("sites", "sites_creation_and_modification", {"allowSitesCreation": True, "allowSitesModification": True})
         sysp["_raw"] = {"type": "SYSTEM"}
         full_audit_data["policies"]["sites"] = {"_ou_policies": [
             sysp, make_ou_policy("sites", "service_status", {"serviceState": "DISABLED"})]}
         result = check_sites_creation_disabled(full_audit_data)
-        assert result.status == Status.PASS and "turned off" in result.details
+        assert result.status == Status.PASS and "service OFF" in result.details
 
-    def test_service_on_still_judges_creation(self, full_audit_data):
+    def test_service_on_fails_even_with_creation_disabled(self, full_audit_data):
         from gws_auditor.checks.apps_sites import check_sites_creation_disabled
         full_audit_data["policies"]["sites"] = {"_ou_policies": [
-            make_ou_policy("sites", "sites_creation_and_modification", {"allowSitesCreation": True}),
+            make_ou_policy("sites", "sites_creation_and_modification", {"allowSitesCreation": False}),
             make_ou_policy("sites", "service_status", {"serviceState": "ENABLED"})]}
         assert check_sites_creation_disabled(full_audit_data).status == Status.FAIL

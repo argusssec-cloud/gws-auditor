@@ -31,6 +31,7 @@ CHECK_MODULES = [
     "gws_auditor.checks.cisa_commoncontrols",
     "gws_auditor.checks.cisa_services",
     "gws_auditor.checks.cisa_additions",
+    "gws_auditor.checks.cisa_equivalents",
     "gws_auditor.checks.additional_identity",
 ]
 

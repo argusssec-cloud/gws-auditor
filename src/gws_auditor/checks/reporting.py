@@ -146,3 +146,63 @@ def check_security_report_reviewed(data: dict) -> CheckResult:
         f"All {len(reviewed)} administrator row(s) of the Security report are clean: 2SV enrolled, strong compliant "
         "password, no less secure app access."), actual_value={"admins": reviewed, "no_row_yet": []},
         expected_value=expected)
+
+
+_DASHBOARD_REMED = (
+    "Admin console > Security > Security center > Dashboard. Review the panels (DLP incidents, failed "
+    "and suspicious sign-ins, OAuth grants, device events) at least weekly, at minimum for administrator "
+    "accounts. https://knowledge.workspace.google.com/admin/security/about-the-security-dashboard"
+)
+
+
+@check(
+    check_id="CIS-4.3.1",
+    scored=False,  # Admin-console-only control: a review cadence has no API or audit-log signal
+    title="Ensure the Security dashboard is reviewed regularly for anomalies",
+    level="L1",
+    source="CIS",
+    section="Reporting",
+    remediation=_DASHBOARD_REMED,
+)
+def check_security_dashboard_reviewed(data: dict) -> CheckResult:
+    """CIS 4.3.1 (L1): the Security dashboard (Security center) is reviewed weekly. No API exposes
+    whether anyone looked at it, so the result is MANUAL; the alert checks (CIS-6.x) and
+    GWS.COMMONCONTROLS.13.1 cover the automated side of the same signals."""
+    return make_review(
+        check_id="CIS-4.3.1", title="Ensure the Security dashboard is reviewed regularly for anomalies",
+        level="L1", source="CIS", section="Reporting",
+        details=("Review cadence is a process control: confirm the Security dashboard is reviewed weekly "
+                 "(availability of individual panels depends on the edition). Record the outcome with a "
+                 "dashboard override once confirmed."),
+        remediation=_DASHBOARD_REMED,
+    )
+
+
+_HEALTH_REMED = (
+    "Admin console > Security > Security center > Security health. Review every setting flagged with a "
+    "recommendation at least weekly and act on the ones that matter to your organisation. "
+    "https://knowledge.workspace.google.com/admin/security/security-health-page"
+)
+
+
+@check(
+    check_id="CIS-4.3.2",
+    scored=False,  # Admin-console-only control: a review cadence has no API or audit-log signal
+    title="Ensure the Security health page is reviewed regularly for anomalies",
+    level="L1",
+    source="CIS",
+    section="Reporting",
+    remediation=_HEALTH_REMED,
+)
+def check_security_health_reviewed(data: dict) -> CheckResult:
+    """CIS 4.3.2 (L1): the Security health page is reviewed weekly. The settings it lists (2SV,
+    security keys, mobile management, Drive sharing, forwarding) are judged by their own checks
+    here; the review itself has no API signal, so the result is MANUAL."""
+    return make_review(
+        check_id="CIS-4.3.2", title="Ensure the Security health page is reviewed regularly for anomalies",
+        level="L1", source="CIS", section="Reporting",
+        details=("Review cadence is a process control: confirm the Security health page is reviewed weekly. "
+                 "This report's individual settings are judged by the 2SV, security key, device, Drive "
+                 "sharing and forwarding checks."),
+        remediation=_HEALTH_REMED,
+    )

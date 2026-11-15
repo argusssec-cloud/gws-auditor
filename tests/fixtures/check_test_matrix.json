@@ -2506,26 +2506,18 @@
   "check_id": "CIS-3.1.7.1",
   "func": "check_sites_creation_disabled",
   "module": "checks/apps_sites.py",
-  "inputs": "get_ou_values(policies.sites,'sites_creation_and_modification') (NO admin_only, no DEFAULT filter) field allowSitesCreation (real). Fallback: policies.sites.sites_creation_enabled (mapped).",
+  "inputs": "get_ou_values(policies.sites,'service_status') field serviceState (real); sites_creation_and_modification.allowSitesCreation only annotates a FAIL. Fallback: mapped policies.sites.service_status.",
   "paths": [
    "ou_policy",
    "legacy_fallback"
   ],
-  "pass_case": "make_ou_policy('sites','sites_creation_and_modification',{'allowSitesCreation':False,'allowSitesModification':True}) on '/' and '/Eng' -> PASS. Fallback sites_creation_enabled=False -> PASS.",
-  "fail_case": "OU entry allowSitesCreation=True on /Marketing (root False) -> FAIL naming /Marketing. Fallback True -> FAIL.",
-  "other_cases": "MANUAL (make_review): no entries and sites_creation_enabled None/missing.",
-  "edge_cases": "Synthetic GOOGLE_DEFAULTS entry (policies/_default/..., type DEFAULT, allowSitesCreation True) injected when the API returns nothing -> FAIL (verified) on assumed data; cal_offline_access returns MANUAL in the same situation. Entry missing allowSitesCreation (only allowSitesModification) -> PASS (verified) = unknown treated as safe. Exception OUs not exempted. Sites service disabled entirely (sites.service_status disabled) -> creation irrelevant, could be N/A.",
-  "coverage_now": "test_sites.py::TestSitesCreationDisabled (fallback PASS/FAIL/MANUAL), TestSitesCreationDisabledOU::test_all_ous_disabled, test_child_ou_enabled, test_fallback_when_no_ou_policies. status_rec: PASS, FAIL, MANUAL.",
-  "gaps": [
-   "test: DEFAULT-only synthetic entry -> decide MANUAL vs FAIL and assert",
-   "test: entry without allowSitesCreation -> MANUAL not PASS",
-   "test: e2e raw API list through normalize_data (OU path)",
-   "test: sites service_status DISABLED -> NOT_APPLICABLE/PASS"
-  ],
-  "suspected_bugs": [
-   "apps_sites.py:326-332 does not filter DEFAULT entries; a synthetic GOOGLE_DEFAULTS allowSitesCreation=True (injected only when the API returned nothing) produces a scored FAIL with no evidence (verified).",
-   "apps_sites.py:330-331 missing field -> treated as disabled -> PASS."
-  ]
+  "pass_case": "serviceState DISABLED on every OU -> PASS (also with a SYSTEM creation flag true).",
+  "fail_case": "serviceState ENABLED on any OU -> FAIL; creation disabled but service on -> FAIL with 'service itself to be OFF' note.",
+  "other_cases": "MANUAL (make_review) when service_status is not returned (creation flags alone do not decide); *_UNSPECIFIED -> MANUAL.",
+  "edge_cases": "Same setting as GWS.SITES.1.1 (L2, CISA). Title follows the benchmark wording.",
+  "coverage_now": "test_sites.py::TestSitesServiceOff, ::TestSitesServiceFallback; test_p3_dead_keys.py::TestSitesServiceOff (PASS, FAIL, MANUAL).",
+  "gaps": [],
+  "suspected_bugs": []
  },
  {
   "check_id": "CIS-3.1.8.1",
@@ -2827,23 +2819,18 @@
   "check_id": "CIS-4.2.1.3",
   "func": "check_internal_api_access",
   "module": "security_access",
-  "inputs": "Only legacy security.api_access.internal_apps_controlled (provider.py:2544 sets it to NOT api_controls.internal_apps.trustInternalApps, root-OU precedence). No get_ou_values path.",
+  "inputs": "get_ou_values(policies.api_controls,'internal_apps') field trustInternalApps (real); fallback security.api_access.trust_internal_apps (provider maps the root value).",
   "paths": [
+   "ou_policy",
    "legacy_fallback"
   ],
-  "pass_case": "security.api_access.internal_apps_controlled True (i.e. trustInternalApps False after provider mapping) -> PASS.",
-  "fail_case": "internal_apps_controlled False (trustInternalApps True) -> FAIL.",
-  "other_cases": "ERROR (make_manual) when key None/absent (default in production if api_controls not collected).",
-  "edge_cases": "Per-OU values ignored: child OU trustInternalApps True with root False -> PASS (provider keeps root). Tests never exercise the real field trustInternalApps through normalize_data. GWS.COMMONCONTROLS (cisa_commoncontrols.check_unconfigured_internal_apps) reads the OU path for the same control -> possible disagreement.",
-  "coverage_now": "tests/test_checks/test_security_access.py::TestInternalApiAccess, tests/test_checks/test_security.py::TestInternalApiAccess (legacy True/False). status_rec: PASS, FAIL. ERROR not tested.",
-  "gaps": [
-   "Key absent -> ERROR",
-   "End-to-end: api_controls.internal_apps trustInternalApps True via provider._map_api_controls_to_security -> FAIL; False -> PASS",
-   "Consistency with cisa_commoncontrols internal apps check on mixed OUs"
-  ],
-  "suspected_bugs": [
-   "src/gws_auditor/checks/security_access.py:259-264 no OU-aware path: a child OU with trustInternalApps True is masked by the root value -> false PASS"
-  ]
+  "pass_case": "trustInternalApps True on every OU -> PASS (CIS v1.4.1 audit step: 'Trust internal, domain-owned apps' selected).",
+  "fail_case": "trustInternalApps False on any OU -> FAIL naming the OU.",
+  "other_cases": "ERROR (make_manual) when neither the Policy API entry nor the mapped value exists.",
+  "edge_cases": "Inverse of GWS.COMMONCONTROLS.10.3, which reads the same field and wants False: details name the conflict; a tenant cannot pass both.",
+  "coverage_now": "test_security.py::TestInternalApiAccess, test_security_access.py::TestInternalApiAccess (PASS, FAIL, ERROR, conflict).",
+  "gaps": [],
+  "suspected_bugs": []
  },
  {
   "check_id": "CIS-4.2.1.4",
@@ -5452,6 +5439,614 @@
    "test: ERROR when no data",
    "test: child OU ENABLED with root DISABLED -> FAIL"
   ],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.CALENDAR.1.1",
+  "func": "check_scuba_primary_calendar_sharing",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.1.1.1 (apps_calendar.check_primary_cal_external_sharing) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.1.1.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.1.1.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.1.1.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.1.1.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.CALENDAR.1.2",
+  "func": "check_scuba_secondary_calendar_sharing",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.1.2.1 (apps_calendar.check_secondary_cal_external_sharing) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.1.2.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.1.2.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.1.2.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.1.2.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.CALENDAR.2.1",
+  "func": "check_scuba_external_invitation_warning",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.1.1.3 (apps_calendar.check_cal_external_invitation_warning) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.1.1.3.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.1.1.3 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.1.1.3 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.1.1.3; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.CHAT.4.1",
+  "func": "check_scuba_external_chat_restriction",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.4.2.1 (apps_chat.check_chat_external_restriction) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.4.2.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.4.2.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.4.2.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.4.2.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "CIS-3.1.4.1.1",
+  "func": "check_chat_external_file_sharing_cis",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels GWS.CHAT.2.1 (cisa_additions.check_chat_external_file_sharing) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as GWS.CHAT.2.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes GWS.CHAT.2.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails GWS.CHAT.2.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from GWS.CHAT.2.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.COMMONCONTROLS.1.2",
+  "func": "check_scuba_mfa_all_users",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-4.1.1.3 (security_auth.check_2sv_all_users) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-4.1.1.3.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-4.1.1.3 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-4.1.1.3 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-4.1.1.3; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.COMMONCONTROLS.5.2",
+  "func": "check_password_length_12",
+  "module": "cisa_additions",
+  "inputs": "security.password.minimumLength via _password_check (real field).",
+  "paths": [
+   "ou_policy"
+  ],
+  "pass_case": "minimumLength 12 -> PASS.",
+  "fail_case": "minimumLength 8 -> FAIL.",
+  "other_cases": "MANUAL when the setting is not returned or the field is unknown.",
+  "edge_cases": "A 12-character WEAK policy passes 5.2 but fails CIS-4.1.5.1 (combined verdict).",
+  "coverage_now": "test_cisa_equivalents.py::TestPasswordSubControls. status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.COMMONCONTROLS.5.4",
+  "func": "check_password_enforce_at_login",
+  "module": "cisa_additions",
+  "inputs": "security.password.enforceRequirementsAtLogin via _password_check (real field).",
+  "paths": [
+   "ou_policy"
+  ],
+  "pass_case": "True -> PASS.",
+  "fail_case": "False -> FAIL.",
+  "other_cases": "MANUAL when not returned/unknown.",
+  "edge_cases": "Subset of CIS-4.1.5.1.",
+  "coverage_now": "test_cisa_equivalents.py::TestPasswordSubControls. status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.COMMONCONTROLS.6.2",
+  "func": "check_scuba_super_admin_count",
+  "module": "cisa_equivalents",
+  "inputs": "users[].is_super_admin/suspended through directory.super_admin_count_result(maximum=8), minus options.break_glass_accounts.",
+  "paths": [
+   "ou_policy"
+  ],
+  "pass_case": "6 super admins -> PASS (CIS-1.1.1 fails the same tenant); 9 with one break-glass address -> PASS.",
+  "fail_case": "9 -> FAIL ('maximum of eight'); 1 active -> FAIL.",
+  "other_cases": "No MANUAL path: users are always collected.",
+  "edge_cases": "Suspended holders count toward the maximum, not the minimum; break-glass addresses matched case-insensitively and reported.",
+  "coverage_now": "test_cisa_equivalents.py::TestSuperAdminBand. status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.COMMONCONTROLS.10.5",
+  "func": "check_scuba_less_secure_apps",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels ADD-58 (security_auth.check_less_secure_apps) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as ADD-58.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes ADD-58 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails ADD-58 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from ADD-58; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.COMMONCONTROLS.11.1",
+  "func": "check_scuba_marketplace_allowlist",
+  "module": "cisa_equivalents",
+  "inputs": "get_ou_values(policies.marketplace,'apps_access_options') fields accessLevel + allowAllInternalApps (real).",
+  "paths": [
+   "ou_policy"
+  ],
+  "pass_case": "ALLOW_LISTED_APPS or ALLOW_NONE with allowAllInternalApps False -> PASS.",
+  "fail_case": "ALLOW_ALL -> FAIL; allowlist with allowAllInternalApps True -> FAIL (CIS-3.1.9.1.1 passes it).",
+  "other_cases": "MANUAL when the setting is not returned or allowAllInternalApps is unknown.",
+  "edge_cases": "Google default for allowAllInternalApps (if documented) is injected by get_ou_values.",
+  "coverage_now": "test_cisa_equivalents.py::TestMarketplaceAllowlist. status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.COMMONCONTROLS.12.1",
+  "func": "check_scuba_takeout_disabled",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels ADD-09 (additional.check_takeout_restriction) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as ADD-09.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes ADD-09 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails ADD-09 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from ADD-09; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.DRIVEDOCS.1.1",
+  "func": "check_scuba_drive_external_sharing",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.2.1.1.3 (apps_drive.check_drive_domain_allowlist) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.2.1.1.3.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.2.1.1.3 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.2.1.1.3 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.2.1.1.3; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.DRIVEDOCS.4.1",
+  "func": "check_scuba_drive_sdk",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels ADD-57 (apps_drive.check_drive_sdk) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as ADD-57.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes ADD-57 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails ADD-57 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from ADD-57; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.1.1",
+  "func": "check_scuba_1_1_mail_delegation",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.1.1 (apps_gmail.check_gmail_mail_delegation) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.1.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.1.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.1.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.1.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.2.1",
+  "func": "check_scuba_2_1_dkim",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.2.1 (apps_gmail.check_gmail_dkim) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.2.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.2.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.2.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.2.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.3.1",
+  "func": "check_scuba_spf_policy",
+  "module": "cisa_equivalents",
+  "inputs": "dns_records[domain].spf through apps_gmail.spf_findings: missing, duplicate, +all, ?all, no 'all'/redirect.",
+  "paths": [
+   "ou_policy"
+  ],
+  "pass_case": "Every domain ends in -all or ~all (or redirect=) -> PASS.",
+  "fail_case": "?all, +all, no all mechanism, missing or duplicate record -> FAIL naming the domains.",
+  "other_cases": "ERROR (make_manual) when no domains were collected.",
+  "edge_cases": "CIS-3.1.3.2.2 passes a record without an all mechanism and warns on ?all; this check fails both.",
+  "coverage_now": "test_cisa_equivalents.py::TestSpfPolicy. status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.5.1",
+  "func": "check_scuba_5_1_encrypted_attachment",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.1.1 (apps_gmail.check_gmail_encrypted_attachment) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.1.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.1.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.1.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.1.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.5.2",
+  "func": "check_scuba_5_2_script_attachment",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.1.2 (apps_gmail.check_gmail_script_attachment) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.1.2.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.1.2 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.1.2 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.1.2; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.5.3",
+  "func": "check_scuba_5_3_anomalous_attachment",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.1.3 (apps_gmail.check_gmail_anomalous_attachment) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.1.3.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.1.3 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.1.3 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.1.3; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.6.1",
+  "func": "check_scuba_6_1_shortened_urls",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.2.1 (apps_gmail.check_gmail_shortened_urls) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.2.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.2.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.2.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.2.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.6.2",
+  "func": "check_scuba_6_2_linked_image_scanning",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.2.2 (apps_gmail.check_gmail_linked_image_scanning) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.2.2.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.2.2 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.2.2 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.2.2; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.6.3",
+  "func": "check_scuba_6_3_untrusted_link_warning",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.2.3 (apps_gmail.check_gmail_untrusted_link_warning) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.2.3.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.2.3 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.2.3 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.2.3; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.7.1",
+  "func": "check_scuba_7_1_domain_spoofing",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.3.1 (apps_gmail.check_gmail_domain_spoofing) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.3.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.3.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.3.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.3.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.7.2",
+  "func": "check_scuba_7_2_employee_spoofing",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.3.2 (apps_gmail.check_gmail_employee_spoofing) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.3.2.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.3.2 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.3.2 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.3.2; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.7.3",
+  "func": "check_scuba_7_3_inbound_spoofing",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.3.3 (apps_gmail.check_gmail_inbound_spoofing) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.3.3.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.3.3 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.3.3 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.3.3; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.7.4",
+  "func": "check_scuba_7_4_unauthenticated_email",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.3.4 (apps_gmail.check_gmail_unauthenticated_email) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.3.4.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.3.4 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.3.4 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.3.4; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.7.5",
+  "func": "check_scuba_7_5_groups_spoofing",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.4.3.5 (apps_gmail.check_gmail_groups_spoofing) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.4.3.5.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.4.3.5 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.4.3.5 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.4.3.5; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.9.1",
+  "func": "check_scuba_9_1_pop_imap",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.5.1 (apps_gmail.check_gmail_pop_imap) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.5.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.5.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.5.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.5.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.11.1",
+  "func": "check_scuba_11_1_auto_forwarding",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.5.2 (apps_gmail.check_gmail_auto_forwarding) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.5.2.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.5.2 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.5.2 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.5.2; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.12.1",
+  "func": "check_scuba_12_1_outbound_gateway",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.5.3 (apps_gmail.check_gmail_outbound_gateway) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.5.3.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.5.3 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.5.3 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.5.3; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.13.1",
+  "func": "check_scuba_13_1_external_recipient_warning",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.5.4 (apps_gmail.check_gmail_external_recipient_warning) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.5.4.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.5.4 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.5.4 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.5.4; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.15.1",
+  "func": "check_scuba_15_1_predelivery_scanning",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.6.1 (apps_gmail.check_gmail_predelivery_scanning) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.6.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.6.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.6.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.6.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.16.1",
+  "func": "check_scuba_16_1_security_sandbox",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels ADD-02 (additional.check_security_sandbox) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as ADD-02.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes ADD-02 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails ADD-02 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from ADD-02; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GMAIL.17.1",
+  "func": "check_scuba_17_1_comprehensive_storage",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.3.7.1 (apps_gmail.check_gmail_comprehensive_storage) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.3.7.1.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.3.7.1 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.3.7.1 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.3.7.1; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "GWS.GROUPS.2.1",
+  "func": "check_scuba_group_creation",
+  "module": "cisa_equivalents",
+  "inputs": "Re-labels CIS-3.1.6.2 (apps_groups.check_groups_creation_restriction) via cisa_equivalents.same_as: the twin's raw function runs, status/actual/expected/remediation are copied, details end with 'Same setting as CIS-3.1.6.2.'",
+  "paths": [
+   "twin"
+  ],
+  "pass_case": "Same payload that passes CIS-3.1.6.2 -> PASS (Policy API shape in test_cisa_equivalents._POLICY_CASES).",
+  "fail_case": "Same payload that fails CIS-3.1.6.2 -> FAIL.",
+  "other_cases": "MANUAL/ERROR/NOT_APPLICABLE pass through from CIS-3.1.6.2; this check's own licence gate equals the twin's.",
+  "edge_cases": "Decorator applies this id's severity, level, NIST mapping and BOD 25-01 flag; provenance note comes from the twin's lookups.",
+  "coverage_now": "test_cisa_equivalents.py::TestRelabelledTwins (PASS, FAIL). status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "CIS-4.3.1",
+  "func": "check_security_dashboard_reviewed",
+  "module": "reporting",
+  "inputs": "None: review cadence has no API or audit-log signal (unscored).",
+  "paths": [
+   "ou_policy"
+  ],
+  "pass_case": "Never PASS by design (process control); console override records the review.",
+  "fail_case": "Never FAIL by design.",
+  "other_cases": "Always MANUAL (make_review).",
+  "edge_cases": "Panel availability depends on edition.",
+  "coverage_now": "test_cisa_equivalents.py::TestCisReviewControls. status_rec: see tests.",
+  "gaps": [],
+  "suspected_bugs": []
+ },
+ {
+  "check_id": "CIS-4.3.2",
+  "func": "check_security_health_reviewed",
+  "module": "reporting",
+  "inputs": "None: review cadence has no API or audit-log signal (unscored).",
+  "paths": [
+   "ou_policy"
+  ],
+  "pass_case": "Never PASS by design.",
+  "fail_case": "Never FAIL by design.",
+  "other_cases": "Always MANUAL (make_review).",
+  "edge_cases": "The settings the page lists are judged by their own checks.",
+  "coverage_now": "test_cisa_equivalents.py::TestCisReviewControls. status_rec: see tests.",
+  "gaps": [],
   "suspected_bugs": []
  }
 ]

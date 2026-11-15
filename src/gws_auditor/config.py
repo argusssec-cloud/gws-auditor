@@ -62,6 +62,9 @@ DEFAULT_CONFIG = {
         # listed client with org-wide write scopes is reported but not flagged.
         "dwd_allowlist": [],
         "dmarc_report_contacts": ["reports@dmarc.cyber.dhs.gov"],  # GWS.GMAIL.4.3 required rua recipient(s)
+        # GWS.COMMONCONTROLS.6.2: "break glass" super admin addresses SCuBA lets an
+        # organisation leave out of the 2-to-8 count; they are reported, not counted.
+        "break_glass_accounts": [],
         # OU paths or fnmatch patterns whose permissive sharing is
         # intentional. Empty list = use the built-in pattern set in
         # checks/base.py (_DEFAULT_EXTERNAL_SHARING_PATTERNS).

@@ -12,80 +12,62 @@ from .base import (check, make_pass, make_fail, make_warn, make_manual, make_rev
 from ..models import CheckResult, Status
 
 
+_SITES_REMED = (
+    "Admin console > Apps > Google Workspace > Sites > Service status. Set the service to OFF for "
+    "everyone, and turn it on only for the OUs or groups that need Google Sites. "
+    "https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users"
+)
+
+
 @check(
     check_id="CIS-3.1.7.1",
-    title="Ensure Google Sites creation is disabled",
+    title="Ensure service status for Google Sites is set to off",
     level="L1",
     source="CIS",
     section="Sites",
-    remediation="Admin console > Apps > Google Workspace > Sites > New Sites. Disable 'Allow users to create new Sites'. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users",
+    remediation=_SITES_REMED,
 )
 def check_sites_creation_disabled(data: dict) -> CheckResult:
-    """Google Sites creation should be disabled to prevent unmanaged web publishing."""
+    """CIS 3.1.7.1 (L1): the Google Sites service is OFF (``sites.service_status.serviceState``
+    DISABLED) for every OU. Disabling only new-site creation leaves the service on, so it does not
+    satisfy the benchmark; it is reported in the details. GWS.SITES.1.1 judges the same setting."""
     _ID = "CIS-3.1.7.1"
-    _TITLE = "Ensure Google Sites creation is disabled"
-    _L, _S, _SEC = "L1", "CIS", "Sites"
-    _REMED = (
-        "Admin console > Apps > Google Workspace > Sites > "
-        "New Sites. Disable 'Allow users to create new Sites'. https://knowledge.workspace.google.com/admin/users/access/turn-sites-on-or-off-for-users"
-    )
-
+    _TITLE = "Ensure service status for Google Sites is set to off"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CIS", section="Sites")
     policies = data.get("policies", {})
     sites = policies.get("sites", {})
-
-    # OU-aware path
-    # A Sites service that is OFF for the OU cannot be used to create sites (console-verified
-    # 2026-11-04: service OFF for everyone while the SYSTEM creation flag stayed true).
-    service_off = [e["org_unit"] for e in get_ou_values(sites, "service_status")
-                   if str(field_value(e, "serviceState") or "").upper() == "DISABLED"]
-    ou_values = [e for e in get_ou_values(sites, "sites_creation_and_modification")
-                 if e["org_unit"] not in service_off]
-    if service_off and not ou_values:
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=f"Google Sites is turned off for OU(s): {', '.join(sorted(service_off))}; sites cannot be created.",
-            actual_value="service OFF", expected_value="Disabled for all OUs",
-        )
-    if ou_values:
+    service = get_ou_values(sites, "service_status")
+    if service:
         def _judge(entry):
-            allow = field_value(entry, "allowSitesCreation")
-            if allow is None:
+            state = field_value(entry, "serviceState")
+            if state is None:
                 return None
-            return allow is not True
-        return ou_verdict(
-            ou_values, _judge,
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            fail_text="have Sites creation enabled",
-            pass_text="have Sites creation disabled",
-            expected_value="Disabled for all OUs", remediation=_REMED,
+            return str(state).upper() == "DISABLED", state
+        result = ou_verdict(
+            service, _judge, **common,
+            fail_text="have the Google Sites service ON",
+            pass_text="have the Google Sites service OFF",
+            expected_value="Service status OFF for all OUs", remediation=_SITES_REMED,
         )
-
-    # Fallback: mapped root-level value
-    creation_enabled = sites.get("sites_creation_enabled", None)
-
-    if creation_enabled is False:
-        return make_pass(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details="Google Sites creation is disabled.",
-            actual_value=creation_enabled,
-            expected_value="Disabled for all OUs",
-        )
-
-    if creation_enabled is None:
-        return make_review(
-            check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-            details=(
-                "Could not determine Google Sites creation setting. "
-                "Verify manually in Admin console > Apps > Google Workspace > "
-                "Sites > New Sites."
-            ),
-            remediation=_REMED,
-        )
-
-    return make_fail(
-        check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
-        details="Google Sites creation is enabled, allowing users to publish web content.",
-        actual_value=creation_enabled,
-        expected_value="Disabled for all OUs",
-        remediation=_REMED,
+        if result.status == Status.FAIL:
+            creation_off = sorted(
+                e["org_unit"] for e in get_ou_values(sites, "sites_creation_and_modification")
+                if field_value(e, "allowSitesCreation") is False)
+            if creation_off:
+                result.details = (result.details or "").rstrip() + (
+                    f" New-site creation is disabled for {', '.join(creation_off)}, but the benchmark requires "
+                    "the service itself to be OFF; users there can still open and edit existing sites.")
+        return result
+    status = str(sites.get("service_status") or "").lower()
+    if status in ("disabled", "off"):
+        return make_pass(**common, details="The Google Sites service is OFF.",
+                         actual_value=status, expected_value="Service status OFF for all OUs")
+    if status in ("enabled", "on"):
+        return make_fail(**common, details="The Google Sites service is ON.",
+                         actual_value=status, expected_value="Service status OFF for all OUs",
+                         remediation=_SITES_REMED)
+    return make_review(
+        **common, remediation=_SITES_REMED,
+        details=("'sites.service_status' was not returned by the Cloud Identity Policy API, so the service "
+                 "state is unknown — verify in Admin console > Apps > Google Workspace > Sites."),
     )

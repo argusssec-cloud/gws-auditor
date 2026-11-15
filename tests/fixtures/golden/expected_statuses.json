@@ -1,3059 +1,3515 @@
 {
-  "enterprise_essentials_2026-05": {
-    "ADD-02": {
-      "confirmed": false,
-      "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-05": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-06": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-07": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-08": {
-      "confirmed": false,
-      "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
-      "status": "PASS"
-    },
-    "ADD-09": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-11": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-12": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-13": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-14": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-15": {
-      "confirmed": false,
-      "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-16": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-18": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-20": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-21": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-22": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-23": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-24": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-25": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-26": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-27": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-28": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-29": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "ADD-30": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-31": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-32": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-33": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-34": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-35": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-36": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-37": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-38": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "ADD-39": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-40": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-41": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "ADD-42": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-43": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-44": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-45": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-46": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-47": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-48": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "ADD-49": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "ADD-50": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-51": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-52": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-53": {
-      "confirmed": false,
-      "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-54": {
-      "confirmed": false,
-      "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-55": {
-      "confirmed": false,
-      "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-56": {
-      "confirmed": false,
-      "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-57": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-58": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-59": {
-      "confirmed": false,
-      "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
-      "status": "PASS"
-    },
-    "ADD-60": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-61": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-62": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-1.1.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-1.1.2": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "CIS-1.2.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.2.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.1.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.2.1.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.6": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.2.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.2.1.2.3": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.2.1.2.4": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.2.2.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.2.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.1.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.3.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.2.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.2.3": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "CIS-3.1.3.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.3.4.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.2.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.2.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.5.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.3.5.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.3.5.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.5.4": {
-      "confirmed": false,
-      "note": "2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false.",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.6.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.6.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.7.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.7.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.4.1.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-3.1.4.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.4.3.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.4.4.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.4.4.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.6.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.6.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.6.3": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.7.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.8.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.9.1.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.1.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.1.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.1.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.2.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.1.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.5.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.2.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.2.1.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-4.2.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.2.1.4": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "CIS-4.2.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-4.2.3.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-4.2.4.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-4.2.5.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-5.1.1.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-5.1.1.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-6.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-6.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.6": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.7": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.8": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.ASSUREDCONTROLS.1.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.ASSUREDCONTROLS.1.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.ASSUREDCONTROLS.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CALENDAR.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CALENDAR.3.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CALENDAR.4.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CHAT.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CHAT.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CHAT.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CHAT.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CHAT.5.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CHAT.5.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CLASSROOM.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CLASSROOM.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CLASSROOM.2.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.CLASSROOM.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CLASSROOM.4.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.CLASSROOM.5.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.1.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.1.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.1.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.10.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.10.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.10.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.10.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.13.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.14.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.14.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.15.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.15.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.16.1": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "GWS.COMMONCONTROLS.16.2": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "GWS.COMMONCONTROLS.16.3": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.16.4": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.17.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.18.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.18.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.3.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.4.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.5.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.5.3": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.5.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.5.6": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.6.1": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "GWS.COMMONCONTROLS.7.1": {
-      "confirmed": false,
-      "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL.",
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.8.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.8.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.8.3": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.9.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.9.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.DRIVEDOCS.1.10": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.DRIVEDOCS.1.11": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.DRIVEDOCS.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.5": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.DRIVEDOCS.1.6": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.7": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.DRIVEDOCS.1.8": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.DRIVEDOCS.1.9": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.2.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.DRIVEDOCS.2.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.3.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.DRIVEDOCS.5.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.5.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.1.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.2.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.3.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.4.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GMAIL.10.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.14.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.18.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GMAIL.18.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.18.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.4.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.4.3": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.4.4": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.5.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.5.5": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.6.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.7.6": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.7.7": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.8.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.5.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.MEET.5.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.MEET.6.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.MEET.6.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.MEET.6.3": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.SITES.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    }
+ "enterprise_essentials_2026-05": {
+  "ADD-02": {
+   "confirmed": false,
+   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
+   "status": "NOT_APPLICABLE"
   },
-  "enterprise_standard_2026-09": {
-    "ADD-02": {
-      "confirmed": false,
-      "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
-      "status": "MANUAL"
-    },
-    "ADD-05": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-06": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "ADD-07": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-08": {
-      "confirmed": false,
-      "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
-      "status": "PASS"
-    },
-    "ADD-09": {
-      "confirmed": true,
-      "note": "partial flip 2026-11-04: takeout.service_status ENABLED->DISABLED alone keeps FAIL because nine <service>.user_takeout policies stay ENABLED (correct)",
-      "status": "FAIL"
-    },
-    "ADD-11": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-12": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-13": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-14": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-15": {
-      "confirmed": false,
-      "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
-      "status": "MANUAL"
-    },
-    "ADD-16": {
-      "confirmed": false,
-      "note": "2026-11-07: Policy API path added (devices.ios_apple_intelligence / gemini_app.unlicensed_user_access / gemini_for_workspace.beta_features / gmail.external_recipient_warning). The golden snapshot predates the collector categories, so its status is unchanged.",
-      "status": "MANUAL"
-    },
-    "ADD-18": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-20": {
-      "confirmed": true,
-      "note": "same flip as GWS.COMMONCONTROLS.2.1 (2026-11-06): MODE vocabulary is MONITOR and BLOCK (WARN assumed for the Warn action), not ACTIVE; assignment list parameter is CAA_ACCESS_ASSIGNMENTS_NEW. Tasks is not an OIDC app so the live status is unchanged. Evening 2026-11-06 (Geo restriction assigned to all 19 Workspace apps): live result still MANUAL, correct, because the 8 detected third-party OIDC apps are not Workspace apps and no assignment covers them. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live MANUAL (levels exist, OIDC apps unassigned), correct. Flip 2026-11-06 23:35Z: an assignment with the Warn action on the Workspace Guests sub-OU logged MODE 'WARN' with TARGET_ENTITY_NAME 'Workspace Guests'; WARN confirmed as an active mode, and assignment state is now kept per app, OU target and mode.",
-      "status": "MANUAL"
-    },
-    "ADD-21": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-22": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-23": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "FAIL"
-    },
-    "ADD-24": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-25": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-26": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-27": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-28": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-29": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "ADD-30": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-31": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-32": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-33": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-34": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-35": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-36": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-37": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-38": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "ADD-39": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-40": {
-      "confirmed": true,
-      "note": "2026-11-06: CAA evidence now requires an active-mode evaluation (allowed or denied) whose CAA_APPLICATION names a detected SAML app; the old parser matched invented parameter names and counted any denial. Status unchanged. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live NOT_APPLICABLE (no SAML logins).",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-41": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-42": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-43": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-44": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-45": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "FAIL"
-    },
-    "ADD-46": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-47": {
-      "confirmed": true,
-      "note": "flip test 2026-11-05: installing the Endpoint Verification extension on one Linux VM made two device records (one per signed-in account) report encryptionState NOT_ENCRYPTED; check MANUAL->FAIL, console shows Managed by Endpoint Verification, Encryption status Not Encrypted, Password status On. The API record carries no screen-lock field for endpoint devices, so only encryption and compromised state are judged there",
-      "status": "MANUAL"
-    },
-    "ADD-48": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-49": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-50": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-51": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-52": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-53": {
-      "confirmed": false,
-      "note": "new 2026-11-06. Golden snapshot predates the CAA events and has no access_context, so MANUAL (no Admin console assignment or evaluation in the window). Flip test 2026-11-06 23:23Z: assigned the geo level to the Admin Console row (separate row above the app list, 'Continuous' evaluation point) in Block mode; admin log wrote CHANGE_CAA_APP_ASSIGNMENTS APPLICATION_NAME 'ADMIN_CONSOLE', MODE 'BLOCK', CAA_ACCESS_ASSIGNMENTS_NEW [level title], TARGET_ENTITY_TYPE ORG_UNIT, within 30 seconds; the console then shows '1 active applied' for Admin Console. Live result after the flip: PASS via the assignment. CAA user log 23:24Z (about a minute after the first console load): ACCESS_LEVELS_EVALUATED with CAA_APPLICATION 'ADMIN_CONSOLE', PROTECTED_API_ACCESS ['ADMIN_CONSOLE'], CAA_ACCESS_LEVEL_APPLIED/SATISFIED [level title], CAA_DEVICE_ID = the Endpoint Verification device id, CAA_DEVICE_STATE 'No Device Signals'. Both codes confirmed; _CAA_ADMIN_CONSOLE_APPS reduced to ('ADMIN_CONSOLE',). Help-article review 2026-11-07: Google supports Admin console assignment but notes not to do it unless needed (lock-out risk), so the check became unscored (L2, MEDIUM); Warn-only assignments are MANUAL because Warn allows access with a notification.",
-      "status": "MANUAL"
-    },
-    "ADD-54": {
-      "confirmed": false,
-      "note": "new 2026-11-06. Snapshot: MANUAL (no access-level event in the window, ACM not collected). Live 2026-11-06 with the ACM inventory: FAIL ('1 access level(s) (Geo restriction), none of which requires device posture'; 0 of 7 evaluations carried device signals, CAA_DEVICE_STATE 'No Device Signals'), correct for this tenant. Flip 2026-11-06 23:30Z: created level 'Device posture test' (Device > Screen password protected); ACM returned it at once as basic.conditions[{devicePolicy:{requireScreenlock:true}}]; UPDATE_ACCESS_LEVEL_V2 (description edit) carried TITLE/NAME/CURR_STATE plus ACCESS_LEVEL_PREV_STATE; assigned it to Tasks in monitor mode (CHANGE_CAA_APP_ASSIGNMENTS MODE MONITOR) and Tasks loads wrote MONITOR_MODE_ACCESS_EVALUATED_EVENT with CAA_DEVICE_STATE 'Normal' (ignored as monitor mode), so the check stays FAIL/MANUAL as designed until an active assignment exists. Help-article review 2026-11-07: Warn 'allows access to the app and sends the user a warning', so only Block-mode assignments count as enforcement here; Warn-only -> MANUAL.",
-      "status": "MANUAL"
-    },
-    "ADD-55": {
-      "confirmed": false,
-      "note": "new 2026-11-06. Snapshot: NOT_APPLICABLE (no level known). Live 2026-11-06: PASS, the one level is assigned (19 CHANGE_CAA_APP_ASSIGNMENTS) and applied (7 ACCESS_LEVELS_EVALUATED).",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-56": {
-      "confirmed": false,
-      "note": "new 2026-11-06. Snapshot: NOT_APPLICABLE (no context_aware_access events). Live 2026-11-06: PASS (7 allowed evaluations, 0 ACCESS_DENY_EVENT). Real denial captured 2026-11-06 23:59Z (level the admin's own region fails, alone in Block mode on Tasks): ACCESS_DENY_EVENT with CAA_ACCESS_LEVEL_APPLIED/UNSATISFIED, CAA_APPLICATION TASKS, BLOCKED_API_ACCESS, CAA_DEVICE_ID/STATE and CAA_ACCESS_EVALUATION_DETAILS (text proto); Tasks redirected to the access.workspace.google.com remediation page. Two active levels on one app are OR'd (allowed evaluation 23:54Z with one unsatisfied level). Monitor-mode evaluations are named MONITOR_MODE_ACCESS_EVALUATED_EVENT (observed 23:33Z) and are excluded; a monitor-mode denial name is still assumed.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-57": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-58": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "FAIL"
-    },
-    "ADD-59": {
-      "confirmed": false,
-      "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
-      "status": "PASS"
-    },
-    "ADD-60": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-61": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "ADD-62": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-1.1.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-1.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-1.2.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.1.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.1.1.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.1.1.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.1.2.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.1.2.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.1.3.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04: Calendar web offline OFF; the API has no setting, MANUAL by design",
-      "status": "MANUAL"
-    },
-    "CIS-3.1.2.1.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.5": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.6": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.2.1": {
-      "confirmed": false,
-      "note": "flip test 2026-11-04: allowSharedDriveCreation true->false->true. Read under CIS v1.3.0 as FAIL->PASS->FAIL; since the v1.4.1 alignment (2026-11-14) the audit step (creation not prevented) applies, so the same flip reads PASS->FAIL->PASS",
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.2.2": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: allowManagersToOverrideSettings true->false->true, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "CIS-3.1.2.1.2.3": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: allowExternalUserAccess/allowNonMemberAccess true->false->true, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "CIS-3.1.2.1.2.4": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: allowedPartiesForDownloadPrintCopy ALL->MANAGERS_ONLY->ALL, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "CIS-3.1.2.2.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.2.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.1.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: OFF->ON->OFF, check PASS->FAIL->PASS",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.2.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.2.3": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "CIS-3.1.3.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.3.4.1.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.1.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.1.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.2.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.2.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.2.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.4": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.5": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.5.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: ON->OFF->ON, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "CIS-3.1.3.5.2": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: ON->OFF->ON, check FAIL->PASS->FAIL (new field allowedForwardingDestination)",
-      "status": "FAIL"
-    },
-    "CIS-3.1.3.5.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.5.4": {
-      "confirmed": false,
-      "note": "2026-11-07: Policy API path added (devices.ios_apple_intelligence / gemini_app.unlicensed_user_access / gemini_for_workspace.beta_features / gmail.external_recipient_warning). The golden snapshot predates the collector categories, so its status is unchanged. 2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false.",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.6.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.6.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.7.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.7.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.4.1.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.4.2.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "PASS"
-    },
-    "CIS-3.1.4.3.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.4.4.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: enableApps true->false->true, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "CIS-3.1.4.4.2": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: enableWebhooks true->false->true, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "CIS-3.1.6.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.6.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.6.3": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.7.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.8.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-3.1.9.1.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: ALLOW_ALL->ALLOW_LISTED_APPS->ALLOW_ALL, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "CIS-4.1.1.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-4.1.1.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "FAIL"
-    },
-    "CIS-4.1.1.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-4.1.2.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "PASS"
-    },
-    "CIS-4.1.2.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "FAIL"
-    },
-    "CIS-4.1.3.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "PASS"
-    },
-    "CIS-4.1.4.1": {
-      "confirmed": false,
-      "note": "flip test 2026-11-04: enableEmployeeIdChallenge false->true->false. Read as FAIL->PASS->FAIL before; since the v1.4.1 alignment (2026-11-14) the benchmark direction applies (employee ID on -> FAIL; off with no third-party SSO sign-ins -> PASS), so the flip reads PASS->FAIL->PASS",
-      "status": "PASS"
-    },
-    "CIS-4.1.5.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: allowedStrength WEAK->STRONG->WEAK + minimumLength 8->15->8, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "CIS-4.2.1.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "FAIL"
-    },
-    "CIS-4.2.1.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.2.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.2.1.4": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-4.2.2.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-06 (evening): created access level 'Geo restriction' (basic condition regions ['AQ'], negate true) and assigned it in BLOCK mode to all 19 apps. Admin log: CREATE_ACCESS_LEVEL_V2 with ACCESS_LEVEL_TITLE, ACCESS_LEVEL_NAME and ACCESS_LEVEL_CURR_STATE (JSON text of the level), then 19 CHANGE_CAA_APP_ASSIGNMENTS MODE BLOCK CAA_ACCESS_ASSIGNMENTS_NEW ['Geo restriction']; this morning's DELETE_ACCESS_LEVEL_V2 (ACCESS_LEVEL_NAME only) appeared late. Check now reads this inventory; live result PASS ('Geographic access level(s) assigned to apps in active mode per the admin log: Geo restriction'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live PASS from the CAA-log evaluations applying the geographic level. Flip 2026-11-06 23:35Z: an assignment with the Warn action on the Workspace Guests sub-OU logged MODE 'WARN' with TARGET_ENTITY_NAME 'Workspace Guests'; WARN confirmed as an active mode, and assignment state is now kept per app, OU target and mode. Help-article review 2026-11-07: Warn 'allows access to the app and sends the user a warning', so only Block-mode assignments count as enforcement here; Warn-only -> MANUAL.",
-      "status": "MANUAL"
-    },
-    "CIS-4.2.3.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-4.2.4.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.2.5.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-5.1.1.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-5.1.1.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-6.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "FAIL"
-    },
-    "CIS-6.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-6.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-6.4": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-6.5": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-6.6": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-6.7": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "CIS-6.8": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.ASSUREDCONTROLS.1.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.ASSUREDCONTROLS.1.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.ASSUREDCONTROLS.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CALENDAR.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CALENDAR.3.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CALENDAR.4.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.CHAT.1.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "PASS"
-    },
-    "GWS.CHAT.1.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "PASS"
-    },
-    "GWS.CHAT.2.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: externalFileSharing unset(ALL_FILES)->NO_FILES->ALL_FILES, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.CHAT.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CHAT.5.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CHAT.5.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CLASSROOM.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CLASSROOM.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CLASSROOM.2.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: enableApiAccess SYSTEM true->ADMIN false->true, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.CLASSROOM.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CLASSROOM.4.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: whoCanUnenrollStudents SYSTEM STUDENTS_AND_TEACHERS->ADMIN TEACHERS_ONLY->STUDENTS_AND_TEACHERS, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.CLASSROOM.5.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: whoCanCreateClasses SYSTEM ALL_PENDING_AND_VERIFIED_TEACHERS->ADMIN VERIFIED_TEACHERS_ONLY->ALL_PENDING_AND_VERIFIED_TEACHERS, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.1.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.1.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.1.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.1.5": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.10.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.10.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.10.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.10.4": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.13.1": {
-      "confirmed": true,
-      "note": "partial flip 2026-11-04: enabling Alert center on \"Email settings changed\" moved its rule.system_defined_alerts state INACTIVE->ACTIVE and the inactive required count 5->4; reverted. Full PASS needs all five rules on",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.14.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.14.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.15.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.15.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.16.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.16.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.16.3": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.16.4": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.17.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.18.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.18.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.2.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-06: created a catch-all access level, assigned it to Tasks in monitor mode, switched to active/Block, removed it, deleted the level (tenant back to CAA ON with no levels). CHANGE_CAA_APP_ASSIGNMENTS is written per app and mode with APPLICATION_NAME=TASKS, MODE=MONITOR|BLOCK, CAA_ACCESS_ASSIGNMENTS_NEW=[level names] (or CAA_ACCESS_ASSIGNMENTS_OLD alone on removal), CAA_ENFORCEMENT_ENDPOINTS_OLD/NEW, TARGET_ENTITY_TYPE/NAME. Level creation and deletion ARE logged (CREATE/DELETE_ACCESS_LEVEL_V2, event type ACCESS_LEVEL, delivered minutes late; the morning read-back missed them). Check updated to that shape; live result stays MANUAL (ON, latest assignment removed), console agrees. Evening 2026-11-06: access level 'Geo restriction' (regions AQ, negate) assigned in BLOCK mode to all 19 apps and left in place; live result PASS ('assigned in active mode to 19 app(s)'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live PASS from 7 allowed evaluations across CALENDAR, DRIVE, GMAIL, HANGOUTS_CHAT. Flip 2026-11-06 23:35Z: an assignment with the Warn action on the Workspace Guests sub-OU logged MODE 'WARN' with TARGET_ENTITY_NAME 'Workspace Guests'; WARN confirmed as an active mode, and assignment state is now kept per app, OU target and mode.",
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.3.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.4.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: webSessionDuration unset(14d)->43200s->1209600s, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.5.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: allowedStrength WEAK->STRONG->WEAK, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.5.3": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: minimumLength 8->15->8, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.5.5": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.5.6": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.6.1": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "GWS.COMMONCONTROLS.7.1": {
-      "confirmed": false,
-      "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL.",
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.8.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.8.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-01",
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.8.3": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.9.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.9.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.DRIVEDOCS.1.10": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.DRIVEDOCS.1.11": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.DRIVEDOCS.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.5": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.6": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.7": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: allowedPartiesForDistributingContent ELIGIBLE_INTERNAL_USERS->NONE->ELIGIBLE_INTERNAL_USERS, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.DRIVEDOCS.1.8": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.9": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.2.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: allowManagersToOverrideSettings true->false->true, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.DRIVEDOCS.2.2": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: allowNonMemberAccess true->false->true, check PASS->FAIL->PASS (SCuBA wants it allowed; CIS-3.1.2.1.2.3 wants it off)",
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.3.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: allowUsersToManageUpdate SYSTEM true->ADMIN false->true, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.DRIVEDOCS.5.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.5.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.1.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-06: ticking and unticking 'Allow all users to access the Gemini app, regardless of license' logged CHANGE_APPLICATION_SETTING with APPLICATION_NAME 'Gemini app', SETTING_NAME 'BardNonDuetEnablementProto enable_bard_non_duet_access', NEW_VALUE 'true' then 'false' (two events per change, one with APPLICATION_EDITION). String and value vocabulary match the check; check FAIL on true, PASS on false. Golden snapshot predates the events so stays MANUAL. 2026-11-07: Policy API path added (devices.ios_apple_intelligence / gemini_app.unlicensed_user_access / gemini_for_workspace.beta_features / gmail.external_recipient_warning). The golden snapshot predates the collector categories, so its status is unchanged.",
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.2.1": {
-      "confirmed": true,
-      "note": "flip test 2026-11-06 (after approval): turning 'Beta Gemini features' On then Off logged APPLICATION_NAME 'Gemini in Workspace', SETTING_NAME 'Beta Gemini Features Beta Features enabled', NEW_VALUE 'true' (first save = CREATE_APPLICATION_SETTING, no OLD_VALUE, plus a sibling 'Beta UXR outreach enabled' false event) then 'false' (CHANGE_APPLICATION_SETTING). ScubaGoggles' 'GenAiAlphaSettingsProto alpha_enabled' did not appear; check now reads the live name first. Golden snapshot predates the events so stays MANUAL. 2026-11-07: Policy API path added (devices.ios_apple_intelligence / gemini_app.unlicensed_user_access / gemini_for_workspace.beta_features / gmail.external_recipient_warning). The golden snapshot predates the collector categories, so its status is unchanged.",
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.3.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.4.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GMAIL.10.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.GMAIL.14.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.GMAIL.18.1": {
-      "confirmed": false,
-      "note": "flip test 2026-11-04: bypassSelectedSenders true->false->true, check FAIL->PASS->FAIL under the v0.6 reading. Since the SCuBA v1 alignment (2026-11-14) only domain entries in the attached address lists fail; this snapshot carries no bypassSenderAllowlist reference, so the rule cannot be resolved and the check asks for review",
-      "status": "MANUAL"
-    },
-    "GWS.GMAIL.18.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.GMAIL.18.3": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.GMAIL.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.4.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.4.3": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.4.4": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.5.4": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.GMAIL.5.5": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: three attachment *Consequence WARNING->SPAM_FOLDER->WARNING, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.6.4": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.GMAIL.7.6": {
-      "confirmed": true,
-      "note": "flip test 2026-11-04: five *Consequence WARNING->SPAM_FOLDER->WARNING, check FAIL->PASS->FAIL",
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.7.7": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.GMAIL.8.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.1.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.GROUPS.1.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.GROUPS.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.1.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.MEET.2.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.MEET.3.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.MEET.4.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.MEET.5.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.MEET.5.2": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    },
-    "GWS.MEET.6.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.MEET.6.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.MEET.6.3": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.SITES.1.1": {
-      "confirmed": true,
-      "note": "Admin console 2026-11-04",
-      "status": "PASS"
-    }
+  "ADD-05": {
+   "confirmed": false,
+   "status": "PASS"
   },
-  "enterprise_starter_2026-04": {
-    "ADD-02": {
-      "confirmed": false,
-      "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-05": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-06": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-07": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-08": {
-      "confirmed": false,
-      "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
-      "status": "PASS"
-    },
-    "ADD-09": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-11": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-12": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-13": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-14": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-15": {
-      "confirmed": false,
-      "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-16": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-18": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-20": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-21": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-22": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-23": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-24": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-25": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-26": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-27": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-28": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-29": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "ADD-30": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-31": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-32": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-33": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-34": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-35": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-36": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-37": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-38": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "ADD-39": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-40": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-41": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "ADD-42": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-43": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-44": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-45": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-46": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-47": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-48": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "ADD-49": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "ADD-50": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-51": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-52": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "ADD-53": {
-      "confirmed": false,
-      "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-54": {
-      "confirmed": false,
-      "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-55": {
-      "confirmed": false,
-      "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-56": {
-      "confirmed": false,
-      "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
-      "status": "NOT_APPLICABLE"
-    },
-    "ADD-57": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-58": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "ADD-59": {
-      "confirmed": false,
-      "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
-      "status": "PASS"
-    },
-    "ADD-60": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-61": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "ADD-62": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-1.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-1.1.2": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "CIS-1.2.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.1.2.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.1.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.2.1.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.1.6": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.2.1.2.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-3.1.2.1.2.3": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-3.1.2.1.2.4": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-3.1.2.2.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.2.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.1.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.3.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.2.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.2.3": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "CIS-3.1.3.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.3.4.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.2.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.2.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.4.3.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.5.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.3.5.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.3.5.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.5.4": {
-      "confirmed": false,
-      "note": "2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false.",
-      "status": "PASS"
-    },
-    "CIS-3.1.3.6.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.6.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.7.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.3.7.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-3.1.4.1.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-3.1.4.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-3.1.4.3.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-3.1.4.4.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.4.4.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.6.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.6.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.6.3": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-3.1.7.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.8.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-3.1.9.1.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.1.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.1.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.1.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.2.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.1.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.1.5.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-4.2.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.2.1.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-4.2.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-4.2.1.4": {
-      "confirmed": false,
-      "status": "WARN"
-    },
-    "CIS-4.2.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-4.2.3.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-4.2.4.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-4.2.5.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "CIS-5.1.1.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-5.1.1.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "CIS-6.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "CIS-6.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.6": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.7": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "CIS-6.8": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.ASSUREDCONTROLS.1.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.ASSUREDCONTROLS.1.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.ASSUREDCONTROLS.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CALENDAR.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CALENDAR.3.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CALENDAR.4.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CHAT.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CHAT.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CHAT.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CHAT.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CHAT.5.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CHAT.5.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.CLASSROOM.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CLASSROOM.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CLASSROOM.2.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.CLASSROOM.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.CLASSROOM.4.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.CLASSROOM.5.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.1.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.1.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.1.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.10.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.10.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.10.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.10.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.13.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.14.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.14.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.15.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.15.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.16.1": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "GWS.COMMONCONTROLS.16.2": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "GWS.COMMONCONTROLS.16.3": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.16.4": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.17.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.18.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.18.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.3.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.4.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.COMMONCONTROLS.5.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.5.3": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.COMMONCONTROLS.5.5": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.5.6": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.6.1": {
-      "confirmed": false,
-      "status": "ERROR"
-    },
-    "GWS.COMMONCONTROLS.7.1": {
-      "confirmed": false,
-      "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL.",
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.8.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.8.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.COMMONCONTROLS.8.3": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.9.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.COMMONCONTROLS.9.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.DRIVEDOCS.1.10": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.DRIVEDOCS.1.11": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.DRIVEDOCS.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.5": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.DRIVEDOCS.1.6": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.1.7": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.DRIVEDOCS.1.8": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.DRIVEDOCS.1.9": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.2.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.DRIVEDOCS.2.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.DRIVEDOCS.3.1": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.DRIVEDOCS.5.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.DRIVEDOCS.5.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.1.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.2.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.3.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.3.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GEMINI.4.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GMAIL.10.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.14.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.18.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.GMAIL.18.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.18.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.4.2": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.4.3": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.4.4": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.5.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.5.5": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.6.4": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.7.6": {
-      "confirmed": false,
-      "status": "FAIL"
-    },
-    "GWS.GMAIL.7.7": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GMAIL.8.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.1.2": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.1.3": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.GROUPS.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.2.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.3.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.4.1": {
-      "confirmed": false,
-      "status": "PASS"
-    },
-    "GWS.MEET.5.1": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.MEET.5.2": {
-      "confirmed": false,
-      "status": "NOT_APPLICABLE"
-    },
-    "GWS.MEET.6.1": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.MEET.6.2": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.MEET.6.3": {
-      "confirmed": false,
-      "status": "MANUAL"
-    },
-    "GWS.SITES.1.1": {
-      "confirmed": false,
-      "status": "PASS"
-    }
+  "ADD-06": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-07": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-08": {
+   "confirmed": false,
+   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "status": "PASS"
+  },
+  "ADD-09": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-11": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-12": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-13": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-14": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-15": {
+   "confirmed": false,
+   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-16": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-18": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-20": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-21": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-22": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-23": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-24": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-25": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-26": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-27": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-28": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-29": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "ADD-30": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-31": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-32": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-33": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-34": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-35": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-36": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-37": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-38": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "ADD-39": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-40": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-41": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "ADD-42": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-43": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-44": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-45": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-46": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-47": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-48": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "ADD-49": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "ADD-50": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-51": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-52": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-53": {
+   "confirmed": false,
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-54": {
+   "confirmed": false,
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-55": {
+   "confirmed": false,
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-56": {
+   "confirmed": false,
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-57": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-58": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-59": {
+   "confirmed": false,
+   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "status": "PASS"
+  },
+  "ADD-60": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-61": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-62": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-1.1.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-1.1.2": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "CIS-1.2.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.2.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.1.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.2.1.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.6": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.2.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.2.1.2.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.2.1.2.4": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.2.2.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.2.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.1.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.3.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.2.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.2.3": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "CIS-3.1.3.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.3.4.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.2.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.2.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.5.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.3.5.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.3.5.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.5.4": {
+   "confirmed": false,
+   "note": "2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false.",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.6.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.7.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.7.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.4.1.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-3.1.4.1.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-3.1.4.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.4.3.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.4.4.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.4.4.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.6.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.6.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.7.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.8.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.9.1.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.1.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.1.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.1.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.2.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.1.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.5.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.2.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.2.1.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-4.2.1.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.2.1.4": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "CIS-4.2.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-4.2.3.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-4.2.4.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-4.2.5.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-4.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-4.3.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-5.1.1.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-5.1.1.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-6.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.6": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.7": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.8": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.ASSUREDCONTROLS.1.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.ASSUREDCONTROLS.1.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.ASSUREDCONTROLS.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CALENDAR.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.3.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CALENDAR.4.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CHAT.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CHAT.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CHAT.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CHAT.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CHAT.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CHAT.5.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CHAT.5.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CLASSROOM.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CLASSROOM.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CLASSROOM.2.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.CLASSROOM.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CLASSROOM.4.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.CLASSROOM.5.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.1.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.1.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.1.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.10.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.5": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.11.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.12.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.13.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.14.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.14.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.15.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.15.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.16.1": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "GWS.COMMONCONTROLS.16.2": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "GWS.COMMONCONTROLS.16.3": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.16.4": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.17.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.18.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.18.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.3.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.4.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.5.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.5.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.5.6": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.6.1": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "GWS.COMMONCONTROLS.6.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.7.1": {
+   "confirmed": false,
+   "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL.",
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.8.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.8.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.8.3": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.9.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.9.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.DRIVEDOCS.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.10": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.DRIVEDOCS.1.11": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.DRIVEDOCS.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.5": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.DRIVEDOCS.1.6": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.7": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.DRIVEDOCS.1.8": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.DRIVEDOCS.1.9": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.2.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.DRIVEDOCS.2.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.3.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.DRIVEDOCS.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.5.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.5.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.1.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.2.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.3.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.4.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GMAIL.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.10.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.11.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.12.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.13.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.14.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.15.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.16.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.GMAIL.17.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.18.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GMAIL.18.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.18.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.4.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.4.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.4.4": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.5.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.5": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.6.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.6.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.6.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.6": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.7.7": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.8.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.9.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GROUPS.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.5.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.MEET.5.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.MEET.6.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.MEET.6.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.MEET.6.3": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.SITES.1.1": {
+   "confirmed": false,
+   "status": "PASS"
   }
+ },
+ "enterprise_standard_2026-09": {
+  "ADD-02": {
+   "confirmed": false,
+   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
+   "status": "MANUAL"
+  },
+  "ADD-05": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-06": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "ADD-07": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-08": {
+   "confirmed": false,
+   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "status": "PASS"
+  },
+  "ADD-09": {
+   "confirmed": true,
+   "note": "partial flip 2026-11-04: takeout.service_status ENABLED->DISABLED alone keeps FAIL because nine <service>.user_takeout policies stay ENABLED (correct)",
+   "status": "FAIL"
+  },
+  "ADD-11": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-12": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-13": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-14": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-15": {
+   "confirmed": false,
+   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
+   "status": "MANUAL"
+  },
+  "ADD-16": {
+   "confirmed": false,
+   "note": "2026-11-07: Policy API path added (devices.ios_apple_intelligence / gemini_app.unlicensed_user_access / gemini_for_workspace.beta_features / gmail.external_recipient_warning). The golden snapshot predates the collector categories, so its status is unchanged.",
+   "status": "MANUAL"
+  },
+  "ADD-18": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-20": {
+   "confirmed": true,
+   "note": "same flip as GWS.COMMONCONTROLS.2.1 (2026-11-06): MODE vocabulary is MONITOR and BLOCK (WARN assumed for the Warn action), not ACTIVE; assignment list parameter is CAA_ACCESS_ASSIGNMENTS_NEW. Tasks is not an OIDC app so the live status is unchanged. Evening 2026-11-06 (Geo restriction assigned to all 19 Workspace apps): live result still MANUAL, correct, because the 8 detected third-party OIDC apps are not Workspace apps and no assignment covers them. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live MANUAL (levels exist, OIDC apps unassigned), correct. Flip 2026-11-06 23:35Z: an assignment with the Warn action on the Workspace Guests sub-OU logged MODE 'WARN' with TARGET_ENTITY_NAME 'Workspace Guests'; WARN confirmed as an active mode, and assignment state is now kept per app, OU target and mode.",
+   "status": "MANUAL"
+  },
+  "ADD-21": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-22": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-23": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "FAIL"
+  },
+  "ADD-24": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-25": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-26": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-27": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-28": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-29": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "ADD-30": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-31": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-32": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-33": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-34": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-35": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-36": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-37": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-38": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "ADD-39": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-40": {
+   "confirmed": true,
+   "note": "2026-11-06: CAA evidence now requires an active-mode evaluation (allowed or denied) whose CAA_APPLICATION names a detected SAML app; the old parser matched invented parameter names and counted any denial. Status unchanged. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live NOT_APPLICABLE (no SAML logins).",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-41": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-42": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-43": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-44": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-45": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "FAIL"
+  },
+  "ADD-46": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-47": {
+   "confirmed": true,
+   "note": "flip test 2026-11-05: installing the Endpoint Verification extension on one Linux VM made two device records (one per signed-in account) report encryptionState NOT_ENCRYPTED; check MANUAL->FAIL, console shows Managed by Endpoint Verification, Encryption status Not Encrypted, Password status On. The API record carries no screen-lock field for endpoint devices, so only encryption and compromised state are judged there",
+   "status": "MANUAL"
+  },
+  "ADD-48": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-49": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-50": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-51": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-52": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-53": {
+   "confirmed": false,
+   "note": "new 2026-11-06. Golden snapshot predates the CAA events and has no access_context, so MANUAL (no Admin console assignment or evaluation in the window). Flip test 2026-11-06 23:23Z: assigned the geo level to the Admin Console row (separate row above the app list, 'Continuous' evaluation point) in Block mode; admin log wrote CHANGE_CAA_APP_ASSIGNMENTS APPLICATION_NAME 'ADMIN_CONSOLE', MODE 'BLOCK', CAA_ACCESS_ASSIGNMENTS_NEW [level title], TARGET_ENTITY_TYPE ORG_UNIT, within 30 seconds; the console then shows '1 active applied' for Admin Console. Live result after the flip: PASS via the assignment. CAA user log 23:24Z (about a minute after the first console load): ACCESS_LEVELS_EVALUATED with CAA_APPLICATION 'ADMIN_CONSOLE', PROTECTED_API_ACCESS ['ADMIN_CONSOLE'], CAA_ACCESS_LEVEL_APPLIED/SATISFIED [level title], CAA_DEVICE_ID = the Endpoint Verification device id, CAA_DEVICE_STATE 'No Device Signals'. Both codes confirmed; _CAA_ADMIN_CONSOLE_APPS reduced to ('ADMIN_CONSOLE',). Help-article review 2026-11-07: Google supports Admin console assignment but notes not to do it unless needed (lock-out risk), so the check became unscored (L2, MEDIUM); Warn-only assignments are MANUAL because Warn allows access with a notification.",
+   "status": "MANUAL"
+  },
+  "ADD-54": {
+   "confirmed": false,
+   "note": "new 2026-11-06. Snapshot: MANUAL (no access-level event in the window, ACM not collected). Live 2026-11-06 with the ACM inventory: FAIL ('1 access level(s) (Geo restriction), none of which requires device posture'; 0 of 7 evaluations carried device signals, CAA_DEVICE_STATE 'No Device Signals'), correct for this tenant. Flip 2026-11-06 23:30Z: created level 'Device posture test' (Device > Screen password protected); ACM returned it at once as basic.conditions[{devicePolicy:{requireScreenlock:true}}]; UPDATE_ACCESS_LEVEL_V2 (description edit) carried TITLE/NAME/CURR_STATE plus ACCESS_LEVEL_PREV_STATE; assigned it to Tasks in monitor mode (CHANGE_CAA_APP_ASSIGNMENTS MODE MONITOR) and Tasks loads wrote MONITOR_MODE_ACCESS_EVALUATED_EVENT with CAA_DEVICE_STATE 'Normal' (ignored as monitor mode), so the check stays FAIL/MANUAL as designed until an active assignment exists. Help-article review 2026-11-07: Warn 'allows access to the app and sends the user a warning', so only Block-mode assignments count as enforcement here; Warn-only -> MANUAL.",
+   "status": "MANUAL"
+  },
+  "ADD-55": {
+   "confirmed": false,
+   "note": "new 2026-11-06. Snapshot: NOT_APPLICABLE (no level known). Live 2026-11-06: PASS, the one level is assigned (19 CHANGE_CAA_APP_ASSIGNMENTS) and applied (7 ACCESS_LEVELS_EVALUATED).",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-56": {
+   "confirmed": false,
+   "note": "new 2026-11-06. Snapshot: NOT_APPLICABLE (no context_aware_access events). Live 2026-11-06: PASS (7 allowed evaluations, 0 ACCESS_DENY_EVENT). Real denial captured 2026-11-06 23:59Z (level the admin's own region fails, alone in Block mode on Tasks): ACCESS_DENY_EVENT with CAA_ACCESS_LEVEL_APPLIED/UNSATISFIED, CAA_APPLICATION TASKS, BLOCKED_API_ACCESS, CAA_DEVICE_ID/STATE and CAA_ACCESS_EVALUATION_DETAILS (text proto); Tasks redirected to the access.workspace.google.com remediation page. Two active levels on one app are OR'd (allowed evaluation 23:54Z with one unsatisfied level). Monitor-mode evaluations are named MONITOR_MODE_ACCESS_EVALUATED_EVENT (observed 23:33Z) and are excluded; a monitor-mode denial name is still assumed.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-57": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-58": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "FAIL"
+  },
+  "ADD-59": {
+   "confirmed": false,
+   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "status": "PASS"
+  },
+  "ADD-60": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-61": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "ADD-62": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-1.1.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-1.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-1.2.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.1.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.1.1.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.1.1.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.1.2.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.1.2.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.1.3.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04: Calendar web offline OFF; the API has no setting, MANUAL by design",
+   "status": "MANUAL"
+  },
+  "CIS-3.1.2.1.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.5": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.6": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.2.1": {
+   "confirmed": false,
+   "note": "flip test 2026-11-04: allowSharedDriveCreation true->false->true. Read under CIS v1.3.0 as FAIL->PASS->FAIL; since the v1.4.1 alignment (2026-11-14) the audit step (creation not prevented) applies, so the same flip reads PASS->FAIL->PASS",
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.2.2": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowManagersToOverrideSettings true->false->true, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "CIS-3.1.2.1.2.3": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowExternalUserAccess/allowNonMemberAccess true->false->true, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "CIS-3.1.2.1.2.4": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowedPartiesForDownloadPrintCopy ALL->MANAGERS_ONLY->ALL, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "CIS-3.1.2.2.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.2.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.1.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: OFF->ON->OFF, check PASS->FAIL->PASS",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.2.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.2.3": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "CIS-3.1.3.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.3.4.1.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.1.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.1.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.2.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.2.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.2.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.4": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.5": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.5.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: ON->OFF->ON, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "CIS-3.1.3.5.2": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: ON->OFF->ON, check FAIL->PASS->FAIL (new field allowedForwardingDestination)",
+   "status": "FAIL"
+  },
+  "CIS-3.1.3.5.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.5.4": {
+   "confirmed": false,
+   "note": "2026-11-07: Policy API path added (devices.ios_apple_intelligence / gemini_app.unlicensed_user_access / gemini_for_workspace.beta_features / gmail.external_recipient_warning). The golden snapshot predates the collector categories, so its status is unchanged. 2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false.",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.6.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.7.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.7.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.4.1.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.4.1.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.4.2.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "PASS"
+  },
+  "CIS-3.1.4.3.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.4.4.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: enableApps true->false->true, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "CIS-3.1.4.4.2": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: enableWebhooks true->false->true, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "CIS-3.1.6.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.6.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.6.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.7.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.8.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-3.1.9.1.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: ALLOW_ALL->ALLOW_LISTED_APPS->ALLOW_ALL, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "CIS-4.1.1.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-4.1.1.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "FAIL"
+  },
+  "CIS-4.1.1.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-4.1.2.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "PASS"
+  },
+  "CIS-4.1.2.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "FAIL"
+  },
+  "CIS-4.1.3.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "PASS"
+  },
+  "CIS-4.1.4.1": {
+   "confirmed": false,
+   "note": "flip test 2026-11-04: enableEmployeeIdChallenge false->true->false. Read as FAIL->PASS->FAIL before; since the v1.4.1 alignment (2026-11-14) the benchmark direction applies (employee ID on -> FAIL; off with no third-party SSO sign-ins -> PASS), so the flip reads PASS->FAIL->PASS",
+   "status": "PASS"
+  },
+  "CIS-4.1.5.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowedStrength WEAK->STRONG->WEAK + minimumLength 8->15->8, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "CIS-4.2.1.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "FAIL"
+  },
+  "CIS-4.2.1.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.2.1.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.2.1.4": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-4.2.2.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-06 (evening): created access level 'Geo restriction' (basic condition regions ['AQ'], negate true) and assigned it in BLOCK mode to all 19 apps. Admin log: CREATE_ACCESS_LEVEL_V2 with ACCESS_LEVEL_TITLE, ACCESS_LEVEL_NAME and ACCESS_LEVEL_CURR_STATE (JSON text of the level), then 19 CHANGE_CAA_APP_ASSIGNMENTS MODE BLOCK CAA_ACCESS_ASSIGNMENTS_NEW ['Geo restriction']; this morning's DELETE_ACCESS_LEVEL_V2 (ACCESS_LEVEL_NAME only) appeared late. Check now reads this inventory; live result PASS ('Geographic access level(s) assigned to apps in active mode per the admin log: Geo restriction'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live PASS from the CAA-log evaluations applying the geographic level. Flip 2026-11-06 23:35Z: an assignment with the Warn action on the Workspace Guests sub-OU logged MODE 'WARN' with TARGET_ENTITY_NAME 'Workspace Guests'; WARN confirmed as an active mode, and assignment state is now kept per app, OU target and mode. Help-article review 2026-11-07: Warn 'allows access to the app and sends the user a warning', so only Block-mode assignments count as enforcement here; Warn-only -> MANUAL.",
+   "status": "MANUAL"
+  },
+  "CIS-4.2.3.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-4.2.4.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.2.5.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-4.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-4.3.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-5.1.1.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-5.1.1.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-6.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "FAIL"
+  },
+  "CIS-6.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-6.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-6.4": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-6.5": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-6.6": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-6.7": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "CIS-6.8": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.ASSUREDCONTROLS.1.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.ASSUREDCONTROLS.1.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.ASSUREDCONTROLS.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CALENDAR.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.3.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CALENDAR.4.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.CHAT.1.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "PASS"
+  },
+  "GWS.CHAT.1.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "PASS"
+  },
+  "GWS.CHAT.2.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: externalFileSharing unset(ALL_FILES)->NO_FILES->ALL_FILES, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.CHAT.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CHAT.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CHAT.5.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CHAT.5.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CLASSROOM.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CLASSROOM.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CLASSROOM.2.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: enableApiAccess SYSTEM true->ADMIN false->true, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.CLASSROOM.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CLASSROOM.4.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: whoCanUnenrollStudents SYSTEM STUDENTS_AND_TEACHERS->ADMIN TEACHERS_ONLY->STUDENTS_AND_TEACHERS, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.CLASSROOM.5.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: whoCanCreateClasses SYSTEM ALL_PENDING_AND_VERIFIED_TEACHERS->ADMIN VERIFIED_TEACHERS_ONLY->ALL_PENDING_AND_VERIFIED_TEACHERS, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.1.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.1.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.1.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.1.5": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.10.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.4": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.10.5": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.11.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.12.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.13.1": {
+   "confirmed": true,
+   "note": "partial flip 2026-11-04: enabling Alert center on \"Email settings changed\" moved its rule.system_defined_alerts state INACTIVE->ACTIVE and the inactive required count 5->4; reverted. Full PASS needs all five rules on",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.14.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.14.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.15.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.15.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.16.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.16.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.16.3": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.16.4": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.17.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.18.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.18.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.2.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-06: created a catch-all access level, assigned it to Tasks in monitor mode, switched to active/Block, removed it, deleted the level (tenant back to CAA ON with no levels). CHANGE_CAA_APP_ASSIGNMENTS is written per app and mode with APPLICATION_NAME=TASKS, MODE=MONITOR|BLOCK, CAA_ACCESS_ASSIGNMENTS_NEW=[level names] (or CAA_ACCESS_ASSIGNMENTS_OLD alone on removal), CAA_ENFORCEMENT_ENDPOINTS_OLD/NEW, TARGET_ENTITY_TYPE/NAME. Level creation and deletion ARE logged (CREATE/DELETE_ACCESS_LEVEL_V2, event type ACCESS_LEVEL, delivered minutes late; the morning read-back missed them). Check updated to that shape; live result stays MANUAL (ON, latest assignment removed), console agrees. Evening 2026-11-06: access level 'Geo restriction' (regions AQ, negate) assigned in BLOCK mode to all 19 apps and left in place; live result PASS ('assigned in active mode to 19 app(s)'), report audit_20261106_182942. Golden snapshot predates the events so stays MANUAL. CAA log 2026-11-06 (after the Geo restriction assignment): the context_aware_access application writes ACCESS_LEVELS_EVALUATED for allowed accesses (CAA_ACCESS_LEVEL_APPLIED ['Geo restriction'], CAA_ACCESS_LEVEL_SATISFIED ['Geo restriction'], CAA_APPLICATION GMAIL/DRIVE/CALENDAR, PROTECTED_API_ACCESS, CAA_DEVICE_STATE 'No Device Signals'), undocumented in the Reports API appendix; 7 events within 15 minutes. Checks now treat any active-mode evaluation with an applied level as proof of enforcement. Access Context Manager reader live 2026-11-06 (report audit_20261106_190033): data.access_context collected from accessPolicies/134654395911 (organisation discovered by the service account), one level (the geo restriction) with basic.conditions regions + negate; no API errors. Live PASS from 7 allowed evaluations across CALENDAR, DRIVE, GMAIL, HANGOUTS_CHAT. Flip 2026-11-06 23:35Z: an assignment with the Warn action on the Workspace Guests sub-OU logged MODE 'WARN' with TARGET_ENTITY_NAME 'Workspace Guests'; WARN confirmed as an active mode, and assignment state is now kept per app, OU target and mode.",
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.3.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.4.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: webSessionDuration unset(14d)->43200s->1209600s, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowedStrength WEAK->STRONG->WEAK, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.3": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: minimumLength 8->15->8, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.5.5": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.5.6": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.6.1": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "GWS.COMMONCONTROLS.6.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.7.1": {
+   "confirmed": false,
+   "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL.",
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.8.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.8.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-01",
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.8.3": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.9.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.9.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.DRIVEDOCS.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.10": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.DRIVEDOCS.1.11": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.DRIVEDOCS.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.5": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.6": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.7": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowedPartiesForDistributingContent ELIGIBLE_INTERNAL_USERS->NONE->ELIGIBLE_INTERNAL_USERS, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.DRIVEDOCS.1.8": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.9": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.2.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowManagersToOverrideSettings true->false->true, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.DRIVEDOCS.2.2": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowNonMemberAccess true->false->true, check PASS->FAIL->PASS (SCuBA wants it allowed; CIS-3.1.2.1.2.3 wants it off)",
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.3.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: allowUsersToManageUpdate SYSTEM true->ADMIN false->true, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.DRIVEDOCS.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.5.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.5.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.1.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-06: ticking and unticking 'Allow all users to access the Gemini app, regardless of license' logged CHANGE_APPLICATION_SETTING with APPLICATION_NAME 'Gemini app', SETTING_NAME 'BardNonDuetEnablementProto enable_bard_non_duet_access', NEW_VALUE 'true' then 'false' (two events per change, one with APPLICATION_EDITION). String and value vocabulary match the check; check FAIL on true, PASS on false. Golden snapshot predates the events so stays MANUAL. 2026-11-07: Policy API path added (devices.ios_apple_intelligence / gemini_app.unlicensed_user_access / gemini_for_workspace.beta_features / gmail.external_recipient_warning). The golden snapshot predates the collector categories, so its status is unchanged.",
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.2.1": {
+   "confirmed": true,
+   "note": "flip test 2026-11-06 (after approval): turning 'Beta Gemini features' On then Off logged APPLICATION_NAME 'Gemini in Workspace', SETTING_NAME 'Beta Gemini Features Beta Features enabled', NEW_VALUE 'true' (first save = CREATE_APPLICATION_SETTING, no OLD_VALUE, plus a sibling 'Beta UXR outreach enabled' false event) then 'false' (CHANGE_APPLICATION_SETTING). ScubaGoggles' 'GenAiAlphaSettingsProto alpha_enabled' did not appear; check now reads the live name first. Golden snapshot predates the events so stays MANUAL. 2026-11-07: Policy API path added (devices.ios_apple_intelligence / gemini_app.unlicensed_user_access / gemini_for_workspace.beta_features / gmail.external_recipient_warning). The golden snapshot predates the collector categories, so its status is unchanged.",
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.3.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.4.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GMAIL.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.10.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.GMAIL.11.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.12.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.13.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.14.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.GMAIL.15.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.16.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GMAIL.17.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.18.1": {
+   "confirmed": false,
+   "note": "flip test 2026-11-04: bypassSelectedSenders true->false->true, check FAIL->PASS->FAIL under the v0.6 reading. Since the SCuBA v1 alignment (2026-11-14) only domain entries in the attached address lists fail; this snapshot carries no bypassSenderAllowlist reference, so the rule cannot be resolved and the check asks for review",
+   "status": "MANUAL"
+  },
+  "GWS.GMAIL.18.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.GMAIL.18.3": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.GMAIL.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.4.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.4.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.4.4": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.5.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.4": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.5": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: three attachment *Consequence WARNING->SPAM_FOLDER->WARNING, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.6.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.6.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.6.4": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.6": {
+   "confirmed": true,
+   "note": "flip test 2026-11-04: five *Consequence WARNING->SPAM_FOLDER->WARNING, check FAIL->PASS->FAIL",
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.7.7": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.GMAIL.8.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.9.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GROUPS.1.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.GROUPS.1.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.GROUPS.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.1.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.MEET.2.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.MEET.3.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.MEET.4.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.MEET.5.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.MEET.5.2": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  },
+  "GWS.MEET.6.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.MEET.6.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.MEET.6.3": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.SITES.1.1": {
+   "confirmed": true,
+   "note": "Admin console 2026-11-04",
+   "status": "PASS"
+  }
+ },
+ "enterprise_starter_2026-04": {
+  "ADD-02": {
+   "confirmed": false,
+   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-05": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-06": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-07": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-08": {
+   "confirmed": false,
+   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "status": "PASS"
+  },
+  "ADD-09": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-11": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-12": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-13": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-14": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-15": {
+   "confirmed": false,
+   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-16": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-18": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-20": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-21": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-22": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-23": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-24": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-25": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-26": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-27": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-28": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-29": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "ADD-30": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-31": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-32": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-33": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-34": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-35": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-36": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-37": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-38": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "ADD-39": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-40": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-41": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "ADD-42": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-43": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-44": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-45": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-46": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-47": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-48": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "ADD-49": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "ADD-50": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-51": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-52": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "ADD-53": {
+   "confirmed": false,
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-54": {
+   "confirmed": false,
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-55": {
+   "confirmed": false,
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-56": {
+   "confirmed": false,
+   "note": "new 2026-11-06: requires_license enterprise_standard, so NOT_APPLICABLE on this edition.",
+   "status": "NOT_APPLICABLE"
+  },
+  "ADD-57": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-58": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "ADD-59": {
+   "confirmed": false,
+   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "status": "PASS"
+  },
+  "ADD-60": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-61": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "ADD-62": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-1.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-1.1.2": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "CIS-1.2.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.1.2.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.1.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.2.1.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.1.6": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.2.1.2.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-3.1.2.1.2.3": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-3.1.2.1.2.4": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-3.1.2.2.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.2.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.1.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.3.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.2.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.2.3": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "CIS-3.1.3.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.3.4.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.2.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.2.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.4.3.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.5.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.3.5.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.3.5.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.5.4": {
+   "confirmed": false,
+   "note": "2026-11-07: edition gate removed (help article lists no edition and says the warning is on by default); the snapshot has no gmail.external_recipient_warning policy, so the documented default (enabled) is injected and the verdict is PASS-by-default. Live tenant 2026-11-07: FAIL, the root OU has an ADMIN policy with enabled=false.",
+   "status": "PASS"
+  },
+  "CIS-3.1.3.6.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.7.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.3.7.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-3.1.4.1.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-3.1.4.1.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-3.1.4.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-3.1.4.3.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-3.1.4.4.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.4.4.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.6.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.6.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-3.1.7.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.8.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-3.1.9.1.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.1.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.1.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.1.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.2.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.1.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.1.5.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.2.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-4.2.1.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-4.2.1.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-4.2.1.4": {
+   "confirmed": false,
+   "status": "WARN"
+  },
+  "CIS-4.2.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-4.2.3.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-4.2.4.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-4.2.5.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "CIS-4.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-4.3.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-5.1.1.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-5.1.1.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "CIS-6.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "CIS-6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.6": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.7": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "CIS-6.8": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.ASSUREDCONTROLS.1.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.ASSUREDCONTROLS.1.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.ASSUREDCONTROLS.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CALENDAR.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CALENDAR.3.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CALENDAR.4.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CHAT.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CHAT.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CHAT.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CHAT.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CHAT.4.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CHAT.5.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CHAT.5.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.CLASSROOM.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CLASSROOM.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CLASSROOM.2.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.CLASSROOM.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.CLASSROOM.4.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.CLASSROOM.5.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.1.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.1.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.1.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.10.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.10.5": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.11.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.12.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.13.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.14.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.14.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.15.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.15.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.16.1": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "GWS.COMMONCONTROLS.16.2": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "GWS.COMMONCONTROLS.16.3": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.16.4": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.17.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.18.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.18.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.3.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.4.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.COMMONCONTROLS.5.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.COMMONCONTROLS.5.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.5.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.5.6": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.6.1": {
+   "confirmed": false,
+   "status": "ERROR"
+  },
+  "GWS.COMMONCONTROLS.6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.7.1": {
+   "confirmed": false,
+   "note": "2026-11-07: Policy API provisioning.conflicting_accounts_management read added; absent on this tenant -> MANUAL.",
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.8.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.8.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.COMMONCONTROLS.8.3": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.9.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.COMMONCONTROLS.9.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.DRIVEDOCS.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.10": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.DRIVEDOCS.1.11": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.DRIVEDOCS.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.5": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.DRIVEDOCS.1.6": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.1.7": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.DRIVEDOCS.1.8": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.DRIVEDOCS.1.9": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.2.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.DRIVEDOCS.2.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.DRIVEDOCS.3.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.DRIVEDOCS.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.5.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.DRIVEDOCS.5.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.1.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.2.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.3.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.3.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GEMINI.4.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GMAIL.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.10.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.11.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.12.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.13.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.14.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.15.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.16.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.GMAIL.17.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.18.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.GMAIL.18.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.18.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.4.2": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.4.3": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.4.4": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.5.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.5.5": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.6.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.6.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.6.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.6.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.4": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.5": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.7.6": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GMAIL.7.7": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.8.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GMAIL.9.1": {
+   "confirmed": false,
+   "status": "FAIL"
+  },
+  "GWS.GROUPS.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.1.2": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.1.3": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.GROUPS.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.2.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.3.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.4.1": {
+   "confirmed": false,
+   "status": "PASS"
+  },
+  "GWS.MEET.5.1": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.MEET.5.2": {
+   "confirmed": false,
+   "status": "NOT_APPLICABLE"
+  },
+  "GWS.MEET.6.1": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.MEET.6.2": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.MEET.6.3": {
+   "confirmed": false,
+   "status": "MANUAL"
+  },
+  "GWS.SITES.1.1": {
+   "confirmed": false,
+   "status": "PASS"
+  }
+ }
 }

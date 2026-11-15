@@ -264,61 +264,63 @@ def check_third_party_app_review(data: dict) -> CheckResult:
     )
 
 
+_INTERNAL_APPS_REMED = (
+    "Admin console > Security > Access and data control > API controls > App access control > Settings. "
+    "Select 'Trust internal, domain-owned apps' so applications your organisation owns can reach "
+    "Google Workspace APIs without a per-app review. "
+    "https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
+)
+_INTERNAL_APPS_CONFLICT = (
+    " Note: SCuBA GWS.COMMONCONTROLS.10.3 requires the opposite setting (no automatic trust for "
+    "internal apps); the two standards disagree and each check follows its own."
+)
+
+
 @check(
     check_id="CIS-4.2.1.3",
-    title="Ensure internal app API access is controlled",
+    title="Ensure internal apps can access Google Workspace APIs",
     level="L1",
     source="CIS",
     section="Access Control",
-    remediation=(
-        "Admin console > Security > Access and data control > API controls. "
-        "Configure API access controls for internal applications. "
-        "Use OAuth client allowlisting. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-    ),
+    remediation=_INTERNAL_APPS_REMED,
 )
 def check_internal_api_access(data: dict) -> CheckResult:
-    """Internal app API access should be properly controlled."""
+    """CIS 4.2.1.3 (L1): 'Trust internal, domain-owned apps' is selected, so organisation-owned
+    apps can access Google Workspace APIs (``api_controls.internal_apps.trustInternalApps`` true).
+
+    The benchmark's audit step reads "verify Trust internal, domain-owned apps is selected"; this
+    is the inverse of SCuBA GWS.COMMONCONTROLS.10.3, which reads the same field and wants it off.
+    """
+    _ID = "CIS-4.2.1.3"
+    _TITLE = "Ensure internal apps can access Google Workspace APIs"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CIS", section="Access Control")
     policies = data.get("policies", {})
-    security = policies.get("security", {})
-    api_access = security.get("api_access", {})
-    internal_apps_controlled = api_access.get("internal_apps_controlled", None)
-
-    if internal_apps_controlled is True:
-        return make_pass(
-            check_id="CIS-4.2.1.3",
-            title="Ensure internal app API access is controlled",
-            level="L1", source="CIS", section="Access Control",
-            details="Internal app API access is controlled.",
-            actual_value=internal_apps_controlled,
-            expected_value="Enabled for all OUs",
+    ou_values = get_ou_values(policies.get("api_controls", {}), "internal_apps")
+    if not ou_values:
+        ou_values = get_ou_values(policies.get("security", {}), "internal_apps")
+    if ou_values:
+        def judge(entry):
+            trust = field_value(entry, "trustInternalApps")
+            return None if trust is None else (trust is True, trust)
+        result = ou_verdict(
+            ou_values, judge, **common,
+            fail_text="do not trust internal, domain-owned apps",
+            pass_text="trust internal, domain-owned apps",
+            expected_value="trustInternalApps=True for all OUs", remediation=_INTERNAL_APPS_REMED,
         )
-
-    if internal_apps_controlled is None:
-        return make_manual(
-            check_id="CIS-4.2.1.3",
-            title="Ensure internal app API access is controlled",
-            level="L1", source="CIS", section="Access Control",
-            details="Could not determine internal app API access control settings.",
-            remediation=(
-                "Admin console > Security > Access and data control > API controls. "
-                "Review and configure API access controls for internal applications. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-            ),
-        )
-
-    return make_fail(
-        check_id="CIS-4.2.1.3",
-        title="Ensure internal app API access is controlled",
-        level="L1", source="CIS", section="Access Control",
-        details="Internal app API access is not properly controlled.",
-        actual_value=internal_apps_controlled,
-        expected_value="Enabled for all OUs",
-        remediation=(
-            "Admin console > Security > Access and data control > API controls. "
-            "Configure API access controls for internal applications. "
-            "Use OAuth client allowlisting. https://knowledge.workspace.google.com/admin/apps/control-which-third-party-and-internal-apps-access-google-workspace-data"
-        ),
-    )
-
+        if result.status in (Status.PASS, Status.FAIL):
+            result.details = (result.details or "").rstrip() + _INTERNAL_APPS_CONFLICT
+        return result
+    trust = policies.get("security", {}).get("api_access", {}).get("trust_internal_apps")
+    if trust is True:
+        return make_pass(**common, details="Internal, domain-owned apps are trusted to access Google Workspace APIs."
+                         + _INTERNAL_APPS_CONFLICT, actual_value=trust, expected_value="Enabled for all OUs")
+    if trust is None:
+        return make_manual(**common, details="Could not determine whether internal, domain-owned apps are trusted "
+                           "(api_controls.internal_apps was not returned).", remediation=_INTERNAL_APPS_REMED)
+    return make_fail(**common, details="'Trust internal, domain-owned apps' is not selected, so organisation-owned "
+                     "apps need individual approval to reach Google Workspace APIs." + _INTERNAL_APPS_CONFLICT,
+                     actual_value=trust, expected_value="Enabled for all OUs", remediation=_INTERNAL_APPS_REMED)
 
 
 @check(

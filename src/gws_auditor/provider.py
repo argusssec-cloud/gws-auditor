@@ -2764,7 +2764,7 @@ def _map_api_controls_to_security(policies: dict) -> None:
     if isinstance(ia, dict) and ia:
         trust = ia.get("trustInternalApps")
         if trust is not None:
-            api_access["internal_apps_controlled"] = not trust
+            api_access["trust_internal_apps"] = trust  # CIS-4.2.1.3 wants True, SCuBA 10.3 wants False
             # CISA CommonControls alias
             app_access["trust_unconfigured_internal_apps"] = trust
 

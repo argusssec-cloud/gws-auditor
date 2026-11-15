@@ -2,7 +2,8 @@
 # Licensed under the GNU Affero General Public License v3.0
 # See LICENSE file for details
 
-"""CISA SCuBA baseline controls not covered by another check id.
+"""CISA SCuBA baseline controls not covered by another check id (plus the password
+sub-controls 5.2 and 5.4, which CIS-4.1.5.1 only judges in combination).
 
 Every check here reads a Cloud Identity Policy API field listed in
 ``tests/fixtures/policy_api_shapes.json``; pass/fail semantics follow the CISA
@@ -260,6 +261,39 @@ def check_password_strength(data: dict) -> CheckResult:
         lambda v: None if str(v.get("allowedStrength", "")).upper() == "STRONG" else v.get("allowedStrength"),
         "enforce strong passwords", "do not enforce strong passwords", "STRONG for all OUs",
         "Select 'Enforce strong password'.")
+
+
+@check(
+    check_id="GWS.COMMONCONTROLS.5.2",
+    title="Ensure minimum password length is at least 12 characters",
+    level="L1", source="CISA", section="Security", severity="HIGH",
+    remediation=_PW_REMED + "Set the minimum length to 12 or more.",
+)
+def check_password_length_12(data: dict) -> CheckResult:
+    """SCuBA v1 SHALL: 12-character minimum. CIS-4.1.5.1 judges length, strength and
+    enforcement together; this check isolates the length so the BOD 25-01 policy has a verdict."""
+    return _password_check(
+        data, "GWS.COMMONCONTROLS.5.2", "Ensure minimum password length is at least 12 characters", "L1", "minimumLength",
+        lambda v: None if int(v.get("minimumLength") or 0) >= 12 else v.get("minimumLength"),
+        "require passwords of 12+ characters", "allow passwords shorter than 12 characters", ">= 12 for all OUs",
+        "Set the minimum length to 12 or more.")
+
+
+@check(
+    check_id="GWS.COMMONCONTROLS.5.4",
+    title="Ensure password requirements are enforced at next sign-in",
+    level="L1", source="CISA", section="Security", severity="HIGH",
+    remediation=_PW_REMED + "Select 'Enforce password policy at next sign-in'.",
+)
+def check_password_enforce_at_login(data: dict) -> CheckResult:
+    """SCuBA v1 SHALL: the password policy applies at the next sign-in, not only on the next
+    password change (CIS-4.1.5.1 includes this flag in its combined verdict)."""
+    return _password_check(
+        data, "GWS.COMMONCONTROLS.5.4", "Ensure password requirements are enforced at next sign-in", "L1",
+        "enforceRequirementsAtLogin",
+        lambda v: None if v.get("enforceRequirementsAtLogin") is True else v.get("enforceRequirementsAtLogin"),
+        "enforce the password policy at next sign-in", "apply the password policy only at the next password change",
+        "Enabled for all OUs", "Select 'Enforce password policy at next sign-in'.")
 
 
 @check(

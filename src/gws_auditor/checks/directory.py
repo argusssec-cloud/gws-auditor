@@ -37,36 +37,61 @@ def check_super_admin_count(data: dict) -> CheckResult:
     gives no redundancy); the upper bound counts every account that holds the role, suspended
     included, because the role can be reactivated with a click.
     """
+    return super_admin_count_result(
+        data, check_id=_SA_ID, title=_SA_TITLE, level="L1", source="CIS", section="Directory",
+        maximum=4, remediation=_SA_REMED,
+    )
+
+
+_WORDS = {4: "four", 8: "eight"}
+
+
+def super_admin_count_result(data: dict, *, check_id: str, title: str, level: str, source: str,
+                             section: str, maximum: int, remediation: str,
+                             excluded: tuple[str, ...] = ()) -> CheckResult:
+    """Judge the Super Admin population: at least two active accounts, at most *maximum* holders.
+
+    Shared by CIS-1.1.1 (maximum 4) and GWS.COMMONCONTROLS.6.2 (maximum 8, SCuBA v1).
+    *excluded* lists "break glass" addresses that SCuBA lets an organisation leave out of
+    the count (``options.break_glass_accounts``); they are reported, not counted.
+    """
     users = data.get("users", [])
-    super_admins = [u for u in users if u.get("is_super_admin", False)]
+    skip = {e.lower() for e in excluded}
+    holders = [u for u in users if u.get("is_super_admin", False)]
+    break_glass = sorted(u.get("primary_email", "unknown") for u in holders
+                         if str(u.get("primary_email", "")).lower() in skip)
+    super_admins = [u for u in holders if str(u.get("primary_email", "")).lower() not in skip]
     active = [u for u in super_admins if not u.get("suspended", False)]
     suspended = [u for u in super_admins if u.get("suspended", False)]
     emails = sorted(u.get("primary_email", "unknown") for u in active)
+    expected = f"2 to {maximum}"
     note = ""
     if suspended:
         note = (f" {len(suspended)} suspended super admin account(s) hold the role but cannot sign in: "
                 f"{', '.join(sorted(u.get('primary_email', 'unknown') for u in suspended))}.")
-    common = dict(check_id=_SA_ID, title=_SA_TITLE, level="L1", source="CIS", section="Directory")
+    if break_glass:
+        note += f" {len(break_glass)} break-glass account(s) excluded from the count: {', '.join(break_glass)}."
+    common = dict(check_id=check_id, title=title, level=level, source=source, section=section)
 
     if len(active) < 2:
         return make_fail(
             **common,
             details=(f"Only {len(active)} active super admin account(s) found; at least two are required so "
                      f"that a single account is not a single point of failure.{note}"),
-            actual_value=len(active), expected_value="2 to 4", remediation=_SA_REMED,
+            actual_value=len(active), expected_value=expected, remediation=remediation,
         )
-    if len(super_admins) > 4:
+    if len(super_admins) > maximum:
         return make_fail(
             **common,
-            details=(f"{len(super_admins)} accounts hold the Super Admin role, more than the maximum of four: "
+            details=(f"{len(super_admins)} accounts hold the Super Admin role, more than the maximum of {_WORDS.get(maximum, maximum)}: "
                      f"{', '.join(sorted(u.get('primary_email', 'unknown') for u in super_admins))}. Assign "
-                     f"delegated admin roles with the least privilege needed instead."),
-            actual_value=len(super_admins), expected_value="2 to 4", remediation=_SA_REMED,
+                     f"delegated admin roles with the least privilege needed instead.{note}"),
+            actual_value=len(super_admins), expected_value=expected, remediation=remediation,
         )
     return make_pass(
         **common,
         details=f"{len(active)} active super admin account(s): {', '.join(emails)}.{note}",
-        actual_value=len(active), expected_value="2 to 4",
+        actual_value=len(active), expected_value=expected,
     )
 
 

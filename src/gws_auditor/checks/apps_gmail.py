@@ -222,6 +222,35 @@ def check_gmail_dkim(data: dict) -> CheckResult:
     )
 
 
+
+def spf_findings(domains: list, dns_records: dict) -> dict[str, list[str]]:
+    """Classify every domain's SPF record; shared by CIS-3.1.3.2.2 and GWS.GMAIL.3.1.
+
+    ``missing``: no record; ``duplicate``: more than one ``v=spf1`` record (RFC 7208 permerror);
+    ``permissive``: ``+all`` (every sender authorised, no protection); ``neutral``: ``?all``
+    (receivers get no guidance); ``no_all``: neither an ``all`` mechanism nor a ``redirect=``
+    modifier, so the policy decides nothing for unlisted senders.
+    """
+    out: dict[str, list[str]] = {"missing": [], "duplicate": [], "permissive": [], "neutral": [], "no_all": []}
+    for domain in domains:
+        domain_name = domain if isinstance(domain, str) else domain.get("domainName", domain.get("domain_name", ""))
+        spf = dns_records.get(domain_name, {}).get("spf", {})
+        if not spf.get("record_found", False):
+            out["missing"].append(domain_name)
+            continue
+        if int(spf.get("record_count") or 1) > 1:
+            out["duplicate"].append(domain_name)
+        terms = str(spf.get("record", "")).lower().split()
+        all_term = next((t for t in reversed(terms) if t.lstrip("+-~?") == "all"), "")
+        if all_term in ("+all", "all"):
+            out["permissive"].append(domain_name)
+        elif all_term == "?all":
+            out["neutral"].append(domain_name)
+        elif not all_term and not any(t.startswith("redirect=") for t in terms):
+            out["no_all"].append(domain_name)
+    return out
+
+
 @check(
     check_id="CIS-3.1.3.2.2",
     title="Ensure SPF records are configured for all domains",
@@ -247,27 +276,11 @@ def check_gmail_spf(data: dict) -> CheckResult:
             remediation="Verify domain list is available and check SPF records manually. https://knowledge.workspace.google.com/admin/security/set-up-spf",
         )
 
-    missing_spf = []
-    permissive_spf = []
-    neutral_spf = []
-    duplicate_spf = []
-    for domain in domains:
-        domain_name = domain if isinstance(domain, str) else domain.get("domainName", domain.get("domain_name", ""))
-        domain_dns = dns_records.get(domain_name, {})
-        spf = domain_dns.get("spf", {})
-        if not spf.get("record_found", False):
-            missing_spf.append(domain_name)
-            continue
-        # A record that ends in "+all"/"all" authorises every sender, i.e. no protection;
-        # "?all" (neutral) gives receivers no guidance.
-        if int(spf.get("record_count") or 1) > 1:
-            duplicate_spf.append(domain_name)  # RFC 7208: multiple SPF records = permerror
-        terms = str(spf.get("record", "")).lower().split()
-        all_term = next((t for t in reversed(terms) if t.lstrip("+-~?") == "all"), "")
-        if all_term in ("+all", "all"):
-            permissive_spf.append(domain_name)
-        elif all_term == "?all":
-            neutral_spf.append(domain_name)
+    findings = spf_findings(domains, dns_records)
+    missing_spf = findings["missing"]
+    permissive_spf = findings["permissive"]
+    neutral_spf = findings["neutral"]
+    duplicate_spf = findings["duplicate"]
 
     if permissive_spf:
         return make_fail(
