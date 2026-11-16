@@ -79,19 +79,20 @@ accesscontextmanager.googleapis.com  # Access Context Manager (optional: Context
 cloudresourcemanager.googleapis.com  # Cloud Resource Manager (optional: organisation discovery)
 ```
 
-Enable all at once:
+Enable all at once (the last two are the optional ones):
 ```bash
 gcloud services enable admin.googleapis.com gmail.googleapis.com \
     drive.googleapis.com calendar-json.googleapis.com \
     groupssettings.googleapis.com cloudidentity.googleapis.com \
     chromepolicy.googleapis.com chat.googleapis.com \
     alertcenter.googleapis.com licensing.googleapis.com \
+    accesscontextmanager.googleapis.com cloudresourcemanager.googleapis.com \
     --project=PROJECT_ID
 ```
 
 ## Required DWD Scopes
 
-See the [Setup Guide](Setup-Guide) for the full list of 21 OAuth scopes that must be authorized in Admin Console > Security > API controls > Domain-wide Delegation.
+See the [Setup Guide](Setup-Guide) for the full list of 22 OAuth scopes that must be authorized in Admin Console > Security > API controls > Domain-wide Delegation.
 
 ## Service Account Runtime Permissions
 

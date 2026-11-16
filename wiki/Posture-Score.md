@@ -34,7 +34,8 @@ score = max(0, round((1 - total_penalty / total_max) × 100))
 - **Critical findings are squared** (weight 8 → penalty weight 64). A single critical failure will heavily drag down the score, reflecting the outsized business risk.
 - **Warnings count as half a failure.** A WARN result contributes 50% of the penalty of a FAIL, recognizing it as a soft failure.
 - **Empty tiers are excluded.** If your tenant has no CRITICAL-severity checks that apply (e.g., due to license gating), the critical tier doesn't inflate or deflate the denominator.
-- **Only scored checks participate.** Inventory checks (ADD-28 through ADD-39) are tagged `scored=False` and do not affect the score. ERROR, MANUAL, and NOT_APPLICABLE results are also excluded.
+- **Only scored checks participate.** 40 checks are tagged `scored=False` and do not affect the score: the inventory checks (ADD-28 through ADD-39, ADD-44, ADD-49, ADD-52, ADD-55, ADD-56), ADD-53 (Google advises against the control unless needed) and the Admin-console-only controls that can only return MANUAL (including the review-cadence recommendations CIS-4.3.1, CIS-4.3.2 and CIS-5.1.1.1). ERROR, MANUAL, and NOT_APPLICABLE results are also excluded.
+- **A dashboard override is applied first.** A PASS or FAIL you set on a MANUAL result in the dashboard replaces the computed status before the scored and status filters, so it brings an unscored or MANUAL check into the score.
 - **Muting improves the score.** When you override a finding to PASS via the dashboard (accept risk), it counts as PASS for scoring.
 
 ## Examples

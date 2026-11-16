@@ -42,6 +42,7 @@ pip install -e ".[build]"        # PyInstaller standalone builds
 ```
 src/gws_auditor/
   api/           # Google API client wrappers
+  google_defaults.py  # Google's published default values for Policy API settings
   checks/        # Security check modules (decorator-registered)
   ai/            # AI analyst (tools, providers, commands)
   dashboard/     # Plotly Dash web UI
@@ -73,7 +74,9 @@ from .base import check, make_pass, make_fail, make_warn
         "Admin console > Security > Feature X. Enable the setting. "
         "https://knowledge.workspace.google.com/admin/security/feature-x"
     ),
-    requires_license="",               # Optional: business_standard, enterprise_plus, etc.
+    requires_license="",               # Optional: an EDITIONS_* tuple from constants.py
+    # CIS checks get their NIST SP 800-53 Rev. 5 / NIST CSF 2.0 mapping from NIST_MAPPINGS in
+    # constants.py (keyed by check id); other checks may pass nist_sp800_53=(...) / nist_csf=(...).
 )
 def check_feature_x(data: dict) -> CheckResult:
     """Feature X should be configured for security."""
@@ -134,9 +137,24 @@ A check that reads a field the Cloud Identity Policy API does not return fails (
 
 When a value cannot be determined, return `make_review(...)` (MANUAL). Do not default a missing field to PASS or FAIL.
 
+#### Unknown values and Google defaults
+
+Read per-OU values through `get_ou_values()` and judge them with `ou_verdict()` / `field_value()` from `checks/base.py`. `get_ou_values()` reduces an OU's policies the way the API documents it (highest `sortOrder` wins per field, so an admin value beats a Google `SYSTEM` default), fills fields absent from every policy from Google's published default table in `google_defaults.py`, and records where each value came from; the `@check` decorator adds a provenance note to a verdict that rests on a default. The rules:
+
+- a `SYSTEM` value or a documented default is judged (it is the value in force);
+- a `*_UNSPECIFIED` enum, or a field absent and not in Google's table, is unknown: MANUAL, never PASS or FAIL;
+- never pass `admin_only=True` (a contract test rejects it);
+- a new default goes into `google_defaults.py` only with its citation (the Policy API concepts page or an Admin Help article).
+
 #### Settings the Policy API does not expose
 
-Some settings (Gemini, Drive add-ons, multi-party approval, access approvals, external recipient warnings) are only visible as change events in the admin audit log. Use `result_from_setting_changes(data, "<SETTING_NAME>", unsafe_values, ...)` from `checks/base.py`: it returns PASS/FAIL from the latest change per OU, or `None` when there is no event so you can fall back to `make_review`.
+Some settings (Drive add-ons, multi-party approval, access approvals, Security sandbox, Workspace Studio, TLS compliance rules, Gemini feature access, Skip passwords, secondary-calendar internal sharing) are only visible as change events in the admin audit log. Use `result_from_setting_changes(data, "<SETTING_NAME>", unsafe_values, ...)` from `checks/base.py`: it returns PASS/FAIL from the latest change per OU, or `None` when there is no event so you can fall back to `make_review`. `latest_service_toggles()`, `latest_setting_changes_by_app()` and `gmail_rule_settings()` cover service on/off toggles, per-application settings and Gmail rule-type settings. Confirm the exact `SETTING_NAME` and value vocabulary by changing the setting once in the Admin console and reading the admin log back; names taken from other projects have turned out wrong more than once.
+
+#### Check gates
+
+- `tests/fixtures/check_test_matrix.json` has one row per check with its PASS, FAIL and other-status cases. `tests/test_check_contracts.py` fails for a check without a row or without its cases, and `scripts/check_status_coverage.py` fails when a scored check has no test producing PASS and one producing FAIL / WARN / PARTIAL.
+- `tests/test_checks/test_p3_dead_keys.py` and the contract test fail when a `get_ou_values()` key is not in `policy_api_shapes.json`.
+- `tests/test_golden_snapshots.py` pins every status of the three anonymised tenant snapshots in `tests/fixtures/golden/expected_statuses.json`. When a verdict legitimately changes, confirm it, then run `python scripts/update_golden_expectations.py`; entries marked `confirmed` were read in the Admin console and must not drift silently.
 
 #### Regenerate the check reference
 
@@ -158,7 +176,7 @@ pytest tests/test_checks/ -x -v
 
 - **CIS checks**: `CIS-X.Y.Z` (maps to CIS Benchmark section numbers)
 - **CISA SCuBA checks**: `GWS.SERVICE.X.Y` (e.g., `GWS.GMAIL.4.3`)
-- **Additional checks**: `ADD-XX` (sequential numbering, currently up to ADD-39)
+- **Additional checks**: `ADD-XX` (sequential numbering, currently up to ADD-62)
 
 ### Check Helpers
 
@@ -167,21 +185,29 @@ pytest tests/test_checks/ -x -v
 | `make_pass(...)` | Check condition is met |
 | `make_fail(...)` | Check condition is NOT met |
 | `make_warn(...)` | Partially met or non-blocking issue |
-| `make_manual(...)` | Cannot determine automatically (API error) |
-| `make_review(...)` | Requires human judgment |
+| `make_partial(...)` | Compliant except in deliberate exception OUs |
+| `make_manual(...)` | Cannot determine automatically (API error) -> ERROR |
+| `make_review(...)` | Requires human judgment, or the value is unknown -> MANUAL |
+| `make_not_applicable(...)` | The control has nothing to apply to |
 
 ### License-Gated Checks
 
-If a feature requires a specific Google Workspace edition, use `requires_license`:
+If a feature exists only in some Google Workspace editions, gate the check with one of the `EDITIONS_*` tuples in `constants.py`. Each tuple is copied from the "Supported editions for this feature" line of the Help article the remediation links to; add a new tuple when no existing one matches, and cite the article in the comment next to it.
 
 ```python
+from ..constants import EDITIONS_DLP
+
 @check(
     ...
-    requires_license="enterprise_standard",  # or business_standard, enterprise_plus, etc.
+    requires_license=EDITIONS_DLP,
 )
 ```
 
-The check auto-returns `NOT_APPLICABLE` on lower-tier tenants. Valid tiers (lowest to highest): `business_starter`, `business_standard`, `business_plus`, `enterprise_standard`, `enterprise_plus`, `assured_controls`.
+The decorator returns `NOT_APPLICABLE`, naming the required editions, when every edition detected from the licence assignments is outside the set; unknown or mixed editions run the check. Gate first, before reading data: the Policy API returns Google's default values even for settings the edition cannot change. A bare minimum-tier key (`"business_standard"`, `"enterprise_plus"`, ...) is still accepted but cannot express Frontline, Essentials or Education availability. Add-on SKUs (Assured Controls, Assured Controls Plus) never satisfy a tier key and only satisfy `EDITIONS_ASSURED_CONTROLS`.
+
+### Standards Mapping
+
+Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.0** subcategories from the References section of the CIS Google Workspace Foundations Benchmark v1.4.1; every CISA check carries the SP 800-53 controls from the SCuBA baseline's FedRAMP High mapping (ScubaGoggles 1.1.0) and, where the baseline tags it, the **BOD 25-01 Requirement** flag (`BOD_25_01_CHECKS`, `CheckResult.bod_25_01`). The table is `NIST_MAPPINGS` in `constants.py`, keyed by check id, and the `@check` decorator copies it onto `CheckMetadata` and every `CheckResult` (`nist_sp800_53`, `nist_csf`), so the JSON and CSV reports, the HTML detail view and the generated check reference all show it. When CIS renumbers or adds a recommendation, update the table from the PDF; a check whose id has no entry simply carries empty lists. Non-CIS checks may declare a mapping on the decorator (`nist_sp800_53=("AC-2",), nist_csf=("PR.AA-05",)`).
 
 ### Remediation Text
 
@@ -252,7 +278,9 @@ pytest --ignore=tests/test_agents
 
 - [ ] New checks have tests covering pass, fail, and edge cases
 - [ ] Remediation text includes Admin Console path and documentation URL
-- [ ] `requires_license` is set if the feature needs a specific edition
+- [ ] `requires_license` uses an `EDITIONS_*` set if the feature needs a specific edition
+- [ ] A CIS check's id is in `NIST_MAPPINGS` (CIS v1.4.1 References) and its `level` matches the benchmark's Profile Applicability; a CISA check's id is in `NIST_MAPPINGS` and `BOD_25_01_CHECKS` per the SCuBA v1 baseline, with `level` L1 for SHALL and L2 for SHOULD
+- [ ] The check has a row in `tests/fixtures/check_test_matrix.json`; `docs/checks.md` and the golden expectations were regenerated if needed
 - [ ] All tests pass (`pytest`)
 - [ ] No secrets, credentials, or internal data in the commit
 

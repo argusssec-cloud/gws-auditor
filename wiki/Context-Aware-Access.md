@@ -9,7 +9,7 @@ GWS Security Auditor ships six checks that audit your Context-Aware Access (CAA)
 - **ADD-55** -- Review Context-Aware Access levels that are not assigned to any app *(unscored)*
 - **ADD-56** -- Review Context-Aware Access denials *(unscored)*
 
-All six require **Enterprise Standard or higher** (`requires_license="enterprise_standard"`) and live under the **Security** section. GWS.COMMONCONTROLS.2.1 (CAA implemented) and CIS-4.2.2.1 (geo-blocking) use the same evidence. This page describes ADD-20 and ADD-40 in detail; the four posture checks are summarised in [Posture checks](#posture-checks-add-53-to-add-56).
+All six, together with GWS.COMMONCONTROLS.2.1 (CAA implemented) and CIS-4.2.2.1 (geo-blocking), which use the same evidence, live under the **Security** section and are gated to the editions Google lists for Context-Aware Access (`EDITIONS_CAA` in `constants.py`: Frontline Standard and Plus, Enterprise Standard and Plus, Education Standard and Plus, Enterprise Essentials Plus). Other editions get NOT_APPLICABLE. This page describes ADD-20 and ADD-40 in detail; the four posture checks are summarised in [Posture checks](#posture-checks-add-53-to-add-56).
 
 ## Background
 
@@ -61,7 +61,8 @@ data["token_logs"]│                     │data["login_logs"]
                   ▼
             ┌─ Step 2: enforcement ─┐
             │ data["caa_events"]    │
-            │ matching denials      │
+            │ active-mode evaluation│
+            │ naming a detected app │
             └──────────┬────────────┘
                        │
                 ┌──────┴──────┐
@@ -69,9 +70,13 @@ data["token_logs"]│                     │data["login_logs"]
               count > 0     count == 0
                 │             │
                 ▼             ▼
-              PASS         MANUAL
-                          (with app
-                           inventory)
+              PASS      Step 2b: admin log
+                        (assignments, toggle,
+                         level inventory)
+                              │
+                              ▼
+                      PASS / FAIL / MANUAL
+                      (with app inventory)
 ```
 
 ## Example outputs
@@ -80,12 +85,12 @@ data["token_logs"]│                     │data["login_logs"]
 
 ```
 ADD-20  status=MANUAL
-  10 third-party OIDC app(s) detected (ArgusSec, Notion, LinkedIn,
-  CapCut-Web, Curier rapid...) but no CAA ACCESS_DENY_EVENT was
-  logged in the window. Absence of denials does not prove CAA is
-  disabled -- verify the policy assignment in Admin console >
-  Security > Context-Aware Access.
-  actual_value: {oidc_apps: 10, denials: 0}
+  9 third-party OIDC app(s) detected (AI Directories, ArgusSec,
+  Email deliverability tracker, Hunter, ...) but no active-mode CAA
+  evaluation names them and no access-level assignment change for
+  them was logged in the admin-log window. Verify the assignment in
+  Admin console > Security > Access and data control >
+  Context-Aware Access.
 ```
 
 ### ADD-40 -- no SAML logins in audit window
@@ -101,9 +106,8 @@ ADD-40  status=NOT_APPLICABLE
 
 ```
 ADD-40  status=PASS
-  CAA is actively enforcing on SAML traffic: 3 ACCESS_DENY_EVENT(s)
-  in the window across 2 app(s).
-  actual_value: {saml_apps: 5, denials: 3}
+  CAA is actively enforcing on SAML traffic: 3 active-mode
+  evaluation(s) in the window name 2 of the detected SAML app(s).
 ```
 
 ## Caveats
@@ -111,8 +115,8 @@ ADD-40  status=PASS
 These caveats are documented inside each check's own output so a reviewer sees them in context:
 
 - **"Detected" means used in the Reports API retention window** (~30 days). An app that is configured but never used during the lookback period is invisible. A tenant with provisioned-but-dormant SAML apps may falsely appear as `NOT_APPLICABLE`.
-- **`ACCESS_DENY_EVENT` only fires on actual blocks.** Monitor-mode policies generate no denial events. A correctly-configured enforce-mode policy where no user ever violated context also produces none. Such tenants stay in `MANUAL` -- we do not falsely claim `PASS` without hard evidence.
-- **App-class filtering is conservative.** The `application_type` parameter on `ACCESS_DENY_EVENT` is not rigidly documented; events without an explicit type are counted for both OIDC and SAML rather than dropped.
+- **A PASS needs an evaluation or an assignment in the window.** Allowed evaluations (`ACCESS_LEVELS_EVALUATED`) are logged for every access to an app under an active-mode policy, so a used app produces evidence quickly. Monitor-mode policies log `MONITOR_MODE_ACCESS_EVALUATED_EVENT`, which never counts. A policy assigned before the 180-day admin-log window whose app nobody used inside the CAA log window stays `MANUAL` -- we do not claim `PASS` without hard evidence.
+- **App matching is by name.** An evaluation counts only when its `CAA_APPLICATION` names a detected app. An evaluation for Gmail or Drive says nothing about a third-party OIDC or SAML app and is ignored.
 
 ## Remediation paths
 
@@ -120,7 +124,7 @@ These caveats are documented inside each check's own output so a reviewer sees t
 |---|---|
 | `NOT_APPLICABLE` | No action needed. If you know SAML/OIDC apps are configured but the check did not see them, increase the Reports API lookback window or trigger a sign-in to refresh activity. |
 | `MANUAL` | Confirm the policy is assigned. For OIDC: **Admin console > Security > Access and data control > Context-Aware Access** -- assign access levels to OAuth/OIDC third-party apps. For SAML: **Admin console > Security > Context-Aware Access > General settings** -- enable the default CAA policy for all SAML apps (this is the new toggle that ADD-40 audits). |
-| `PASS` | CAA is enforcing. Review the denial events themselves in the Admin console's CAA log to confirm the denied attempts match your policy intent. |
+| `PASS` | CAA is enforcing. Review the evaluations and denials in the Admin console's Context-Aware Access log (and ADD-56) to confirm they match your policy intent. |
 
 ## Posture checks (ADD-53 to ADD-56)
 
@@ -147,10 +151,10 @@ No additional DWD scope authorization is required to enable these checks.
 
 ## Forward compatibility
 
-If Google later publishes a Policy API surface for either CAA toggle, both checks will pick it up automatically. The implementation already includes a forward-compatible probe slot in `Provider._SKU_EDITION_MAP`'s sibling `REQUIRED_SETTINGS["security"]` list; populating it requires one string change and a tiny extraction tweak in `provider.py`. Until that day, the log-driven approach is the most accurate signal available.
+The access levels themselves are already read from Access Context Manager when the service account holds `roles/accesscontextmanager.policyReader`. If Google later exposes per-app Workspace assignments or the SAML default toggle through an API, the checks should read that ahead of the log inference. Until then, the log-driven approach is the most accurate signal available.
 
 ## Related
 
 - [Posture Score](Posture-Score) -- how `NOT_APPLICABLE` results are excluded from the score
-- [Check Reference](Check-Reference) -- complete list of all 231 checks
+- [Check Reference](Check-Reference) -- complete list of all 288 checks
 - [Critical Checks](Critical-Checks) -- the 24 critical-severity checks (ADD-20 and ADD-40 are MEDIUM)

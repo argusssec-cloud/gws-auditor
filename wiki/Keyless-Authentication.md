@@ -36,8 +36,10 @@ When running the auditor on a Google Compute Engine VM, you can use the VM's att
        drive.googleapis.com calendar-json.googleapis.com \
        groupssettings.googleapis.com cloudidentity.googleapis.com \
        chromepolicy.googleapis.com chat.googleapis.com \
-       alertcenter.googleapis.com licensing.googleapis.com
+       alertcenter.googleapis.com licensing.googleapis.com \
+       accesscontextmanager.googleapis.com cloudresourcemanager.googleapis.com
    ```
+   The last two are optional (Context-Aware Access level inventory, see [Configuration](Configuration#context-aware-access-levels-from-access-context-manager)).
 
 5. **Configure Domain-Wide Delegation** in Admin Console (Security > API controls > Domain-wide Delegation). Add the SA's Client ID with the required OAuth scopes (same as the standard setup).
 

@@ -22,7 +22,7 @@ checks:
   levels: [L1, L2]                 # [L1] for baseline only
   sources: [CIS, OTHER, GOOGLE, CISA]
   sections: all                    # or specific: [Gmail, "Drive and Docs"]
-  exclude: []                      # exclude check IDs: [CIS-1.1.3, ADD-04]
+  exclude: []                      # exclude check IDs: [CIS-1.1.2, ADD-04]
   exclude_sections: []             # exclude sections: ["Google Meet"]
 
 output:
@@ -32,7 +32,6 @@ output:
 options:
   cache_data: true
   cache_directory: ./cache
-  org_units: all                   # or specific OUs: ["/Engineering", "/Sales"]
   max_retries: 5
   rate_limit_qps: 10
   max_log_events: 50000            # cap on audit-log events fetched per log type
@@ -44,6 +43,8 @@ options:
   trust_rules_file: null           # JSON export of Drive trust rules
   sensitive_users: []              # GWS.COMMONCONTROLS.9.2: emails or groups expected in Advanced Protection
   dwd_allowlist: []                # CIS-4.2.1.4: vetted domain-wide delegation client IDs
+  dmarc_report_contacts: ["reports@dmarc.cyber.dhs.gov"]  # GWS.GMAIL.4.3: rua recipient(s) every DMARC record must name
+  break_glass_accounts: []         # GWS.COMMONCONTROLS.6.2: super admins reported but not counted toward the 2-to-8 band
   external_sharing_ous: []         # OUs whose external sharing is deliberate
   collect_access_context: true     # Context-Aware Access levels from Access Context Manager (see below)
   cloud_organization_id: ""        # Google Cloud organisation ID; blank = discover by primary domain
@@ -75,7 +76,7 @@ It is off by default because of what it costs and what it touches:
 
 ### Checks that need a fresh collection
 
-Several checks read data that older cache files do not contain: admin roles (**ADD-41**, **ADD-48**, **ADD-49**), MTA-STS / TLS-RPT DNS records (**ADD-50**), per-user licence holders (**ADD-52**), Takeout policies (**ADD-09**) and the `enterprise_service_restrictions` / `early_access_apps` policy categories (**GWS.COMMONCONTROLS.16.1 / 16.2**). Re-scoring an old cache with `--cached` reports these as ERROR or MANUAL; run a live collection to evaluate them.
+Several checks read data that older cache files do not contain: admin roles (**ADD-41**, **ADD-48**, **ADD-49**), MTA-STS / TLS-RPT DNS records (**ADD-50**), per-user licence holders (**ADD-52**), Takeout policies (**ADD-09**), the `enterprise_service_restrictions` / `early_access_apps` policy categories (**GWS.COMMONCONTROLS.16.1 / 16.2**), the `user_accounts` audit log and per-user usage report (**CIS-5.1.1.2**, **GWS.COMMONCONTROLS.9.1 / 9.2**), the Access Context Manager inventory (**GWS.COMMONCONTROLS.2.1**, **CIS-4.2.2.1**, **ADD-20**, **ADD-40**, **ADD-53** to **ADD-56**), the `devices`, `gemini_app` and `gemini_for_workspace` policy categories and `gmail.external_recipient_warning` (**ADD-16**, **GWS.GEMINI.1.1 / 2.1**, **CIS-3.1.3.5.4**), and admin-log events read over the full 180-day retention (**ADD-02**, **ADD-07**, **ADD-13**, **ADD-15**, **ADD-18**, **CIS-3.1.1.2.2**, **CIS-4.2.1.4**). Re-scoring an old cache with `--cached` reports these as ERROR or MANUAL; run a live collection to evaluate them.
 
 ## Multi-Credential Profiles
 

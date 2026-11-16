@@ -26,6 +26,7 @@ The auditor requires a "bridge" to communicate with your Google Workspace. We co
         * **Google Chat API**
         * **Google Workspace Alert Center API**
         * **Enterprise License Manager API**
+        * *Optional, for the Context-Aware Access level inventory:* **Access Context Manager API** and **Cloud Resource Manager API**
 
 > **Note:** If you enable these for the first time, wait 2–3 minutes for the changes to propagate across Google's systems before proceeding.
 
@@ -88,12 +89,23 @@ A service account allows the auditor to access all Google Workspace data without
 6.  In the **OAuth scopes** field, paste the following comma-separated list of all required scopes:
 
 ```
-https://www.googleapis.com/auth/admin.directory.user.readonly,https://www.googleapis.com/auth/admin.directory.domain.readonly,https://www.googleapis.com/auth/admin.directory.group.readonly,https://www.googleapis.com/auth/admin.directory.rolemanagement.readonly,https://www.googleapis.com/auth/admin.directory.orgunit.readonly,https://www.googleapis.com/auth/admin.directory.device.mobile.readonly,https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly,https://www.googleapis.com/auth/admin.reports.audit.readonly,https://www.googleapis.com/auth/admin.reports.usage.readonly,https://www.googleapis.com/auth/apps.groups.settings,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/cloud-identity.policies.readonly,https://www.googleapis.com/auth/cloud-identity.devices.readonly,https://www.googleapis.com/auth/chrome.management.policy.readonly,https://www.googleapis.com/auth/apps.licensing,https://www.googleapis.com/auth/chat.admin.spaces.readonly,https://www.googleapis.com/auth/chat.admin.memberships.readonly,https://www.googleapis.com/auth/admin.directory.user.security,https://www.googleapis.com/auth/apps.alerts,https://www.googleapis.com/auth/admin.directory.customer.readonly
+https://www.googleapis.com/auth/admin.directory.user.readonly,https://www.googleapis.com/auth/admin.directory.domain.readonly,https://www.googleapis.com/auth/admin.directory.group.readonly,https://www.googleapis.com/auth/admin.directory.rolemanagement.readonly,https://www.googleapis.com/auth/admin.directory.orgunit.readonly,https://www.googleapis.com/auth/admin.directory.device.mobile.readonly,https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly,https://www.googleapis.com/auth/admin.reports.audit.readonly,https://www.googleapis.com/auth/admin.reports.usage.readonly,https://www.googleapis.com/auth/apps.groups.settings,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/cloud-identity.policies.readonly,https://www.googleapis.com/auth/cloud-identity.inboundsso.readonly,https://www.googleapis.com/auth/cloud-identity.devices.readonly,https://www.googleapis.com/auth/chrome.management.policy.readonly,https://www.googleapis.com/auth/apps.licensing,https://www.googleapis.com/auth/chat.admin.spaces.readonly,https://www.googleapis.com/auth/chat.admin.memberships.readonly,https://www.googleapis.com/auth/admin.directory.user.security,https://www.googleapis.com/auth/apps.alerts,https://www.googleapis.com/auth/admin.directory.customer.readonly
 ```
 
 7.  Click **AUTHORIZE**.
 
 > **Important:** Double-check that all 22 scopes appear in the authorized list. Missing scopes will cause specific checks to fail silently or return incomplete data.
+
+### Step 2.5 (Optional): Context-Aware Access Level Inventory
+
+The Context-Aware Access checks (GWS.COMMONCONTROLS.2.1, CIS-4.2.2.1, ADD-20, ADD-40, ADD-53 to ADD-56) can read the organisation's real access levels from Access Context Manager. This read uses the service account's **own** identity (not domain-wide delegation), so it needs an IAM grant on the Google Cloud organisation:
+
+```bash
+gcloud organizations add-iam-policy-binding ORG_ID \
+    --member serviceAccount:SA_EMAIL --role roles/accesscontextmanager.policyReader
+```
+
+If `cloud_organization_id` is left blank in `config.yaml`, the organisation is discovered by primary domain, which additionally needs `roles/resourcemanager.organizationViewer`. Without the grant the auditor records why the inventory was not collected and the checks fall back to the audit logs. Set `options.collect_access_context: false` to skip the read entirely.
 
 ---
 

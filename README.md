@@ -12,7 +12,7 @@
 <p align="center">
   <a href="#-installation"><img src="https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python&logoColor=white" alt="Python 3.9+"></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0"></a>
-  <a href="#at-a-glance"><img src="https://img.shields.io/badge/checks-231-blue" alt="231 Security Checks"></a>
+  <a href="#at-a-glance"><img src="https://img.shields.io/badge/checks-288-blue" alt="288 Security Checks"></a>
   <a href="#at-a-glance"><img src="https://img.shields.io/badge/frameworks-4-blueviolet" alt="4 Frameworks"></a>
   <a href="#-interactive-dashboard"><img src="https://img.shields.io/badge/dashboard-Plotly%20Dash-E5484D?logo=plotly&logoColor=white" alt="Dashboard: Plotly Dash"></a>
   <a href="#-standalone-executable"><img src="https://img.shields.io/badge/build-standalone%20exe-orange" alt="Standalone Executable"></a>
@@ -24,11 +24,11 @@
 
 ## Description
 
-GWS Security Auditor is a Python-based tool that automatically evaluates your Google Workspace configuration against four industry-standard security frameworks. It connects to your tenant and performs read-only API calls, collects configuration data, evaluates **231 security checks** (including 24 critical-severity checks), and generates actionable reports in HTML, JSON, and CSV formats.
+GWS Security Auditor is a Python-based tool that automatically evaluates your Google Workspace configuration against four industry-standard security frameworks. It connects to your tenant and performs read-only API calls, collects configuration data, evaluates **288 security checks** (including 24 critical-severity checks), and generates actionable reports in HTML, JSON, and CSV formats.
 
 ### Key Features
 
-- **231 security checks** across 4 frameworks (CIS, CISA SCuBA, Google, Other)
+- **288 security checks** across 4 frameworks (CIS, CISA SCuBA, Google, Other); CIS checks map to NIST SP 800-53 Rev. 5 and NIST CSF 2.0, CISA checks to NIST SP 800-53 Rev. 5 and the BOD 25-01 requirement flag
 - **Critical severity system** -- 24 checks flagged as critical with impact explanations
 - **Interactive setup wizard** -- `gws-auditor setup` automates GCP project, API enablement, and service account creation
 - **Multi-credential profiles** -- switch between tenants with `--profile`
@@ -51,7 +51,7 @@ $ gws-auditor
 
       Audit Summary
   ┌─────────────────────┬───────┐
-  │ Total Checks        │   231 │
+  │ Total Checks        │   288 │
   │ Passed              │    96 │
   │ Failed              │    64 │
   │   Critical Failures │    13 │
@@ -71,11 +71,11 @@ $ gws-auditor
 
 | Framework | Full Name | Checks |
 |-----------|-----------|-------:|
-| **CIS** | CIS Google Workspace Foundations Benchmark v1.3.0 | 84 |
-| **CISA** | CISA SCuBA Baselines for Google Workspace | 97 |
-| **GOOGLE** | Google Security Checklist for Medium & Large Businesses | 23 |
-| **OTHER** | Additional best-practice checks | 27 |
-| | **Total** | **231** |
+| **CIS** | CIS Google Workspace Foundations Benchmark v1.4.1 | 86 |
+| **CISA** | CISA SCuBA Secure Configuration Baselines for Google Workspace v1 (ScubaGoggles 1.1.0) | 138 |
+| **GOOGLE** | Google Workspace Admin Help security recommendations (security checklists, administrator-account best practices, Gemini and data-protection guidance) | 35 |
+| **OTHER** | Additional best-practice checks | 29 |
+| | **Total** | **288** |
 
 > [!TIP]
 > Run `gws-auditor --list-checks` to see the full check list with IDs, titles, levels, sources, and severity.
@@ -161,11 +161,12 @@ The wizard handles 7 of 9 setup steps automatically. The **only manual step** is
 See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) for step-by-step manual instructions covering:
 
 1. **GCP Project** -- create or select a project
-2. **Enable APIs** -- Admin SDK, Gmail, Drive, Calendar, Groups Settings, Cloud Identity, Chrome Policy, Chat, Alert Center, License Manager
+2. **Enable APIs** -- Admin SDK, Gmail, Drive, Calendar, Groups Settings, Cloud Identity, Chrome Policy, Chat, Alert Center, License Manager (plus, optionally, Access Context Manager and Cloud Resource Manager)
 3. **Service Account** -- create with domain-wide delegation, download JSON key
 4. **Domain-Wide Delegation** -- authorize 21 read-only scopes in Admin Console
 5. **Configuration** -- create `config.yaml`
 6. **Validation** -- `gws-auditor --validate` to test connectivity
+7. **Optional: Context-Aware Access level inventory** -- grant the service account `roles/accesscontextmanager.policyReader` on the Google Cloud organisation so the CAA checks read the real access levels (see the [Configuration](../../wiki/Configuration) wiki page)
 
 ### Configure
 
@@ -197,7 +198,6 @@ output:
 options:
   cache_data: true
   cache_directory: ./cache
-  org_units: all
   max_retries: 5
   rate_limit_qps: 10
 
@@ -247,8 +247,8 @@ gws-auditor --check CIS-1.1.1         # single check
 gws-auditor --level L1                 # baseline checks only
 gws-auditor --source CIS --source CISA # multiple frameworks
 gws-auditor --section Gmail            # specific section
-gws-auditor --exclude CIS-1.1.3       # exclude checks
-gws-auditor --cached ./cache/          # re-run on cached data
+gws-auditor --exclude CIS-1.1.2       # exclude checks
+gws-auditor --cached cache/gws_data_<ts>.json  # re-score a cached snapshot
 ```
 
 ### Validate Connectivity
@@ -283,7 +283,7 @@ Options:
   -f, --format {html,json,csv}  Output format (repeatable)
   --dry-run               Validate auth only
   --validate              Detailed API/scope validation
-  --cached DIR            Re-run on cached data
+  --cached FILE           Re-score a cached data file (no credentials needed)
   --list-checks           List all checks
   --fail-on-critical      Exit code 2 on critical failures (CI/CD)
   --resume                Resume interrupted collection
@@ -358,10 +358,10 @@ See the [Posture Score wiki page](../../wiki/Posture-Score) for the full formula
 
 ```console
 git clone <repo-url>
-cd gws-security-auditor
+cd gws-auditor
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dashboard,ai,dev]"
-pytest                                 # 1162 tests
+pytest                                 # 1940 tests
 ```
 
 ### Building Standalone Executable
@@ -385,7 +385,7 @@ GWS Security Auditor is and will always be free and open source. For teams that 
 
 | | Open Source (Free) | Argus Cloud (from €12.50/mo) |
 |---|:---:|:---:|
-| 231 security checks, 4 frameworks | ✓ | ✓ |
+| 288 security checks, 4 frameworks | ✓ | ✓ |
 | HTML, JSON, CSV reports | ✓ | ✓ |
 | Interactive dashboard | ✓ | ✓ |
 | AI Analyst | BYO API key | Included |

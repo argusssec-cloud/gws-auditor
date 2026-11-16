@@ -6,15 +6,15 @@
 
 | Check ID | Title | Why Critical |
 |----------|-------|-------------|
-| CIS-1.1.1 | More than 1 Super Admin exists | Single admin = single point of failure. If compromised/locked out, no recovery path. |
+| CIS-1.1.1 | Between two and four Super Admins | Single admin = single point of failure. If compromised/locked out, no recovery path; more than four widens the blast radius. |
 | CIS-4.1.1.1 | 2SV enforced for all admins | Admin without MFA = one phished password from full tenant takeover. |
 | CIS-4.1.1.2 | Security keys required for admins | Software MFA tokens fall to real-time phishing proxies (evilginx). Hardware keys are phishing-proof. |
 | CIS-4.1.1.3 | All users enrolled in 2SV | Any user without MFA is a phishing target for data exfiltration. |
 | CIS-4.1.2.1 | Super admin recovery disabled | Recovery via personal email/phone enables social engineering to take over the super admin. |
-| CIS-4.2.4.1 | Session duration controlled | No session limit = stolen cookies grant indefinite access (pass-the-cookie). |
+| CIS-4.2.4.1 | Web session duration 12 hours or less | No session limit = stolen cookies grant indefinite access (pass-the-cookie). |
 | CIS-4.2.1.1 | Third-party app access restricted | Unrestricted = any user can grant external apps corporate data access. |
 | CIS-4.2.1.4 | Domain-wide delegation reviewed | DWD = service account can impersonate ANY user. Unreviewed = master key. |
-| CIS-4.2.6.1 | Less secure apps disabled | Less secure apps bypass OAuth, accept plain passwords. |
+| ADD-58 | Less secure apps disabled (CIS-4.2.6.1 before 1.6.0) | Less secure apps bypass OAuth, accept plain passwords. |
 | GWS.COMMONCONTROLS.1.3 | SMS/Voice MFA disabled | SMS MFA is vulnerable to SIM-swap attacks. |
 | GWS.COMMONCONTROLS.8.1 | Super admin recovery disabled | Same as CIS-4.1.2.1 (CISA framework). |
 | GWS.COMMONCONTROLS.10.4 | Unconfigured 3P apps blocked | Unblocked = new apps auto-gain access bypassing review. |
