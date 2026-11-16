@@ -17,7 +17,7 @@ Reference: https://github.com/cisagov/ScubaGoggles
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
                    field_value, ou_verdict, result_from_setting_changes, latest_setting_changes)
 from ..constants import (
-    EDITIONS_ASSURED_CONTROLS, EDITIONS_CHAT_REPORTING, EDITIONS_DATA_REGIONS, EDITIONS_DRIVE_GENERAL_ACCESS, EDITIONS_MEET_RECORDING, EDITIONS_MEET_TRANSCRIPTION, EDITIONS_MPA, EDITIONS_PAID_APPOINTMENTS,
+    EDITIONS_ASSURED_CONTROLS, EDITIONS_CHAT_REPORTING, EDITIONS_DATA_REGIONS, EDITIONS_DRIVE_GENERAL_ACCESS, EDITIONS_GEMINI_HISTORY, EDITIONS_MEET_GEMINI_NOTES, EDITIONS_MEET_RECORDING, EDITIONS_MEET_TRANSCRIPTION, EDITIONS_MPA, EDITIONS_PAID_APPOINTMENTS,
 )
 from ..models import CheckResult, Status
 
@@ -1971,6 +1971,10 @@ def check_meet_auto_transcription(data: dict) -> CheckResult:
 # Admin console > Apps > Google Workspace > Google Meet > Gemini settings > Gemini notes sharing).
 MEET_NOTES_HOST_OVERRIDE_SETTING = "MeetGenAiSmartNotesDocAccessProto manage_smart_notes_doc_access"
 MEET_NOTES_DEFAULT_ACCESS_SETTING = "MeetGenAiSmartNotesDocAccessProto default_smart_notes_doc_access"
+# Visual content in notes; flip-confirmed 2026-11-15 (CREATE_APPLICATION_SETTING, app "Google Meet GenAI",
+# NEW_VALUE ONLY_WHEN_RECORDING after selecting "Only allow screenshots ... when recording is enabled").
+MEET_NOTES_VISUAL_SETTING = "MeetGenAiVisualContentSettingsProto policy"
+MEET_NOTES_VISUAL_COMPLIANT = "ONLY_WHEN_RECORDING"
 _MEET_NOTES_REMED = (
     "Admin console > Apps > Google Workspace > Google Meet > Gemini settings > Gemini notes sharing. "
     "Clear 'Allow hosts to change who notes are shared to' and set 'Default sharing setting for Gemini notes' "
@@ -1986,6 +1990,7 @@ _MEET_NOTES_SCREENSHOT_REMED = (
 
 @check(
     check_id="GWS.MEET.6.1",
+    requires_license=EDITIONS_MEET_GEMINI_NOTES,
     title="Ensure hosts cannot override the default sharing level for Gemini meeting notes",
     level="L2",
     source="CISA",
@@ -2014,6 +2019,7 @@ def check_meet_notes_host_override(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.MEET.6.2",
+    requires_license=EDITIONS_MEET_GEMINI_NOTES,
     title="Ensure the default sharing of Gemini meeting notes is restricted to guests in the organization",
     level="L1",
     source="CISA",
@@ -2042,7 +2048,7 @@ def check_meet_notes_default_sharing(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.MEET.6.3",
-    scored=False,  # Admin-console-only control: no API or audit-log signal known
+    requires_license=EDITIONS_MEET_GEMINI_NOTES,
     title="Ensure screenshots are captured in Gemini notes only when the meeting is recorded",
     level="L1",
     source="CISA",
@@ -2050,15 +2056,38 @@ def check_meet_notes_default_sharing(data: dict) -> CheckResult:
     remediation=_MEET_NOTES_SCREENSHOT_REMED,
 )
 def check_meet_notes_screenshots(data: dict) -> CheckResult:
-    """SCuBA v1 6.3: no Google API or audit-log event exposes the visual-notes setting."""
+    """SCuBA v1 6.3 (SHALL): inferred from the admin-log setting
+    ``MeetGenAiVisualContentSettingsProto policy`` (``ONLY_WHEN_RECORDING`` = compliant; any other value,
+    such as the "always allow screenshots" option, is not). Unknown without a change event in the window."""
+    _ID = "GWS.MEET.6.3"
+    _TITLE = "Ensure screenshots are captured in Gemini notes only when the meeting is recorded"
+    common = dict(check_id=_ID, title=_TITLE, level="L1", source="CISA", section="Google Meet")
+    expected = f"{MEET_NOTES_VISUAL_COMPLIANT} (only when recording is enabled) for all OUs"
+    changes = {ou: v for ou, v in latest_setting_changes(data, MEET_NOTES_VISUAL_SETTING).items()
+               if str(v).upper() != "INHERIT_FROM_PARENT"}
+    if changes:
+        bad = sorted(ou for ou, v in changes.items() if str(v).upper() != MEET_NOTES_VISUAL_COMPLIANT)
+        if bad:
+            return make_fail(
+                **common,
+                details=(f"Visual content in notes: screenshots of presented content are captured regardless of recording "
+                         f"in {len(bad)} OU(s) per the latest admin-log change: "
+                         + ", ".join(f"{ou} → {changes[ou]}" for ou in bad)),
+                actual_value={ou: changes[ou] for ou in sorted(changes)}, expected_value=expected,
+                remediation=_MEET_NOTES_SCREENSHOT_REMED,
+            )
+        return make_pass(
+            **common,
+            details=f"Visual content in notes: screenshots are captured only when recording is enabled in {len(changes)} OU(s) per the latest admin-log change.",
+            actual_value={ou: changes[ou] for ou in sorted(changes)}, expected_value=expected,
+        )
     return make_review(
-        check_id="GWS.MEET.6.3",
-        title="Ensure screenshots are captured in Gemini notes only when the meeting is recorded",
-        level="L1", source="CISA", section="Google Meet",
-        details=("The 'Visual content in notes' setting is not exposed by any Google API or audit-log event. "
-                 "Verify in Admin console > Apps > Google Workspace > Google Meet > Gemini settings."),
-        remediation=_MEET_NOTES_SCREENSHOT_REMED,
+        **common, remediation=_MEET_NOTES_SCREENSHOT_REMED,
+        details=("The 'Visual content in notes' setting is not exposed by the Cloud Identity Policy API and no "
+                 f"'{MEET_NOTES_VISUAL_SETTING}' change appears in the admin audit log window; the current value is "
+                 "unknown. Saving the setting once makes it visible to future audits."),
     )
+
 
 @check(
     check_id="GWS.GROUPS.1.3",
@@ -3597,6 +3626,7 @@ def _duration_seconds(value) -> float | None:
 
 @check(
     check_id="GWS.GEMINI.3.1",
+    requires_license=EDITIONS_GEMINI_HISTORY,
     title="Ensure Gemini conversation history is enabled",
     level="L1",
     source="CISA",
@@ -3630,6 +3660,7 @@ def check_gemini_conversation_history(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.GEMINI.3.2",
+    requires_license=EDITIONS_GEMINI_HISTORY,
     title="Ensure Gemini conversation retention is at least 18 months",
     level="L1",
     source="CISA",
@@ -3669,6 +3700,7 @@ def check_gemini_conversation_retention(data: dict) -> CheckResult:
 
 @check(
     check_id="GWS.GEMINI.4.1",
+    requires_license=EDITIONS_GEMINI_HISTORY,
     title="Ensure Gemini conversation sharing is off",
     level="L1",
     source="CISA",

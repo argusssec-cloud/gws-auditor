@@ -42,7 +42,6 @@ DEFAULT_CONFIG = {
     "options": {
         "cache_data": True,
         "cache_directory": DEFAULT_CACHE_DIR,
-        "org_units": "all",
         "max_retries": DEFAULT_MAX_RETRIES,
         "rate_limit_qps": DEFAULT_RATE_LIMIT_QPS,
         "max_log_events": DEFAULT_MAX_LOG_EVENTS,

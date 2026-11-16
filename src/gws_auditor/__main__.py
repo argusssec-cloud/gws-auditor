@@ -139,8 +139,8 @@ def _validate_auth_config(config: dict, args) -> None:
         sys.exit(1)
 
 
-def main(argv: list[str] | None = None):
-    """Main entry point."""
+def _main(argv: list[str] | None = None) -> int:
+    """Main entry point (see main() for the exit-code wrapper)."""
     args = parse_args(argv)
 
     # Handle --update: perform update and exit (before any config loading)
@@ -246,7 +246,12 @@ def main(argv: list[str] | None = None):
         no_cloud_info=getattr(args, "no_cloud_info", False),
     )
 
-    # Load config and apply CLI overrides
+    # Load config and apply CLI overrides. A config path the user named must exist;
+    # only the default "config.yaml" may be absent (the CLI flags then carry the auth).
+    import os
+    if args.config != "config.yaml" and not os.path.exists(args.config):
+        print(f"ERROR: config file not found: {args.config}", file=sys.stderr)
+        return 1
     config = load_config(args.config)
 
     # Handle --profile ? (list profiles and exit)
@@ -254,7 +259,14 @@ def main(argv: list[str] | None = None):
         _list_profiles(config)
         return 0
 
-    config = apply_cli_overrides(config, args)
+    try:
+        config = apply_cli_overrides(config, args)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    if args.quiet:
+        from . import orchestrator as _orch
+        _orch.console.quiet = True
 
     # Validate that sufficient auth config is present before proceeding.
     # A valid config.yaml may supply credentials_file and subject, but when
@@ -270,47 +282,104 @@ def main(argv: list[str] | None = None):
         orchestrator.list_checks()
         return 0
 
-    if args.validate:
-        success = orchestrator.validate()
-        return 0 if success else 1
-
-    if args.dry_run:
-        success = orchestrator.dry_run()
-        return 0 if success else 1
-
-    if args.cached:
-        orchestrator.run_cached(args.cached)
-        return 0
-
-    if args.resume:
-        orchestrator.run_resume()
-        return 0
-
     if args.check:
-        orchestrator.run_single_check(args.check)
+        orchestrator.registry.load()
+        if orchestrator.registry.get_by_id(args.check) is None:
+            print(f"ERROR: unknown check id: {args.check} (see --list-checks)", file=sys.stderr)
+            return 1
+
+    try:
+        if args.validate:
+            success = orchestrator.validate()
+            return 0 if success else 1
+        if args.dry_run:
+            success = orchestrator.dry_run()
+            return 0 if success else 1
+        if args.cached:
+            if not os.path.exists(args.cached):
+                print(f"ERROR: cache file not found: {args.cached}", file=sys.stderr)
+                return 1
+            report = orchestrator.run_cached(args.cached, check_id=args.check)
+        elif args.resume:
+            report = orchestrator.run_resume()
+        elif args.check:
+            report = orchestrator.run_single_check(args.check)
+        else:
+            report = orchestrator.run()
+    except _AUTH_ERRORS as exc:
+        return _report_auth_error(exc, args)
+    return _exit_code(report, args)
+
+
+def _exit_code(report, args) -> int:
+    """0 clean, 1 when any check failed, 2 for critical failures under --fail-on-critical.
+
+    The same rule applies to a live run, a cached re-run and a single check, so a CI gate
+    behaves the same whichever mode produced the report.
+    """
+    summary = getattr(report, "summary", None)
+    if summary is None:
         return 0
-
-    # Full audit run
-    report = orchestrator.run()
-
-    # Exit code 2 for critical failures (CI/CD gate)
-    if getattr(args, "fail_on_critical", False) and report.summary.critical_failed > 0:
+    if getattr(args, "fail_on_critical", False) and summary.critical_failed > 0:
         return 2
-
-    # Exit with non-zero if there are failures
-    if report.summary.failed > 0:
+    if summary.failed > 0:
         return 1
     return 0
 
 
-if __name__ == "__main__":
+def _auth_error_types() -> tuple:
+    types: list = []
     try:
-        sys.exit(main())
-    except (BrokenPipeError, OSError):
-        # Handle broken pipe (e.g. `gws-auditor --list-checks | head`)
-        # and Windows legacy console errors from Rich
+        from google.auth.exceptions import GoogleAuthError, TransportError
+        types += [GoogleAuthError, TransportError]
+    except ImportError:  # pragma: no cover
+        pass
+    return tuple(types) + (FileNotFoundError, ConnectionError)
+
+
+_AUTH_ERRORS = _auth_error_types()
+
+
+def _report_auth_error(exc: Exception, args) -> int:
+    """One clear line (plus the remediation the AuthManager knows) instead of a traceback."""
+    hint = ""
+    if not isinstance(exc, (FileNotFoundError, ConnectionError)):
+        from .auth import AuthManager
         try:
-            sys.stdout.close()
-        except OSError:
+            hint = AuthManager._auth_remediation(exc)
+        except Exception:  # pragma: no cover - remediation text is best effort
+            hint = ""
+    print(f"ERROR: {type(exc).__name__}: {str(exc).splitlines()[0][:300]}", file=sys.stderr)
+    if hint:
+        print(hint, file=sys.stderr)
+    if getattr(args, "verbose", 0) >= 2:
+        import traceback
+        traceback.print_exception(exc)
+    return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Console-script entry: _main()'s exit code; a closed pipe is not an error, any other OSError is."""
+    import errno
+    try:
+        return _main(argv)
+    except BrokenPipeError:
+        # `gws-auditor --list-checks | head`: point stdout at /dev/null so the interpreter's
+        # final flush does not raise again (closing it would break any captured stdout).
+        try:
+            import os
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        except Exception:
             pass
-        sys.exit(0)
+        return 0
+    except OSError as exc:
+        # Windows legacy console errors from Rich surface as EINVAL on stdout; every other
+        # OSError (a missing file, a refused proxy, an unreadable CA bundle) is a real failure.
+        if exc.errno == errno.EPIPE or (exc.errno == errno.EINVAL and "stdout" in str(exc).lower()):
+            return 0
+        print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

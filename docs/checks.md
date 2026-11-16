@@ -28,7 +28,7 @@ The GWS Security Auditor implements **288 security checks** across four framewor
 | **MEDIUM** | 112 |
 | **LOW** | 42 |
 
-41 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
+40 checks are informational (inventory/review) and do not affect the posture score; they are marked *unscored* below.
 
 ## Check Statuses
 
@@ -188,7 +188,7 @@ Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.
 | GWS.DRIVEDOCS.3.1 | Ensure security updates for files are applied | L1 | CISA | MEDIUM | AC-3 |  | yes |  |
 | GWS.DRIVEDOCS.4.1 | Ensure Google Drive SDK access is disabled | L2 | CISA | MEDIUM | CM-7 |  |  |  |
 | GWS.DRIVEDOCS.5.1 | Ensure Drive for Desktop is enabled only for authorized devices | L1 | CISA | MEDIUM | CM-7 |  | yes |  |
-| GWS.DRIVEDOCS.5.2 | Ensure monitoring for potential ransomware corruption in Drive is enabled | L1 | CISA | MEDIUM | CP-9, CP-10 |  |  | unscored |
+| GWS.DRIVEDOCS.5.2 | Ensure monitoring for potential ransomware corruption in Drive is enabled | L1 | CISA | MEDIUM | CP-9, CP-10 |  |  | unscored, editions: Frontline Standard, Frontline Plus, Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Standard, Education Plus |
 
 ## Gemini
 
@@ -199,9 +199,9 @@ Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.
 | ADD-15 | Ensure Google Workspace Studio access is controlled | L2 | GOOGLE | LOW |  |  |  | editions: Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning |
 | GWS.GEMINI.1.1 | Ensure Gemini app access is restricted to licensed users | L1 | CISA | LOW | SC-7(10)(a) |  |  |  |
 | GWS.GEMINI.2.1 | Ensure Gemini Beta features are disabled | L1 | CISA | LOW | SC-7(10)(a) |  |  |  |
-| GWS.GEMINI.3.1 | Ensure Gemini conversation history is enabled | L1 | CISA | MEDIUM | AU-2, AU-11 |  |  |  |
-| GWS.GEMINI.3.2 | Ensure Gemini conversation retention is at least 18 months | L1 | CISA | MEDIUM | AU-2, AU-11 |  |  |  |
-| GWS.GEMINI.4.1 | Ensure Gemini conversation sharing is off | L1 | CISA | MEDIUM | SC-7(10)a |  |  |  |
+| GWS.GEMINI.3.1 | Ensure Gemini conversation history is enabled | L1 | CISA | MEDIUM | AU-2, AU-11 |  |  | editions: Business Starter, Business Standard, Business Plus, Enterprise Starter, Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning, Frontline Plus |
+| GWS.GEMINI.3.2 | Ensure Gemini conversation retention is at least 18 months | L1 | CISA | MEDIUM | AU-2, AU-11 |  |  | editions: Business Starter, Business Standard, Business Plus, Enterprise Starter, Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning, Frontline Plus |
+| GWS.GEMINI.4.1 | Ensure Gemini conversation sharing is off | L1 | CISA | MEDIUM | SC-7(10)a |  |  | editions: Business Starter, Business Standard, Business Plus, Enterprise Starter, Enterprise Standard, Enterprise Plus, Education Plus, Education Teaching & Learning, Frontline Plus |
 
 ## Gmail
 
@@ -311,9 +311,9 @@ Every CIS check carries the **NIST SP 800-53 Rev. 5** controls and **NIST CSF 2.
 | GWS.MEET.4.1 | Ensure external participant warning is enabled | L1 | CISA | MEDIUM | SC-15 |  | yes |  |
 | GWS.MEET.5.1 | Ensure automatic recording is disabled | L1 | CISA | LOW | CM-7 |  | yes | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus, Essentials Starter, Enterprise Essentials, Enterprise Essentials Plus |
 | GWS.MEET.5.2 | Ensure automatic transcription is disabled | L1 | CISA | LOW | CM-7 |  | yes | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus, Education Plus |
-| GWS.MEET.6.1 | Ensure hosts cannot override the default sharing level for Gemini meeting notes | L2 | CISA | MEDIUM | AC-3, SC-7(10) |  |  |  |
-| GWS.MEET.6.2 | Ensure the default sharing of Gemini meeting notes is restricted to guests in the organization | L1 | CISA | MEDIUM | SC-7(10) |  |  |  |
-| GWS.MEET.6.3 | Ensure screenshots are captured in Gemini notes only when the meeting is recorded | L1 | CISA | MEDIUM | AC-3, SC-7(10) |  |  | unscored |
+| GWS.MEET.6.1 | Ensure hosts cannot override the default sharing level for Gemini meeting notes | L2 | CISA | MEDIUM | AC-3, SC-7(10) |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus |
+| GWS.MEET.6.2 | Ensure the default sharing of Gemini meeting notes is restricted to guests in the organization | L1 | CISA | MEDIUM | SC-7(10) |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus |
+| GWS.MEET.6.3 | Ensure screenshots are captured in Gemini notes only when the meeting is recorded | L1 | CISA | MEDIUM | AC-3, SC-7(10) |  |  | editions: Business Standard, Business Plus, Enterprise Standard, Enterprise Plus |
 
 ## Groups
 

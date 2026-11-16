@@ -19,7 +19,16 @@ from .models import AuditReport, AuditSummary, Status
 from .provider import Provider
 
 logger = logging.getLogger(__name__)
-console = Console()
+class _Console(Console):
+    """Rich exits 1 when stdout is a closed pipe (`gws-auditor --list-checks | head`);
+    raise BrokenPipeError instead so main() can exit 0, as a closed pipe is not a failure."""
+
+    def on_broken_pipe(self) -> None:
+        self.quiet = True
+        raise BrokenPipeError()
+
+
+console = _Console()
 
 
 class Orchestrator:
@@ -151,12 +160,17 @@ class Orchestrator:
         console.print(table)
         console.print(f"\nTotal: {len(checks)} checks")
 
-    def run_cached(self, cache_path: str) -> AuditReport:
-        """Re-run checks against previously cached API data."""
+    def run_cached(self, cache_path: str, check_id: str | None = None) -> AuditReport:
+        """Re-run checks against previously cached API data (one check when *check_id* is given)."""
         console.print("\n[bold blue]GWS Security Auditor - Cached Mode[/bold blue]")
         console.print(f"Loading data from: {cache_path}")
 
         data = Provider.from_cache(cache_path, self.config)
+        if check_id:
+            data["_options"] = self.config.get("options", {})
+            data["subscription_type"] = (data.get("subscription_info", {}).get("edition", "")
+                                         or self.config.get("auth", {}).get("subscription_type", ""))
+            return self.run_single_check(check_id, data=data)
         # Inject config options so checks can read configurable thresholds
         data["_options"] = self.config.get("options", {})
 

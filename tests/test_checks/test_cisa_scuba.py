@@ -1868,13 +1868,42 @@ class TestMeetNotesSharing:
         full_audit_data["admin_logs"] = [self._ev(self.DEFAULT, "INTERNAL_GUESTS")]
         assert check_meet_notes_default_sharing(full_audit_data).status == Status.PASS
 
-    def test_no_event_is_manual_and_screenshots_always_manual(self, full_audit_data):
+    def test_no_event_is_manual(self, full_audit_data):
         from gws_auditor.checks.cisa_scuba import (check_meet_notes_default_sharing, check_meet_notes_host_override,
                                                     check_meet_notes_screenshots)
         full_audit_data["admin_logs"] = []
         for check in (check_meet_notes_host_override, check_meet_notes_default_sharing, check_meet_notes_screenshots):
             assert check(full_audit_data).status == Status.MANUAL, check.__name__
-        assert check_meet_notes_screenshots(full_audit_data).scored is False
+
+    VISUAL = "MeetGenAiVisualContentSettingsProto policy"
+
+    def test_flip_confirmed_values_2026_11_15(self, full_audit_data):
+        """Exact names and values read back from the admin log after the console flips on 2026-11-15."""
+        from gws_auditor.checks.cisa_scuba import (check_meet_notes_default_sharing, check_meet_notes_host_override,
+                                                    check_meet_notes_screenshots)
+        full_audit_data["admin_logs"] = [
+            make_admin_event("CREATE_APPLICATION_SETTING", {"APPLICATION_NAME": "Google Meet GenAI", "SETTING_NAME": self.HOST,
+                                                            "NEW_VALUE": "false", "ORG_UNIT_NAME": "argussec.io"}),
+            make_admin_event("CREATE_APPLICATION_SETTING", {"APPLICATION_NAME": "Google Meet GenAI", "SETTING_NAME": self.DEFAULT,
+                                                            "NEW_VALUE": "HOSTS_AND_COHOSTS_ONLY", "ORG_UNIT_NAME": "argussec.io"}),
+            make_admin_event("CREATE_APPLICATION_SETTING", {"APPLICATION_NAME": "Google Meet GenAI", "SETTING_NAME": self.VISUAL,
+                                                            "NEW_VALUE": "ONLY_WHEN_RECORDING", "ORG_UNIT_NAME": "argussec.io"}),
+        ]
+        assert check_meet_notes_host_override(full_audit_data).status == Status.PASS
+        assert check_meet_notes_default_sharing(full_audit_data).status == Status.PASS
+        result = check_meet_notes_screenshots(full_audit_data)
+        assert result.status == Status.PASS and result.scored is True
+
+    def test_screenshots_always_allowed_fails(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_meet_notes_screenshots
+        full_audit_data["admin_logs"] = [self._ev(self.VISUAL, "ALWAYS", "/Sales"), self._ev(self.VISUAL, "ONLY_WHEN_RECORDING")]
+        result = check_meet_notes_screenshots(full_audit_data)
+        assert result.status == Status.FAIL and "/Sales" in result.details and "ALWAYS" in result.details
+
+    def test_screenshots_inherit_ignored_and_case_insensitive(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_meet_notes_screenshots
+        full_audit_data["admin_logs"] = [self._ev(self.VISUAL, "INHERIT_FROM_PARENT", "/Sales"), self._ev(self.VISUAL, "only_when_recording")]
+        assert check_meet_notes_screenshots(full_audit_data).status == Status.PASS
 
 
 class TestGeminiConversation:
@@ -1916,3 +1945,32 @@ class TestGeminiConversation:
         full_audit_data["policies"]["gemini_app"] = {}
         for check in (check_gemini_conversation_history, check_gemini_conversation_retention, check_gemini_conversation_sharing):
             assert check(full_audit_data).status == Status.MANUAL
+
+
+class TestEditionGatesAdded20261115:
+    """Gates copied from Google's "Supported editions" lines on 2026-11-15: Gemini meeting notes, ransomware detection,
+    Gemini conversation history. A tenant outside the set gets NOT_APPLICABLE; inside it the check runs."""
+
+    CASES = [
+        ("check_meet_notes_host_override", "gws_auditor.checks.cisa_scuba", "business_starter", "business_standard"),
+        ("check_meet_notes_default_sharing", "gws_auditor.checks.cisa_scuba", "enterprise_essentials", "enterprise_plus"),
+        ("check_meet_notes_screenshots", "gws_auditor.checks.cisa_scuba", "frontline_plus", "business_plus"),
+        ("check_gemini_conversation_history", "gws_auditor.checks.cisa_scuba", "frontline_standard", "business_starter"),
+        ("check_gemini_conversation_retention", "gws_auditor.checks.cisa_scuba", "enterprise_essentials_plus", "enterprise_starter"),
+        ("check_gemini_conversation_sharing", "gws_auditor.checks.cisa_scuba", "education_standard", "frontline_plus"),
+        ("check_drive_ransomware_monitoring", "gws_auditor.checks.cisa_services", "business_starter", "frontline_standard"),
+    ]
+
+    @pytest.mark.parametrize("func, module, outside, inside", CASES)
+    def test_outside_edition_is_not_applicable_inside_runs(self, full_audit_data, func, module, outside, inside):
+        import importlib
+        check = getattr(importlib.import_module(module), func)
+        full_audit_data["subscription_info"] = {"tier_keys_present": [outside]}
+        assert check(full_audit_data).status == Status.NOT_APPLICABLE
+        full_audit_data["subscription_info"] = {"tier_keys_present": [inside]}
+        assert check(full_audit_data).status != Status.NOT_APPLICABLE
+
+    def test_mixed_tenant_with_one_qualifying_edition_runs(self, full_audit_data):
+        from gws_auditor.checks.cisa_scuba import check_gemini_conversation_history
+        full_audit_data["subscription_info"] = {"tier_keys_present": ["enterprise_essentials", "business_standard"]}
+        assert check_gemini_conversation_history(full_audit_data).status != Status.NOT_APPLICABLE

@@ -211,7 +211,7 @@ class TestCachedModeSkipsAuthValidation:
                 self.config = config
                 self.cached_path = None
 
-            def run_cached(self, path):
+            def run_cached(self, path, check_id=None):
                 self.cached_path = path
 
         monkeypatch.setattr(m, "Orchestrator", _FakeOrchestrator)
@@ -252,3 +252,138 @@ class TestCachedMetavar:
     def test_cached_accepts_file_path(self):
         args = parse_args(["--cached", "./cache/audit_20260803.json"])
         assert args.cached == "./cache/audit_20260803.json"
+
+
+class TestMainExitCodesAndErrors:
+    """Behaviour found wrong on 2026-11-15: --check ignored in cached mode, unknown ids and missing files
+    exiting 0, cached runs never failing the CI gate, every OSError swallowed as a broken pipe."""
+
+    class _Summary:
+        def __init__(self, failed=0, critical=0):
+            self.failed, self.critical_failed = failed, critical
+
+    class _Report:
+        def __init__(self, failed=0, critical=0):
+            self.summary = TestMainExitCodesAndErrors._Summary(failed, critical)
+
+    def _fake(self, monkeypatch, report=None, known=("CIS-1.1.1",)):
+        import gws_auditor.__main__ as m
+        calls = {}
+        outer = self
+
+        class _Registry:
+            def load(self):
+                pass
+
+            def get_by_id(self, cid):
+                return object() if cid in known else None
+
+        class _Orch:
+            def __init__(self, config):
+                self.registry = _Registry()
+
+            def run_cached(self, path, check_id=None):
+                calls["cached"] = (path, check_id)
+                return report or outer._Report()
+
+            def run_single_check(self, cid):
+                calls["single"] = cid
+                return report or outer._Report()
+
+            def run(self):
+                calls["run"] = True
+                return report or outer._Report()
+
+            def dry_run(self):
+                raise FileNotFoundError("credentials.json")
+
+        monkeypatch.setattr(m, "Orchestrator", _Orch)
+        monkeypatch.setattr(m, "_validate_auth_config", lambda config, args: None)
+        return m, calls
+
+    def test_explicit_missing_config_exits_1(self, monkeypatch, capsys):
+        m, _ = self._fake(monkeypatch)
+        assert m.main(["--config", "/nonexistent/config.yaml", "--list-checks"]) == 1
+        assert "config file not found" in capsys.readouterr().err
+
+    def test_unknown_check_id_exits_1(self, monkeypatch, capsys, tmp_path):
+        m, calls = self._fake(monkeypatch)
+        cache = tmp_path / "c.json"; cache.write_text("{}")
+        assert m.main(["--cached", str(cache), "--check", "NOPE-1", "--skip-update-check", "--no-cloud-info"]) == 1
+        assert "unknown check id" in capsys.readouterr().err and not calls
+
+    def test_cached_honours_check(self, monkeypatch, tmp_path):
+        m, calls = self._fake(monkeypatch)
+        cache = tmp_path / "c.json"; cache.write_text("{}")
+        assert m.main(["--cached", str(cache), "--check", "CIS-1.1.1", "--skip-update-check", "--no-cloud-info"]) == 0
+        assert calls["cached"] == (str(cache), "CIS-1.1.1")
+
+    def test_missing_cache_file_exits_1(self, monkeypatch, capsys):
+        m, calls = self._fake(monkeypatch)
+        assert m.main(["--cached", "/nonexistent/cache.json", "--skip-update-check", "--no-cloud-info"]) == 1
+        assert "cache file not found" in capsys.readouterr().err and not calls
+
+    def test_cached_exit_codes_match_live(self, monkeypatch, tmp_path):
+        cache = tmp_path / "c.json"; cache.write_text("{}")
+        m, _ = self._fake(monkeypatch, report=self._Report(failed=3, critical=1))
+        assert m.main(["--cached", str(cache), "--skip-update-check", "--no-cloud-info"]) == 1
+        assert m.main(["--cached", str(cache), "--fail-on-critical", "--skip-update-check", "--no-cloud-info"]) == 2
+        m, _ = self._fake(monkeypatch, report=self._Report(failed=0))
+        assert m.main(["--cached", str(cache), "--fail-on-critical", "--skip-update-check", "--no-cloud-info"]) == 0
+
+    def test_auth_error_is_one_line_not_a_traceback(self, monkeypatch, capsys):
+        m, _ = self._fake(monkeypatch)
+        assert m.main(["--dry-run", "--skip-update-check", "--no-cloud-info"]) == 1
+        err = capsys.readouterr().err
+        assert "ERROR: FileNotFoundError" in err and "Traceback" not in err
+
+    def test_unknown_profile_exits_1(self, monkeypatch, capsys):
+        m, _ = self._fake(monkeypatch)
+        monkeypatch.setattr(m, "apply_cli_overrides", lambda config, args: (_ for _ in ()).throw(ValueError("Profile 'x' not found")))
+        assert m.main(["--profile", "x", "--list-checks"]) == 1
+        assert "Profile 'x' not found" in capsys.readouterr().err
+
+    def test_oserror_is_not_swallowed_but_broken_pipe_is(self, monkeypatch, capsys):
+        import gws_auditor.__main__ as m
+        monkeypatch.setattr(m, "_main", lambda argv: (_ for _ in ()).throw(ConnectionRefusedError(111, "proxy refused")))
+        assert m.main([]) == 1 and "proxy refused" in capsys.readouterr().err
+        monkeypatch.setattr(m, "_main", lambda argv: (_ for _ in ()).throw(BrokenPipeError()))
+        assert m.main([]) == 0
+
+    def test_quiet_silences_the_console(self, monkeypatch, tmp_path):
+        from gws_auditor import orchestrator as orch
+        m, _ = self._fake(monkeypatch)
+        cache = tmp_path / "c.json"; cache.write_text("{}")
+        orch.console.quiet = False
+        try:
+            m.main(["--cached", str(cache), "-q", "--skip-update-check", "--no-cloud-info"])
+            assert orch.console.quiet is True
+        finally:
+            orch.console.quiet = False
+
+
+class TestSetupNonInteractiveGuards:
+    """2026-11-15: `setup --non-interactive` without --subject overwrote config.yaml with an empty subject."""
+
+    def test_requires_subject(self, capsys):
+        from gws_auditor.setup import SetupWizard
+        assert SetupWizard(non_interactive=True).run() == 1
+        assert "requires --subject" in capsys.readouterr().out
+
+    def test_keeps_existing_config(self, tmp_path, monkeypatch, capsys):
+        from gws_auditor.setup import SetupWizard
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "config.yaml").write_text("auth:\n  subject: keep@example.com\n")
+        wizard = SetupWizard(subject="admin@example.com", non_interactive=True)
+        wizard._sa_key_path = "credentials/sa.json"
+        wizard._step_generate_config()
+        assert "keep@example.com" in (tmp_path / "config.yaml").read_text()
+        assert "Keeping existing" in capsys.readouterr().out
+
+
+    def test_closed_pipe_exits_0_through_rich(self):
+        import pytest
+        from gws_auditor import orchestrator as orch
+        with pytest.raises(BrokenPipeError):
+            orch.console.on_broken_pipe()
+        orch.console.quiet = False

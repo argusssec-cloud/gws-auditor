@@ -4690,7 +4690,7 @@
   "inputs": "None: Drive ransomware monitoring has no Policy API setting or known admin-log event (SCuBA v1, Manual).",
   "pass_case": "Never PASS (unscored).",
   "fail_case": "Never FAIL.",
-  "other_cases": "Always MANUAL (make_review).",
+  "other_cases": "Always MANUAL (make_review). NOT_APPLICABLE when every detected edition is outside EDITIONS_DRIVE_RANSOMWARE (Frontline/Business/Enterprise/Education Standard and Plus).",
   "edge_cases": "Unscored by design.",
   "coverage_now": "tests/test_checks/test_p3_dead_keys.py::TestManualByDesignAreUnscored (GWS.DRIVEDOCS.5.2)."
  },
@@ -4759,7 +4759,7 @@
   "inputs": "gemini_app.conversation_history.conversationHistoryState per OU (enum: ON/ENABLED vs OFF/DISABLED substrings; member names not yet seen live).",
   "pass_case": "state containing ON/ENABLED -> PASS.",
   "fail_case": "state containing OFF/DISABLED -> FAIL.",
-  "other_cases": "MANUAL when the setting is not returned or the member is unknown.",
+  "other_cases": "MANUAL when the setting is not returned or the member is unknown. NOT_APPLICABLE when every detected edition is outside EDITIONS_GEMINI_HISTORY (Business Starter/Standard/Plus, Enterprise Starter/Standard/Plus, Education Plus, Teaching & Learning, Frontline Plus).",
   "edge_cases": "Enum vocabulary unconfirmed live.",
   "coverage_now": "tests/test_checks/test_cisa_scuba.py::TestGeminiConversation. status_rec: PASS, FAIL, MANUAL."
  },
@@ -4777,7 +4777,7 @@
   "inputs": "gemini_app.conversation_history.conversationRetention per OU: seconds duration ('<n>s') compared with 540 days, or enum keywords; history OFF fails.",
   "pass_case": "'47304000s' (547 days) or an 18-month/forever enum -> PASS.",
   "fail_case": "'7776000s' (90 days), a 3/6/12-month enum, or history off -> FAIL.",
-  "other_cases": "MANUAL when not returned or an unknown member.",
+  "other_cases": "MANUAL when not returned or an unknown member. NOT_APPLICABLE when every detected edition is outside EDITIONS_GEMINI_HISTORY (Business Starter/Standard/Plus, Enterprise Starter/Standard/Plus, Education Plus, Teaching & Learning, Frontline Plus).",
   "edge_cases": "Threshold 18*30 days.",
   "coverage_now": "tests/test_checks/test_cisa_scuba.py::TestGeminiConversation. status_rec: PASS, FAIL, MANUAL."
  },
@@ -4795,7 +4795,7 @@
   "inputs": "gemini_app.conversation_sharing.conversationSharingOption per OU (ALLOW_SHARING_VIA_DRIVE seen live = allowed; DISABLED/OFF-like members = off).",
   "pass_case": "option containing DISABLED/OFF/NO_SHARING -> PASS.",
   "fail_case": "'ALLOW_SHARING_VIA_DRIVE' -> FAIL.",
-  "other_cases": "MANUAL when not returned or an unknown member.",
+  "other_cases": "MANUAL when not returned or an unknown member. NOT_APPLICABLE when every detected edition is outside EDITIONS_GEMINI_HISTORY (Business Starter/Standard/Plus, Enterprise Starter/Standard/Plus, Education Plus, Teaching & Learning, Frontline Plus).",
   "edge_cases": "Only the allow member has been seen live.",
   "coverage_now": "tests/test_checks/test_cisa_scuba.py::TestGeminiConversation. status_rec: PASS, FAIL, MANUAL."
  },
@@ -5384,7 +5384,7 @@
   "inputs": "admin_logs SETTING_NAME 'MeetGenAiSmartNotesDocAccessProto manage_smart_notes_doc_access' latest NEW_VALUE per OU via result_from_setting_changes (ScubaGoggles 1.1.0 name, not yet flip-confirmed); unsafe value 'true'.",
   "pass_case": "latest event not 'true' -> PASS.",
   "fail_case": "latest event 'true' -> FAIL naming the OU.",
-  "other_cases": "MANUAL when no event in the window.",
+  "other_cases": "MANUAL when no event in the window. NOT_APPLICABLE when every detected edition is outside EDITIONS_MEET_GEMINI_NOTES (Business Standard/Plus, Enterprise Standard/Plus).",
   "edge_cases": "INHERIT_FROM_PARENT ignored.",
   "coverage_now": "tests/test_checks/test_cisa_scuba.py::TestMeetNotesSharing. status_rec: PASS, FAIL, MANUAL."
  },
@@ -5402,7 +5402,7 @@
   "inputs": "admin_logs SETTING_NAME 'MeetGenAiSmartNotesDocAccessProto default_smart_notes_doc_access' latest NEW_VALUE per OU via result_from_setting_changes (ScubaGoggles 1.1.0 name, not yet flip-confirmed); unsafe value 'EVERYONE'.",
   "pass_case": "latest event not 'EVERYONE' -> PASS.",
   "fail_case": "latest event 'EVERYONE' -> FAIL naming the OU.",
-  "other_cases": "MANUAL when no event in the window.",
+  "other_cases": "MANUAL when no event in the window. NOT_APPLICABLE when every detected edition is outside EDITIONS_MEET_GEMINI_NOTES (Business Standard/Plus, Enterprise Standard/Plus).",
   "edge_cases": "INHERIT_FROM_PARENT ignored.",
   "coverage_now": "tests/test_checks/test_cisa_scuba.py::TestMeetNotesSharing. status_rec: PASS, FAIL, MANUAL."
  },
@@ -5410,17 +5410,17 @@
   "gaps": [],
   "suspected_bugs": [],
   "paths": [
-   "none"
+   "admin_logs"
   ],
   "check_id": "GWS.MEET.6.3",
   "func": "check_meet_notes_screenshots",
   "module": "cisa_scuba",
-  "inputs": "None: the Gemini visual-notes setting has no Policy API setting or known admin-log event (SCuBA v1, Manual).",
-  "pass_case": "Never PASS (unscored).",
-  "fail_case": "Never FAIL.",
-  "other_cases": "Always MANUAL (make_review).",
-  "edge_cases": "Unscored by design.",
-  "coverage_now": "tests/test_checks/test_p3_dead_keys.py::TestManualByDesignAreUnscored (GWS.MEET.6.3)."
+  "inputs": "admin_logs: latest CHANGE/CREATE_APPLICATION_SETTING per OU with SETTING_NAME 'MeetGenAiVisualContentSettingsProto policy' (app 'Google Meet GenAI'), NEW_VALUE ONLY_WHEN_RECORDING (flip-confirmed 2026-11-15) via latest_setting_changes().",
+  "pass_case": "Latest value ONLY_WHEN_RECORDING in every OU with an event -> PASS.",
+  "fail_case": "Latest value anything else (e.g. the 'always allow screenshots' member) in any OU -> FAIL listing the OU and value.",
+  "other_cases": "MANUAL (make_review): no event for the setting in the admin-log window. NOT_APPLICABLE when every detected edition is outside EDITIONS_MEET_GEMINI_NOTES (Business Standard/Plus, Enterprise Standard/Plus).",
+  "edge_cases": "INHERIT_FROM_PARENT values ignored. Case-insensitive comparison. Scored since 2026-11-15.",
+  "coverage_now": "tests/test_checks/test_cisa_scuba.py::TestMeetNotes"
  },
  {
   "check_id": "GWS.SITES.1.1",

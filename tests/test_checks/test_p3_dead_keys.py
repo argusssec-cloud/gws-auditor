@@ -104,9 +104,10 @@ class TestManualByDesignAreUnscored:
 
     IDS = ["CIS-3.1.2.2.1", "CIS-3.1.3.7.2", "CIS-4.2.2.1", "CIS-4.2.5.1", "GWS.CHAT.5.2",
            "GWS.CALENDAR.3.2", "GWS.COMMONCONTROLS.16.3", "GWS.COMMONCONTROLS.16.4", "GWS.DRIVEDOCS.5.2",
-           "GWS.MEET.6.3", "ADD-07", "ADD-11", "ADD-13", "ADD-21", "ADD-22", "ADD-24", "ADD-26"]
+           "ADD-07", "ADD-11", "ADD-13", "ADD-21", "ADD-22", "ADD-24", "ADD-26"]
     # GWS.COMMONCONTROLS.3.1 / 3.2 left the list on 2026-11-14 (admin-log SsoPolicyProto events, ScubaGoggles 1.1.0
-    # names) and 7.1 is scored from the Policy API; 16.3, 16.4, DRIVEDOCS.5.2 and MEET.6.3 arrived with SCuBA v1.
+    # names) and 7.1 is scored from the Policy API; 16.3, 16.4 and DRIVEDOCS.5.2 arrived with SCuBA v1; MEET.6.3 left on
+    # 2026-11-15 (flip: MeetGenAiVisualContentSettingsProto policy).
     # ADD-02, ADD-15, ADD-18 and CIS-3.1.1.2.2 left this list on 2026-11-07/08: live flips confirmed their
     # admin-log names (security sandbox setting, Workspace Studio service toggle, Skip password enrollment
     # state, SHARING_INSIDE_DOMAIN_FOR_SECONDARY_CALENDAR) and they are scored. ADD-07 and ADD-13 also read the log but stay unscored: a TLS rule can be proven present,

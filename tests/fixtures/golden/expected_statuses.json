@@ -1,8 +1,8 @@
 {
  "enterprise_essentials_2026-05": {
   "ADD-02": {
-   "confirmed": false,
-   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
+   "confirmed": true,
+   "note": "2026-11-15 flip: AttachmentDeepScanningSettingsProto deep_scanning_enabled false->true logged; scored.",
    "status": "NOT_APPLICABLE"
   },
   "ADD-05": {
@@ -18,8 +18,8 @@
    "status": "MANUAL"
   },
   "ADD-08": {
-   "confirmed": false,
-   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "confirmed": true,
+   "note": "2026-11-15 live: chrome.users.PasswordAlert resolves to WARN_ON_PASSWORD_REUSE on the tenant (PASS live); snapshot caches predate the schema fix, hence WARN here.",
    "status": "WARN"
   },
   "ADD-09": {
@@ -40,11 +40,12 @@
   },
   "ADD-14": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; GeminiSettings/GenAiDefaultSettings unset on the tenant.",
    "status": "FAIL"
   },
   "ADD-15": {
-   "confirmed": false,
-   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
+   "confirmed": true,
+   "note": "2026-11-15 flip: TOGGLE_SERVICE_ENABLED SERVICE_NAME 'Workspace Studio' NEW_VALUE false logged.",
    "status": "NOT_APPLICABLE"
   },
   "ADD-16": {
@@ -217,7 +218,7 @@
   },
   "ADD-59": {
    "confirmed": false,
-   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "note": "2026-11-15: Chrome resolve shape (enum member names, JSON booleans) confirmed live on other schemas; this policy is unset on the tenant.",
    "status": "PASS"
   },
   "ADD-60": {
@@ -249,19 +250,23 @@
    "status": "NOT_APPLICABLE"
   },
   "ADD-67": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "2026-11-15 flip: SafeBrowsingProtectionLevel enum and DisableSafeBrowsingProceedAnyway boolean resolved live after setting both.",
    "status": "FAIL"
   },
   "ADD-68": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; PasswordManager unset on the tenant (default PASS).",
    "status": "PASS"
   },
   "ADD-69": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; DownloadRestrictions unset on the tenant.",
    "status": "FAIL"
   },
   "ADD-70": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; update policies unset on the tenant.",
    "status": "FAIL"
   },
   "CIS-1.1.1": {
@@ -932,7 +937,7 @@
   },
   "GWS.DRIVEDOCS.5.2": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.GEMINI.1.1": {
    "confirmed": false,
@@ -944,15 +949,15 @@
   },
   "GWS.GEMINI.3.1": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.GEMINI.3.2": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.GEMINI.4.1": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.GMAIL.1.1": {
    "confirmed": false,
@@ -1147,16 +1152,19 @@
    "status": "NOT_APPLICABLE"
   },
   "GWS.MEET.6.1": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "note": "2026-11-15 flip: MeetGenAiSmartNotesDocAccessProto manage_smart_notes_doc_access=false logged (CREATE_APPLICATION_SETTING, app 'Google Meet GenAI').",
+   "status": "NOT_APPLICABLE"
   },
   "GWS.MEET.6.2": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "note": "2026-11-15 flip: MeetGenAiSmartNotesDocAccessProto default_smart_notes_doc_access=HOSTS_AND_COHOSTS_ONLY logged; EVERYONE is the only known fail value.",
+   "status": "NOT_APPLICABLE"
   },
   "GWS.MEET.6.3": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "note": "2026-11-15 flip: MeetGenAiVisualContentSettingsProto policy=ONLY_WHEN_RECORDING logged; scored since this flip.",
+   "status": "NOT_APPLICABLE"
   },
   "GWS.SITES.1.1": {
    "confirmed": false,
@@ -1165,8 +1173,8 @@
  },
  "enterprise_standard_2026-09": {
   "ADD-02": {
-   "confirmed": false,
-   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
+   "confirmed": true,
+   "note": "2026-11-15 flip: AttachmentDeepScanningSettingsProto deep_scanning_enabled false->true logged; scored.",
    "status": "MANUAL"
   },
   "ADD-05": {
@@ -1183,8 +1191,8 @@
    "status": "MANUAL"
   },
   "ADD-08": {
-   "confirmed": false,
-   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "confirmed": true,
+   "note": "2026-11-15 live: chrome.users.PasswordAlert resolves to WARN_ON_PASSWORD_REUSE on the tenant (PASS live); snapshot caches predate the schema fix, hence WARN here.",
    "status": "WARN"
   },
   "ADD-09": {
@@ -1206,11 +1214,12 @@
   },
   "ADD-14": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; GeminiSettings/GenAiDefaultSettings unset on the tenant.",
    "status": "FAIL"
   },
   "ADD-15": {
-   "confirmed": false,
-   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
+   "confirmed": true,
+   "note": "2026-11-15 flip: TOGGLE_SERVICE_ENABLED SERVICE_NAME 'Workspace Studio' NEW_VALUE false logged.",
    "status": "MANUAL"
   },
   "ADD-16": {
@@ -1390,7 +1399,7 @@
   },
   "ADD-59": {
    "confirmed": false,
-   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "note": "2026-11-15: Chrome resolve shape (enum member names, JSON booleans) confirmed live on other schemas; this policy is unset on the tenant.",
    "status": "PASS"
   },
   "ADD-60": {
@@ -1423,19 +1432,23 @@
    "status": "PASS"
   },
   "ADD-67": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "2026-11-15 flip: SafeBrowsingProtectionLevel enum and DisableSafeBrowsingProceedAnyway boolean resolved live after setting both.",
    "status": "FAIL"
   },
   "ADD-68": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; PasswordManager unset on the tenant (default PASS).",
    "status": "PASS"
   },
   "ADD-69": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; DownloadRestrictions unset on the tenant.",
    "status": "FAIL"
   },
   "ADD-70": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; update policies unset on the tenant.",
    "status": "FAIL"
   },
   "CIS-1.1.1": {
@@ -2427,15 +2440,18 @@
    "status": "PASS"
   },
   "GWS.MEET.6.1": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "2026-11-15 flip: MeetGenAiSmartNotesDocAccessProto manage_smart_notes_doc_access=false logged (CREATE_APPLICATION_SETTING, app 'Google Meet GenAI').",
    "status": "MANUAL"
   },
   "GWS.MEET.6.2": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "2026-11-15 flip: MeetGenAiSmartNotesDocAccessProto default_smart_notes_doc_access=HOSTS_AND_COHOSTS_ONLY logged; EVERYONE is the only known fail value.",
    "status": "MANUAL"
   },
   "GWS.MEET.6.3": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "2026-11-15 flip: MeetGenAiVisualContentSettingsProto policy=ONLY_WHEN_RECORDING logged; scored since this flip.",
    "status": "MANUAL"
   },
   "GWS.SITES.1.1": {
@@ -2446,8 +2462,8 @@
  },
  "enterprise_starter_2026-04": {
   "ADD-02": {
-   "confirmed": false,
-   "note": "2026-11-07: admin-log inference added (ScubaGoggles setting name, flip pending); scored.",
+   "confirmed": true,
+   "note": "2026-11-15 flip: AttachmentDeepScanningSettingsProto deep_scanning_enabled false->true logged; scored.",
    "status": "NOT_APPLICABLE"
   },
   "ADD-05": {
@@ -2463,8 +2479,8 @@
    "status": "MANUAL"
   },
   "ADD-08": {
-   "confirmed": false,
-   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "confirmed": true,
+   "note": "2026-11-15 live: chrome.users.PasswordAlert resolves to WARN_ON_PASSWORD_REUSE on the tenant (PASS live); snapshot caches predate the schema fix, hence WARN here.",
    "status": "WARN"
   },
   "ADD-09": {
@@ -2485,11 +2501,12 @@
   },
   "ADD-14": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; GeminiSettings/GenAiDefaultSettings unset on the tenant.",
    "status": "FAIL"
   },
   "ADD-15": {
-   "confirmed": false,
-   "note": "2026-11-07: TOGGLE_SERVICE_ENABLED inference added (SERVICE_NAME assumed 'Workspace Studio', flip pending).",
+   "confirmed": true,
+   "note": "2026-11-15 flip: TOGGLE_SERVICE_ENABLED SERVICE_NAME 'Workspace Studio' NEW_VALUE false logged.",
    "status": "NOT_APPLICABLE"
   },
   "ADD-16": {
@@ -2662,7 +2679,7 @@
   },
   "ADD-59": {
    "confirmed": false,
-   "note": "2026-11-07: unset Chrome policy now reads as the documented default (PASS) when chrome_policies were collected without error; snapshots without chrome_policies stay as before. Status MANUAL -> PASS on 2026-11-07 because the snapshot's chrome_policies is an empty dict with no Chrome API error, i.e. the policies were unset: Chrome's/Google's documented default applies.",
+   "note": "2026-11-15: Chrome resolve shape (enum member names, JSON booleans) confirmed live on other schemas; this policy is unset on the tenant.",
    "status": "PASS"
   },
   "ADD-60": {
@@ -2694,19 +2711,23 @@
    "status": "NOT_APPLICABLE"
   },
   "ADD-67": {
-   "confirmed": false,
+   "confirmed": true,
+   "note": "2026-11-15 flip: SafeBrowsingProtectionLevel enum and DisableSafeBrowsingProceedAnyway boolean resolved live after setting both.",
    "status": "FAIL"
   },
   "ADD-68": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; PasswordManager unset on the tenant (default PASS).",
    "status": "PASS"
   },
   "ADD-69": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; DownloadRestrictions unset on the tenant.",
    "status": "FAIL"
   },
   "ADD-70": {
    "confirmed": false,
+   "note": "2026-11-15: Chrome resolve shape confirmed live on other schemas; update policies unset on the tenant.",
    "status": "FAIL"
   },
   "CIS-1.1.1": {
@@ -3377,7 +3398,7 @@
   },
   "GWS.DRIVEDOCS.5.2": {
    "confirmed": false,
-   "status": "MANUAL"
+   "status": "NOT_APPLICABLE"
   },
   "GWS.GEMINI.1.1": {
    "confirmed": false,
@@ -3592,16 +3613,19 @@
    "status": "NOT_APPLICABLE"
   },
   "GWS.MEET.6.1": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "note": "2026-11-15 flip: MeetGenAiSmartNotesDocAccessProto manage_smart_notes_doc_access=false logged (CREATE_APPLICATION_SETTING, app 'Google Meet GenAI').",
+   "status": "NOT_APPLICABLE"
   },
   "GWS.MEET.6.2": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "note": "2026-11-15 flip: MeetGenAiSmartNotesDocAccessProto default_smart_notes_doc_access=HOSTS_AND_COHOSTS_ONLY logged; EVERYONE is the only known fail value.",
+   "status": "NOT_APPLICABLE"
   },
   "GWS.MEET.6.3": {
-   "confirmed": false,
-   "status": "MANUAL"
+   "confirmed": true,
+   "note": "2026-11-15 flip: MeetGenAiVisualContentSettingsProto policy=ONLY_WHEN_RECORDING logged; scored since this flip.",
+   "status": "NOT_APPLICABLE"
   },
   "GWS.SITES.1.1": {
    "confirmed": false,

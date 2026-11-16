@@ -12,7 +12,7 @@ import re
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
                    format_ou_values_readable, latest_setting_changes, field_value, ou_verdict)
 from ..constants import (
-    EDITIONS_CHAT_REPORTING, EDITIONS_SHARED_DRIVE_SETTINGS,
+    EDITIONS_CHAT_REPORTING, EDITIONS_DRIVE_RANSOMWARE, EDITIONS_SHARED_DRIVE_SETTINGS,
 )
 from ..models import CheckResult, Status
 
@@ -1262,6 +1262,7 @@ _RANSOMWARE_REMED = (
     source="CISA",
     section="Drive and Docs",
     remediation=_RANSOMWARE_REMED,
+    requires_license=EDITIONS_DRIVE_RANSOMWARE,
 )
 def check_drive_ransomware_monitoring(data: dict) -> CheckResult:
     """SCuBA v1 5.2 (SHALL): no API exposes the Drive ransomware-monitoring setting."""

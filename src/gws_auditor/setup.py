@@ -71,6 +71,12 @@ class SetupWizard:
         )
         console.print()
 
+        if self.non_interactive and not self.subject:
+            console.print("[bold red]Setup failed:[/bold red] --non-interactive requires --subject "
+                          "(the super admin the service account impersonates); --project is needed too "
+                          "unless --existing-sa-key names the project.")
+            return 1
+
         try:
             self._step_authenticate()
             self._step_select_project()
@@ -624,6 +630,10 @@ class SetupWizard:
             )
 
         config_path = Path("config.yaml")
+        if config_path.exists() and self.non_interactive:
+            # Never replace a config the user already has without being asked.
+            console.print(f"  [dim]Keeping existing {config_path} (delete it to regenerate)[/dim]")
+            return
         if config_path.exists() and not self.non_interactive:
             if not Confirm.ask(
                 f"  [yellow]{config_path} already exists. Overwrite?[/yellow]",

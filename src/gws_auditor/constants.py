@@ -847,6 +847,17 @@ EDITIONS_ASSURED_CONTROLS = ("assured_controls", "assured_controls_plus")
 # Conditions on admin role assignments (security / non-security groups): Workspace Updates 2024-12-12
 # "Provision Groups admin role for specific group types" lists Enterprise Standard and Plus, Education Standard and Plus.
 EDITIONS_ADMIN_ROLE_CONDITIONS = _ENTERPRISE + _EDU_STD_PLUS
+# Gemini meeting notes ("Let Google Meet AI take notes for my users", read 2026-11-15):
+# "Supported editions for this feature: Business Standard and Business Plus; Enterprise Standard and Enterprise Plus."
+EDITIONS_MEET_GEMINI_NOTES = ("business_standard", "business_plus") + _ENTERPRISE
+# Drive ransomware detection ("Detect ransomware and recover files in Drive for desktop", read 2026-11-15):
+# Frontline Standard and Plus; Business Standard and Plus; Enterprise Standard and Plus; Education Standard and Plus.
+EDITIONS_DRIVE_RANSOMWARE = _FRONTLINE_STD_PLUS + ("business_standard", "business_plus") + _ENTERPRISE + _EDU_STD_PLUS
+# Gemini conversation history ("Manage Gemini in Workspace conversation history settings", read 2026-11-15):
+# Business Starter, Standard and Plus; Enterprise Starter, Standard and Plus; Education Plus, Teaching & Learning add-on,
+# Google AI Pro for Education add-on (no SKU key); Frontline Plus.
+EDITIONS_GEMINI_HISTORY = (("business_starter", "business_standard", "business_plus", "enterprise_starter") + _ENTERPRISE
+                           + ("education_plus", "education_teaching_&_learning", "frontline_plus"))
 
 # Human-readable license names
 LICENSE_TIER_NAMES = {
