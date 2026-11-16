@@ -10,13 +10,16 @@ import os
 import sys
 
 _CLOUD_URL = "https://argussec.io/pricing.html"
+_MARKETPLACE_URL = "https://workspace.google.com/marketplace/app/argussec/133488094837"
 
 _CLOUD_INFO_MESSAGE = (
     "\033[36m\u2601 Argus Cloud\033[0m \u2014 "
     "Automated scans, hosted dashboard, regression alerts & team sharing.\n"
     "  Open source for individuals. Cloud-hosted for teams.\n"
     "  Learn more: \033[4m{url}\033[0m\n"
-).format(url=_CLOUD_URL)
+    "  Now on the Google Workspace Marketplace (Gmail, Drive, Sheets, Chat): "
+    "\033[4m{marketplace}\033[0m\n"
+).format(url=_CLOUD_URL, marketplace=_MARKETPLACE_URL)
 
 
 def show_cloud_info(*, quiet: bool = False, no_cloud_info: bool = False) -> None:

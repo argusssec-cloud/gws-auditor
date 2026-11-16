@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from gws_auditor.cloud_info import _CLOUD_URL, show_cloud_info
+from gws_auditor.cloud_info import _CLOUD_URL, _MARKETPLACE_URL, show_cloud_info
 
 
 class TestShowCloudInfo:
@@ -22,6 +22,11 @@ class TestShowCloudInfo:
     def test_message_contains_url(self):
         from gws_auditor.cloud_info import _CLOUD_INFO_MESSAGE
         assert _CLOUD_URL in _CLOUD_INFO_MESSAGE
+
+    def test_message_contains_marketplace_url(self):
+        from gws_auditor.cloud_info import _CLOUD_INFO_MESSAGE
+        assert _MARKETPLACE_URL in _CLOUD_INFO_MESSAGE
+        assert "Marketplace" in _CLOUD_INFO_MESSAGE
 
     def test_message_contains_brand(self):
         from gws_auditor.cloud_info import _CLOUD_INFO_MESSAGE
