@@ -170,7 +170,7 @@ class TestChromePolicyClient:
         mock_service.customers().policies().resolve.side_effect = mock_resolve
 
         result = client.get_chrome_policies("my_customer")
-        assert result == {}
+        assert result == {"_ou_policies": {"/": {"values": {}, "explicit": []}}}
 
     def test_get_chrome_policies_partial_error(self):
         """One schema succeeds, another fails — partial results."""
@@ -343,6 +343,12 @@ class TestChromePolicyShapes:
         client = self._client_with({"chrome.users.BoundSessionCredentialsEnabled": {"boundSessionCredentialsEnabled": "UNSET"}})
         result = client.get_chrome_policies("my_customer")
         assert result["bound_session_credentials"] == "UNSET" and "dbsc_enabled" not in result
+
+    def test_root_row_is_mirrored_under_ou_policies(self):
+        client = self._client_with({"chrome.users.PasswordManager": {"passwordManagerEnabled": "FALSE"}})
+        result = client.get_chrome_policies("my_customer")
+        assert result["_ou_policies"] == {"/": {"values": {"password_manager_enabled": "FALSE"},
+                                                "explicit": ["password_manager_enabled"]}}
 
     def test_schema_not_found_is_recorded_as_an_error(self):
         from unittest.mock import MagicMock

@@ -1035,6 +1035,104 @@ def chrome_policy_unset(data: dict, schema: str) -> bool:
     return not has_api_error(data, "get_chrome_policies", f"resolve_policy({schema})")
 
 
+def gmail_disabled_rule_ids(gmail: dict) -> set[str]:
+    """Rule ids that ``gmail.rule_states`` marks ``enabled: false`` in any OU.
+
+    Gmail rule-backed settings (spam overrides, compliance, routing) return the rule and its flags
+    even when the admin switched the rule off; the on/off state lives in ``ruleStates[]`` (ruleId,
+    enabled; live 2026-11-15). Only an explicit ``false`` disables a rule: a rule missing from the
+    list, or an uncollected ``rule_states`` setting, leaves it counted.
+    """
+    disabled: set[str] = set()
+    for entry in get_ou_values(gmail, "rule_states") if isinstance(gmail, dict) else []:
+        for rs in (field_value(entry, "ruleStates") or []):
+            if isinstance(rs, dict) and rs.get("enabled") is False and rs.get("ruleId") is not None:
+                disabled.add(str(rs["ruleId"]))
+    return disabled
+
+
+def chrome_ou_rows(data: dict, keys: tuple[str, ...]) -> list[tuple[str, dict]]:
+    """``[(org_unit_path, effective values)]`` for the root OU and every OU that sets one of *keys*.
+
+    The Chrome Policy client resolves each OU's *effective* values (``chrome_policies["_ou_policies"]``,
+    inherited values included) and records which keys the OU sets itself (``explicit``). A check
+    judges each row on its own; an OU that inherits every key it reads follows its parent's
+    verdict and is not repeated. Caches written before per-OU resolution (1.6.0) have no
+    ``_ou_policies`` and yield the root row only.
+    """
+    chrome = data.get("chrome_policies")
+    if not isinstance(chrome, dict):
+        return [("/", {})]
+    root = {k: v for k, v in chrome.items() if k != "_ou_policies"}
+    rows: list[tuple[str, dict]] = [("/", root)]
+    per_ou = chrome.get("_ou_policies")
+    if not isinstance(per_ou, dict):
+        return rows
+    wanted = set(keys)
+    for path in sorted(per_ou):
+        entry = per_ou[path]
+        if path == "/" or not isinstance(entry, dict):
+            continue
+        if wanted.intersection(entry.get("explicit") or ()):
+            rows.append((path, dict(entry.get("values") or {})))
+    return rows
+
+
+def chrome_ou_verdict(data: dict, keys: tuple[str, ...], judge: Callable, *, common: dict,
+                      expected_value, remediation: str, unknown_details: str) -> CheckResult:
+    """Run ``judge(values) -> (verdict, text, actual)`` over :func:`chrome_ou_rows` and combine.
+
+    ``verdict`` is ``"pass"``, ``"fail"``, ``"warn"`` or ``"unknown"`` (not collected / resolve
+    failed). With the root row alone the result reads exactly as a single-OU check. With more
+    rows: any failing OU -> FAIL naming each failing OU and its finding; else any warning OU ->
+    WARN; else any undetermined OU -> MANUAL; else PASS listing every judged OU.
+    """
+    rows = chrome_ou_rows(data, keys)
+    outcomes = []
+    for ou, values in rows:
+        try:
+            verdict, text, actual = judge(values)
+        except Exception as exc:  # a malformed value is unknown, not a verdict
+            verdict, text, actual = "unknown", f"unreadable value ({exc})", None
+        outcomes.append((ou, verdict, text, actual))
+
+    if len(outcomes) == 1:
+        _ou, verdict, text, actual = outcomes[0]
+        if verdict == "fail":
+            return make_fail(**common, details=text, actual_value=actual, expected_value=expected_value,
+                             remediation=remediation)
+        if verdict == "warn":
+            return make_warn(**common, details=text, actual_value=actual, expected_value=expected_value,
+                             remediation=remediation)
+        if verdict == "unknown":
+            return make_review(**common, details=unknown_details, remediation=remediation)
+        return make_pass(**common, details=text, actual_value=actual, expected_value=expected_value)
+
+    by_verdict: dict[str, list] = {"pass": [], "fail": [], "warn": [], "unknown": []}
+    for outcome in outcomes:
+        by_verdict.setdefault(outcome[1], []).append(outcome)
+    actual_all = {ou: actual for ou, _v, _t, actual in outcomes}
+    unknown_note = ""
+    if by_verdict["unknown"]:
+        unknown_note = " Undetermined in OU(s): " + ", ".join(ou for ou, *_ in by_verdict["unknown"]) + "."
+
+    def _listing(items):
+        return "; ".join(f"{ou}: {text}" for ou, _v, text, _a in items)
+
+    if by_verdict["fail"]:
+        return make_fail(**common, details=f"{len(by_verdict['fail'])} of {len(outcomes)} judged OU(s) non-compliant. "
+                         + _listing(by_verdict["fail"]) + "." + unknown_note,
+                         actual_value=actual_all, expected_value=expected_value, remediation=remediation)
+    if by_verdict["warn"]:
+        return make_warn(**common, details=f"{len(by_verdict['warn'])} of {len(outcomes)} judged OU(s) need attention. "
+                         + _listing(by_verdict["warn"]) + "." + unknown_note,
+                         actual_value=actual_all, expected_value=expected_value, remediation=remediation)
+    if by_verdict["unknown"]:
+        return make_review(**common, details=unknown_details + unknown_note, remediation=remediation)
+    return make_pass(**common, details=f"All {len(outcomes)} judged OU(s) compliant. " + _listing(outcomes) + ".",
+                     actual_value=actual_all, expected_value=expected_value)
+
+
 def latest_service_toggles(data: dict, service_name: str) -> dict[str, str]:
     """``{org_unit: latest NEW_VALUE}`` of ``TOGGLE_SERVICE_ENABLED`` events for *service_name*.
 

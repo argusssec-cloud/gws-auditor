@@ -9,7 +9,7 @@ CIS Google Workspace Benchmark v1.4.1 - Gmail controls.
 
 from .base import (
     check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
-    result_from_setting_changes, field_value, ou_verdict,
+    result_from_setting_changes, field_value, ou_verdict, gmail_disabled_rule_ids,
 )
 from ..models import CheckResult, Status
 
@@ -1655,8 +1655,43 @@ def check_gmail_predelivery_scanning(data: dict) -> CheckResult:
 )
 def check_gmail_internal_spam_filter(data: dict) -> CheckResult:
     """Spam filtering should not be bypassed for messages from internal senders."""
+    _ID = "CIS-3.1.3.6.2"
+    _TITLE = "Ensure spam filters are not bypassed for internal senders"
+    _L, _S, _SEC = "L1", "CIS", "Gmail"
+    _REMED = (
+        "Admin console > Apps > Google Workspace > Gmail > Spam, "
+        "Phishing and Malware. Uncheck 'Bypass spam filters for messages "
+        "from internal senders'. https://knowledge.workspace.google.com/admin/gmail/manage-gmail-settings-for-your-users"
+    )
     policies = data.get("policies", {})
     gmail = policies.get("gmail", {})
+
+    # OU-aware path. Custom spam filters are set per OU (child OUs inherit, an override replaces the
+    # parent's rules), so every OU that sets gmail.spam_override_lists is judged on its own rules;
+    # the flat mapped value below only ever held the root OU's. A rule switched off in
+    # gmail.rule_states bypasses nothing and is ignored.
+    ou_values = get_ou_values(gmail, "spam_override_lists")
+    if ou_values:
+        disabled = gmail_disabled_rule_ids(gmail)
+
+        def _judge(entry: dict):
+            rules = field_value(entry, "spamOverride")
+            if rules is None:
+                return None
+            bypassing = [r for r in rules if isinstance(r, dict) and r.get("bypassInternalSenders") is True
+                         and str(r.get("ruleId")) not in disabled]
+            if bypassing:
+                return False, ", ".join(str(r.get("description") or r.get("ruleId") or "rule") for r in bypassing)
+            return True, False
+
+        return ou_verdict(
+            ou_values, _judge, check_id=_ID, title=_TITLE, level=_L, source=_S, section=_SEC,
+            fail_text="have a spam override rule that bypasses spam filters for internal senders",
+            pass_text="do not bypass spam filters for internal senders",
+            expected_value="Disabled for all OUs", remediation=_REMED,
+        )
+
+    # Fallback: mapped root-level value (caches written before the per-OU path).
     spam = gmail.get("spam_settings", {})
     bypass_internal = spam.get("bypass_spam_for_internal_senders", None)
 

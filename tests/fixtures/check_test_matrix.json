@@ -94,25 +94,20 @@
   "check_id": "ADD-08",
   "func": "check_password_alert",
   "module": "additional",
-  "inputs": "policies.security.password_alert {deployed: bool, trigger: chrome.users.PasswordAlert passwordProtectionWarningTrigger enum member}, derived by provider._map_chrome_policies from chrome_policies.password_protection_warning_trigger; chrome_policies + api_errors for chrome_policy_unset('chrome.users.PasswordAlert').",
+  "inputs": "chrome_policies.password_protection_warning_trigger (chrome.users.PasswordAlert passwordProtectionWarningTrigger enum member) judged per OU via chrome_ou_rows: root values plus chrome_policies._ou_policies[<path>].values for every OU whose explicit list names the key; the provider's legacy mapping policies.security.password_alert {deployed, trigger} is read only when the raw root key is absent; api_errors for chrome_policy_unset('chrome.users.PasswordAlert').",
   "paths": [
-   "policies.security.password_alert",
    "chrome_policies",
+   "chrome_policies._ou_policies",
+   "policies.security.password_alert",
    "api_errors"
   ],
-  "pass_case": "deployed True with trigger PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PASSWORD_REUSE (or any non-phishing trigger) -> PASS.",
-  "fail_case": "deployed False (trigger NO_WARNING) -> FAIL.",
-  "other_cases": "WARN: deployed True with trigger WARN_ON_PHISHING_REUSE (phishing pages only). WARN: password_alert absent, chrome_policies dict present, no get_chrome_policies / resolve_policy(chrome.users.PasswordAlert) error -> Google's default WARN_ON_PHISHING_REUSE, details 'Chrome's default'. MANUAL (make_review): chrome_policies missing or a resolve error recorded.",
-  "edge_cases": "deployed True without trigger -> PASS with label of the raw value. Live schema name is chrome.users.PasswordAlert (chrome.users.PasswordProtectionWarningTrigger does not exist, 404 on 2026-11-15).",
-  "coverage_now": "tests/test_checks/test_additional.py::TestPasswordAlert (PASS with deployed True, MANUAL with deployed None). Statuses: PASS, MANUAL. FAIL never exercised; no provider-mapping test for trigger 0.",
-  "gaps": [
-   "FAIL test: password_alert={'deployed':False,'trigger':0} -> FAIL.",
-   "Provider test: _map_chrome_policies({'password_protection_warning_trigger':0}) -> deployed False; 2 -> deployed True, label 'Phishing and password reuse warning'.",
-   "Robustness test: trigger provided as enum string name must not raise in _map_chrome_policies (verify real Chrome Policy API shape)."
-  ],
-  "suspected_bugs": [
-   "src/gws_auditor/provider.py:2750 `trigger > 0` assumes an integer; Chrome Policy API enum values are commonly returned as string names, which would raise TypeError in normalize_data (unverified offline — confirm against a live resolve response)."
-  ]
+  "pass_case": "trigger PASSWORD_PROTECTION_WARNING_TRIGGER_ENUM_WARN_ON_PASSWORD_REUSE (or any non-phishing, non-off trigger) in every judged OU -> PASS.",
+  "fail_case": "trigger NO_WARNING (legacy deployed False) in the root or in an OU that sets it -> FAIL naming the OU.",
+  "other_cases": "WARN: trigger WARN_ON_PHISHING_REUSE (phishing pages only). WARN: key absent, chrome_policies dict present, no get_chrome_policies / resolve_policy(chrome.users.PasswordAlert) error -> Google's default WARN_ON_PHISHING_REUSE, details 'Chrome's default'. MANUAL (make_review): chrome_policies missing or a resolve error recorded (a per-OU error is recorded as resolve_policy(<schema>)[<path>] and makes the schema unknown everywhere).",
+  "edge_cases": "legacy deployed True without trigger -> treated as WARN_ON_PASSWORD_REUSE (PASS). Live schema name is chrome.users.PasswordAlert (chrome.users.PasswordProtectionWarningTrigger does not exist, 404 on 2026-11-15). An OU that inherits the policy is not listed; a root-only cache (no _ou_policies) reads exactly as before.",
+  "coverage_now": "tests/test_checks/test_additional.py::TestPasswordAlert, TestPasswordAlertDefault (PASS, WARN default, WARN phishing, FAIL, MANUAL); tests/test_checks/test_p1_coverage.py::TestPasswordAlert (end-to-end from chrome_policies through normalize_data); tests/test_checks/test_chrome.py::TestPerOrgUnit (child OU set to NO_WARNING -> FAIL naming /Guests).",
+  "gaps": [],
+  "suspected_bugs": []
  },
  {
   "check_id": "ADD-09",
@@ -208,26 +203,20 @@
   "check_id": "ADD-14",
   "func": "check_gemini_chrome",
   "module": "additional",
-  "inputs": "policies.gemini.chrome.enabled (bool) derived by the provider from chrome_policies.gemini_in_chrome_disabled, which the client sets from chrome.users.GeminiSettings geminiSettings (GEMINI_SETTINGS_ENUM_ENABLED/DISABLED) or, when UNSET/absent, chrome.users.GenAiDefaultSettings genAiDefaultSettings == GEN_AI_DEFAULT_SETTINGS_ENUM_DISABLED; chrome_policies + api_errors for the default/unknown split.",
+  "inputs": "chrome_policies.gemini_in_chrome_disabled (bool) judged per OU via chrome_ou_rows (root values plus _ou_policies[<path>].values for OUs that set gemini_settings or gen_ai_default_settings); the client derives it from chrome.users.GeminiSettings geminiSettings (GEMINI_SETTINGS_ENUM_ENABLED/DISABLED) or, when UNSET/absent, chrome.users.GenAiDefaultSettings genAiDefaultSettings == GEN_AI_DEFAULT_SETTINGS_ENUM_DISABLED; the provider's legacy mapping policies.gemini.chrome.enabled is read only when the raw root key is absent; chrome_policies + api_errors for the default/unknown split.",
   "paths": [
-   "policies.gemini.chrome.enabled",
    "chrome_policies",
+   "chrome_policies._ou_policies",
+   "policies.gemini.chrome.enabled",
    "api_errors"
   ],
-  "pass_case": "policies.gemini.chrome.enabled False -> PASS.",
-  "fail_case": "enabled True -> FAIL. enabled absent with chrome_policies {} and no Chrome errors -> FAIL (Chrome default allows Gemini, details 'Chrome's default').",
+  "pass_case": "gemini_in_chrome_disabled True (legacy enabled False) in every judged OU -> PASS.",
+  "fail_case": "gemini_in_chrome_disabled False (legacy enabled True) in the root or in an OU that sets it -> FAIL naming the OU. Key absent with chrome_policies {} and no Chrome errors -> FAIL (Chrome default allows Gemini, details 'Chrome's default').",
   "other_cases": "MANUAL (make_review): chrome_policies missing, or a get_chrome_policies / resolve_policy(chrome.users.GeminiSettings|GenAiDefaultSettings) error recorded.",
-  "edge_cases": "policies.gemini missing entirely with clean chrome collection -> FAIL by default. enabled None treated as absent.",
-  "coverage_now": "tests/test_checks/test_additional.py::TestGeminiChrome: PASS (disabled), FAIL (enabled), FAIL (not configured), FAIL (None), FAIL (missing gemini key). Statuses: PASS, FAIL. tests/test_api/test_chrome_policy.py asserts int 0/1 shape.",
-  "gaps": [
-   "Test api_errors containing get_chrome_policies with gemini absent -> expect MANUAL/ERROR rather than FAIL.",
-   "Provider round-trip test: chrome_policies={} -> check FAIL vs chrome_policies={'gemini_in_chrome_disabled':True} -> PASS.",
-   "Shape test: geminiSetting delivered as string enum must map correctly (verify real API)."
-  ],
-  "suspected_bugs": [
-   "src/gws_auditor/checks/additional.py:738-751 enabled None (Chrome Policy API not available/404/error) returns FAIL; this is 'unknown', should be MANUAL (make_review) or ERROR when api_errors has get_chrome_policies.",
-   "src/gws_auditor/api/chrome_policy.py:200 `gemini_setting == 1` assumes integer enum; if the Chrome Policy API returns the enum name string, disabled tenants are reported as enabled (false FAIL). Verify against live response."
-  ]
+  "edge_cases": "policies.gemini missing entirely with clean chrome collection -> FAIL by default. legacy enabled None treated as absent. A root-only cache (no _ou_policies) reads exactly as before.",
+  "coverage_now": "tests/test_checks/test_additional.py::TestGeminiChrome: PASS (disabled), FAIL (enabled), FAIL (not configured), FAIL (None), FAIL (missing gemini key), MANUAL (not collected / resolve error). tests/test_api/test_chrome_policy.py::TestChromePolicyShapes (enum names, GenAiDefaultSettings fallback). tests/test_checks/test_chrome.py::TestPerOrgUnit (child OU allows Gemini -> FAIL naming /Guests).",
+  "gaps": [],
+  "suspected_bugs": []
  },
  {
   "check_id": "ADD-15",
@@ -1149,19 +1138,18 @@
   "check_id": "ADD-59",
   "func": "check_dbsc",
   "module": "security_access",
-  "inputs": "chrome_policies.dbsc_enabled (bool) derived by the client from chrome.users.BoundSessionCredentialsEnabled boundSessionCredentialsEnabled 'TRUE'/'FALSE' (absent when 'UNSET'); api_errors for chrome_policy_unset.",
+  "inputs": "chrome_policies.dbsc_enabled (bool) derived by the client from chrome.users.BoundSessionCredentialsEnabled boundSessionCredentialsEnabled 'TRUE'/'FALSE' (absent when 'UNSET'), judged per OU via chrome_ou_rows (root values plus _ou_policies[<path>].values for OUs that set the policy themselves); api_errors for chrome_policy_unset.",
   "paths": [
    "chrome_policies.dbsc_enabled",
+   "chrome_policies._ou_policies",
    "api_errors"
   ],
-  "pass_case": "dbsc_enabled True -> PASS. dbsc_enabled absent, chrome_policies dict present, no Chrome error -> PASS (Google default: DBSC on for Workspace accounts).",
-  "fail_case": "dbsc_enabled False -> FAIL.",
+  "pass_case": "dbsc_enabled True in every judged OU -> PASS. dbsc_enabled absent, chrome_policies dict present, no Chrome error -> PASS (Google default: DBSC on for Workspace accounts).",
+  "fail_case": "dbsc_enabled False in the root or in an OU that sets it -> FAIL naming the OU.",
   "other_cases": "MANUAL (make_review): chrome_policies missing or get_chrome_policies / resolve_policy(chrome.users.BoundSessionCredentialsEnabled) error.",
-  "edge_cases": "'UNSET' enum never reaches the check (client leaves the key absent).",
-  "coverage_now": "tests/test_checks/test_security_access.py::TestDbsc, TestDbscDefault; tests/test_checks/test_security.py::TestDbsc. status_rec: PASS, FAIL, MANUAL.",
-  "gaps": [
-   "chrome_policies None (collection failed) -> graceful MANUAL, currently ERROR"
-  ],
+  "edge_cases": "'UNSET' enum never reaches the check (client leaves the key absent). A root-only cache (no _ou_policies) reads exactly as before.",
+  "coverage_now": "tests/test_checks/test_security_access.py::TestDbsc, TestDbscDefault; tests/test_checks/test_security.py::TestDbsc; tests/test_checks/test_chrome.py::TestPerOrgUnit (child OU FALSE -> FAIL naming /Guests). status_rec: PASS, FAIL, MANUAL.",
+  "gaps": [],
   "suspected_bugs": []
  },
  {
@@ -2253,28 +2241,19 @@
   "check_id": "CIS-3.1.3.6.2",
   "func": "check_gmail_internal_spam_filter",
   "module": "apps_gmail",
-  "inputs": "ONLY legacy gmail.spam_settings.bypass_spam_for_internal_senders. Provider (provider.py:1757-1762) derives it from the root-precedence gmail.spam_override_lists.spamOverride[] (any rule with bypassInternalSenders True -> True; present-but-empty list -> False); absent when no spam_override_lists policy. No per-OU path. requires_license='enterprise_plus'.",
+  "inputs": "Per OU (2026-11-16): get_ou_values(gmail, 'spam_override_lists') -> spamOverride[] rules; a rule with bypassInternalSenders True that gmail.rule_states does not mark enabled False fails its OU (gmail_disabled_rule_ids). Legacy fallback: gmail.spam_settings.bypass_spam_for_internal_senders (provider, root OU only) for caches without _ou_policies. No licence gate (spam settings exist in every edition).",
   "paths": [
+   "ou_policy",
    "legacy_fallback",
-   "provider_mapping",
-   "license_gate"
+   "provider_mapping"
   ],
-  "pass_case": "policies.gmail={'spam_settings':{'bypass_spam_for_internal_senders':False}} -> PASS; end-to-end: raw policies.gmail=[{'setting':{'type':'settings/gmail.spam_override_lists','value':{'spamOverride':[{'ruleId':'r1','bypassInternalSenders':False}]}},'orgUnit':'/'}] through normalize_data -> PASS; spamOverride [] -> PASS.",
-  "fail_case": "{'spam_settings':{'bypass_spam_for_internal_senders':True}} -> FAIL; raw spamOverride [{'ruleId':'r1','bypassInternalSenders':True}] via normalize_data -> FAIL.",
-  "other_cases": "MANUAL (make_review): key absent (no spam_override_lists policy). NOT_APPLICABLE below Enterprise Plus.",
-  "edge_cases": "Bypass rule scoped to a child OU: flat mapping keeps the root-precedence entry only -> child rule invisible -> false PASS. Rule disabled via gmail.rule_states (ruleStates[].enabled False) still counted -> false FAIL. DEFAULT/SYSTEM entries included in flat mapping. Cached value not overwritten (setdefault). 'true' string value -> FAIL branch.",
-  "coverage_now": "NONE: no test references check_gmail_internal_spam_filter; status_rec has no entry.",
-  "gaps": [
-   "direct PASS/FAIL/MANUAL on spam_settings key",
-   "end-to-end normalize_data from spamOverride rules",
-   "empty spamOverride -> PASS",
-   "child-OU bypass rule -> expect FAIL (currently PASS)",
-   "disabled rule via rule_states -> expect PASS",
-   "N/A on Business Standard"
-  ],
-  "suspected_bugs": [
-   "apps_gmail.py:1728-1734 + provider.py:1757-1762: only the root-precedence spam_override_lists entry is evaluated; a bypassInternalSenders rule on a child OU is missed (false PASS); rule_states ignored (disabled rule -> false FAIL)"
-  ],
+  "pass_case": "_ou_policies: '/' spamOverride [rule bypassSelectedSenders True] + '/Engineering' spamOverride [] -> PASS 'All 2 OU(s) do not bypass ...'; spamOverride absent -> documented default [] -> PASS; legacy spam_settings.bypass_spam_for_internal_senders False -> PASS.",
+  "fail_case": "'/' [] + '/Engineering' [rule bypassInternalSenders True] -> FAIL naming /Engineering only, actual_value shows the rule description; '/' bypass rule + '/Guests' clean override -> FAIL naming '/' only; legacy True -> FAIL.",
+  "other_cases": "MANUAL (make_review): no spam_override_lists policy and no legacy key.",
+  "edge_cases": "Rule switched off in gmail.rule_states (enabled False) is ignored in both CIS-3.1.3.6.2 and GWS.GMAIL.18.3; enabled True or rule missing from ruleStates keeps it counted. Inheriting child OU (no policy of its own) is not listed, mirroring the Policy API. 'true' string legacy value -> FAIL branch.",
+  "coverage_now": "tests/test_checks/test_p1_coverage.py::TestInternalSpamFilterBypass (legacy PASS/FAIL/MANUAL, end-to-end normalize_data) and ::TestInternalSpamFilterBypassPerOU (child override FAIL named, root-only FAIL, all clean PASS, rule_states off/on, legacy cache, 18.3 fallback key).",
+  "gaps": [],
+  "suspected_bugs": [],
   "license_gate": "none: available in all editions; before 2026-11-10: enterprise_plus. Source: article has no editions line (see analysis-license-gates.md)"
  },
  {
@@ -4880,24 +4859,21 @@
   "check_id": "GWS.GMAIL.18.3",
   "func": "check_spam_bypass_internal",
   "module": "cisa_services",
-  "inputs": "gmail.spam_override_lists (admin_only) spamOverride[] bypassInternalSenders True (or heuristic key containing 'all'+'bypass'); legacy bypassSpamFiltersForInternal; fallback gmail.spam_settings.bypass_spam_filters_for_internal (provider sets a DIFFERENT key bypass_spam_for_internal_senders -> fallback never resolves).",
+  "inputs": "gmail.spam_override_lists per OU: spamOverride[] rule with bypassInternalSenders True or hideWarningBannerForAll True (_rule_bypasses_all_senders), skipping rules gmail.rule_states marks enabled False (2026-11-16); legacy bypassSpamFiltersForInternal field; fallback gmail.spam_settings.bypass_spam_for_internal_senders (the provider's key; the older bypass_spam_filters_for_internal is still read).",
   "paths": [
    "ou_policy",
-   "legacy_fallback(broken key)"
+   "legacy_fallback"
   ],
   "pass_case": "spamOverride rule with bypassInternalSenders False (bypassSelectedSenders True allowed) -> PASS.",
   "fail_case": "spamOverride rule {'bypassInternalSenders':True} on any OU incl. /External -> FAIL.",
   "other_cases": "DEFAULT-only -> ERROR; no data -> ERROR.",
-  "edge_cases": "Legacy cache: provider writes bypass_spam_for_internal_senders but check reads bypass_spam_filters_for_internal -> ERROR instead of verdict; _rule_bypasses_all_senders heuristic may match unknown future keys; exception OUs not exempted.",
-  "coverage_now": "test_policy_api_real_shapes.py::test_internal_bypass_fails_18_3 + selected-only PASS, test_cisa_services.py (fallback key, invented OU). status_rec: PASS/FAIL.",
+  "edge_cases": "Rule switched off in rule_states ignored; _rule_bypasses_all_senders heuristic may match unknown future keys; exception OUs not exempted.",
+  "coverage_now": "test_policy_api_real_shapes.py::test_internal_bypass_fails_18_3 + selected-only PASS, test_cisa_services.py (fallback key, invented OU). status_rec: PASS/FAIL. test_p1_coverage.py::TestInternalSpamFilterBypassPerOU covers rule_states off/on and the provider's fallback key (2026-11-16).",
   "gaps": [
-   "legacy mapped key mismatch: _map_gmail output -> check should read it",
-   "mixed OUs child-only internal bypass -> FAIL names child",
+   "mixed OUs child-only internal bypass -> FAIL names child (covered for the CIS twin, not asserted for 18.3)",
    "DEFAULT-only -> ERROR"
   ],
-  "suspected_bugs": [
-   "cisa_services.py:509 reads spam_settings.bypass_spam_filters_for_internal while provider.py:1757 writes bypass_spam_for_internal_senders -> legacy fallback always ERROR."
-  ]
+  "suspected_bugs": []
  },
  {
   "check_id": "GWS.GMAIL.4.1",
@@ -6112,56 +6088,64 @@
   "check_id": "ADD-67",
   "func": "check_chrome_safe_browsing",
   "module": "chrome",
-  "inputs": "chrome_policies.safe_browsing_protection_level (chrome.users.SafeBrowsingProtectionLevel enum), chrome_policies.disable_safe_browsing_proceed_anyway (bool); absent + no resolve error = Google default (USER_CHOICE / false).",
+  "inputs": "chrome_policies.safe_browsing_protection_level (chrome.users.SafeBrowsingProtectionLevel enum), chrome_policies.disable_safe_browsing_proceed_anyway (bool); absent + no resolve error = Google default (USER_CHOICE / false). Judged per OU via chrome_ou_rows: the root values plus chrome_policies._ou_policies[<path>].values (effective, inherited included) for every OU whose explicit list names one of the two keys.",
   "paths": [
    "chrome_policies",
+   "chrome_policies._ou_policies",
    "api_errors"
   ],
-  "pass_case": "level STANDARD_PROTECTION or ENHANCED_PROTECTION and disable_safe_browsing_proceed_anyway True -> PASS.",
-  "fail_case": "level NO_PROTECTION or USER_CHOICE, or bypass not disabled -> FAIL naming each problem. Both unset -> FAIL on Google's defaults.",
-  "other_cases": "MANUAL (make_review): chrome_policies missing, get_chrome_policies error, or resolve_policy error on either schema.",
-  "edge_cases": "Level set but bypass unset -> FAIL on bypass with default note. Level default note appended to PASS only when level unset (cannot happen: default fails)."
+  "pass_case": "level STANDARD_PROTECTION or ENHANCED_PROTECTION and disable_safe_browsing_proceed_anyway True in every judged OU -> PASS (root only: single-OU wording; several OUs: 'All N judged OU(s) compliant. /: ...; /X: ...').",
+  "fail_case": "level NO_PROTECTION or USER_CHOICE, or bypass not disabled, in the root or in an OU that sets one of the keys -> FAIL naming each problem ('N of M judged OU(s) non-compliant. /X: ...'). Both unset -> FAIL on Google's defaults.",
+  "other_cases": "MANUAL (make_review): chrome_policies missing, get_chrome_policies error, or resolve_policy error on either schema (a per-OU wildcard failure is recorded as resolve_policy(<schema>)[<path>] and matches the same prefix).",
+  "edge_cases": "Level set but bypass unset -> FAIL on bypass with default note. An OU that inherits both keys is not listed (it follows its parent). A root-only cache (no _ou_policies) reads exactly as before.",
+  "coverage_now": "tests/test_checks/test_chrome.py::TestSafeBrowsing (root), TestPerOrgUnit (child override FAIL named, inheriting child not repeated, legacy cache)."
  },
  {
   "check_id": "ADD-68",
   "func": "check_chrome_password_manager",
   "module": "chrome",
-  "inputs": "chrome_policies.password_manager_enabled (chrome.users.PasswordManager passwordManagerEnabled 'UNSET'|'TRUE'|'FALSE'); absent + no error = default UNSET.",
+  "inputs": "chrome_policies.password_manager_enabled (chrome.users.PasswordManager passwordManagerEnabled 'UNSET'|'TRUE'|'FALSE'); absent + no error = default UNSET. Judged per OU via chrome_ou_rows (root plus OUs that set the key themselves).",
   "paths": [
    "chrome_policies",
+   "chrome_policies._ou_policies",
    "api_errors"
   ],
-  "pass_case": "'TRUE' -> PASS. absent/UNSET -> PASS with default note (allowed by default).",
-  "fail_case": "'FALSE' -> FAIL.",
+  "pass_case": "'TRUE' -> PASS. absent/UNSET -> PASS with default note (allowed by default). Several explicit OUs all compliant -> PASS listing each.",
+  "fail_case": "'FALSE' in the root or in an OU that sets it -> FAIL naming the OU.",
   "other_cases": "MANUAL (make_review): not collected or resolve error.",
-  "edge_cases": "Comparison is case-insensitive on the enum string."
+  "edge_cases": "Comparison is case-insensitive on the enum string. An inheriting OU is not listed.",
+  "coverage_now": "tests/test_checks/test_chrome.py::TestPasswordManager, TestPerOrgUnit (/Sales FALSE -> FAIL; root TRUE + /Eng UNSET -> PASS listing both)."
  },
  {
   "check_id": "ADD-69",
   "func": "check_chrome_downloads_and_isolation",
   "module": "chrome",
-  "inputs": "chrome_policies.download_restrictions (chrome.users.DownloadRestrictions enum), chrome_policies.site_per_process (chrome.users.SiteIsolationBrowser bool); defaults NO_SPECIAL_RESTRICTIONS / false.",
+  "inputs": "chrome_policies.download_restrictions (chrome.users.DownloadRestrictions enum), chrome_policies.site_per_process (chrome.users.SiteIsolationBrowser bool); defaults NO_SPECIAL_RESTRICTIONS / false. Judged per OU via chrome_ou_rows (root plus OUs that set one of the two keys themselves).",
   "paths": [
    "chrome_policies",
+   "chrome_policies._ou_policies",
    "api_errors"
   ],
-  "pass_case": "download_restrictions BLOCK_ALL_MALICIOUS_DOWNLOAD or stronger, site_per_process True or unset -> PASS.",
-  "fail_case": "download_restrictions NO_SPECIAL_RESTRICTIONS (set or default) -> FAIL.",
-  "other_cases": "WARN: downloads restricted but site_per_process explicitly False. MANUAL (make_review): download policy not collected / resolve error.",
-  "edge_cases": "Site isolation resolve error with downloads fine -> PASS noting isolation unreadable. Unset isolation is PASS (desktop Chrome isolates by default since 67)."
+  "pass_case": "download_restrictions BLOCK_ALL_MALICIOUS_DOWNLOAD or stronger, site_per_process True or unset, in every judged OU -> PASS.",
+  "fail_case": "download_restrictions NO_SPECIAL_RESTRICTIONS (set or default) in the root or in an OU that sets a key -> FAIL naming the OU (a child that fixes the root still fails on '/').",
+  "other_cases": "WARN: downloads restricted but site_per_process explicitly False in some judged OU ('N of M judged OU(s) need attention'). MANUAL (make_review): download policy not collected / resolve error.",
+  "edge_cases": "Site isolation resolve error with downloads fine -> PASS noting isolation unreadable. Unset isolation is PASS (desktop Chrome isolates by default since 67).",
+  "coverage_now": "tests/test_checks/test_chrome.py::TestDownloadsAndIsolation, TestPerOrgUnit (/Secure fixes downloads but root default FAILs; /Lab isolation off -> WARN)."
  },
  {
   "check_id": "ADD-70",
   "func": "check_chrome_updates",
   "module": "chrome",
-  "inputs": "chrome_policies.component_updates_enabled (bool), auto_update_check_period_minutes (int), relaunch_notification (chrome.users.RelaunchNotificationWithDurationV2 enum), chromeos_update_disabled (chrome.devices.AutoUpdateSettings updateDisabled bool); defaults true / None(295) / NO_NOTIFICATION / false.",
+  "inputs": "chrome_policies.component_updates_enabled (bool), auto_update_check_period_minutes (int), relaunch_notification (chrome.users.RelaunchNotificationWithDurationV2 enum), chromeos_update_disabled (chrome.devices.AutoUpdateSettings updateDisabled bool); defaults true / None(295) / NO_NOTIFICATION / false. Judged per OU via chrome_ou_rows (root plus OUs that set one of the four keys themselves).",
   "paths": [
    "chrome_policies",
+   "chrome_policies._ou_policies",
    "api_errors"
   ],
-  "pass_case": "component true, period non-zero, relaunch REQUIRED, chromeos updateDisabled false (set or default) -> PASS.",
-  "fail_case": "component false, period 0, relaunch not REQUIRED (incl. default NO_NOTIFICATION and RECOMMENDED), or chromeos updateDisabled true -> FAIL listing problems.",
-  "other_cases": "MANUAL (make_review): all unknown, or some unknown while the known ones pass.",
-  "edge_cases": "A known failing value wins over unknown ones (FAIL, not MANUAL). Period None = default 295."
+  "pass_case": "component true, period non-zero, relaunch REQUIRED, chromeos updateDisabled false (set or default) in every judged OU -> PASS.",
+  "fail_case": "component false, period 0, relaunch not REQUIRED (incl. default NO_NOTIFICATION and RECOMMENDED), or chromeos updateDisabled true, in the root or in an OU that sets a key -> FAIL listing problems per OU.",
+  "other_cases": "MANUAL (make_review): all unknown, or some unknown while the known ones pass ('Undetermined in OU(s): ...').",
+  "edge_cases": "A known failing value wins over unknown ones (FAIL, not MANUAL). Period None = default 295. A per-OU resolve error (resolve_policy(<schema>)[<path>]) makes that schema unknown in every OU.",
+  "coverage_now": "tests/test_checks/test_chrome.py::TestUpdates, TestPerOrgUnit (/Ops component off -> FAIL despite a per-OU error; per-OU device error with passing values -> MANUAL naming both OUs)."
  }
 ]

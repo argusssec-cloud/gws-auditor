@@ -51,6 +51,86 @@ class TestInternalSpamFilterBypass:
         assert check_gmail_internal_spam_filter(d).status == Status.FAIL
 
 
+class TestInternalSpamFilterBypassPerOU:
+    """CIS-3.1.3.6.2 judges gmail.spam_override_lists on every OU that sets it (2026-11-16): custom spam
+    filters are set per OU, and the flat mapped value only ever held the root OU's rules."""
+
+    @staticmethod
+    def _rule(**flags):
+        return {"ruleId": "r1", "description": "Internal bypass", "bypassInternalSenders": False,
+                "bypassSelectedSenders": False, "hideWarningBannerFromSelectedSenders": False, **flags}
+
+    def _policies(self, full_audit_data, *entries):
+        from tests.factories import make_ou_policy
+        full_audit_data["policies"]["gmail"] = {
+            "_ou_policies": [make_ou_policy("gmail", "spam_override_lists", value, ou) for value, ou in entries],
+            # the flat mapping (root OU) says "no bypass": the per-OU path must win
+            "spam_settings": {"bypass_spam_for_internal_senders": False},
+        }
+        return full_audit_data
+
+    def test_child_ou_override_fails_and_is_named(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_internal_spam_filter
+        d = self._policies(full_audit_data,
+                           ({"spamOverride": []}, "/"),
+                           ({"spamOverride": [self._rule(bypassInternalSenders=True)]}, "/Engineering"))
+        result = check_gmail_internal_spam_filter(d)
+        assert result.status == Status.FAIL
+        assert "1 OU(s)" in result.details and "/Engineering" in result.details and "/," not in result.details
+        assert "Internal bypass" in str(result.actual_value)
+
+    def test_root_bypass_child_override_clean_names_root_only(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_internal_spam_filter
+        d = self._policies(full_audit_data,
+                           ({"spamOverride": [self._rule(bypassInternalSenders=True)]}, "/"),
+                           ({"spamOverride": [self._rule(ruleId="r2")]}, "/Guests"))
+        result = check_gmail_internal_spam_filter(d)
+        assert result.status == Status.FAIL
+        assert "/Guests" not in result.details and result.details.endswith(": /")
+
+    def test_all_ous_clean_pass(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_internal_spam_filter
+        d = self._policies(full_audit_data,
+                           ({"spamOverride": [self._rule(bypassSelectedSenders=True)]}, "/"),
+                           ({"spamOverride": []}, "/Engineering"))
+        result = check_gmail_internal_spam_filter(d)
+        assert result.status == Status.PASS and "All 2 OU(s)" in result.details
+
+    def test_rule_switched_off_in_rule_states_is_ignored(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_internal_spam_filter
+        from gws_auditor.checks.cisa_services import check_spam_bypass_internal
+        from tests.factories import make_ou_policy
+        d = self._policies(full_audit_data,
+                           ({"spamOverride": [self._rule(bypassInternalSenders=True)]}, "/"))
+        d["policies"]["gmail"]["_ou_policies"].append(
+            make_ou_policy("gmail", "rule_states", {"ruleStates": [{"ruleId": "r1", "enabled": False}]}))
+        assert check_gmail_internal_spam_filter(d).status == Status.PASS
+        assert check_spam_bypass_internal(d).status == Status.PASS
+
+    def test_rule_enabled_in_rule_states_still_fails(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_internal_spam_filter
+        from gws_auditor.checks.cisa_services import check_spam_bypass_internal
+        from tests.factories import make_ou_policy
+        d = self._policies(full_audit_data,
+                           ({"spamOverride": [self._rule(bypassInternalSenders=True)]}, "/"))
+        d["policies"]["gmail"]["_ou_policies"].append(
+            make_ou_policy("gmail", "rule_states", {"ruleStates": [{"ruleId": "r1", "enabled": True}]}))
+        assert check_gmail_internal_spam_filter(d).status == Status.FAIL
+        assert check_spam_bypass_internal(d).status == Status.FAIL
+
+    def test_legacy_cache_without_ou_policies_still_reads_the_root_value(self, full_audit_data):
+        from gws_auditor.checks.apps_gmail import check_gmail_internal_spam_filter
+        full_audit_data["policies"]["gmail"] = {"spam_settings": {"bypass_spam_for_internal_senders": True}}
+        assert check_gmail_internal_spam_filter(full_audit_data).status == Status.FAIL
+
+    def test_18_3_fallback_reads_the_providers_key(self, full_audit_data):
+        from gws_auditor.checks.cisa_services import check_spam_bypass_internal
+        full_audit_data["policies"]["gmail"] = {"spam_settings": {"bypass_spam_for_internal_senders": True}}
+        assert check_spam_bypass_internal(full_audit_data).status == Status.FAIL
+        full_audit_data["policies"]["gmail"] = {"spam_settings": {"bypass_spam_for_internal_senders": False}}
+        assert check_spam_bypass_internal(full_audit_data).status == Status.PASS
+
+
 class TestTlsEnforcement:
     """CIS-3.1.3.7.2 only had a PASS test. The key is test-only: no Policy API setting feeds it,
     so production is MANUAL (phase P3 decides whether the check becomes MANUAL-by-design)."""

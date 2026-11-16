@@ -767,43 +767,28 @@ def check_dbsc(data: dict) -> CheckResult:
     _L, _S, _SEC = "L2", "OTHER", "Access Control"
     common = dict(check_id=_DBSC_ID, title=_DBSC_TITLE, level=_L, source=_S, section=_SEC)
 
-    chrome_policies = data.get("chrome_policies", {})
-    dbsc_enabled = chrome_policies.get("dbsc_enabled", None)
-
-    if dbsc_enabled is True:
-        return make_pass(
-            **common,
-            details="Device Bound Session Credentials (DBSC) are enabled.",
-            actual_value=True, expected_value="Enabled for all OUs",
-        )
-
-    if dbsc_enabled is False:
-        return make_fail(
-            **common,
-            details="Device Bound Session Credentials (DBSC) are not enabled.",
-            actual_value=False, expected_value="Enabled for all OUs",
-            remediation=_DBSC_REMED,
-        )
-
-    from .base import chrome_policy_unset
+    from .base import chrome_ou_verdict, chrome_policy_unset
     from ..google_defaults import CHROME_POLICY_DEFAULTS
-    if chrome_policy_unset(data, "chrome.users.BoundSessionCredentialsEnabled"):
-        default = CHROME_POLICY_DEFAULTS["chrome.users.BoundSessionCredentialsEnabled"]
-        return make_pass(
-            **common,
-            details=("DBSC is not forced by policy, so Google's default applies: " + default["unset"]
-                     + f" Set the policy to true to force it on every managed browser (source: {default['source']})."),
-            actual_value={"dbsc_enabled": None, "source": "google default"},
-            expected_value="Enabled for all OUs",
-        )
-    return make_review(
-        **common,
-        details=(
-            "Could not determine DBSC setting (Chrome policies were not collected or the resolve call failed). "
-            "Verify manually in Admin console > Devices > Chrome > Settings > User & browser settings > Security > "
-            "Device Bound Session Credentials."
-        ),
-        remediation=_DBSC_REMED,
+
+    def judge(values: dict) -> tuple:
+        dbsc_enabled = values.get("dbsc_enabled")
+        if dbsc_enabled is True:
+            return "pass", "Device Bound Session Credentials (DBSC) are enabled.", True
+        if dbsc_enabled is False:
+            return "fail", "Device Bound Session Credentials (DBSC) are not enabled.", False
+        if chrome_policy_unset(data, "chrome.users.BoundSessionCredentialsEnabled"):
+            default = CHROME_POLICY_DEFAULTS["chrome.users.BoundSessionCredentialsEnabled"]
+            return "pass", ("DBSC is not forced by policy, so Google's default applies: " + default["unset"]
+                            + f" Set the policy to true to force it on every managed browser (source: {default['source']})."), \
+                {"dbsc_enabled": None, "source": "google default"}
+        return "unknown", "", None
+
+    return chrome_ou_verdict(
+        data, ("dbsc_enabled", "bound_session_credentials"), judge, common=common,
+        expected_value="Enabled for all OUs", remediation=_DBSC_REMED,
+        unknown_details=("Could not determine DBSC setting (Chrome policies were not collected or the resolve call "
+                         "failed). Verify manually in Admin console > Devices > Chrome > Settings > User & browser "
+                         "settings > Security > Device Bound Session Credentials."),
     )
 
 

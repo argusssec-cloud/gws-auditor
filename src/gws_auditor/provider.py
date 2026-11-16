@@ -423,9 +423,10 @@ class Provider:
         try:
             from .api.chrome_policy import ChromePolicyClient
             client = ChromePolicyClient(self.auth)
-            chrome_policies = client.get_chrome_policies(self.customer_id)
+            chrome_policies = client.get_chrome_policies(self.customer_id, org_units=self._get_org_units())
             self._propagate_client_errors(client)
-            logger.info("Collected Chrome policies: %s", list(chrome_policies.keys()))
+            logger.info("Collected Chrome policies for %d OU(s): %s",
+                        len(chrome_policies.get("_ou_policies", {})), list(chrome_policies.keys()))
             return chrome_policies
         except Exception as e:
             self._record_error("get_chrome_policies", e)

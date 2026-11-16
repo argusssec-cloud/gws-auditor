@@ -10,7 +10,8 @@ Only checks NOT already covered by CIS/OTHER/GOOGLE or the main cisa_scuba modul
 import re
 
 from .base import (check, make_pass, make_fail, make_warn, make_manual, make_review, get_ou_values,
-                   format_ou_values_readable, latest_setting_changes, field_value, ou_verdict)
+                   format_ou_values_readable, latest_setting_changes, field_value, ou_verdict,
+                   gmail_disabled_rule_ids)
 from ..constants import (
     EDITIONS_CHAT_REPORTING, EDITIONS_DRIVE_RANSOMWARE, EDITIONS_SHARED_DRIVE_SETTINGS,
 )
@@ -457,9 +458,12 @@ def check_spam_bypass_internal(data: dict) -> CheckResult:
     # OU-aware path
     ou_values = get_ou_values(gmail, "spam_override_lists")
     if ou_values:
+        disabled = gmail_disabled_rule_ids(gmail)  # rules switched off in gmail.rule_states bypass nothing
+
         def judge(entry: dict):
             # spamOverride[] absent -> documented default [] (no override rules), judged as compliant
-            if any(_rule_bypasses_all_senders(r) for r in _spam_override_rules(entry["value"])):
+            if any(_rule_bypasses_all_senders(r) for r in _spam_override_rules(entry["value"])
+                   if str(r.get("ruleId")) not in disabled):
                 return False, True
             bypass = field_value(entry, "bypassSpamFiltersForInternal", "bypass_internal")
             return bypass is not True, bypass
@@ -473,7 +477,9 @@ def check_spam_bypass_internal(data: dict) -> CheckResult:
 
     # Fallback: mapped root-level value
     spam_settings = gmail.get("spam_settings", {})
-    bypass_internal = spam_settings.get("bypass_spam_filters_for_internal", None)
+    # The provider writes bypass_spam_for_internal_senders (root OU); the other key is an older cache shape.
+    bypass_internal = spam_settings.get("bypass_spam_for_internal_senders",
+                                        spam_settings.get("bypass_spam_filters_for_internal", None))
 
     if bypass_internal is False:
         return make_pass(
@@ -1256,13 +1262,13 @@ _RANSOMWARE_REMED = (
 
 @check(
     check_id="GWS.DRIVEDOCS.5.2",
+    requires_license=EDITIONS_DRIVE_RANSOMWARE,
     scored=False,  # Admin-console-only control: no API or audit-log signal known
     title="Ensure monitoring for potential ransomware corruption in Drive is enabled",
     level="L1",
     source="CISA",
     section="Drive and Docs",
     remediation=_RANSOMWARE_REMED,
-    requires_license=EDITIONS_DRIVE_RANSOMWARE,
 )
 def check_drive_ransomware_monitoring(data: dict) -> CheckResult:
     """SCuBA v1 5.2 (SHALL): no API exposes the Drive ransomware-monitoring setting."""
